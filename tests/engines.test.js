@@ -89,3 +89,59 @@ test("第 170 種:交叉的搖臂隨轉速張開,經短連桿移動閥桿", () =
   assert.ok(Math.abs(rods[rods.length - 1] - rods[0]) > 0.05, "閥桿隨轉速移動");
   for (let i = 1; i < rods.length; i++) assert.ok(rods[i] <= rods[i - 1] + 1e-12, "單調");
 });
+
+import fig164, { knee } from "../models/fig164.js";
+import { rocker, wave } from "../models/fig165.js";
+import { moldX, pinDistance, slot as slot166 } from "../models/fig166.js";
+import { rodY as rod167, stroke as stroke167 } from "../models/fig167.js";
+import { mainCrank as main168 } from "../models/fig168.js";
+import { mainCrank as main169, sizes as sizes169 } from "../models/fig169.js";
+
+test("第 164 種:膝節槓桿——抬起長柄,撐桿越接近直立、壓塊越往下,越接近伸直時每單位轉角的下移越小(力越大)", () => {
+  const [lo, hi] = fig164.driver.range;
+  const ys = sweep(hi, 30, lo).map((p) => knee(p).y);
+  for (let i = 1; i < ys.length; i++) assert.ok(ys[i] <= ys[i - 1] + 1e-12, "抬起長柄時壓塊往下");
+  assert.ok(Math.abs(ys[ys.length - 1] - ys[ys.length - 2]) < Math.abs(ys[1] - ys[0]), "接近伸直時下移變慢");
+});
+
+test("第 165 種:直立軸上的波狀輪經搖動桿使直立桿上下直線運動(每圈六次)", () => {
+  const rods = sweep(TAU + 0.05, 720, 0.05).map((t) => rocker(t).rod);
+  let turns = 0;
+  for (let i = 2; i < rods.length; i++) if ((rods[i] - rods[i - 1]) * (rods[i - 1] - rods[i - 2]) < 0) turns++;
+  assert.equal(turns, 12, "六次往返");
+  assert.ok(Number.isFinite(wave(0)));
+});
+
+test("第 166 種:連桿的長孔讓模具在每一程的盡頭停住一會兒,銷始終在長孔兩端之間", () => {
+  const xs = sweep(TAU, 720).map(moldX);
+  let still = 0;
+  for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i] - xs[i - 1]) < 1e-12) still++;
+  assert.ok(still > 60, "有停住的時段");
+  for (const t of sweep(TAU * 2, 60)) {
+    const d = pinDistance(t);
+    assert.ok(d >= slot166.near - 1e-9 && d <= slot166.far + 1e-9, "銷在長孔內");
+  }
+  close(moldX(0), moldX(TAU), "每圈重複", 1e-9);
+});
+
+test("第 167 種:鼓輪的無端螺旋溝使桿往復一次、鼓輪轉一圈", () => {
+  const ys = sweep(TAU, 720).map(rod167);
+  close(Math.max(...ys) - Math.min(...ys), stroke167, "行程", 1e-6);
+  close(rod167(0), rod167(TAU), "一圈回到原處", 1e-9);
+});
+
+test("第 168 種:抽送桿末端的銷走橢圓形的軌跡,主曲柄轉一圈,曲柄長(銷在溝槽中的位置)隨之改變", () => {
+  const lens = sweep(TAU, 360).map((p) => main168(p).length);
+  assert.ok(Math.max(...lens) - Math.min(...lens) > 0.2, "曲柄長改變");
+  let turn = 0;
+  const as = sweep(TAU, 360).map((p) => main168(p).angle);
+  for (let i = 1; i < as.length; i++) turn += ((as[i] - as[i - 1] + 3 * Math.PI) % TAU) - Math.PI;
+  close(Math.abs(turn), TAU, "主曲柄轉一圈", 1e-6);
+});
+
+test("第 169 種:以短連桿取代溝槽,主曲柄半徑固定、轉一圈", () => {
+  for (const p of sweep(TAU, 36)) {
+    const { p: e, q } = main169(p);
+    close(dist(e, q), sizes169.LINK, "連桿長度", 1e-9);
+  }
+});
