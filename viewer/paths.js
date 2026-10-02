@@ -1,26 +1,32 @@
 // 皮帶、繩、連桿:沿姿勢回傳的折線建立管狀幾何。
-// 會運動的線狀零件(MOVING_KINDS:皮帶、繩;日後的鍊條等也列入)一律上循環漸層色
-// (金黃 → 綠 → 紫 → 金黃),紋理座標 = 離起點的弧長 − 行進相位,也就是材料座標:
-// 色帶跟著材料移動、繞過輪子,轉向與各段速度差一眼看得出。連桿(rod)不動,不上色。
+// 會運動的線狀零件(MOVING_KINDS:皮帶、繩;日後的鍊條等也列入)以黑色間隔記號分段,
+// 每段塗一種實色(金黃 → 綠 → 紫輪流),紋理座標 = 離起點的弧長 − 行進相位,也就是材料座標:
+// 記號與色段跟著材料移動、繞過輪子,轉向與各段速度差一眼看得出。連桿(rod)不動,不上色。
 import * as THREE from "three";
 
 const RADIUS = { belt: 0.05, rope: 0.045, rod: 0.03 };
 export const MOVING_KINDS = new Set(["belt", "rope"]);
-const GRADIENT = ["#f0b429", "#3aa676", "#7b4bb7", "#f0b429"];
-const COLOR_PERIOD = 2; // 漸層每一輪的長度
+const MARK_SPACING = { belt: 0.42, rope: 0.24 }; // 相鄰兩個記號的距離,也就是一個色段的長度
+const SEGMENT_COLORS = ["#f0b429", "#3aa676", "#7b4bb7"];
+const MARK_COLOR = "#2a2a2a";
 
-function gradientTexture() {
+// 一張紋理含 SEGMENT_COLORS.length 個色段,每段開頭一道黑色記號
+function segmentTexture() {
+  const cell = 32;
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
+  canvas.width = cell * SEGMENT_COLORS.length;
   canvas.height = 2;
   const ctx = canvas.getContext("2d");
-  const fill = ctx.createLinearGradient(0, 0, 256, 0);
-  GRADIENT.forEach((color, i) => fill.addColorStop(i / (GRADIENT.length - 1), color));
-  ctx.fillStyle = fill;
-  ctx.fillRect(0, 0, 256, 2);
+  SEGMENT_COLORS.forEach((color, i) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(i * cell, 0, cell, 2);
+    ctx.fillStyle = MARK_COLOR;
+    ctx.fillRect(i * cell, 0, 7, 2);
+  });
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.NearestFilter;
   return texture;
 }
 
@@ -50,7 +56,8 @@ export class PathPart {
     this.radius = part.radius ?? RADIUS[part.kind];
     this.material = material.clone();
     if (MOVING_KINDS.has(part.kind)) {
-      this.texture = gradientTexture();
+      this.spacing = MARK_SPACING[part.kind];
+      this.texture = segmentTexture();
       this.material.map = this.texture;
     }
     this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), this.material);
@@ -67,8 +74,9 @@ export class PathPart {
       this.mesh.geometry = new THREE.TubeGeometry(curve, segments, this.radius, 8, false);
     }
     if (this.texture) {
-      // 封閉的皮帶繞一圈要剛好整數輪,接頭處才不會有色差接縫
-      const period = closed ? this.length / Math.max(1, Math.round(this.length / COLOR_PERIOD)) : COLOR_PERIOD;
+      // 封閉的皮帶繞一圈要剛好整數輪色段,接頭處才不會有色差接縫
+      const cycle = this.spacing * SEGMENT_COLORS.length;
+      const period = closed ? this.length / Math.max(1, Math.round(this.length / cycle)) : cycle;
       this.texture.repeat.set(this.length / period, 1);
       this.texture.offset.x = -phase / period;
     }
