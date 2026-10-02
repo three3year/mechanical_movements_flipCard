@@ -29,14 +29,15 @@ function layout(pull) {
 
 const rest = layout(RANGE[0]);
 
-const sheave = (id, center, movable) => ({ id, kind: "pulley", style: "disc", center, axis: Z, radius: R, width: 0.18, movable });
+// 同一組並排的皮帶輪轉向相同,只在最前面那個畫轉向箭頭
+const sheave = (id, center, movable, arrow) => ({ id, kind: "pulley", style: "disc", center, axis: Z, radius: R, width: 0.18, movable, arrow });
 
 export default {
   figure: 14,
   parts: [
     { id: "ceiling", kind: "box", center: [0, CEILING + 0.08, 0], size: [1.8, 0.16, 1.2] },
-    ...rest.upper.map((c, i) => sheave(`upper${i + 1}`, c.center, false)),
-    ...rest.lower.map((c, i) => sheave(`lower${i + 1}`, c.center, true)),
+    ...rest.upper.map((c, i) => sheave(`upper${i + 1}`, c.center, false, i === SHEAVES - 1)),
+    ...rest.lower.map((c, i) => sheave(`lower${i + 1}`, c.center, true, i === SHEAVES - 1)),
     { id: "upperPin", kind: "shaft", center: [0, UPPER_Y, 0], axis: Z, radius: 0.06, length: 1.05 },
     { id: "lowerPin", kind: "shaft", center: [0, LOWER_Y, 0], axis: Z, radius: 0.06, length: 1.05 },
     { id: "hanger", kind: "rod" },

@@ -3,12 +3,14 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { LineArtRenderer } from "./lineart.js";
-import { buildPart, PATH_KINDS } from "./parts.js";
+import { buildPart, buildSpinArrow, spinPlacement, PATH_KINDS } from "./parts.js";
 import { PathPart } from "./paths.js";
 import { clamp, lerp3 } from "../models/kit.js";
 
 const PAPER = "#ffffff";
 const ACCENT = "#d4572a";
+const ACCENT_MARK = "#7a2a10"; // 主動件上的轉動記號
+const MARK = "#2f6fb0"; // 從動件的轉動記號與轉向箭頭
 const TRANSITION_MS = 450;
 const FOV = 32;
 const DEFAULT_VIEW = [0.12, 0.1, 1];
@@ -75,9 +77,16 @@ class Session {
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(PAPER);
-    const base = new THREE.MeshToonMaterial({ color: PAPER, gradientMap: gradient });
-    const accent = new THREE.MeshToonMaterial({ color: ACCENT, gradientMap: gradient });
-    this.materials = [base, accent];
+    const toon = (color, extra) => new THREE.MeshToonMaterial({ color, gradientMap: gradient, ...extra });
+    const base = toon(PAPER);
+    const accent = toon(ACCENT);
+    const accentMark = toon(ACCENT_MARK);
+    const mark = toon(MARK);
+    // 箭頭依轉向翻面(scale.y = −1),雙面繪製才不會被背面剔除
+    const accentArrow = toon(ACCENT_MARK, { side: THREE.DoubleSide }); // 深橘,疊在橘色本體上也看得清楚
+    const markArrow = toon(MARK, { side: THREE.DoubleSide });
+    this.materials = [base, accent, accentMark, mark, accentArrow, markArrow];
+    this.arrows = [];
 
     this.objects = new Map();
     this.paths = new Map();
@@ -90,7 +99,7 @@ class Session {
         this.scene.add(path.mesh);
         continue;
       }
-      const object = buildPart(part, isDriver ? accent : base);
+      const object = buildPart(part, isDriver ? accent : base, isDriver ? accentMark : mark);
       const baseQuat = new THREE.Quaternion().setFromUnitVectors(
         Z_AXIS,
         new THREE.Vector3(...(part.axis ?? [0, 0, 1])).normalize(),
@@ -102,6 +111,17 @@ class Session {
       if (isDriver) {
         object.add(hitProxy(part));
         this.driverMeshes.push(object);
+      }
+      // 會轉的零件旁加轉向箭頭;零件不轉時隱藏。定義可用 arrow: false 關掉(例如並排同向的滑輪只留一個)
+      const spin = part.arrow === false ? null : spinPlacement(part);
+      if (spin) {
+        const arrow = buildSpinArrow(spin.radius + 0.22, isDriver ? accentArrow : markArrow);
+        arrow.position.z = spin.offset;
+        const holder = new THREE.Group();
+        holder.add(arrow);
+        holder.visible = false;
+        this.scene.add(holder);
+        this.arrows.push({ id: part.id, holder, arrow, sign: 1 });
       }
     }
 
@@ -289,11 +309,40 @@ class Session {
     }
   }
 
+  // 轉向箭頭:主動件有在動時,依各零件這一幀的轉角變化決定箭頭方向,沒轉的零件隱藏箭頭;
+  // 主動件停住時維持上一次的顯示。明顯側看零件時箭頭擺在朝鏡頭那側,否則擺在上方。
+  updateArrows(prevAngles, driverMoved) {
+    const { camera } = getShared();
+    const q = new THREE.Quaternion();
+    const local = new THREE.Vector3();
+    for (const a of this.arrows) {
+      const { object, baseQuat } = this.objects.get(a.id);
+      if (driverMoved) {
+        const turned = this.lastAngles[a.id] - (prevAngles[a.id] ?? this.lastAngles[a.id]);
+        a.holder.visible = Math.abs(turned) > 1e-7;
+        if (a.holder.visible) a.sign = Math.sign(turned);
+        a.arrow.scale.y = a.sign;
+      }
+      const inverse = q.copy(baseQuat).invert();
+      local.copy(camera.position).sub(object.position).applyQuaternion(inverse);
+      if (Math.hypot(local.x, local.y) < 0.75 * local.length()) {
+        local.set(0, 1, 0).applyQuaternion(inverse);
+        if (Math.hypot(local.x, local.y) < 0.3) local.set(1, 0, 0).applyQuaternion(inverse);
+      }
+      a.holder.position.copy(object.position);
+      a.holder.quaternion.copy(baseQuat).multiply(q.setFromAxisAngle(Z_AXIS, Math.atan2(local.y, local.x)));
+    }
+  }
+
   frame = (now) => {
     const dt = Math.min(0.05, (now - (this.lastTime ?? now)) / 1000);
     this.lastTime = now;
+    const prevAngles = { ...this.lastAngles };
     if (this.playing && !this.drag) this.advance(dt);
     this.apply(this.def.pose(this.value, this.state), now);
+    // 拖動在 pointermove 裡改主動量,所以跟上一幀套用的值比
+    this.updateArrows(prevAngles, this.value !== this.frameValue);
+    this.frameValue = this.value;
     const { lineart, camera } = getShared();
     lineart.render(this.scene, camera);
     this.placeLabels();
