@@ -1,6 +1,9 @@
 // 線稿風繪圖:先畫一次淡灰平塗的上色圖,再畫一次法線與深度,
 // 最後在全螢幕四邊形上偵測法線與深度的落差,描出黑色粗輪廓線。
+// 流體示意(點與容器填色)放在第 1 層:只畫在上色圖,不參與描邊,看起來不像零件。
 import * as THREE from "three";
+
+export const FLUID_LAYER = 1;
 
 const vertexShader = /* glsl */ `
   varying vec2 vUv;
@@ -99,8 +102,10 @@ export class LineArtRenderer {
     uniforms.cameraNear.value = camera.near;
     uniforms.cameraFar.value = camera.far;
 
+    camera.layers.enable(FLUID_LAYER);
     r.setRenderTarget(this.colorTarget);
     r.render(scene, camera);
+    camera.layers.disable(FLUID_LAYER);
 
     const background = scene.background;
     scene.background = null;

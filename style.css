@@ -406,6 +406,37 @@ nav.tabs button.active {
   border-color: var(--ink);
 }
 
+/* 虛擬主動件的滑桿:名稱、滑桿、目前值;滑桿加高,手機上好拖 */
+.stage .stage-driver {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  cursor: default;
+}
+
+.stage .stage-driver-name {
+  letter-spacing: 0.15em;
+  white-space: nowrap;
+}
+
+.stage .stage-driver input {
+  flex: 1;
+  min-width: 0;
+  height: 2rem;
+  accent-color: #d4572a;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.stage .stage-driver output {
+  min-width: 4.5em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
 .card .no {
   display: flex;
   align-items: center;

@@ -1,12 +1,14 @@
 // 皮帶、繩、連桿:沿姿勢回傳的折線建立管狀幾何。
-// 會運動的線狀零件(MOVING_KINDS:皮帶、繩;日後的鍊條等也列入)以黑色間隔記號分段,
+// 會運動的線狀零件(models/kinds.js 的 MOVING_KINDS:皮帶、繩、鍊條)以黑色間隔記號分段,
 // 每段塗一種實色(金黃 → 綠 → 紫輪流),紋理座標 = 離起點的弧長 − 行進相位,也就是材料座標:
 // 記號與色段跟著材料移動、繞過輪子,轉向與各段速度差一眼看得出。連桿(rod)不動,不上色。
+// 作圖軌跡(trace)是繪圖儀器畫出的線,以單一鉛筆色呈現。
 import * as THREE from "three";
+import { MOVING_KINDS } from "../models/kinds.js";
 
-const RADIUS = { belt: 0.05, rope: 0.045, rod: 0.03 };
-export const MOVING_KINDS = new Set(["belt", "rope"]);
-const MARK_SPACING = { belt: 0.42, rope: 0.24 }; // 相鄰兩個記號的距離,也就是一個色段的長度
+const RADIUS = { belt: 0.05, rope: 0.045, rod: 0.03, chain: 0.06, trace: 0.025 };
+const MARK_SPACING = { belt: 0.42, rope: 0.24, chain: 0.36 }; // 相鄰兩個記號的距離,也就是一個色段的長度
+const TRACE_COLOR = "#b3261e";
 const SEGMENT_COLORS = ["#f0b429", "#3aa676", "#7b4bb7"];
 const MARK_COLOR = "#2a2a2a";
 
@@ -55,6 +57,7 @@ export class PathPart {
     this.kind = part.kind;
     this.radius = part.radius ?? RADIUS[part.kind];
     this.material = material.clone();
+    if (part.kind === "trace") this.material.color.set(TRACE_COLOR);
     if (MOVING_KINDS.has(part.kind)) {
       this.spacing = MARK_SPACING[part.kind];
       this.texture = segmentTexture();

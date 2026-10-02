@@ -1,0 +1,173 @@
+// 板件的 2D 輪廓:純函式,回傳 { outline: [[x, y], …], holes: [[[x, y], …], …] }。
+// 繪圖層把輪廓沿局部 Z 擠出成板件;模型也可用同一份輪廓算接觸(凸輪、棘輪)。
+// 齒輪、齒條的齒形是簡化的梯形齒,齒 0 的中心在局部 +X(齒條在局部 x = 0)。
+import { TAU } from "./kit.js";
+
+const ARC_STEP = TAU / 96;
+
+/** 圓弧上的點(含兩端);a0 → a1 可逆時針或順時針 */
+export function arcPoints(r, a0, a1, cx = 0, cy = 0) {
+  const n = Math.max(1, Math.ceil(Math.abs(a1 - a0) / ARC_STEP));
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const a = a0 + ((a1 - a0) * i) / n;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  });
+}
+
+export const circle = (r, cx = 0, cy = 0) => arcPoints(r, 0, TAU, cx, cy).slice(0, -1);
+
+/** 環形(外圓 r,內孔 inner) */
+export const ring = (r, inner) => ({ outline: circle(r), holes: [circle(inner).reverse()] });
+
+/** 圓盤,可有中心孔 */
+export const disc = (r, bore = 0) => ({ outline: circle(r), holes: bore ? [circle(bore).reverse()] : [] });
+
+/** 矩形(中心在原點或指定位置) */
+export function rect(w, h, cx = 0, cy = 0) {
+  return [
+    [cx - w / 2, cy - h / 2],
+    [cx + w / 2, cy - h / 2],
+    [cx + w / 2, cy + h / 2],
+    [cx - w / 2, cy + h / 2],
+  ];
+}
+
+/** 兩端半圓的長條:從 (0,0) 沿 +X 到 (length,0),寬 width;兩端各有銷孔 */
+export function stadium(length, width, pin = 0) {
+  const r = width / 2;
+  const outline = [...arcPoints(r, -Math.PI / 2, Math.PI / 2, length, 0), ...arcPoints(r, Math.PI / 2, (3 * Math.PI) / 2, 0, 0)];
+  const holes = pin ? [circle(pin).reverse(), circle(pin, length, 0).reverse()] : [];
+  return { outline, holes };
+}
+
+/** 依極座標函式 r(φ) 取樣的輪廓(凸輪、心形輪) */
+export function polarOutline(radiusAt, samples = 180) {
+  return Array.from({ length: samples }, (_, i) => {
+    const a = (i / samples) * TAU;
+    const r = radiusAt(a);
+    return [r * Math.cos(a), r * Math.sin(a)];
+  });
+}
+
+// ── 齒輪 ─────────────────────────────────
+
+/** 依節圓半徑與齒數算模數相關尺寸 */
+export function gearSize(radius, teeth) {
+  const m = (2 * radius) / teeth;
+  return { m, addendum: m, dedendum: 1.2 * m, pitch: TAU / teeth };
+}
+
+// 一個齒在節圓上的厚度(以齒距為 1);齒側為直線、略收窄,接近原圖鑄造齒輪的方齒
+const TOOTH_AT_PITCH = 0.42;
+const FLANK = Math.tan((14 * Math.PI) / 180);
+
+// 齒 i 在半徑 rho 處的半寬角
+function halfWidth(radius, m, rho, inward) {
+  const pitchHalf = (TOOTH_AT_PITCH * Math.PI * m) / 2;
+  const d = inward ? radius - rho : rho - radius; // 朝齒頂為正
+  return Math.max(0.05 * m, pitchHalf - d * FLANK) / rho;
+}
+
+/**
+ * 齒輪的齒廓(封閉折線)。internal 為內齒(齒朝圓心)。
+ * has(i) 決定第 i 齒在不在(不完全齒輪);缺齒處依 blank 走齒根圓或齒頂圓。
+ */
+export function gearProfile({ teeth, radius, internal = false, has = () => true, blank = "root" }) {
+  const { m, addendum, dedendum, pitch } = gearSize(radius, teeth);
+  const tip = internal ? radius - addendum : radius + addendum;
+  const root = internal ? radius + dedendum : radius - dedendum;
+  const blankR = blank === "tip" ? tip : root;
+  const pts = [];
+  for (let i = 0; i < teeth; i++) {
+    const a = i * pitch;
+    if (!has(i)) {
+      pts.push(...arcPoints(blankR, a - pitch / 2, a + pitch / 2).slice(0, -1));
+      continue;
+    }
+    const wr = halfWidth(radius, m, root, internal);
+    const wt = halfWidth(radius, m, tip, internal);
+    // 齒根圓弧(前一個齒槽的後半)→ 齒側 → 齒頂 → 齒側 → 齒根圓弧
+    pts.push(...arcPoints(root, a - pitch / 2, a - wr).slice(0, -1));
+    pts.push([root * Math.cos(a - wr), root * Math.sin(a - wr)]);
+    pts.push(...arcPoints(tip, a - wt, a + wt));
+    pts.push([root * Math.cos(a + wr), root * Math.sin(a + wr)]);
+    pts.push(...arcPoints(root, a + wr, a + pitch / 2).slice(1, -1));
+  }
+  return pts;
+}
+
+/** 第 i 個齒的外形(從齒根到齒頂的封閉折線),用來把一個齒塗上記號色 */
+export function toothOutline({ teeth, radius, internal = false }, i = 0) {
+  const { m, addendum, dedendum, pitch } = gearSize(radius, teeth);
+  const tip = internal ? radius - addendum : radius + addendum;
+  const root = internal ? radius + dedendum : radius - dedendum;
+  const base = internal ? root + 0.6 * m : root - 0.6 * m; // 往輪體裡多伸一點,記號才連在輪上
+  const a = i * pitch;
+  const wr = halfWidth(radius, m, root, internal);
+  const wt = halfWidth(radius, m, tip, internal);
+  const wb = (wr * root) / base;
+  const pts = [
+    [base * Math.cos(a - wb), base * Math.sin(a - wb)],
+    [root * Math.cos(a - wr), root * Math.sin(a - wr)],
+    ...arcPoints(tip, a - wt, a + wt),
+    [root * Math.cos(a + wr), root * Math.sin(a + wr)],
+    [base * Math.cos(a + wb), base * Math.sin(a + wb)],
+  ];
+  return internal ? pts.reverse() : pts;
+}
+
+/**
+ * 齒輪板件。外齒輪:齒廓為外形,可有中心孔;內齒輪:外圓 rim 為外形,齒廓為內孔。
+ * mask(i) 為 false 的齒不畫(不完全齒輪)。
+ */
+export function gearShape({ teeth, radius, internal = false, rim, bore = 0, mask, blank }) {
+  const has = mask ?? (() => true);
+  const profile = gearProfile({ teeth, radius, internal, has, blank });
+  if (internal) {
+    const { m } = gearSize(radius, teeth);
+    return { outline: circle(rim ?? radius + 2.6 * m), holes: [profile.reverse()] };
+  }
+  return { outline: profile, holes: bore ? [circle(bore).reverse()] : [] };
+}
+
+/** 齒條:沿局部 X,齒朝 +Y,節線在 y = 0;齒 k 的中心在 x = (k − (n−1)/2)·齒距 */
+export function rackShape({ teeth, pitch, depth }) {
+  const m = pitch / Math.PI;
+  const tip = m;
+  const root = -1.2 * m;
+  const half = (teeth - 1) / 2;
+  const w = (y) => Math.max(0.05 * m, (TOOTH_AT_PITCH * pitch) / 2 - y * FLANK);
+  const left = -(half + 0.5) * pitch;
+  const right = (half + 0.5) * pitch;
+  const pts = [[left, root - depth]];
+  pts.push([left, root]);
+  for (let k = 0; k < teeth; k++) {
+    const x = (k - half) * pitch;
+    pts.push([x - w(root), root], [x - w(tip), tip], [x + w(tip), tip], [x + w(root), root]);
+  }
+  pts.push([right, root], [right, root - depth]);
+  return { outline: pts, holes: [] };
+}
+
+/** 棘輪:齒尖在 outer、齒根在 inner;dir = +1 時棘爪推直面使輪逆時針轉(齒 i 的直面在角度 i·齒距) */
+export function ratchetShape({ teeth, outer, inner, bore = 0, dir = 1 }) {
+  const pitch = TAU / teeth;
+  const pts = [];
+  for (let i = 0; i < teeth; i++) {
+    const a = i * pitch;
+    if (dir < 0) {
+      // 從齒根沿斜背升到齒尖,再沿直面落回齒根
+      pts.push([inner * Math.cos(a), inner * Math.sin(a)]);
+      pts.push([outer * Math.cos(a + pitch * 0.92), outer * Math.sin(a + pitch * 0.92)]);
+      pts.push([inner * Math.cos(a + pitch * 0.98), inner * Math.sin(a + pitch * 0.98)]);
+    } else {
+      pts.push([inner * Math.cos(a + pitch * 0.02), inner * Math.sin(a + pitch * 0.02)]);
+      pts.push([outer * Math.cos(a + pitch * 0.08), outer * Math.sin(a + pitch * 0.08)]);
+      pts.push([inner * Math.cos(a + pitch), inner * Math.sin(a + pitch)]);
+    }
+  }
+  return { outline: pts, holes: bore ? [circle(bore).reverse()] : [] };
+}
+
+/** 任意折線外形(可帶孔) */
+export const shape = (outline, holes = []) => ({ outline, holes });

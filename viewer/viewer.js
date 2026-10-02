@@ -1,10 +1,17 @@
 // 模型的 3D 繪圖與操作。讀取模型定義(models/)建立場景,每一幀把 pose() 算出的姿勢套上去。
 // 整頁共用一個畫布與 WebGL context;每張卡片是一個 session,換卡片時釋放舊場景。
+//
+// 主動件有三種:
+// - 零件(rotation / translation):讀者抓住拖動;driver.grips 可再指定幾個零件為同一主動件的抓取處
+//   (並排變體)。driver.cycle = [from, to] 時主動量是累計行程,零件在兩端之間往復(見 kit.swing)。
+// - 虛擬(virtual):模型下方一支滑桿。mode "balance" 的數值是物理量本身,在 range 內;
+//   mode "progress" 是進程,一直往前,滑桿顯示一輪(range)之內的位置。此時零件不能抓。
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { LineArtRenderer } from "./lineart.js";
+import { LineArtRenderer, FLUID_LAYER } from "./lineart.js";
 import { buildPart, buildSpinArrow, spinPlacement, PATH_KINDS } from "./parts.js";
 import { PathPart } from "./paths.js";
+import { FlowCues, FLUID_COLORS } from "./flows.js";
 import { clamp, lerp3 } from "../models/kit.js";
 
 const PAPER = "#ffffff";
@@ -55,14 +62,53 @@ function el(tag, className, text) {
   return node;
 }
 
+// ── 姿勢 → 物件的位置與朝向 ─────────────
+
+const tmpX = new THREE.Vector3();
+const tmpY = new THREE.Vector3();
+const tmpZ = new THREE.Vector3();
+const tmpM = new THREE.Matrix4();
+const tmpQ = new THREE.Quaternion();
+
+/**
+ * 依零件姿勢 p 算出位置、朝向與(連桿類的)長度,寫進 out。
+ * p.from/p.to:局部 +X 由 from 指向 to,局部 Z 盡量對齊定義的 axis(連桿所在平面的法線)。
+ * p.rotation:直接指定四元數 [x, y, z, w]。其餘:局部 Z 對齊 axis 後繞它轉 p.angle。
+ */
+function placement(part, baseQuat, p, angle, out) {
+  if (p.from && p.to) {
+    out.position.set(...p.from);
+    tmpX.set(p.to[0] - p.from[0], p.to[1] - p.from[1], p.to[2] - p.from[2]);
+    out.length = tmpX.length();
+    tmpX.normalize();
+    tmpZ.set(...(part.axis ?? [0, 0, 1])).normalize();
+    tmpZ.addScaledVector(tmpX, -tmpZ.dot(tmpX));
+    if (tmpZ.lengthSq() < 1e-8) tmpZ.set(0, 0, 1).cross(tmpX).cross(tmpX).negate();
+    if (tmpZ.lengthSq() < 1e-8) tmpZ.set(1, 0, 0);
+    tmpZ.normalize();
+    tmpY.crossVectors(tmpZ, tmpX);
+    out.quaternion.setFromRotationMatrix(tmpM.makeBasis(tmpX, tmpY, tmpZ));
+    return out;
+  }
+  out.length = null;
+  out.position.set(...(p.position ?? part.center ?? [0, 0, 0]));
+  if (p.rotation) out.quaternion.set(...p.rotation);
+  else out.quaternion.copy(baseQuat).multiply(tmpQ.setFromAxisAngle(Z_AXIS, angle));
+  return out;
+}
+
 class Session {
   constructor(def, stage) {
     const { gradient } = getShared();
     this.def = def;
     this.stage = stage;
-    this.driverPart = def.parts.find((p) => p.id === def.driver.part);
-    this.range = def.driver.range ?? null;
-    this.value = this.range ? this.range[0] : 0;
+    const d = def.driver;
+    this.virtual = d.type === "virtual";
+    this.progress = this.virtual && d.mode === "progress";
+    this.cycle = d.cycle ?? null;
+    this.bounds = this.progress ? null : (d.range ?? null); // 有範圍的主動量:夾住、自動播放時往復
+    this.grips = this.virtual ? [] : [d.part, ...(d.grips ?? [])];
+    this.value = d.initial ?? (this.bounds ? this.bounds[0] : 0);
     this.state = def.states?.initial ?? null;
     this.playing = true;
     this.speedFactor = 1;
@@ -86,27 +132,40 @@ class Session {
     const accentArrow = toon(ACCENT_MARK, { side: THREE.DoubleSide }); // 深橘,疊在橘色本體上也看得清楚
     const markArrow = toon(MARK, { side: THREE.DoubleSide });
     this.materials = [base, accent, accentMark, mark, accentArrow, markArrow];
+    const fluidMaterials = {};
+    const fluidMaterial = (fluid) =>
+      (fluidMaterials[fluid] ??= (() => {
+        const m = new THREE.MeshBasicMaterial({ color: FLUID_COLORS[fluid], transparent: true, opacity: 0.45, depthWrite: false });
+        this.materials.push(m);
+        return m;
+      })());
     this.arrows = [];
 
     this.objects = new Map();
     this.paths = new Map();
     this.driverMeshes = [];
     for (const part of def.parts) {
-      const isDriver = part.id === def.driver.part;
+      const isDriver = this.grips.includes(part.id);
       if (PATH_KINDS.has(part.kind)) {
         const path = new PathPart(part, base);
         this.paths.set(part.id, path);
         this.scene.add(path.mesh);
         continue;
       }
-      const object = buildPart(part, isDriver ? accent : base, isDriver ? accentMark : mark);
+      let object;
+      if (part.kind === "fill") {
+        object = buildPart(part, fluidMaterial(part.fluid ?? "water"), mark);
+        object.traverse((o) => o.layers.set(FLUID_LAYER));
+      } else {
+        object = buildPart(part, isDriver ? accent : base, isDriver ? accentMark : mark);
+      }
       const baseQuat = new THREE.Quaternion().setFromUnitVectors(
         Z_AXIS,
         new THREE.Vector3(...(part.axis ?? [0, 0, 1])).normalize(),
       );
       object.quaternion.copy(baseQuat);
       object.position.set(...(part.center ?? [0, 0, 0]));
-      this.objects.set(part.id, { part, object, baseQuat });
+      this.objects.set(part.id, { part, object, baseQuat, place: { position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), length: null } });
       this.scene.add(object);
       if (isDriver) {
         object.add(hitProxy(part));
@@ -124,9 +183,14 @@ class Session {
         this.arrows.push({ id: part.id, holder, arrow, sign: 1 });
       }
     }
+    this.flows = new FlowCues(this.scene);
 
     this.buildDom();
-    this.apply(def.pose(this.value, this.state), performance.now());
+    this.apply(this.pose(this.value), performance.now());
+  }
+
+  pose(value) {
+    return this.def.pose(value, this.state);
   }
 
   // ── DOM ───────────────────────────────
@@ -151,6 +215,9 @@ class Session {
         return { part, span };
       });
 
+    stage.append(this.viewEl);
+    if (this.virtual) stage.append(this.buildSlider());
+
     const controls = el("div", "stage-controls");
     this.playBtn = el("button", "stage-play");
     this.playBtn.type = "button";
@@ -166,8 +233,7 @@ class Session {
     });
     speed.append(el("span", null, "速度"), input, out);
     controls.append(this.playBtn, speed);
-
-    stage.append(this.viewEl, controls);
+    stage.append(controls);
 
     // 狀態按鈕列:沒有狀態的模型也保留空白列,翻頁時卡片高度不跳動
     const row = el("div", "stage-states");
@@ -185,6 +251,48 @@ class Session {
     }
     this.setPlaying(true);
     this.syncStateButtons();
+  }
+
+  // 虛擬主動件的滑桿:按下時暫停自動播放,放開後維持暫停(與抓主動件一致)
+  buildSlider() {
+    const d = this.def.driver;
+    const [min, max] = d.range;
+    const row = el("label", "stage-driver");
+    const input = el("input");
+    Object.assign(input, { type: "range", min: String(this.progress ? 0 : min), max: String(this.progress ? max - min : max), step: "any" });
+    input.setAttribute("aria-label", d.label);
+    this.sliderOut = el("output");
+    input.addEventListener("pointerdown", () => this.setPlaying(false));
+    input.addEventListener("keydown", () => this.setPlaying(false));
+    input.addEventListener("input", () => {
+      const v = Number(input.value);
+      if (!this.progress) {
+        this.value = clamp(v, min, max);
+        return;
+      }
+      // 進程:滑桿只顯示一輪內的位置,拖動量累加到進程上;跨過兩端時接續,不倒退一整輪
+      const span = max - min;
+      let delta = v - this.sliderAt;
+      if (delta > span / 2) delta -= span;
+      if (delta < -span / 2) delta += span;
+      this.value += delta;
+      this.sliderAt = v;
+    });
+    this.slider = input;
+    row.append(el("span", "stage-driver-name", d.label), input, this.sliderOut);
+    this.syncSlider();
+    return row;
+  }
+
+  syncSlider() {
+    if (!this.slider) return;
+    const d = this.def.driver;
+    const [min, max] = d.range;
+    const at = this.progress ? (((this.value - min) % (max - min)) + (max - min)) % (max - min) : this.value;
+    if (document.activeElement !== this.slider || this.playing) this.slider.value = String(at);
+    this.sliderAt = Number(this.slider.value);
+    const text = d.format ? d.format(this.value) : formatValue(this.value, d);
+    if (text !== this.sliderText) this.sliderOut.textContent = this.sliderText = text;
   }
 
   setPlaying(playing) {
@@ -213,11 +321,13 @@ class Session {
     for (const [pid, p] of Object.entries(next.paths ?? {})) {
       if (this.lastPhases[pid] != null) this.phaseOffsets[pid] = this.lastPhases[pid] - (p.phase ?? 0);
     }
-    const positions = {};
-    for (const [pid, { object }] of this.objects) positions[pid] = object.position.toArray();
+    const objects = {};
+    for (const [pid, { object }] of this.objects) {
+      objects[pid] = { position: object.position.clone(), quaternion: object.quaternion.clone(), length: object.userData.length };
+    }
     const paths = {};
     for (const [pid, path] of this.paths) paths[pid] = path.points;
-    this.transition = { start: performance.now(), positions, paths };
+    this.transition = { start: performance.now(), objects, paths };
     this.state = id;
     this.syncStateButtons();
   }
@@ -225,14 +335,14 @@ class Session {
   // ── 每一幀 ────────────────────────────
 
   advance(dt) {
-    const speed = this.defaultSpeed() * this.speedFactor;
-    if (!this.range) {
-      this.value += speed * dt;
+    const step = this.defaultSpeed() * this.speedFactor * dt;
+    if (!this.bounds) {
+      this.value += step;
       return;
     }
     // 有範圍的主動件在範圍內往復
-    const [min, max] = this.range;
-    this.value += this.direction * speed * dt;
+    const [min, max] = this.bounds;
+    this.value += this.direction * step;
     if (this.value >= max) {
       this.value = max;
       this.direction = -1;
@@ -243,8 +353,19 @@ class Session {
   }
 
   defaultSpeed() {
-    if (!this.range) return 0.8;
-    return (this.range[1] - this.range[0]) / (this.def.driver.type === "rotation" ? 2.5 : 4);
+    const d = this.def.driver;
+    if (d.speed) return d.speed;
+    if (this.cycle) return Math.abs(this.cycle[1] - this.cycle[0]) / 1.2;
+    if (this.progress) return (d.range[1] - d.range[0]) / 6;
+    if (!this.bounds) return 0.8;
+    return (this.bounds[1] - this.bounds[0]) / (d.type === "rotation" ? 2.5 : 4);
+  }
+
+  // 拖動時一次事件最多改變的主動量,以及數值微分的步長
+  valueScale() {
+    if (this.cycle) return Math.abs(this.cycle[1] - this.cycle[0]);
+    if (this.bounds) return this.bounds[1] - this.bounds[0];
+    return 1;
   }
 
   apply(pose, now) {
@@ -255,15 +376,32 @@ class Session {
       if (raw >= 1) this.transition = null;
       else t = ease(raw);
     }
-    const q = new THREE.Quaternion();
-    for (const [id, { part, object, baseQuat }] of this.objects) {
+    for (const [id, entry] of this.objects) {
+      const { part, object, baseQuat, place } = entry;
       const p = pose.parts[id] ?? {};
-      let position = p.position ?? part.center ?? [0, 0, 0];
-      if (tr && t < 1) position = lerp3(tr.positions[id], position, t);
-      object.position.set(...position);
       const angle = (p.angle ?? 0) + (this.angleOffsets[id] ?? 0);
       this.lastAngles[id] = angle;
-      object.quaternion.copy(baseQuat).multiply(q.setFromAxisAngle(Z_AXIS, angle));
+      placement(part, baseQuat, p, angle, place);
+      const from = tr && t < 1 ? tr.objects[id] : null;
+      if (from) {
+        object.position.lerpVectors(from.position, place.position, t);
+        if (p.from || p.rotation || part.kind === "link") object.quaternion.slerpQuaternions(from.quaternion, place.quaternion, t);
+        else object.quaternion.copy(place.quaternion);
+      } else {
+        object.position.copy(place.position);
+        object.quaternion.copy(place.quaternion);
+      }
+      if (place.length != null) {
+        const length = from?.length != null ? from.length + (place.length - from.length) * t : place.length;
+        object.userData.length = length;
+        object.userData.stretch?.(length);
+      }
+      if (p.scale != null) {
+        if (Array.isArray(p.scale)) object.scale.set(...p.scale);
+        else object.scale.setScalar(p.scale);
+      }
+      if (p.level != null) object.userData.level?.(p.level);
+      object.visible = p.visible !== false;
     }
     for (const [id, path] of this.paths) {
       const p = pose.paths?.[id];
@@ -276,12 +414,14 @@ class Session {
       const phase = (p.phase ?? 0) + (this.phaseOffsets[id] ?? 0);
       this.lastPhases[id] = phase;
       path.update({ points, closed: p.closed, phase });
+      path.mesh.visible = p.visible !== false;
     }
+    this.flows.update(pose.flows);
     this.showReadouts(pose.readouts ?? []);
   }
 
   showReadouts(readouts) {
-    const text = readouts.map((r) => r.label + " " + r.value).join("\n");
+    const text = readouts.map((r) => r.label + " " + r.value).join("\n");
     if (text === this.readoutText) return;
     this.readoutText = text;
     this.readoutsEl.hidden = readouts.length === 0;
@@ -300,10 +440,11 @@ class Session {
     const h = this.viewEl.clientHeight;
     const v = new THREE.Vector3();
     for (const { part, span } of this.labels) {
-      const { object } = this.objects.get(part.id);
-      v.copy(object.position).add(new THREE.Vector3(...(part.labelOffset ?? [0, 0, 0])));
+      const { object } = this.objects.get(part.id) ?? {};
+      const anchor = object?.position ?? new THREE.Vector3(...(part.center ?? [0, 0, 0]));
+      v.copy(anchor).add(new THREE.Vector3(...(part.labelOffset ?? [0, 0, 0])));
       v.project(camera);
-      const visible = v.z < 1;
+      const visible = v.z < 1 && object?.visible !== false;
       span.style.visibility = visible ? "visible" : "hidden";
       span.style.transform = `translate(${((v.x + 1) / 2) * w}px, ${((1 - v.y) / 2) * h}px) translate(-50%, -50%)`;
     }
@@ -319,7 +460,7 @@ class Session {
       const { object, baseQuat } = this.objects.get(a.id);
       if (driverMoved) {
         const turned = this.lastAngles[a.id] - (prevAngles[a.id] ?? this.lastAngles[a.id]);
-        a.holder.visible = Math.abs(turned) > 1e-7;
+        a.holder.visible = Math.abs(turned) > 1e-7 && object.visible;
         if (a.holder.visible) a.sign = Math.sign(turned);
         a.arrow.scale.y = a.sign;
       }
@@ -339,10 +480,11 @@ class Session {
     this.lastTime = now;
     const prevAngles = { ...this.lastAngles };
     if (this.playing && !this.drag) this.advance(dt);
-    this.apply(this.def.pose(this.value, this.state), now);
+    this.apply(this.pose(this.value), now);
     // 拖動在 pointermove 裡改主動量,所以跟上一幀套用的值比
     this.updateArrows(prevAngles, this.value !== this.frameValue);
     this.frameValue = this.value;
+    this.syncSlider();
     const { lineart, camera } = getShared();
     lineart.render(this.scene, camera);
     this.placeLabels();
@@ -374,17 +516,26 @@ class Session {
     camera.updateProjectionMatrix();
   }
 
+  // 外框要容納主動量各處的姿勢:有範圍時取兩端與中間,往復取兩端,一直轉的取一圈中的幾處
+  fitSamples() {
+    if (this.bounds) {
+      const [min, max] = this.bounds;
+      return [min, (min + max) / 2, max, this.value];
+    }
+    const span = this.cycle ? Math.abs(this.cycle[1] - this.cycle[0]) : this.progress ? this.def.driver.range[1] - this.def.driver.range[0] : Math.PI * 2;
+    return [0, 0.25, 0.5, 0.75, 1].map((f) => this.value + f * span);
+  }
+
   fitCamera() {
     const { camera, controls } = getShared();
-    // 有範圍的主動件:外框要容納範圍兩端的姿勢,拉到底時零件也不會出畫面
     const box = new THREE.Box3();
-    const extremes = this.range ? this.range : [this.value];
-    for (const v of extremes) {
-      this.apply(this.def.pose(v, this.state), 0);
-      for (const { object } of this.objects.values()) box.expandByObject(object);
-      for (const path of this.paths.values()) box.expandByObject(path.mesh);
+    for (const v of this.fitSamples()) {
+      this.apply(this.pose(v), 0);
+      // 精確外框(逐頂點):旋轉中的零件不會因軸對齊外框而顯得過小
+      for (const { object } of this.objects.values()) if (object.visible) box.expandByObject(object, true);
+      for (const path of this.paths.values()) if (path.mesh.visible) box.expandByObject(path.mesh, true);
     }
-    this.apply(this.def.pose(this.value, this.state), 0);
+    this.apply(this.pose(this.value), 0);
     const center = box.getCenter(new THREE.Vector3());
     const dir = new THREE.Vector3(...(this.def.view?.direction ?? DEFAULT_VIEW)).normalize();
     // 依視線方向把外框八個角投影到鏡頭平面,取能完整容納的距離
@@ -427,6 +578,7 @@ class Session {
       if (obj.isMesh) obj.geometry.dispose();
     });
     for (const path of this.paths.values()) path.dispose();
+    this.flows.dispose();
     for (const m of this.materials) m.dispose();
   }
 
@@ -438,11 +590,20 @@ class Session {
   }
 
   hitDriver(e) {
+    if (!this.driverMeshes.length) return null;
     const { camera } = getShared();
     const p = this.pointer(e);
     const ray = new THREE.Raycaster();
     ray.setFromCamera(new THREE.Vector2((p.x / p.w) * 2 - 1, -(p.y / p.h) * 2 + 1), camera);
     return ray.intersectObjects(this.driverMeshes, true)[0] ?? null;
+  }
+
+  // 被點中的物件屬於哪個抓取處
+  gripOf(hit) {
+    for (let o = hit.object; o; o = o.parent) {
+      for (const id of this.grips) if (this.objects.get(id)?.object === o) return id;
+    }
+    return this.def.driver.part;
   }
 
   toScreen(v, p) {
@@ -459,6 +620,41 @@ class Session {
     return rate.lengthSq() > 1e-6 ? move.dot(rate) / rate.lengthSq() : 0;
   }
 
+  // 主動量為 value 時,抓取處上那一點在螢幕上的位置
+  gripScreen(value, p) {
+    const { grip, local } = this.drag;
+    const entry = this.objects.get(grip);
+    const pp = this.pose(value).parts[grip] ?? {};
+    const angle = (pp.angle ?? 0) + (this.angleOffsets[grip] ?? 0);
+    const place = placement(entry.part, entry.baseQuat, pp, angle, { position: new THREE.Vector3(), quaternion: new THREE.Quaternion() });
+    return this.toScreen(local.clone().applyQuaternion(place.quaternion).add(place.position), p);
+  }
+
+  /**
+   * 一般的拖動:以數值微分求「主動量變一點,抓取點在螢幕上移多少」,讓抓取點跟著指標走。
+   * 往復的主動量在兩端轉折:優先讓主動量往前(累計行程增加),往前走不動才往回。
+   */
+  dragNumeric(move, p) {
+    const scale = this.valueScale();
+    const eps = scale * 1e-3;
+    const maxStep = scale * 0.15;
+    let remaining = move.clone();
+    for (let i = 0; i < 4 && remaining.lengthSq() > 0.25; i++) {
+      const at = this.gripScreen(this.value, p);
+      const ahead = this.gripScreen(this.value + eps, p).sub(at).divideScalar(eps);
+      const behind = at.clone().sub(this.gripScreen(this.value - eps, p)).divideScalar(eps);
+      let dv = 0;
+      if (ahead.lengthSq() > 1e-6 && remaining.dot(ahead) > 0) dv = remaining.dot(ahead) / ahead.lengthSq();
+      else if (behind.lengthSq() > 1e-6 && remaining.dot(behind) < 0) dv = remaining.dot(behind) / behind.lengthSq();
+      if (!dv) break;
+      dv = clamp(dv, -maxStep, maxStep);
+      const before = this.value;
+      this.value = this.bounds ? clamp(this.value + dv, ...this.bounds) : this.value + dv;
+      if (this.value === before) break;
+      remaining.sub(this.gripScreen(this.value, p).sub(at));
+    }
+  }
+
   onPointerDown(e) {
     if (this.drag) {
       e.stopImmediatePropagation(); // 拖主動件時忽略第二根手指
@@ -472,7 +668,11 @@ class Session {
     const { canvas } = getShared();
     canvas.setPointerCapture(e.pointerId);
     canvas.style.cursor = "grabbing";
-    this.drag = { id: e.pointerId, last: this.pointer(e), grab: hit.point.clone() };
+    const grip = this.gripOf(hit);
+    const { object } = this.objects.get(grip);
+    const local = object.worldToLocal(hit.point.clone());
+    local.multiply(object.scale); // worldToLocal 已除掉縮放;placement 不含縮放
+    this.drag = { id: e.pointerId, last: this.pointer(e), grab: hit.point.clone(), grip, local };
     this.setPlaying(false);
   }
 
@@ -486,20 +686,27 @@ class Session {
     const p = this.pointer(e);
     const last = this.drag.last;
     this.drag.last = p;
-    const { object } = this.objects.get(this.driverPart.id);
     const move = new THREE.Vector2(p.x - last.x, p.y - last.y);
+    const d = this.def.driver;
+    const simple = !this.cycle && this.drag.grip === d.part;
 
-    if (this.def.driver.type === "translation") {
+    if (!simple) {
+      this.dragNumeric(move, p);
+      return;
+    }
+
+    if (d.type === "translation") {
       // 指標沿繩方向(投影到螢幕上)的分量作為位移增量
-      const dir = new THREE.Vector3(...this.def.driver.direction);
+      const dir = new THREE.Vector3(...d.direction);
       const before = this.value;
-      this.value = clamp(this.value + this.alongScreen(move, dir, p), ...this.range);
+      this.value = clamp(this.value + this.alongScreen(move, dir, p), ...this.bounds);
       this.drag.grab.addScaledVector(dir, this.value - before);
       return;
     }
 
+    const { object } = this.objects.get(this.drag.grip);
     const center = object.getWorldPosition(new THREE.Vector3());
-    const axis = new THREE.Vector3(...(this.driverPart.axis ?? [0, 0, 1])).normalize();
+    const axis = new THREE.Vector3(...(this.objects.get(this.drag.grip).part.axis ?? [0, 0, 1])).normalize();
     const facing = axis.dot(camera.position.clone().sub(center).normalize());
     let delta;
     if (Math.abs(facing) > 0.35) {
@@ -507,17 +714,17 @@ class Session {
       const c = this.toScreen(center, p);
       const a0 = Math.atan2(-(last.y - c.y), last.x - c.x);
       const a1 = Math.atan2(-(p.y - c.y), p.x - c.x);
-      let d = a1 - a0;
-      if (d > Math.PI) d -= Math.PI * 2;
-      if (d < -Math.PI) d += Math.PI * 2;
-      delta = d * Math.sign(facing);
+      let dd = a1 - a0;
+      if (dd > Math.PI) dd -= Math.PI * 2;
+      if (dd < -Math.PI) dd += Math.PI * 2;
+      delta = dd * Math.sign(facing);
     } else {
       // 側看著軸(角度變化不可靠):用抓取點的切線方向換算
       const tangent = axis.clone().cross(this.drag.grab.clone().sub(center));
       delta = this.alongScreen(move, tangent, p);
     }
     const before = this.value;
-    this.value = this.range ? clamp(this.value + delta, ...this.range) : this.value + delta;
+    this.value = this.bounds ? clamp(this.value + delta, ...this.bounds) : this.value + delta;
     const applied = this.value - before;
     this.drag.grab.sub(center).applyAxisAngle(axis, applied).add(center);
   }
@@ -531,12 +738,19 @@ class Session {
   }
 }
 
+// 虛擬主動件滑桿旁的數值:依範圍大小取小數位,加上單位
+function formatValue(v, d) {
+  const span = d.range[1] - d.range[0];
+  const digits = span >= 50 ? 0 : span >= 5 ? 1 : 2;
+  return v.toFixed(digits) + (d.unit ? " " + d.unit : "");
+}
+
 // 主動件的透明點擊範圍:輪輻之間的空隙、細小的繩端也抓得到
 function hitProxy(part) {
   let geometry;
   if (part.kind === "ropeEnd") {
     geometry = new THREE.SphereGeometry(0.32, 12, 8);
-  } else if (part.radius) {
+  } else if (part.radius && part.kind !== "sphere") {
     const width = part.width ?? part.length ?? 0.3;
     geometry = new THREE.CylinderGeometry(part.radius, part.radius, width, 24).rotateX(Math.PI / 2);
   } else {

@@ -1,6 +1,9 @@
 // 依模型定義的零件種類建立 3D 物件。每個零件在自己的座標裡以 Z 軸為旋轉軸,
 // 由 viewer 對齊到定義中的 axis;皮帶、繩、連桿這類路徑零件由 paths.js 依姿勢建立。
+// 零件種類的清單在 models/kinds.js;齒輪、凸輪等板件的輪廓由 models/shapes.js 計算。
 import * as THREE from "three";
+import { gearShape, gearSize, rackShape, toothOutline } from "../models/shapes.js";
+import { PATH_KINDS } from "../models/kinds.js";
 
 const SEGMENTS = 48;
 
@@ -212,14 +215,221 @@ function bar(part, material) {
   return mesh(cylinder(part.radius, part.length), material);
 }
 
-const builders = { pulley, drum, stepped, cone, bevel, shaft, sectorLever, weight, box, ropeEnd, bar };
+// ── 板件:沿局部 Z 擠出的 2D 輪廓 ─────────
 
-export const PATH_KINDS = new Set(["belt", "rope", "rod"]);
+function extrude({ outline, holes = [] }, thickness) {
+  const shape = new THREE.Shape(outline.map(([x, y]) => new THREE.Vector2(x, y)));
+  for (const hole of holes) shape.holes.push(new THREE.Path(hole.map(([x, y]) => new THREE.Vector2(x, y))));
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 4 });
+  geometry.translate(0, 0, -thickness / 2);
+  return geometry;
+}
 
+// 板面上的一個記號圓點(會轉的板件靠它看出轉動)
+function markDot(g, at, size, thickness, mark) {
+  g.add(mesh(cylinder(size, thickness * 1.15, size, 20), mark, [at[0], at[1], 0]));
+}
+
+function plate(part, material, mark) {
+  const g = new THREE.Group();
+  const t = part.thickness ?? 0.2;
+  g.add(mesh(extrude(part.shape, t), material));
+  if (part.mark) markDot(g, part.mark, part.markSize ?? 0.08, t, mark);
+  if (part.hub) g.add(mesh(cylinder(part.hub, t * 1.6), material));
+  return g;
+}
+
+const internalRim = (part) => part.rim ?? part.radius + 2.6 * gearSize(part.radius, part.teeth).addendum;
+
+// 板面上的刻線圓:細圓環在法線上的落差描出一圈線,正面看也看得到(原圖的同心圓)
+function faceCircle(g, r, z, material, tube) {
+  g.add(mesh(new THREE.TorusGeometry(r, tube, 6, Math.max(24, Math.round(r * 60))), material, [0, 0, z]));
+}
+
+// 齒輪:外齒輪板面上有齒圈內緣與輪轂兩圈刻線(原圖的同心圓),齒 0 塗記號色;內齒輪是帶內齒的環
+function gear(part, material, mark) {
+  const g = new THREE.Group();
+  const w = part.width ?? 0.25;
+  const mask = part.mask ?? (part.toothed ? (i) => part.toothed.includes(i) : undefined);
+  const { dedendum } = gearSize(part.radius, part.teeth);
+  const root = part.radius - dedendum;
+  const hub = Math.max((part.bore ?? 0) * 1.6, root * 0.28);
+  g.add(mesh(extrude(gearShape({ ...part, mask }), w), material));
+  if (!part.internal) {
+    const tube = Math.max(0.008, part.radius * 0.011);
+    for (const z of [1, -1]) {
+      if (part.web !== false && root * 0.8 > hub * 1.5) faceCircle(g, root * 0.8, (z * w) / 2, material, tube);
+      faceCircle(g, hub, z * w * 0.65, material, tube);
+    }
+    g.add(mesh(cylinder(hub, w * 1.3), material));
+    if (part.axle !== false) g.add(mesh(cylinder(Math.max(0.03, Math.min(hub * 0.55, part.radius * 0.07)), w * 1.9), material));
+  }
+  const has = mask ?? (() => true);
+  const markTooth = [...Array(part.teeth).keys()].find((i) => has(i)) ?? 0;
+  g.add(mesh(extrude({ outline: toothOutline(part, markTooth) }, w * 1.08), mark));
+  return g;
+}
+
+function rack(part, material) {
+  const t = part.width ?? 0.25;
+  return mesh(extrude(rackShape({ teeth: part.teeth, pitch: part.pitch, depth: part.depth ?? part.pitch * 0.8 }), t), material);
+}
+
+function solidCylinder(part, material, mark) {
+  const g = new THREE.Group();
+  const l = part.length;
+  if (part.inner) g.add(mesh(ring(part.radius, part.inner, l), material));
+  else g.add(mesh(cylinder(part.radius, l, part.radiusEnd ?? part.radius), material));
+  if (part.mark) {
+    const s = Math.max(0.035, part.radius * 0.18);
+    g.add(mesh(new THREE.BoxGeometry(s, s, l * 0.96), mark, [part.radius, 0, 0]));
+  }
+  return g;
+}
+
+function sphere(part, material) {
+  return mesh(new THREE.SphereGeometry(part.radius, 28, 18), material);
+}
+
+function lathe(part, material, mark) {
+  // profile:[[r, z], …],沿局部 Z 由下而上
+  const points = part.profile.map(([r, z]) => new THREE.Vector2(r, z));
+  const geometry = new THREE.LatheGeometry(points, SEGMENTS);
+  geometry.rotateX(Math.PI / 2);
+  const g = new THREE.Group();
+  g.add(mesh(geometry, material));
+  if (part.mark) {
+    const [r, z] = part.profile.reduce((m, pt) => (pt[0] > m[0] ? pt : m));
+    g.add(mesh(new THREE.SphereGeometry(Math.max(0.04, r * 0.1), 12, 8), mark, [r, 0, z]));
+  }
+  return g;
+}
+
+// 連桿:局部 +X 由 from 指向 to,兩端銷頭;長度隨 from/to 改變(stretch)
+function link(part, material) {
+  const g = new THREE.Group();
+  const w = part.width ?? 0.14;
+  const t = part.thickness ?? 0.08;
+  const body = mesh(new THREE.BoxGeometry(1, w, t).translate(0.5, 0, 0), material);
+  const capA = mesh(cylinder(w / 2, t), material);
+  const capB = mesh(cylinder(w / 2, t), material);
+  const pinA = mesh(cylinder(w * 0.2, t * 2.2), material);
+  const pinB = mesh(cylinder(w * 0.2, t * 2.2), material);
+  g.add(body, capA, capB);
+  if (part.pins !== false) g.add(pinA, pinB);
+  g.userData.stretch = (length) => {
+    body.scale.x = Math.max(1e-4, length);
+    capB.position.x = pinB.position.x = length;
+  };
+  g.userData.stretch(part.length ?? 1);
+  return g;
+}
+
+// 螺旋彈簧:局部 +X 由 from 到 to
+function spring(part, material) {
+  const coils = part.coils ?? 8;
+  const r = part.radius ?? 0.12;
+  const steps = coils * 16;
+  const pts = Array.from({ length: steps + 1 }, (_, i) => {
+    const a = (i / steps) * coils * Math.PI * 2;
+    return new THREE.Vector3(i / steps, r * Math.cos(a), r * Math.sin(a));
+  });
+  const coil = mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), steps, part.wire ?? 0.025, 6, false), material);
+  const g = new THREE.Group();
+  g.add(coil);
+  g.userData.stretch = (length) => (coil.scale.x = Math.max(1e-4, length));
+  g.userData.stretch(part.length ?? 1);
+  return g;
+}
+
+// 蝸桿、螺桿:圓柱外繞螺旋齒,沿局部 Z
+function worm(part, material, mark) {
+  const g = new THREE.Group();
+  const r = part.radius;
+  const l = part.length;
+  const pitch = part.pitch ?? r * 0.8;
+  const turns = l / pitch;
+  const steps = Math.ceil(turns * 24);
+  const thread = part.thread ?? r * 0.18;
+  const core = r - thread;
+  g.add(mesh(cylinder(core, l), material));
+  const hand = part.hand ?? 1; // +1 右旋
+  const pts = Array.from({ length: steps + 1 }, (_, i) => {
+    const a = hand * (i / steps) * turns * Math.PI * 2;
+    return new THREE.Vector3(core * Math.cos(a), core * Math.sin(a), -l / 2 + (i / steps) * l);
+  });
+  g.add(mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), steps, thread, 6, false), material));
+  const s = Math.max(0.03, core * 0.2);
+  g.add(mesh(new THREE.BoxGeometry(s, s, l * 0.9), mark, [0, core * 0.85, 0]));
+  return g;
+}
+
+// 容器內的存量:半透明填色,level(0–1)決定由底部起算的高度(局部 Y)
+function fill(part, material) {
+  const [w, h, d] = part.size;
+  const geometry =
+    part.shape === "cylinder"
+      ? new THREE.CylinderGeometry(w / 2, w / 2, 1, 32).translate(0, 0.5, 0)
+      : new THREE.BoxGeometry(w, 1, d).translate(0, 0.5, 0);
+  const m = mesh(geometry, material);
+  m.position.y = -h / 2;
+  const g = new THREE.Group();
+  g.add(m);
+  g.userData.level = (level) => {
+    m.scale.y = Math.max(1e-4, level * h);
+    m.visible = level > 1e-4;
+  };
+  g.userData.level(part.level ?? 0);
+  return g;
+}
+
+const group = () => new THREE.Group();
+
+const builders = {
+  pulley,
+  drum,
+  stepped,
+  cone,
+  bevel,
+  shaft,
+  sectorLever,
+  weight,
+  box,
+  ropeEnd,
+  bar,
+  gear,
+  rack,
+  plate,
+  cylinder: solidCylinder,
+  sphere,
+  lathe,
+  link,
+  spring,
+  worm,
+  fill,
+  group,
+};
+
+export { PATH_KINDS };
+
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
+
+/**
+ * 依零件定義建立物件。pieces 是固定在零件上的附件(局部座標 at、局部軸 axis、繞軸 angle),
+ * 例如曲柄上的銷、槓桿上的配重;附件標 accent: true 時用記號色。
+ */
 export function buildPart(part, material, mark) {
   const build = builders[part.kind];
   if (!build) throw new Error(`未知的零件種類:${part.kind}`);
-  return build(part, material, mark);
+  const object = build(part, material, mark);
+  for (const piece of part.pieces ?? []) {
+    const child = buildPart(piece, piece.accent ? mark : material, mark);
+    if (piece.at) child.position.set(...piece.at);
+    child.quaternion.setFromUnitVectors(Z_AXIS, new THREE.Vector3(...(piece.axis ?? [0, 0, 1])).normalize());
+    if (piece.angle) child.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Z_AXIS, piece.angle));
+    object.add(child);
+  }
+  return object;
 }
 
 /**
@@ -232,6 +442,18 @@ export function spinPlacement(part) {
     case "bevel":
     case "sectorLever":
       return { radius: part.radius, offset: 0 };
+    case "gear": {
+      const { addendum, dedendum } = gearSize(part.radius, part.teeth);
+      if (part.internal) return { radius: internalRim(part), offset: 0 };
+      return { radius: part.radius + addendum + dedendum * 0.2, offset: 0 };
+    }
+    case "worm":
+      return { radius: part.radius, offset: part.length / 2 - 0.1 };
+    case "plate":
+    case "cylinder":
+    case "lathe":
+    case "group":
+      return part.spin ? { radius: part.spin, offset: part.spinOffset ?? 0 } : null;
     case "drum":
       return { radius: part.radius, offset: part.width / 2 - 0.12 };
     case "stepped": {

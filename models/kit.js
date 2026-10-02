@@ -176,3 +176,90 @@ export function sheaveAngle(route, rest, index, circle) {
 
 /** 掛鉤、吊桿這類直桿:路徑零件 rod 的姿勢 */
 export const rod = (from, to) => ({ points: [from, to], closed: false });
+
+// ── 一般幾何 ─────────────────────────────
+
+export const deg = (d) => (d * Math.PI) / 180;
+export const lerp = (a, b, t) => a + (b - a) * t;
+export const dist = (a, b) => len(sub(a, b));
+/** 角度化到 [0, 2π) */
+export const wrap = (a) => ((a % TAU) + TAU) % TAU;
+/** 角度化到 (−π, π] */
+export const signedAngle = (a) => Math.PI - wrap(Math.PI - a);
+/** 平面上的點繞原點轉 a */
+export const rot2 = ([x, y], a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
+/** 極座標轉成 xy 平面上的點 */
+export const polar = (r, a, z = 0) => [r * Math.cos(a), r * Math.sin(a), z];
+/** 平滑的 0→1 過渡(t 在 [0,1] 之外夾住) */
+export const smooth = (t) => {
+  const s = clamp(t, 0, 1);
+  return s * s * (3 - 2 * s);
+};
+
+// ── 四元數 [x, y, z, w] ──────────────────
+// 繪圖層把每個零件的局部 Z 軸對齊定義中的 axis(同 THREE.Quaternion.setFromUnitVectors(Z, axis)),
+// 再繞它轉 angle。這裡用同樣的算法,模型才能算出零件上某點在世界中的位置。
+
+export function quatFromZ(axis) {
+  const to = norm(axis);
+  const r = to[2] + 1;
+  const q = r < Number.EPSILON ? [0, -1, 0, 0] : [-to[1], to[0], 0, r];
+  const l = Math.hypot(...q);
+  return q.map((c) => c / l);
+}
+
+export const quatAxisAngle = (axis, angle) => {
+  const [x, y, z] = norm(axis);
+  const s = Math.sin(angle / 2);
+  return [x * s, y * s, z * s, Math.cos(angle / 2)];
+};
+
+export const quatMul = (a, b) => [
+  a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+  a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+  a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+  a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+];
+
+export function quatRotate(q, v) {
+  const u = [q[0], q[1], q[2]];
+  const t = scale(cross(u, v), 2);
+  return add(add(v, scale(t, q[3])), cross(u, t));
+}
+
+/** 零件局部 X、Y 軸在世界中的方向(局部 Z 對齊 axis) */
+export function planeBasis(axis) {
+  const q = quatFromZ(axis);
+  return [quatRotate(q, X), quatRotate(q, Y)];
+}
+
+/** 世界方向 dir 在零件局部平面上的角度(從局部 +X 量起,繞 axis 為正) */
+export function planeAngle(axis, dir) {
+  const [u, v] = planeBasis(axis);
+  return Math.atan2(dot(dir, v), dot(dir, u));
+}
+
+/** 姿勢為 (center, axis, angle) 的零件上,局部座標 local 的點在世界中的位置 */
+export function partPoint(center, axis, angle, local) {
+  const q = quatMul(quatFromZ(axis), quatAxisAngle(Z, angle));
+  return add(center, quatRotate(q, local));
+}
+
+// ── 往復的主動量 ─────────────────────────
+// 往復運動的主動件(往復桿、擺動的槓桿)若帶動棘輪這類只進不退的機構,
+// 主動量用「累計行程」:數值一直增加,零件在 from 與 to 之間來回(三角波)。
+// 這樣從動件的累計前進仍是主動量的純函式。
+
+/** 累計行程 v 對應的往復位置;回傳 { at, cycle, forward, f } */
+export function swingPhase(v, from, to) {
+  const span = Math.abs(to - from) || 1;
+  const u = v / span;
+  const k = Math.floor(u);
+  const f = u - k;
+  const forward = k % 2 === 0;
+  const s = forward ? f : 1 - f;
+  return { at: from + (to - from) * s, cycle: Math.floor(k / 2), forward, f };
+}
+
+/** 累計行程 v 對應的往復位置 */
+export const swing = (v, from, to) => swingPhase(v, from, to).at;
