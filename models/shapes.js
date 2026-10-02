@@ -210,3 +210,7 @@ export function offsetLoop(points, d) {
     return [p[0] + (nx / l) * d, p[1] + (ny / l) * d];
   });
 }
+
+/** 正多邊形(n 邊,外接圓半徑 r;第一個頂點在角度 start) */
+export const polygon = (n, r, start = 0) =>
+  Array.from({ length: n }, (_, i) => [r * Math.cos(start + (i * TAU) / n), r * Math.sin(start + (i * TAU) / n)]);

@@ -288,3 +288,10 @@ export function quatFromBasis(x, y, z) {
 
 /** 向量 v 繞單位軸 axis 轉 angle */
 export const rotateAbout = (v, axis, angle) => quatRotate(quatAxisAngle(axis, angle), v);
+
+// ── 螺旋 ─────────────────────────────────
+// 右旋螺紋:螺帽繞軸正向轉 θ(右手定則),沿軸前進 pitch·θ/2π。
+// 螺桿轉、螺帽不轉時相反:螺帽相對螺桿後退 pitch·θ/2π。
+
+/** 螺帽(或螺桿)轉 angle 時沿軸的移動量;hand = +1 右旋、−1 左旋 */
+export const screwAdvance = (angle, pitch, hand = 1) => (hand * pitch * angle) / TAU;
