@@ -61,8 +61,9 @@ export default {
     { id: "rod2", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "rod3", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "rodMid", kind: "link", width: 0.12, thickness: 0.06 },
-    { id: "lower", kind: "link", width: 0.3, thickness: 0.1 },
-    { id: "upper", kind: "link", width: 0.3, thickness: 0.1 },
+    // 槓桿兩端的水平位置固定、只取端點高度(近似,見檔頭),所以長度隨擺角略變
+    { id: "lower", kind: "link", width: 0.3, thickness: 0.1, stretch: true },
+    { id: "upper", kind: "link", width: 0.3, thickness: 0.1, stretch: true },
     { id: "head", kind: "group", pieces: [{ kind: "box", size: [0.32, 0.5, 0.2], at: [0, 0.2, 0] }, { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 1.1, at: [0, 0.8, 0] }] },
   ],
   driver: { part: "g1", type: "rotation" },

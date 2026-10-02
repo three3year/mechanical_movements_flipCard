@@ -7,6 +7,7 @@
 import { X, deg, smooth } from "./kit.js";
 import { meshAngle, bevelGear, pitchCones, bevelContact } from "./gears.js";
 import { shape, circle, stadium } from "./shapes.js";
+import { circleCircle } from "./linkage.js";
 
 const M = 0.09;
 const APEX = [-0.9, 0, 0];
@@ -30,7 +31,10 @@ const FALL = 0.04; // F 倒下所佔的比例(下一程的開頭)
 const F_REST = deg(28);
 const F = { pivot: [-0.95, -2.05, 0.75], up: 1.55, arm: 1.0 };
 const G = { pivot: [2.05, -1.35, 0.75], up: 1.0, down: 0.75 };
-const G_PUSH = deg(24);
+const LINK = Math.hypot(
+  G.pivot[0] + G.down * Math.cos(deg(-40)) - (F.pivot[0] + F.arm * Math.cos(deg(20) - F_REST)),
+  G.pivot[1] + G.down * Math.sin(deg(-40)) - (F.pivot[1] + F.arm * Math.sin(deg(20) - F_REST)),
+);
 
 /** 驅動輪轉 v:第 k 程、這一程的進度 f、方向 σ(+1:D 與 C 嚙合)、軸角 */
 export function reverser(v) {
@@ -131,10 +135,10 @@ export default {
     const phiF = leverF(v);
     // F 的直臂頂端撥動 D:F 倒向右方時 D 被推向 C,倒向左方時推向 B
     const clutchX = APEX[0] - (JAW.shift * Math.sin(phiF)) / Math.sin(F_REST);
-    const pushing = f > 1 - PUSH ? smooth((f - (1 - PUSH)) / PUSH) : 0;
-    const g = -sigma * G_PUSH * pushing;
-    const gEnd = [G.pivot[0] + G.down * Math.cos(deg(-40) + g), G.pivot[1] + G.down * Math.sin(deg(-40) + g), 0.85];
+    // 連桿長度不變:G 的下臂端點落在「以 F 臂端為圓心、連桿長為半徑」的圓上
     const fEnd = [F.pivot[0] + F.arm * Math.cos(deg(20) + phiF), F.pivot[1] + F.arm * Math.sin(deg(20) + phiF), 0.85];
+    const gEnd = [...circleCircle(G.pivot, G.down, fEnd, LINK, 1).point.slice(0, 2), 0.85];
+    const g = Math.atan2(gEnd[1] - G.pivot[1], gEnd[0] - G.pivot[0]) - deg(-40);
     return {
       parts: {
         drive: { angle: v },

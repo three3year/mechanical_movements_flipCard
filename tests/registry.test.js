@@ -91,3 +91,37 @@ for (const def of models) {
     }
   });
 }
+
+// 連桿(link)是剛體:姿勢以 from/to 指定時,兩端距離在整個運動中不變(標 stretch: true 的除外)。
+// 連桿機構走到不可達的位置時(兩圓不相交),這條檢查會抓出來。
+function denseValues(driver) {
+  if (driver.type === "virtual" && driver.mode === "progress") return sweepValues(0, (driver.range[1] - driver.range[0]) * 2, 48);
+  if (driver.range) return sweepValues(driver.range[0], driver.range[1], 48);
+  if (driver.cycle) return sweepValues(0, Math.abs(driver.cycle[1] - driver.cycle[0]) * 4, 48);
+  return sweepValues(-2 * Math.PI, 2 * Math.PI, 96);
+}
+const sweepValues = (a, b, n) => Array.from({ length: n + 1 }, (_, i) => a + ((b - a) * i) / n);
+
+for (const def of models) {
+  const links = def.parts.filter((p) => p.kind === "link" && !p.stretch);
+  if (!links.length) continue;
+  test(`圖 ${def.figure}:連桿在整個運動中長度不變(機構不會分離)`, () => {
+    const states = def.states ? def.states.options.map((o) => o.id) : [undefined];
+    for (const state of states) {
+      const lengths = new Map();
+      for (const v of denseValues(def.driver)) {
+        const pose = def.pose(v, state).parts;
+        for (const link of links) {
+          const p = pose[link.id];
+          if (!p?.from || !p?.to) continue;
+          const l = Math.hypot(p.to[0] - p.from[0], p.to[1] - p.from[1], p.to[2] - p.from[2]);
+          if (!lengths.has(link.id)) lengths.set(link.id, [l, l]);
+          const r = lengths.get(link.id);
+          r[0] = Math.min(r[0], l);
+          r[1] = Math.max(r[1], l);
+        }
+      }
+      for (const [id, [lo, hi]] of lengths) assert.ok(hi - lo < 1e-6 * Math.max(1, hi), `${id} 長度在 ${lo.toFixed(4)}–${hi.toFixed(4)} 之間變動(狀態 ${state ?? "—"})`);
+    }
+  });
+}

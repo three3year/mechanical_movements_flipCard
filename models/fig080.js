@@ -78,7 +78,8 @@ export default {
     // 爪尖鉤在對側的齒邊:左爪的尖端在右側、右爪的在左側,高度隨各自的銷
     const tip = (w, side) => {
       const p = pin(w);
-      return [(side * (BAR.width / 2 + 0.12)), p[1] - HOOK * 0.82, z];
+      const x = side * (BAR.width / 2 + 0.12);
+      return [x, p[1] - Math.sqrt(HOOK * HOOK - (x - p[0]) ** 2), z];
     };
     return {
       parts: {

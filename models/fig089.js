@@ -2,7 +2,7 @@
 // 偏心輪(圓盤)套在軸上、圓心偏離軸心;外面套著上下兩半以螺栓合起的偏心環(皮帶),環上伸出的桿
 // 經凸緣接頭連到閥桿。偏心輪轉一圈,桿往返一次,行程是偏心距的兩倍。主動件是曲柄軸。
 // 桿的另一端在固定的導軌上(推斷,原圖畫到接頭為止),所以環與桿跟著一起擺動。
-import { polar } from "./kit.js";
+import { X, polar } from "./kit.js";
 import { sliderOnLine, angleOf } from "./linkage.js";
 import { shape, circle, rect } from "./shapes.js";
 
@@ -57,6 +57,7 @@ export default {
       ],
     },
     { id: "rod", kind: "link", width: 0.3, thickness: 0.18, pins: false },
+    { id: "stem", kind: "group", pieces: [{ kind: "cylinder", axis: X, radius: 0.12, length: 1.6, at: [0.8, 0, 0] }, { kind: "cylinder", radius: 0.2, inner: 0.1, length: 0.3 }] },
   ],
   driver: { part: "shaft", type: "rotation" },
   view: { direction: [0.06, 0.05, 1] },
@@ -67,7 +68,8 @@ export default {
       parts: {
         shaft: { angle: theta },
         strap: { position: c, angle: strap },
-        rod: { from: flange, to: [end[0] + 1.2, end[1], 0] },
+        rod: { from: flange, to: end },
+        stem: { position: end },
       },
       readouts: [],
     };
