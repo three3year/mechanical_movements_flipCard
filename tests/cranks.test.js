@@ -107,3 +107,54 @@ test("第 98 種:圓盤上的曲柄銷始終在振動臂的環形溝槽內,臂�
   assert.ok(strokeOf(psis) > 0.1, "臂會擺動");
   close(psis[0], psis[psis.length - 1], "轉一圈回到原處", 1e-6);
 });
+
+import { rodHeight, stroke as stroke95 } from "../models/fig095.js";
+import fig97 from "../models/fig097.js";
+import fig99, { feed, pitch as pitch99 } from "../models/fig099.js";
+import { quickReturn } from "../models/fig100.js";
+import fig101, { pinX } from "../models/fig101.js";
+
+test("第 95 種:直立軸旋轉時,斜置的圓盤把往復直線運動傳給直立桿(一圈往返一次)", () => {
+  const ys = sweep(2 * Math.PI, 720).map(rodHeight);
+  close(strokeOf(ys), stroke95, "行程 = 2 × 距離 × tan(傾角)", 2e-3);
+  close(ys[0], ys[ys.length - 1], "一圈回到原處");
+});
+
+test("第 97 種:開有溝槽的心形凸輪,與第 96 種相同——桿做均勻的橫移", () => {
+  const x = (a) => fig97.pose(a).parts.rod.position[0];
+  const rate = (x(0.3) - x(0.2)) / 0.1;
+  for (const a of sweep(Math.PI - 0.1, 10, 0.1)) close((x(a + 0.05) - x(a)) / 0.05, rate, `去程 ${a}`, 1e-6);
+  for (const a of sweep(2 * Math.PI - 0.1, 10, Math.PI + 0.1)) close((x(a + 0.05) - x(a)) / 0.05, -rate, `回程 ${a}`, 1e-6);
+});
+
+test("第 99 種:圓盤上的螺旋導引器使進給滑座每轉一圈移動一個螺距", () => {
+  close(feed(0) - feed(2 * Math.PI), pitch99);
+  const [lo, hi] = fig99.driver.range;
+  assert.ok(feed(lo) > feed(hi), "在範圍內滑座從外往內移動");
+});
+
+test("第 100 種:快速回程——開槽桿往兩個方向擺動所花的曲柄轉角不同", () => {
+  const n = 3600;
+  const angles = sweep(2 * Math.PI, n).map((t) => quickReturn(t).lever);
+  let up = 0;
+  let down = 0;
+  for (let i = 1; i < angles.length; i++) {
+    let d = angles[i] - angles[i - 1];
+    if (d > Math.PI) d -= 2 * Math.PI;
+    if (d < -Math.PI) d += 2 * Math.PI;
+    if (d > 0) up++;
+    else down++;
+  }
+  const ratio = Math.max(up, down) / Math.min(up, down);
+  assert.ok(ratio > 1.3, `慢行程與快回程的比 ${ratio.toFixed(2)}`);
+});
+
+test("第 101 種:開槽桿擺動時,水平桿做直線運動(位移 = 懸掛高度 × tan 擺角)", () => {
+  const [lo, hi] = fig101.driver.range;
+  assert.ok(pinX(hi) > pinX(lo));
+  for (const psi of sweep(hi, 10, lo)) {
+    const bar = fig101.pose(psi).parts.bar.position;
+    close(bar[1], 0, "水平桿只在水平方向動");
+    close(bar[0], pinX(psi));
+  }
+});

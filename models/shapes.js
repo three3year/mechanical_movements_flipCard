@@ -197,3 +197,16 @@ export function ratchetShape({ teeth, outer, inner, bore = 0, dir = 1 }) {
 
 /** 任意折線外形(可帶孔) */
 export const shape = (outline, holes = []) => ({ outline, holes });
+
+/** 封閉折線(逆時針)沿法線往外(d > 0)或往內(d < 0)平移,用來畫溝槽的兩側 */
+export function offsetLoop(points, d) {
+  const n = points.length;
+  return points.map((p, i) => {
+    const prev = points[(i - 1 + n) % n];
+    const next = points[(i + 1) % n];
+    const nx = next[1] - prev[1];
+    const ny = -(next[0] - prev[0]);
+    const l = Math.hypot(nx, ny) || 1;
+    return [p[0] + (nx / l) * d, p[1] + (ny / l) * d];
+  });
+}
