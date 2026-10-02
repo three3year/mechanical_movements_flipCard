@@ -80,3 +80,51 @@ test("第 133 種:手搖曲柄經小齒輪帶動齒扇形段,扇形段經連桿�
   assert.ok(a.y !== b.y, "壓板隨曲柄上下");
   near(Math.abs((b.sector - a.sector) / 3.5), 10 / 40, "扇形段轉角 = 曲柄 × 齒數比", 1e-9);
 });
+
+import { ropeTravel, radius as r134 } from "../models/fig134.js";
+import { frameY as frame135, frameTop as top135, width as width135 } from "../models/fig135.js";
+import { rodX as rod136 } from "../models/fig136.js";
+import { arm as arm137, pitchAt as pitch137 } from "../models/fig137.js";
+import { rodY as rod138 } from "../models/fig138.js";
+import { rackPosition, alphaPerLoop, halfStraight } from "../models/fig139.js";
+
+test("第 134 種:繩繞鼓輪,鼓輪均勻轉動時繩直線前進,距離等於輪緣轉過的弧長", () => {
+  near(ropeTravel(TAU), TAU * r134);
+});
+
+test("第 135 種:三角形撥爪使框架交替直線運動,行程兩端速度為零", () => {
+  const ys = sweep(TAU, 720).map(frame135);
+  assert.ok(Math.max(...ys) - Math.min(...ys) > 0.15, "框架往復");
+  // 行程兩端(最高、最低)附近幾乎停住
+  const i = ys.indexOf(Math.min(...ys));
+  assert.ok(Math.abs(ys[i + 1] - ys[i]) < 1e-3, "行程端點速度近於零");
+  for (const t of sweep(TAU, 36)) near(top135(t) - frame135(t), width135, "上下邊同時碰到撥爪", 1e-3);
+});
+
+test("第 136 種:凸輪輪的齒使被彈簧壓著的桿做交替方向的直線運動", () => {
+  const xs = sweep(TAU, 720).map(rod136);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.3);
+  near(rod136(TAU / 10), rod136(0), "每轉過一齒重複一次", 1e-9);
+});
+
+test("第 137 種:膨脹偏心輪使叉形臂擺動,兩個滾子始終同時貼著偏心輪", () => {
+  for (const phi of sweep(TAU, 36)) near(pitch137(phi) + pitch137(phi + Math.PI), 2.1, "對邊的距離不變", 1e-9);
+  const angles = sweep(TAU, 360).map((t) => arm137(t).angle);
+  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.05, "臂會擺動");
+});
+
+test("第 138 種:底部的凸輪使靠在上面的桿做變速的交替直線運動", () => {
+  const ys = sweep(TAU, 720).map(rod138);
+  assert.ok(Math.max(...ys) - Math.min(...ys) > 0.4);
+  near(rod138(0), rod138(TAU), "一圈回到原處", 1e-9);
+  const speeds = ys.slice(1).map((y, i) => Math.abs(y - ys[i]));
+  assert.ok(Math.max(...speeds) > 2 * (speeds.reduce((a, b) => a + b) / speeds.length), "速度變化");
+});
+
+test("第 139 種:小齒輪連續旋轉,齒條在框架內上下換邊,矩形框架往復直線運動", () => {
+  const xs = sweep(alphaPerLoop * 2, 2000).map((a) => rackPosition(a).x);
+  const ys = sweep(alphaPerLoop * 2, 2000).map((a) => rackPosition(a).y);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 2 * halfStraight, "框架往復");
+  assert.ok(Math.max(...ys) > 0 && Math.min(...ys) < 0, "齒條在框架內上下換邊");
+  near(rackPosition(alphaPerLoop).x, rackPosition(0).x, "一圈回到原處", 1e-6);
+});
