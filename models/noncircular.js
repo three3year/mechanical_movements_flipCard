@@ -134,3 +134,43 @@ export function noncircularOutline(r, { teeth, addendum, dedendum, start = 0, n 
   }
   return out;
 }
+
+/**
+ * 沿任意封閉節曲線(逆時針的折線)排齒:齒距 pitch,齒 0 的中心在弧長 start 處。
+ * into = −1 時齒朝曲線內側(例如曼格輪的齒槽:齒伸進槽內),+1 時朝外側。
+ */
+export function toothedLoop(points, { pitch, addendum, dedendum, start = 0, into = 1 }) {
+  const n = points.length;
+  const s = [0];
+  for (let i = 1; i < n; i++) s.push(s[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
+  return points.map((p, i) => {
+    const prev = points[(i - 1 + n) % n];
+    const next = points[(i + 1) % n];
+    let nx = next[1] - prev[1];
+    let ny = -(next[0] - prev[0]);
+    const l = Math.hypot(nx, ny) || 1;
+    nx /= l;
+    ny /= l;
+    const u = (s[i] - start) / pitch;
+    const c = Math.abs(u - Math.round(u));
+    let h;
+    if (c < 0.14) h = addendum;
+    else if (c < 0.27) h = addendum - ((addendum + dedendum) * (c - 0.14)) / 0.13;
+    else h = -dedendum;
+    return [p[0] + into * nx * h, p[1] + into * ny * h];
+  });
+}
+
+/** 把 [[x,y], …] 折線按固定間距重新取樣(排齒前讓點夠密) */
+export function resample(points, step, closed = true) {
+  const pts = closed ? [...points, points[0]] : points;
+  const out = [];
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    const l = Math.hypot(x1 - x0, y1 - y0);
+    const k = Math.max(1, Math.ceil(l / step));
+    for (let j = 0; j < k; j++) out.push([x0 + ((x1 - x0) * j) / k, y0 + ((y1 - y0) * j) / k]);
+  }
+  return out;
+}

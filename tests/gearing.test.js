@@ -156,3 +156,56 @@ test("第 38 種:旋轉的一部分保持等速、另一部分變速", () => {
   const varying = sweep(2 * Math.PI - 0.05, 20, 2 * Math.PI - sectorSpan + 0.05).map((v) => -rate(fig38, "driven", v));
   assert.ok(Math.max(...varying) - Math.min(...varying) > 0.3, "其餘部分變速");
 });
+
+import fig36, { mangle, radii as radii36 } from "../models/fig036.js";
+import fig39 from "../models/fig039.js";
+import fig46, { fusee } from "../models/fig046.js";
+
+test("第 36 種:曼格輪把小齒輪的連續旋轉轉換為輪的往復旋轉", () => {
+  const w = sweep(80, 2000).map((a) => mangle(a).wheel);
+  const lo = Math.min(...w);
+  const hi = Math.max(...w);
+  for (const x of w) assert.ok(x >= lo && x <= hi, "輪只在兩端之間來回");
+  // 轉向序列(略去停在端頭的那幾段)
+  const signs = [];
+  for (let i = 1; i < w.length; i++) {
+    const d = Math.sign(w[i] - w[i - 1]);
+    if (d && d !== signs[signs.length - 1]) signs.push(d);
+  }
+  assert.ok(signs.length >= 3, "輪來回改變轉向");
+});
+
+test("第 36 種:小齒輪在外緣(內咬合)時與輪同向,在內緣(外咬合)時反向", () => {
+  for (const a of sweep(80, 400)) {
+    const h = 1e-4;
+    const m = mangle(a);
+    if (mangle(a - h).track !== m.track || mangle(a + h).track !== m.track) continue;
+    const dw = (mangle(a + h).wheel - mangle(a - h).wheel) / (2 * h);
+    if (m.track === "outer") close(dw, radii36.RP / radii36.RO, "同向", 1e-6);
+    if (m.track === "inner") close(dw, -radii36.RP / radii36.RI, "反向", 1e-6);
+  }
+});
+
+test("第 39 種:行星齒輪(剛性連在連桿上)繞一圈,太陽齒輪轉兩圈", () => {
+  const sun = (t) => fig39.pose(t).parts.sun.angle;
+  close(sun(2 * Math.PI) - sun(0), 4 * Math.PI, "一圈對兩圈", 1e-9);
+});
+
+test("第 46 種:上緊時鏈索在鏈索輪的小直徑一端,放鬆時移到大直徑一端", () => {
+  assert.ok(fusee(0.02).radius < fusee(0.98).radius, "接觸半徑隨放鬆變大");
+  const radii = sweep(1, 20).map((u) => fusee(u).radius);
+  for (let i = 1; i < radii.length; i++) assert.ok(radii[i] >= radii[i - 1] - 1e-12, "只增不減");
+  assert.equal(fig46.driver.type, "virtual");
+});
+
+test("第 46 種:鏈索兩端固定,長度不變", () => {
+  const length = (u) => {
+    const p = fig46.pose(u).paths.chain.points;
+    let l = 0;
+    for (let i = 1; i < p.length; i++) l += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1], p[i][2] - p[i - 1][2]);
+    return l;
+  };
+  const l0 = length(0.1);
+  // 鏈索輪是階梯狀的,取樣的螺旋在換層處有落差,長度只近似不變
+  for (const u of [0.3, 0.6, 0.9]) assert.ok(Math.abs(length(u) - l0) / l0 < 0.05, `放鬆 ${u}`);
+});
