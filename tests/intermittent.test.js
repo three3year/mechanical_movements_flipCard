@@ -40,3 +40,59 @@ test("第 75 種:棘爪 B 與止回爪的爪尖始終靠在輪面上,不穿進�
     }
   }
 });
+
+import { counter, starPitch, pinPeriod } from "../models/fig063.js";
+import { hollowAt as hollow64, period as period64 } from "../models/fig064.js";
+import { hollowAt as hollow66 } from "../models/fig066.js";
+import { hollowAt as hollow67, centerOfMass } from "../models/fig067.js";
+import { register, pitch as pitch76 } from "../models/fig076.js";
+import { wormWheel, WHEEL_TEETH } from "../models/worm-jump.js";
+
+test("第 63 種:每通過一根插銷,落板被抬起後猛然落下,星形輪快速轉過一格", () => {
+  const before = counter(pinPeriod * 0.5);
+  const after = counter(pinPeriod * 1.5);
+  close(after.star - before.star, -starPitch, "每根插銷轉一格");
+  const lifting = sweep(pinPeriod * 0.7, 20, pinPeriod * 0.15).map((v) => counter(v).star);
+  for (const s of lifting) close(s, lifting[0], "落板被抬起時星形輪不動");
+  assert.ok(counter(pinPeriod * 0.6).height > 0.5, "插銷把落板抬起");
+});
+
+test("第 64 種:蝸輪軸上的銷推著凸輪走,到臨界點凸輪突然往前掉落,再停住等銷追上", () => {
+  const wheel = (v) => v;
+  const angles = sweep(period64 * 3, 3000).map((v) => hollow64(wheel(v)));
+  let jumps = 0;
+  let still = 0;
+  for (let i = 1; i < angles.length; i++) {
+    const d = angles[i] - angles[i - 1];
+    assert.ok(d >= -1e-12, "只往前");
+    if (d > 0.1) jumps++;
+    if (Math.abs(d) < 1e-12) still++;
+  }
+  assert.equal(jumps, 3, "每圈掉落一次");
+  assert.ok(still > 0, "掉落後停住");
+});
+
+test("第 64、66、67 種:蝸桿每轉一圈,蝸輪 B 轉一齒", () => {
+  close(wormWheel(2 * Math.PI) - wormWheel(0), (2 * Math.PI) / WHEEL_TEETH);
+});
+
+const B0 = wormWheel(0); // 蝸輪的起始轉角
+
+test("第 66 種:搖臂上的重物 D 被推到頂端後自己落到下方", () => {
+  // 推的階段把重物從正下方送到正上方
+  close(hollow66(B0 + Math.PI + 0.001) - hollow66(B0 + Math.PI), 0.001, "被推時跟著銷走", 1e-9);
+  close(hollow66(B0), -Math.PI / 2, "剛落定時在正下方");
+  close(hollow66(B0 + 2 * Math.PI - 1e-9), Math.PI / 2, "推到正上方", 1e-6);
+});
+
+test("第 67 種:擺錘 E 的重心被推到頂端後翻落到下方", () => {
+  close(Math.sin(centerOfMass(hollow67(B0))), -1, "落定時重心在正下方");
+  close(Math.sin(centerOfMass(hollow67(B0 + 2 * Math.PI - 1e-9))), 1, "推到頂端", 1e-6);
+});
+
+test("第 76 種:大輪每轉一圈,凸柱 D 撞擊撥爪一次,棘輪 A 轉動一齒;撥爪回落時 A 不動", () => {
+  close(register(2 * Math.PI).a - register(0).a, pitch76, "一圈一齒");
+  close(register(5 * 2 * Math.PI).a - register(0).a, 5 * pitch76);
+  const back = sweep(2 * Math.PI * 0.9, 20, 2 * Math.PI * 0.11).map((v) => register(v).a);
+  for (const a of back) close(a, back[0], "撥爪回落與等待時 A 不動");
+});

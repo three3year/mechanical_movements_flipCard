@@ -542,12 +542,14 @@ class Session {
     camera.fov = this.def.view?.fov ?? FOV;
     camera.updateProjectionMatrix();
     const box = new THREE.Box3();
+    // view.fit:只以這些零件取景(原圖只畫出局部的大零件,例如第 76 種的大輪)
+    const only = this.def.view?.fit ? new Set(this.def.view.fit) : null;
     for (const v of this.fitSamples()) {
       this.apply(this.pose(v), 0);
       // 精確外框(逐頂點):旋轉中的零件不會因軸對齊外框而顯得過小
-      for (const { object } of this.objects.values()) if (object.visible) box.expandByObject(object, true);
-      for (const path of this.paths.values()) {
-        if (!path.mesh.visible) continue;
+      for (const [id, { object }] of this.objects) if (object.visible && (!only || only.has(id))) box.expandByObject(object, true);
+      for (const [id, path] of this.paths) {
+        if (!path.mesh.visible || (only && !only.has(id))) continue;
         if (path.instances) {
           // 鍊條的鏈節是 InstancedMesh:用逐節的外框
           path.instances.computeBoundingBox();
