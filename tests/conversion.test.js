@@ -190,3 +190,43 @@ test("第 145 種:樑往復擺動,經槓桿與連桿使曲柄與飛輪連續旋�
   const es = sweep(TAU, 180).map((t) => beamEngine(t).e[1]);
   assert.ok(Math.max(...es) - Math.min(...es) > 0.3, "樑的左端上下擺動");
 });
+
+import { yokeY as yoke146 } from "../models/fig146.js";
+import { crank as crank148 } from "../models/fig148.js";
+import { lever as lever149 } from "../models/fig149.js";
+import { valve } from "../models/fig150.js";
+import { nuts, reduction as reduction151 } from "../models/fig151.js";
+
+test("第 146 種:溝槽做成特別的形狀,圓盤轉動時軛做均勻的往復直線運動", () => {
+  const rate = (yoke146(0.6) - yoke146(0.5)) / 0.1;
+  for (const t of sweep(Math.PI - 0.05, 12, 0.05)) near(Math.abs((yoke146(t + 0.01) - yoke146(t)) / 0.01), Math.abs(rate), `轉角 ${t}`, 1e-6);
+});
+
+test("第 148 種:小正齒輪連續轉動,大齒輪上溝槽中的曲柄銷使曲柄交替擺動(大齒輪每轉一圈擺兩次)", () => {
+  const n = (48 / 12) * TAU; // 大齒輪轉一圈,小齒輪轉 4 圈
+  const psis = sweep(n, 800).map((a) => crank148(a).psi);
+  let turns = 0;
+  for (let i = 2; i < psis.length; i++) if ((psis[i] - psis[i - 1]) * (psis[i - 1] - psis[i - 2]) < -1e-14) turns++;
+  assert.equal(turns, 4, "兩次往返");
+});
+
+test("第 149 種:凸輪作用於槓桿,附著的桿做交替直線運動", () => {
+  const a = sweep(TAU, 360).map(lever149);
+  assert.ok(Math.max(...a) - Math.min(...a) > 0.1);
+  near(lever149(0), lever149(TAU), "一圈回到原處", 1e-9);
+});
+
+test("第 150 種:凸輪的擺動幅度越大,閥門的動作越大", () => {
+  const stroke = (state) => {
+    const ys = sweep(TAU, 360).map((t) => valve(t, state).rod);
+    return Math.max(...ys) - Math.min(...ys);
+  };
+  assert.ok(stroke("small") < stroke("middle") && stroke("middle") < stroke("large"));
+});
+
+test("第 151 種:蝸桿帶動螺桿軸,左右旋螺紋上的螺帽彼此靠近或分開,速度慢得多", () => {
+  const a = nuts(0);
+  const b = nuts(TAU * reduction151);
+  near(b.right - a.right, -(b.left - a.left), "兩螺帽對稱移動");
+  near(Math.abs(b.right - a.right), 0.3, "蝸桿轉 N 圈,螺帽移動一個螺距");
+});
