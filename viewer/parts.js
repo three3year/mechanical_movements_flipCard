@@ -326,7 +326,7 @@ function gear(part, material, mark) {
     g.add(marked);
     return g;
   }
-  if (!part.internal) {
+  if (!part.internal && part.hub !== false) {
     const tube = Math.max(0.008, part.radius * 0.011);
     for (const z of [1, -1]) {
       if (part.web !== false && root * 0.8 > hub * 1.5) faceCircle(g, root * 0.8, (z * w) / 2, material, tube);

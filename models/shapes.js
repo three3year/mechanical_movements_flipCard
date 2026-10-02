@@ -156,6 +156,25 @@ export function sectorShape({ teeth, radius, span, bore = 0 }) {
   return { outline: pts, holes: bore ? [circle(bore).reverse()] : [] };
 }
 
+/** 內齒扇形段:span 範圍內的內齒(齒朝圓心),外緣是半徑 rim 的弧;齒的編號與完整內齒輪相同 */
+export function internalSectorShape({ teeth, radius, span, rim }) {
+  const [a0, a1] = span;
+  const inner = gearProfile({ teeth, radius, internal: true }).filter(([x, y]) => {
+    let a = Math.atan2(y, x);
+    while (a < a0) a += TAU;
+    return a <= a1;
+  });
+  inner.sort((p, q) => {
+    const ang = ([x, y]) => {
+      let a = Math.atan2(y, x);
+      while (a < a0) a += TAU;
+      return a;
+    };
+    return ang(p) - ang(q);
+  });
+  return { outline: [...inner, ...arcPoints(rim, a1, a0)], holes: [] };
+}
+
 /** 齒條:沿局部 X,齒朝 +Y,節線在 y = 0;齒 k 的中心在 x = (k − (n−1)/2)·齒距 */
 export function rackShape({ teeth, pitch, depth }) {
   const m = pitch / Math.PI;

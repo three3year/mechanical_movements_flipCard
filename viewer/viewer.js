@@ -108,7 +108,8 @@ class Session {
     this.cycle = d.cycle ?? null;
     this.bounds = this.progress ? null : (d.range ?? null); // 有範圍的主動量:夾住、自動播放時往復
     this.grips = this.virtual ? [] : [d.part, ...(d.grips ?? [])];
-    this.value = d.initial ?? (this.bounds ? this.bounds[0] : 0);
+    // 有範圍時預設停在 0(範圍包含 0 的話),否則停在下限
+    this.value = d.initial ?? (this.bounds ? (this.bounds[0] <= 0 && this.bounds[1] >= 0 ? 0 : this.bounds[0]) : 0);
     this.state = def.states?.initial ?? null;
     this.playing = true;
     this.speedFactor = 1;

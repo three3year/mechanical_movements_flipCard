@@ -30,8 +30,10 @@ function contactSense(a, b, p) {
 export function meshAngle(a, b, angleA, contact) {
   const p = contact ?? contactPoint(a, b);
   const sense = contactSense(a, b, p);
-  const tA = (planeAngle(axisOf(a), sub(p, a.center)) - angleA) / pitchAngle(a);
-  const tB = 0.5 + sense * tA;
+  const tA0 = planeAngle(axisOf(a), sub(p, a.center)) / pitchAngle(a);
+  const tA = tA0 - angleA / pitchAngle(a);
+  // 減去整數個齒距,讓 a 轉角為 0 時 b 的轉角落在 0 附近(齒是等距的,咬合不變;扇形齒輪的有齒段因此對得準)
+  const tB = 0.5 + sense * tA - Math.round(0.5 + sense * tA0 - planeAngle(axisOf(b), sub(p, b.center)) / pitchAngle(b));
   return planeAngle(axisOf(b), sub(p, b.center)) - pitchAngle(b) * tB;
 }
 
@@ -57,6 +59,13 @@ export function speedRatio(a, b, contact) {
  * 小齒輪的節圓與齒條節線相切。小齒輪轉一圈,齒條移動節圓周長。
  */
 export function rackOffset(pinion, rack, angle) {
+  const raw = rawRackOffset(pinion, rack, angle);
+  // 加減整數個齒距,讓主動量 0 時齒條落在 origin 附近(齒條的齒是等距的,相位不變)
+  const zero = rawRackOffset(pinion, rack, 0);
+  return raw - rack.pitch * Math.round(zero / rack.pitch);
+}
+
+function rawRackOffset(pinion, rack, angle) {
   const n = axisOf(pinion);
   const along = norm(rack.dir);
   // 接觸點:小齒輪中心往齒條節線的垂足方向走一個節圓半徑
