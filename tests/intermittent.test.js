@@ -152,3 +152,47 @@ test("第 74 種:缺齒式斜齒輪 C 使 A、B 間歇地、朝相反方向轉�
   close(Math.abs(angles74(TAU).a - angles74(0).a), (Math.PI * 32) / 26, "每圈 A 轉 半圈 × 齒數比", 1e-9);
   assert.ok(fig74.parts.find((p) => p.id === "c").toothed.length === 16, "C 只有一半有齒");
 });
+
+import { motion as motion73, toothStep as step73 } from "../models/fig073.js";
+import { wheelAngle as wheel77, swing as swing77 } from "../models/fig077.js";
+import { wheelAngle as wheel78, swing as swing78 } from "../models/fig078.js";
+import { wheelAngle as wheel79, stroke as stroke79 } from "../models/fig079.js";
+import { barHeight, swing as swing80 } from "../models/fig080.js";
+
+test("第 73 種:D 每轉一圈,彈簧 B 把 C 壓進 A 的一齒,使 A 轉過一齒;其餘時間 C 擋住 A", () => {
+  assertIndexing((d) => motion73(d).a, step73, "第 73 種");
+  const pressed = sweep(2 * Math.PI, 360).map((d) => motion73(d).press);
+  assert.ok(Math.max(...pressed) > 0.9 && pressed.filter((p) => p === 0).length > 200, "C 只在 B 通過時被壓下");
+});
+
+// 雙作用棘爪:每一程(往與返)從動件都前進,而且朝同一方向
+function assertBothStrokes(fn, span, label) {
+  const a = fn(0);
+  const b = fn(span);
+  const c = fn(2 * span);
+  assert.ok(Math.abs(b - a) > 1e-3 && Math.abs(c - b) > 1e-3, `${label}:往程與返程都推動`);
+  assert.ok((b - a) * (c - b) > 0, `${label}:兩程朝同一方向`);
+  const samples = sweep(6 * span, 300).map(fn);
+  const dir = Math.sign(c - a);
+  for (let i = 1; i < samples.length; i++) assert.ok((samples[i] - samples[i - 1]) * dir >= -1e-12, `${label}:不倒退`);
+}
+
+test("第 77 種:兩根交替作動的棘爪使輪 B 幾乎連續地(逆時針)旋轉", () => {
+  assertBothStrokes(wheel77, swing77, "第 77 種");
+  assert.ok(wheel77(swing77 * 4) > 0, "逆時針");
+});
+
+test("第 78 種:第 77 種的變形,棘輪 A 幾乎連續地(順時針)旋轉", () => {
+  assertBothStrokes(wheel78, swing78, "第 78 種");
+  assert.ok(wheel78(swing78 * 4) < 0, "順時針");
+});
+
+test("第 79 種:桿 B 往復,兩支振動臂上的棘爪使輪 A 幾乎連續地(順時針)旋轉", () => {
+  assertBothStrokes(wheel79, stroke79, "第 79 種");
+  assert.ok(wheel79(stroke79 * 4) < 0, "順時針");
+});
+
+test("第 80 種:槓桿 C 振動,兩根鉤形棘爪交替把槽形齒條桿 A 往上提", () => {
+  assertBothStrokes(barHeight, swing80, "第 80 種");
+  assert.ok(barHeight(swing80 * 4) > 0, "往上");
+});

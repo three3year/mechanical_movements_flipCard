@@ -83,3 +83,16 @@ export function ratchetObstacles({ teeth, outer, inner, dir = 1 }, angle, center
   const disc = Array.from({ length: teeth * 2 }, (_, i) => at(inner, (i / (teeth * 2)) * 2 * Math.PI));
   return [...tri, disc];
 }
+
+/**
+ * 雙作用棘爪(兩根棘爪交替推動,第 77–80 種):主動量 v 是累計行程,搖桿在 from 與 to 之間往復。
+ * f1(ψ):搖桿往 to 走時被第一根棘爪推動的從動件位置;f2(ψ):往 from 走時被第二根推動的位置。
+ * 從動件每一程都被推,累計前進「幾乎連續」。回傳從動件的累計位置。
+ */
+export function doubleAction(v, from, to, f1, f2) {
+  const { at, cycle, forward } = swingPhase(v, from, to);
+  const d1 = f1(to) - f1(from);
+  const d2 = f2(from) - f2(to);
+  const base = cycle * (d1 + d2);
+  return forward ? base + f1(at) - f1(from) : base + d1 + f2(at) - f2(to);
+}
