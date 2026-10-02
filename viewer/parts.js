@@ -3,6 +3,7 @@
 // 零件種類的清單在 models/kinds.js;齒輪、凸輪等板件的輪廓由 models/shapes.js 計算。
 import * as THREE from "three";
 import { gearShape, gearSize, rackShape, toothOutline, sectorShape } from "../models/shapes.js";
+import { sliceAngle } from "../models/gears.js";
 import { PATH_KINDS } from "../models/kinds.js";
 
 const SEGMENTS = 48;
@@ -264,7 +265,20 @@ function gear(part, material, mark) {
     g.add(mesh(extrude({ outline: toothOutline(part, first) }, w * 1.08), mark));
     return g;
   }
-  g.add(mesh(extrude(gearShape({ ...part, mask }), w), material));
+  if (part.slices) {
+    // 斜齒、人字齒、階梯錯齒:沿軸切成幾片,每片依 sliceAngle 轉一點(見 models/gears.js)
+    const n = part.slices;
+    const gap = part.sliceGap ?? 0;
+    const t = (w - gap * (n - 1)) / n;
+    const geometry = extrude(gearShape({ ...part, mask }), t);
+    for (let i = 0; i < n; i++) {
+      const slice = mesh(geometry, material, [0, 0, -w / 2 + t / 2 + i * (t + gap)]);
+      slice.rotation.z = sliceAngle(part, i);
+      g.add(slice);
+    }
+  } else {
+    g.add(mesh(extrude(gearShape({ ...part, mask }), w), material));
+  }
   if (!part.internal) {
     const tube = Math.max(0.008, part.radius * 0.011);
     for (const z of [1, -1]) {
@@ -276,7 +290,12 @@ function gear(part, material, mark) {
   }
   const has = mask ?? (() => true);
   const markTooth = [...Array(part.teeth).keys()].find((i) => has(i)) ?? 0;
-  g.add(mesh(extrude({ outline: toothOutline(part, markTooth) }, w * 1.08), mark));
+  const markAt = part.slices ? sliceAngle(part, part.slices - 1) : 0;
+  const markZ = part.slices ? w / 2 - (w - (part.sliceGap ?? 0) * (part.slices - 1)) / part.slices / 2 : 0;
+  const markLen = part.slices ? (w - (part.sliceGap ?? 0) * (part.slices - 1)) / part.slices : w;
+  const marked = mesh(extrude({ outline: toothOutline(part, markTooth) }, markLen * 1.08), mark, [0, 0, markZ]);
+  marked.rotation.z = markAt;
+  g.add(marked);
   return g;
 }
 

@@ -86,3 +86,15 @@ export const circularPitch = (g) => (TAU * g.radius) / g.teeth;
 
 /** 兩個齒輪中心距(外咬合為半徑和,內咬合為半徑差) */
 export const centerDistance = (a, b) => len(sub(a.center, b.center));
+
+/**
+ * 斜齒、人字齒、階梯錯齒齒輪的第 i 片(共 slices 片)相對於齒輪轉角的偏轉。
+ * twist:helical 為兩端相差的角度;herringbone 為中間相對兩端的角度;stagger 為每片錯開 1/片數 齒距。
+ * 兩輪咬合時,從動輪的 twist 要取 −twist·N主/N從,各片才都咬合。
+ */
+export function sliceAngle({ slices, twist = 0, twistMode = "helical", teeth }, i) {
+  const f = slices > 1 ? i / (slices - 1) : 0;
+  if (twistMode === "stagger") return ((2 * Math.PI) / teeth) * (i / slices) * Math.sign(twist || 1);
+  if (twistMode === "herringbone") return twist * (1 - Math.abs(2 * f - 1));
+  return twist * (f - 0.5);
+}
