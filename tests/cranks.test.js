@@ -63,3 +63,47 @@ test("第 96 種:任何轉角下桿端滾子都貼著凸輪輪廓", () => {
     close(gap, ROLLER_RADIUS, `轉角 ${a}`, 0.01);
   }
 });
+
+import { eccentric, throwRadius as e89 } from "../models/fig089.js";
+import { scotch, throwRadius as e90 } from "../models/fig090.js";
+import { frame as frame91, width as width91 } from "../models/fig091.js";
+import { yoke as yoke93, crankRadius as r93 } from "../models/fig093.js";
+import fig94, { crankLength, spiralPitch } from "../models/fig094.js";
+import { arm as arm98 } from "../models/fig098.js";
+
+const strokeOf = (xs) => Math.max(...xs) - Math.min(...xs);
+
+test("第 89 種:偏心輪把旋轉變成往復直線運動,轉一圈往返一次,行程是偏心距的兩倍", () => {
+  const xs = sweep(2 * Math.PI, 720).map((t) => eccentric(t).x);
+  close(strokeOf(xs), 2 * e89, "行程", 1e-4);
+  close(xs[0], xs[xs.length - 1], "轉一圈回到原處");
+});
+
+test("第 90 種:以軛取代偏心環,軛直線往復(不擺動),行程是偏心距的兩倍、位移為正弦", () => {
+  for (const t of sweep(2 * Math.PI, 36)) close(scotch(t).x, e90 * Math.cos(t), `轉角 ${t}`);
+});
+
+test("第 91 種:三角形偏心輪使方框做間歇性的往復,有一段時間停住不動", () => {
+  const ys = sweep(2 * Math.PI, 720).map((t) => frame91(t).bottom);
+  let still = 0;
+  for (let i = 1; i < ys.length; i++) if (Math.abs(ys[i] - ys[i - 1]) < 1e-6) still++;
+  assert.ok(still > 100, "有停住的時段");
+  for (const t of sweep(2 * Math.PI, 72)) close(frame91(t).top - frame91(t).bottom, width91, "上下邊永遠同時碰到輪", 1e-3);
+});
+
+test("第 93 種:曲柄手腕在開槽軛內作動,軛直線往復,行程是曲柄半徑的兩倍", () => {
+  close(strokeOf(sweep(2 * Math.PI, 720).map((t) => yoke93(t).y)), 2 * r93, "行程", 1e-4);
+});
+
+test("第 94 種:轉動螺旋板時,螺栓沿放射槽朝中心移動或遠離中心(曲柄長改變)", () => {
+  close(crankLength(0) - crankLength(2 * Math.PI), spiralPitch, "轉一圈移動一個螺旋節距");
+  const [lo, hi] = fig94.driver.range;
+  assert.ok(crankLength(lo) > crankLength(hi), "範圍兩端曲柄長不同");
+});
+
+test("第 98 種:圓盤上的曲柄銷始終在振動臂的環形溝槽內,臂做不規則的擺動", () => {
+  const psis = sweep(2 * Math.PI, 360).map((t) => arm98(t).psi);
+  for (const t of sweep(2 * Math.PI, 36)) assert.ok(arm98(t).err < 1e-6, "銷在溝槽中心線上");
+  assert.ok(strokeOf(psis) > 0.1, "臂會擺動");
+  close(psis[0], psis[psis.length - 1], "轉一圈回到原處", 1e-6);
+});
