@@ -242,8 +242,13 @@ function plate(part, material, mark) {
   g.add(mesh(extrude(part.shape, t), material));
   if (part.mark) markDot(g, part.mark, part.markSize ?? 0.08, t, mark);
   if (part.hub) g.add(mesh(cylinder(part.hub, t * 1.6), material));
-  // circles:板面上的刻線圓(原圖的同心圓)
+  // circles:板面上的刻線圓(原圖的同心圓);engrave:板面上任意封閉折線的刻線
   for (const r of part.circles ?? []) for (const z of [t / 2, -t / 2]) faceCircle(g, r, z, material, Math.max(0.008, r * 0.008));
+  for (const line of part.engrave ?? []) {
+    const curve = new THREE.CatmullRomCurve3(line.map(([x, y]) => new THREE.Vector3(x, y, 0)), true);
+    const geometry = new THREE.TubeGeometry(curve, line.length * 2, 0.012, 5, true);
+    for (const z of [t / 2, -t / 2]) g.add(mesh(geometry, material, [0, 0, z]));
+  }
   return g;
 }
 
@@ -315,7 +320,8 @@ function gear(part, material, mark) {
   }
   if (part.cone) {
     // 傘齒輪的輪轂在大端(背面)
-    g.add(mesh(cylinder(Math.max(part.bore ?? 0, part.radius * 0.25), w * 0.8), material, [0, 0, -w * 0.7]));
+    const hubLength = Math.min(w * 0.8, part.radius * 0.3);
+    g.add(mesh(cylinder(Math.max(part.bore ?? 0, part.radius * 0.25), hubLength), material, [0, 0, -w / 2 - hubLength / 2 + 0.02]));
     const marked = mesh(taper(extrude({ outline: toothOutline(part, 0) }, w * 1.02), part, w * 1.02), mark);
     g.add(marked);
     return g;

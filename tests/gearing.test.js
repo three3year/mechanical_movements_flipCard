@@ -110,3 +110,49 @@ test("第 42、43 種:兩軸斜向配置的齒輪,轉角比為齒數反比", () 
   ratioTest(fig42, "top", "bottom");
   ratioTest(fig43, "big", "small");
 });
+
+import fig30 from "../models/fig030.js";
+import fig33, { D as D33, axes as axes33 } from "../models/fig033.js";
+import fig35, { contactRadius, pinionRadius } from "../models/fig035.js";
+import fig37, { heightAt, radii as radii37 } from "../models/fig037.js";
+import fig38, { sectorSpan } from "../models/fig038.js";
+
+// 數值導數:主動量 v 附近從動件 id 的轉速比
+const rate = (def, id, v, h = 1e-4) => (def.pose(v + h).parts[id].angle - def.pose(v - h).parts[id].angle) / (2 * h);
+
+for (const def of [fig30, fig33, fig38]) {
+  test(`第 ${def.figure} 種:非圓齒輪一直保持咬合,主動輪轉一圈從動輪也(反向)轉一圈`, () => {
+    close(turned(def, "driven", 0, 2 * Math.PI), -2 * Math.PI, "一圈對一圈", 1e-6);
+  });
+}
+
+test("第 30 種:矩形齒輪使被驅動齒輪產生變速的旋轉運動", () => {
+  const rates = sweep(Math.PI / 2, 40).map((v) => -rate(fig30, "driven", v));
+  assert.ok(Math.max(...rates) / Math.min(...rates) > 1.3, "轉速有明顯變化");
+});
+
+test("第 33 種:橢圓形正齒輪的速度變化取決於長短軸的比例", () => {
+  const [a, b] = axes33;
+  const rates = sweep(Math.PI, 360).map((v) => -rate(fig33, "driven", v));
+  close(Math.max(...rates), a / (D33 - a), "長軸對著從動輪時最快", 2e-3);
+  close(Math.min(...rates), b / (D33 - b), "短軸對著從動輪時最慢", 2e-3);
+});
+
+test("第 35 種:小齒輪等速轉,橢圓齒輪的轉速與接觸處半徑成反比(變速)", () => {
+  for (const v of sweep(6, 12, 0.3)) close(-rate(fig35, "wheel", v), pinionRadius / contactRadius(v), `主動量 ${v}`, 1e-3);
+});
+
+test("第 37 種:錐形齒輪等速轉,右輪轉速隨螺旋齒栓的高度(兩輪接觸半徑)而變", () => {
+  for (const v of sweep(4, 10, 0.2)) {
+    const h = heightAt(v);
+    close(rate(fig37, "right", v), radii37.rLeft(h) / radii37.rRight(h), `主動量 ${v}`, 2e-3);
+  }
+});
+
+test("第 38 種:旋轉的一部分保持等速、另一部分變速", () => {
+  // 接觸處在主動輪局部角 −θ,變速段(局部角 0–90°)在 θ = 270°–360° 時咬合
+  const uniform = sweep(2 * Math.PI - sectorSpan - 0.1, 20, 0.1).map((v) => -rate(fig38, "driven", v));
+  for (const r of uniform) close(r, uniform[0], "四分之三圈內等速", 1e-3);
+  const varying = sweep(2 * Math.PI - 0.05, 20, 2 * Math.PI - sectorSpan + 0.05).map((v) => -rate(fig38, "driven", v));
+  assert.ok(Math.max(...varying) - Math.min(...varying) > 0.3, "其餘部分變速");
+});
