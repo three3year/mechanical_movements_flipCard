@@ -10,18 +10,20 @@ const LOWER = { x: -0.3, y: -0.8, radius: 0.25 };
 const RUNNER = { x: 0.3 + 0.25, y: 1.0, radius: 0.25 };
 const HANGER = 0.8;
 const W = { height: 0.55, radius: 0.32 };
-const HANDLE = [RUNNER.x + RUNNER.radius + 0.35, 0.3, 0];
+const ROPE_END = [RUNNER.x + RUNNER.radius, 0.3, 0];
 
 function layout(pull) {
   const rise = pull / 3;
   const lower = [LOWER.x, LOWER.y + rise, 0];
   const runner = { center: [RUNNER.x, RUNNER.y - rise, 0], axis: Z, radius: RUNNER.radius, sense: -1 };
   const hook = [RUNNER.x - RUNNER.radius, runner.center[1] + RUNNER.radius + 0.15, 0];
-  const handle = [HANDLE[0], HANDLE[1] - pull, 0];
+  const ropeEnd = [ROPE_END[0], ROPE_END[1] - pull, 0];
   const main = routeRope([{ point: [LOWER.x, lower[1] + LOWER.radius, 0] }, { circle: TOP }, { point: hook }]);
-  const fall = routeRope([{ point: [LOWER.x + LOWER.radius * 0.8, lower[1], 0] }, { circle: runner }, { point: handle }]);
+  // 第二條繩接在下方滑輪框伸出的橫桿上,正對動滑輪左側,各段繩都垂直
+  const yoke = [RUNNER.x - RUNNER.radius, lower[1], 0];
+  const fall = routeRope([{ point: yoke }, { circle: runner }, { point: ropeEnd }]);
   const weight = [LOWER.x, lower[1] - HANGER, 0];
-  return { rise, lower, runner, hook, handle, main, fall, weight };
+  return { rise, lower, runner, hook, yoke, ropeEnd, main, fall, weight };
 }
 
 const rest = layout(RANGE[0]);
@@ -36,28 +38,30 @@ export default {
     { id: "hanger", kind: "rod" },
     { id: "runnerHook", kind: "rod" },
     { id: "strap", kind: "rod" },
+    { id: "yoke", kind: "rod" },
     { id: "weight", kind: "weight", center: rest.weight, axis: Y, radius: W.radius, height: W.height },
     { id: "main", kind: "rope" },
     { id: "fall", kind: "rope" },
-    { id: "handle", kind: "handle", center: rest.handle },
+    { id: "ropeEnd", kind: "ropeEnd", center: rest.ropeEnd },
   ],
-  driver: { part: "handle", type: "translation", range: RANGE, direction: [0, -1, 0] },
+  driver: { part: "ropeEnd", type: "translation", range: RANGE, direction: [0, -1, 0] },
   pose(value) {
     const pull = clamp(value, ...RANGE);
-    const { rise, lower, runner, hook, handle, main, fall, weight } = layout(pull);
+    const { rise, lower, runner, hook, yoke, ropeEnd, main, fall, weight } = layout(pull);
     return {
       parts: {
         top: { angle: sheaveAngle(main, rest.main, 0, TOP) },
         lower: { position: lower },
         runner: { position: runner.center, angle: sheaveAngle(fall, rest.fall, 0, runner) },
         weight: { position: weight },
-        handle: { position: handle },
+        ropeEnd: { position: ropeEnd },
       },
       paths: {
         main: { points: main.points, closed: false },
         fall: { points: fall.points, closed: false },
         hanger: rod([TOP.center[0], CEILING, 0], TOP.center),
         runnerHook: rod(hook, runner.center),
+        yoke: rod(lower, yoke),
         strap: rod(lower, [weight[0], weight[1] + W.height / 2 + 0.1, 0]),
       },
       readouts: hoistReadouts(pull, rise, 3),

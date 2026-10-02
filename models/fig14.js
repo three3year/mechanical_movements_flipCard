@@ -10,7 +10,7 @@ const UPPER_Y = 2.15;
 const LOWER_Y = -0.4;
 const HANGER = 0.9;
 const W = { height: 0.55, radius: 0.3 };
-const HANDLE = [0.85, 0.6, LANES[2]];
+const ROPE_END = [0.85, 0.6, LANES[2]];
 const SHEAVES = LANES.length;
 
 function layout(pull) {
@@ -19,12 +19,12 @@ function layout(pull) {
   const upper = LANES.map((z) => ({ center: [0, UPPER_Y, z], axis: Z, radius: R, sense: -1 }));
   const lower = LANES.map((z) => ({ center: [0, lowerY, z], axis: Z, radius: R, sense: -1 }));
   const anchor = [R, UPPER_Y - R - 0.12, LANES[0] - 0.2];
-  const handle = [HANDLE[0], HANDLE[1] - pull, HANDLE[2]];
+  const ropeEnd = [ROPE_END[0], ROPE_END[1] - pull, ROPE_END[2]];
   const nodes = [{ point: anchor }];
   for (let i = 0; i < SHEAVES; i++) nodes.push({ circle: lower[i] }, { circle: upper[i] });
-  nodes.push({ point: handle });
+  nodes.push({ point: ropeEnd });
   const weight = [0, lowerY - HANGER, 0];
-  return { rise, lowerY, upper, lower, handle, weight, rope: routeRope(nodes) };
+  return { rise, lowerY, upper, lower, ropeEnd, weight, rope: routeRope(nodes) };
 }
 
 const rest = layout(RANGE[0]);
@@ -43,17 +43,17 @@ export default {
     { id: "strap", kind: "rod" },
     { id: "weight", kind: "weight", center: rest.weight, axis: Y, radius: W.radius, height: W.height },
     { id: "rope", kind: "rope" },
-    { id: "handle", kind: "handle", center: rest.handle },
+    { id: "ropeEnd", kind: "ropeEnd", center: rest.ropeEnd },
   ],
-  driver: { part: "handle", type: "translation", range: RANGE, direction: [0, -1, 0] },
+  driver: { part: "ropeEnd", type: "translation", range: RANGE, direction: [0, -1, 0] },
   view: { direction: [0.6, 0.15, 1] },
   pose(value) {
     const pull = clamp(value, ...RANGE);
-    const { rise, lowerY, upper, lower, handle, weight, rope } = layout(pull);
+    const { rise, lowerY, upper, lower, ropeEnd, weight, rope } = layout(pull);
     const parts = {
       lowerPin: { position: [0, lowerY, 0] },
       weight: { position: weight },
-      handle: { position: handle },
+      ropeEnd: { position: ropeEnd },
     };
     // 繩的節點依序為 下1、上1、下2、上2…
     for (let i = 0; i < SHEAVES; i++) {

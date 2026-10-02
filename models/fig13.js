@@ -9,16 +9,16 @@ const MOVABLE_Y = -0.6;
 const ANCHOR = [0.36 + R, CEILING, 0];
 const HANGER = 0.95; // 可動輪軸心到重物中心
 const W = { height: 0.55, radius: 0.3 };
-const HANDLE = [-0.36 - R, 0.6, 0];
+const ROPE_END = [-0.36 - R, 0.6, 0];
 
 function layout(pull) {
   // 繩長守恆:可動輪兩側各短 rise,繩端就得拉 2·rise
   const rise = pull / 2;
   const movable = { center: [0.36, MOVABLE_Y + rise, 0], axis: Z, radius: R, sense: -1 };
   const weight = [0.36, movable.center[1] - HANGER, 0];
-  const handle = [HANDLE[0], HANDLE[1] - pull, 0];
-  const rope = routeRope([{ point: ANCHOR }, { circle: movable }, { circle: FIXED }, { point: handle }]);
-  return { rise, movable, weight, handle, rope };
+  const ropeEnd = [ROPE_END[0], ROPE_END[1] - pull, 0];
+  const rope = routeRope([{ point: ANCHOR }, { circle: movable }, { circle: FIXED }, { point: ropeEnd }]);
+  return { rise, movable, weight, ropeEnd, rope };
 }
 
 const rest = layout(RANGE[0]);
@@ -33,18 +33,18 @@ export default {
     { id: "strap", kind: "rod" },
     { id: "weight", kind: "weight", center: rest.weight, axis: Y, radius: W.radius, height: W.height },
     { id: "rope", kind: "rope" },
-    { id: "handle", kind: "handle", center: rest.handle },
+    { id: "ropeEnd", kind: "ropeEnd", center: rest.ropeEnd },
   ],
-  driver: { part: "handle", type: "translation", range: RANGE, direction: [0, -1, 0] },
+  driver: { part: "ropeEnd", type: "translation", range: RANGE, direction: [0, -1, 0] },
   pose(value) {
     const pull = clamp(value, ...RANGE);
-    const { rise, movable, weight, handle, rope } = layout(pull);
+    const { rise, movable, weight, ropeEnd, rope } = layout(pull);
     return {
       parts: {
         fixed: { angle: sheaveAngle(rope, rest.rope, 1, FIXED) },
         movable: { position: movable.center, angle: sheaveAngle(rope, rest.rope, 0, movable) },
         weight: { position: weight },
-        handle: { position: handle },
+        ropeEnd: { position: ropeEnd },
       },
       paths: {
         rope: { points: rope.points, closed: false },

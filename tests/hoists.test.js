@@ -25,14 +25,14 @@ function lift(def, pull) {
   const w = def.weight ?? "weight";
   return {
     rise: now.parts[w].position[1] - rest.parts[w].position[1],
-    handle: Math.hypot(...now.parts.handle.position.map((v, i) => v - rest.parts.handle.position[i])),
+    ropeEnd: Math.hypot(...now.parts.ropeEnd.position.map((v, i) => v - rest.parts.ropeEnd.position[i])),
     readouts: Object.fromEntries(now.readouts.map((r) => [r.label, r.value])),
   };
 }
 
 test("滑輪組的主動件是繩端:位移型、有範圍、往下拉", () => {
   for (const def of HOISTS) {
-    assert.equal(def.driver.part, "handle");
+    assert.equal(def.driver.part, "ropeEnd");
     assert.equal(def.driver.type, "translation");
     assert.ok(def.driver.range[0] < def.driver.range[1]);
     // 第 15 種的繩端從下方滑輪塊往上拉,其餘往下拉
@@ -41,15 +41,15 @@ test("滑輪組的主動件是繩端:位移型、有範圍、往下拉", () => {
 });
 
 test("第 12 種:簡單皮帶輪,施力端位移等於重物位移(1:1)", () => {
-  const { rise, handle, readouts } = lift(fig12, 0.8);
+  const { rise, ropeEnd, readouts } = lift(fig12, 0.8);
   close(rise, 0.8);
-  close(handle, 0.8);
+  close(ropeEnd, 0.8);
   assert.equal(readouts["省力比"], "1 : 1");
 });
 
 test("第 13 種:下方皮帶輪可動,繩端移動是重物的兩倍", () => {
-  const { rise, handle, readouts } = lift(fig13, 1.2);
-  close(handle, 1.2);
+  const { rise, ropeEnd, readouts } = lift(fig13, 1.2);
+  close(ropeEnd, 1.2);
   close(rise, 0.6);
   assert.equal(readouts["省力比"], "1 : 2");
 });
@@ -71,16 +71,16 @@ test("有範圍的主動件:超出範圍的輸入會被夾住", () => {
 test("第 16 種:西班牙式滑輪組(雙),繩端移動是重物的五倍", () => {
   // 第一條繩:天花板 → 繞過下方滑輪 → 越過定滑輪 → 吊住中間的動滑輪;
   // 第二條繩:下方滑輪框 → 越過中間動滑輪 → 繩端。重物升 y 時中間動滑輪降 2y。
-  const { rise, handle, readouts } = lift(fig16, 1.5);
-  close(handle, 1.5);
+  const { rise, ropeEnd, readouts } = lift(fig16, 1.5);
+  close(ropeEnd, 1.5);
   close(rise, 0.3);
   assert.equal(readouts["省力比"], "1 : 5");
 });
 
 test("第 17 種:西班牙式滑輪組(單),繩端移動是重物的三倍", () => {
   // 第一條繩:下方滑輪框 → 越過定滑輪 → 吊住動滑輪;第二條繩:下方滑輪框 → 越過動滑輪 → 繩端
-  const { rise, handle, readouts } = lift(fig17, 1.2);
-  close(handle, 1.2);
+  const { rise, ropeEnd, readouts } = lift(fig17, 1.2);
+  close(ropeEnd, 1.2);
   close(rise, 0.4);
   assert.equal(readouts["省力比"], "1 : 3");
 });
@@ -98,15 +98,15 @@ const pulleys = (def, prefix) => def.parts.filter((p) => p.kind === "pulley" && 
 
 test("第 14 種:滑輪組,省力比為下方滑輪組皮帶輪數量的兩倍", () => {
   assert.equal(pulleys(fig14, "lower").length, 3);
-  const { rise, handle, readouts } = lift(fig14, 1.8);
-  close(handle, 1.8);
+  const { rise, ropeEnd, readouts } = lift(fig14, 1.8);
+  close(ropeEnd, 1.8);
   close(rise, 0.3); // 2 × 3 = 6
   assert.equal(readouts["省力比"], "1 : 6");
 });
 
 test("第 15 種:懷特滑輪組,施力比為 1 比 7", () => {
-  const { rise, handle, readouts } = lift(fig15, 1.4);
-  close(handle, 1.4);
+  const { rise, ropeEnd, readouts } = lift(fig15, 1.4);
+  close(ropeEnd, 1.4);
   close(rise, 0.2);
   assert.equal(readouts["省力比"], "1 : 7");
 });
@@ -131,8 +131,8 @@ test("第 15 種:各溝槽一起轉,所以各段繩的移動速度不同", () =>
 test("第 18 種:兩個固定皮帶輪與一個可動皮帶輪,繩端移動是重物的三倍", () => {
   assert.equal(fig18.parts.filter((p) => p.kind === "pulley" && p.movable).length, 1);
   assert.equal(fig18.parts.filter((p) => p.kind === "pulley" && !p.movable).length, 2);
-  const { rise, handle, readouts } = lift(fig18, 1.5);
-  close(handle, 1.5);
+  const { rise, ropeEnd, readouts } = lift(fig18, 1.5);
+  close(ropeEnd, 1.5);
   close(rise, 0.5);
   assert.equal(readouts["省力比"], "1 : 3");
 });
@@ -140,8 +140,8 @@ test("第 18 種:兩個固定皮帶輪與一個可動皮帶輪,繩端移動是�
 test("第 22 種:每條繩一端固定、一端接下一個可動輪中心,省力比 = 2 的可動輪數量次方", () => {
   const movable = fig22.parts.filter((p) => p.kind === "pulley" && p.movable).length;
   assert.equal(movable, 3);
-  const { rise, handle, readouts } = lift(fig22, 1.6);
-  close(handle, 1.6);
+  const { rise, ropeEnd, readouts } = lift(fig22, 1.6);
+  close(ropeEnd, 1.6);
   close(rise, 0.2); // 2³ = 8
   assert.equal(readouts["省力比"], "1 : 8");
 });
@@ -149,9 +149,23 @@ test("第 22 種:每條繩一端固定、一端接下一個可動輪中心,省�
 test("第 19–21 種:繩端接在重物上而非定點,原文規則不適用,省力比為 2 的皮帶輪數量次方減 1", () => {
   // 第 19、20 種三個皮帶輪:2³ − 1 = 7;第 21 種兩個:2² − 1 = 3
   for (const [def, pull, ratio] of [[fig19, 1.4, 7], [fig20, 1.4, 7], [fig21, 0.9, 3]]) {
-    const { rise, handle, readouts } = lift(def, pull);
-    close(handle, pull);
+    const { rise, ropeEnd, readouts } = lift(def, pull);
+    close(ropeEnd, pull);
     close(rise, pull / ratio);
     assert.equal(readouts["省力比"], "1 : " + ratio);
+  }
+});
+
+test("繩長守恆:拉動繩端時,畫出的每一條繩總長不變(所以位移比就是由繩長算出的省力比)", () => {
+  const length = (pts) =>
+    pts.slice(1).reduce((sum, p, i) => sum + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1], p[2] - pts[i][2]), 0);
+  for (const def of HOISTS) {
+    const [min, max] = def.driver.range;
+    // 若省力比少算或多算一段繩,繩長會差上「範圍 ÷ 省力比」(至少 1/8);第 14 種的並排輪讓斜繩有微小誤差
+    const tolerance = 0.02 * (max - min);
+    for (const rope of def.parts.filter((p) => p.kind === "rope")) {
+      const change = length(def.pose(max).paths[rope.id].points) - length(def.pose(min).paths[rope.id].points);
+      assert.ok(Math.abs(change) < tolerance, `圖 ${def.figure} 的 ${rope.id} 長度變了 ${change.toFixed(4)}`);
+    }
   }
 });

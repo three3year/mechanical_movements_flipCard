@@ -13,22 +13,22 @@ const MOVABLE = [
 const FIXED = { center: [0.1 + R + R, 2.3, 0], axis: Z, radius: R, sense: -1 };
 const HANGER = 0.85;
 const W = { height: 0.5, radius: 0.34 };
-const HANDLE = [FIXED.center[0] + R + 0.15, 0.8, 0];
+const ROPE_END = [FIXED.center[0] + R + 0.15, 0.8, 0];
 const N = MOVABLE.length;
 
 function layout(pull) {
   const rise = pull / 2 ** N;
   // 繩長守恆:每往上一個可動輪,上升量加倍
   const circles = MOVABLE.map((m, i) => ({ center: [m.x, m.y + rise * 2 ** i, 0], axis: Z, radius: R, sense: 1 }));
-  const handle = [HANDLE[0], HANDLE[1] - pull, 0];
+  const ropeEnd = [ROPE_END[0], ROPE_END[1] - pull, 0];
   const ropes = circles.map((c, i) => {
     const anchor = [c.center[0] - R, CEILING, 0];
-    if (i === N - 1) return routeRope([{ point: anchor }, { circle: c }, { circle: FIXED }, { point: handle }]);
+    if (i === N - 1) return routeRope([{ point: anchor }, { circle: c }, { circle: FIXED }, { point: ropeEnd }]);
     const next = circles[i + 1].center;
     return routeRope([{ point: anchor }, { circle: c }, { point: [next[0], next[1] - R - 0.1, 0] }]);
   });
   const weight = [circles[0].center[0], circles[0].center[1] - HANGER, 0];
-  return { rise, circles, handle, ropes, weight };
+  return { rise, circles, ropeEnd, ropes, weight };
 }
 
 const rest = layout(RANGE[0]);
@@ -53,16 +53,16 @@ export default {
     { id: "strap", kind: "rod" },
     { id: "weight", kind: "weight", center: rest.weight, axis: Y, radius: W.radius, height: W.height },
     ...rest.ropes.map((_, i) => ({ id: `rope${i + 1}`, kind: "rope" })),
-    { id: "handle", kind: "handle", center: rest.handle },
+    { id: "ropeEnd", kind: "ropeEnd", center: rest.ropeEnd },
   ],
-  driver: { part: "handle", type: "translation", range: RANGE, direction: [0, -1, 0] },
+  driver: { part: "ropeEnd", type: "translation", range: RANGE, direction: [0, -1, 0] },
   pose(value) {
     const pull = clamp(value, ...RANGE);
-    const { rise, circles, handle, ropes, weight } = layout(pull);
+    const { rise, circles, ropeEnd, ropes, weight } = layout(pull);
     const parts = {
       fixed: { angle: sheaveAngle(ropes[N - 1], rest.ropes[N - 1], 1, FIXED) },
       weight: { position: weight },
-      handle: { position: handle },
+      ropeEnd: { position: ropeEnd },
     };
     const paths = {
       hanger: rod([FIXED.center[0], CEILING, 0], FIXED.center),

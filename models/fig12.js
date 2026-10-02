@@ -5,14 +5,14 @@ const RANGE = [0, 1.6];
 const CEILING = 2.9;
 const F = { center: [0, 2.2, 0], axis: Z, radius: 0.38, sense: 1 };
 const W = { x: F.radius, y: -1.6, height: 0.55, radius: 0.3 };
-const HANDLE = [-F.radius, 0.4, 0];
+const ROPE_END = [-F.radius, 0.4, 0];
 
 function layout(pull) {
   const rise = pull; // 定滑輪只改變方向:繩端拉多少,重物升多少
   const weight = [W.x, W.y + rise, 0];
   const eye = [W.x, weight[1] + W.height / 2 + 0.1, 0];
-  const handle = [HANDLE[0], HANDLE[1] - pull, 0];
-  return { rise, weight, handle, rope: routeRope([{ point: eye }, { circle: F }, { point: handle }]) };
+  const ropeEnd = [ROPE_END[0], ROPE_END[1] - pull, 0];
+  return { rise, weight, ropeEnd, rope: routeRope([{ point: eye }, { circle: F }, { point: ropeEnd }]) };
 }
 
 const rest = layout(RANGE[0]);
@@ -25,17 +25,17 @@ export default {
     { id: "hanger", kind: "rod" },
     { id: "weight", kind: "weight", center: rest.weight, axis: Y, radius: W.radius, height: W.height },
     { id: "rope", kind: "rope" },
-    { id: "handle", kind: "handle", center: rest.handle },
+    { id: "ropeEnd", kind: "ropeEnd", center: rest.ropeEnd },
   ],
-  driver: { part: "handle", type: "translation", range: RANGE, direction: [0, -1, 0] },
+  driver: { part: "ropeEnd", type: "translation", range: RANGE, direction: [0, -1, 0] },
   pose(value) {
     const pull = clamp(value, ...RANGE);
-    const { rise, weight, handle, rope } = layout(pull);
+    const { rise, weight, ropeEnd, rope } = layout(pull);
     return {
       parts: {
         pulley: { angle: sheaveAngle(rope, rest.rope, 0, F) },
         weight: { position: weight },
-        handle: { position: handle },
+        ropeEnd: { position: ropeEnd },
       },
       paths: {
         rope: { points: rope.points, closed: false },

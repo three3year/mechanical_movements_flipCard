@@ -187,7 +187,7 @@ function box(part, material) {
   return mesh(new THREE.BoxGeometry(...part.size), material);
 }
 
-function handle(part, material) {
+function ropeEnd(part, material) {
   // 繩端的握把:一截橫棒+圓頭
   const g = new THREE.Group();
   const s = part.size ?? 0.16;
@@ -203,7 +203,7 @@ function bar(part, material) {
   return mesh(cylinder(part.radius, part.length), material);
 }
 
-const builders = { pulley, drum, stepped, cone, bevel, shaft, sectorLever, weight, box, handle, bar };
+const builders = { pulley, drum, stepped, cone, bevel, shaft, sectorLever, weight, box, ropeEnd, bar };
 
 export const PATH_KINDS = new Set(["belt", "rope", "rod"]);
 

@@ -5,6 +5,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { LineArtRenderer } from "./lineart.js";
 import { buildPart, PATH_KINDS } from "./parts.js";
 import { PathPart } from "./paths.js";
+import { clamp, lerp3 } from "../models/kit.js";
 
 const PAPER = "#ffffff";
 const ACCENT = "#d4572a";
@@ -43,10 +44,7 @@ function getShared() {
   return shared;
 }
 
-const clamp = (v, [min, max]) => Math.min(max, Math.max(min, v));
 const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
-const lerp = (a, b, t) => a + (b - a) * t;
-const lerp3 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -62,7 +60,7 @@ class Session {
     this.stage = stage;
     this.driverPart = def.parts.find((p) => p.id === def.driver.part);
     this.range = def.driver.range ?? null;
-    this.value = def.driver.initial ?? (this.range ? this.range[0] : 0);
+    this.value = this.range ? this.range[0] : 0;
     this.state = def.states?.initial ?? null;
     this.playing = true;
     this.speedFactor = 1;
@@ -207,7 +205,7 @@ class Session {
   // ── 每一幀 ────────────────────────────
 
   advance(dt) {
-    const speed = (this.def.driver.speed ?? this.defaultSpeed()) * this.speedFactor;
+    const speed = this.defaultSpeed() * this.speedFactor;
     if (!this.range) {
       this.value += speed * dt;
       return;
@@ -361,7 +359,7 @@ class Session {
         Math.abs(corner.dot(right)) / (tan * camera.aspect) + depth,
       );
     }
-    distance *= 1.12 * (this.def.view?.zoom ?? 1);
+    distance *= 1.12;
     camera.position.copy(center).addScaledVector(dir, distance);
     camera.near = distance / 50;
     camera.far = distance * 10;
@@ -403,6 +401,15 @@ class Session {
     return new THREE.Vector2(((s.x + 1) / 2) * p.w, ((1 - s.y) / 2) * p.h);
   }
 
+  // 指標位移 move 沿著「抓取點往 dir 方向移動」在螢幕上的投影,換算成 dir 的倍數
+  alongScreen(move, dir, p) {
+    const step = 0.05;
+    const rate = this.toScreen(this.drag.grab.clone().addScaledVector(dir, step), p)
+      .sub(this.toScreen(this.drag.grab, p))
+      .divideScalar(step);
+    return rate.lengthSq() > 1e-6 ? move.dot(rate) / rate.lengthSq() : 0;
+  }
+
   onPointerDown(e) {
     if (this.drag) {
       e.stopImmediatePropagation(); // 拖主動件時忽略第二根手指
@@ -433,16 +440,11 @@ class Session {
     const { object } = this.objects.get(this.driverPart.id);
     const move = new THREE.Vector2(p.x - last.x, p.y - last.y);
 
-    let delta;
     if (this.def.driver.type === "translation") {
       // 指標沿繩方向(投影到螢幕上)的分量作為位移增量
       const dir = new THREE.Vector3(...this.def.driver.direction);
-      const s = this.toScreen(this.drag.grab.clone().addScaledVector(dir, 0.1), p)
-        .sub(this.toScreen(this.drag.grab, p))
-        .divideScalar(0.1);
-      delta = s.lengthSq() > 1e-6 ? move.dot(s) / s.lengthSq() : 0;
       const before = this.value;
-      this.value = clamp(this.value + delta, this.range);
+      this.value = clamp(this.value + this.alongScreen(move, dir, p), ...this.range);
       this.drag.grab.addScaledVector(dir, this.value - before);
       return;
     }
@@ -450,6 +452,7 @@ class Session {
     const center = object.getWorldPosition(new THREE.Vector3());
     const axis = new THREE.Vector3(...(this.driverPart.axis ?? [0, 0, 1])).normalize();
     const facing = axis.dot(camera.position.clone().sub(center).normalize());
+    let delta;
     if (Math.abs(facing) > 0.35) {
       // 正對著軸:用指標繞軸心在螢幕上的角度變化
       const c = this.toScreen(center, p);
@@ -462,13 +465,10 @@ class Session {
     } else {
       // 側看著軸(角度變化不可靠):用抓取點的切線方向換算
       const tangent = axis.clone().cross(this.drag.grab.clone().sub(center));
-      const s = this.toScreen(this.drag.grab.clone().addScaledVector(tangent, 0.05), p)
-        .sub(this.toScreen(this.drag.grab, p))
-        .divideScalar(0.05);
-      delta = s.lengthSq() > 1e-6 ? move.dot(s) / s.lengthSq() : 0;
+      delta = this.alongScreen(move, tangent, p);
     }
     const before = this.value;
-    this.value = this.range ? clamp(this.value + delta, this.range) : this.value + delta;
+    this.value = this.range ? clamp(this.value + delta, ...this.range) : this.value + delta;
     const applied = this.value - before;
     this.drag.grab.sub(center).applyAxisAngle(axis, applied).add(center);
   }
@@ -485,7 +485,7 @@ class Session {
 // 主動件的透明點擊範圍:輪輻之間的空隙、細小的繩端也抓得到
 function hitProxy(part) {
   let geometry;
-  if (part.kind === "handle") {
+  if (part.kind === "ropeEnd") {
     geometry = new THREE.SphereGeometry(0.32, 12, 8);
   } else if (part.radius) {
     const width = part.width ?? part.length ?? 0.3;

@@ -2,7 +2,7 @@
   "name": "claude-flipcard",
   "private": true,
   "type": "module",
-  "description": "機構圖鑑字卡;零依賴,測試用 Node 內建測試執行器",
+  "description": "機構圖鑑卡片;零依賴,測試用 Node 內建測試執行器",
   "scripts": {
     "test": "node --test"
   }

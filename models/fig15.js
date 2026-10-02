@@ -28,10 +28,10 @@ function layout(pull) {
   const nodes = [{ point: [-UNIT, lowerY + 0.35, grooveZ(UPPER, 0)] }];
   for (let i = 0; i < 3; i++) nodes.push({ circle: groove(UPPER, i, UPPER.y) }, { circle: groove(LOWER, i, lowerY) });
   const end = nodes[nodes.length - 1].circle;
-  const handle = [-end.radius, UPPER.y + 0.55 + pull, end.center[2]];
-  nodes.push({ point: handle });
+  const ropeEnd = [-end.radius, UPPER.y + 0.55 + pull, end.center[2]];
+  nodes.push({ point: ropeEnd });
   const weight = [0, lowerY - HANGER, LOWER.z];
-  return { rise, lowerY, handle, weight, rope: routeRope(nodes) };
+  return { rise, lowerY, ropeEnd, weight, rope: routeRope(nodes) };
 }
 
 const rest = layout(RANGE[0]);
@@ -54,13 +54,13 @@ export default {
     { id: "strap", kind: "rod" },
     { id: "weight", kind: "weight", center: rest.weight, axis: Y, radius: W.radius, height: W.height },
     { id: "rope", kind: "rope" },
-    { id: "handle", kind: "handle", center: rest.handle },
+    { id: "ropeEnd", kind: "ropeEnd", center: rest.ropeEnd },
   ],
-  driver: { part: "handle", type: "translation", range: RANGE, direction: [0, 1, 0] },
+  driver: { part: "ropeEnd", type: "translation", range: RANGE, direction: [0, 1, 0] },
   view: { direction: [0.45, 0.1, 1] },
   pose(value) {
     const pull = clamp(value, ...RANGE);
-    const { rise, lowerY, handle, weight, rope } = layout(pull);
+    const { rise, lowerY, ropeEnd, weight, rope } = layout(pull);
     // 溝槽 k 上的繩速是重物速度的 k 倍、半徑是 k 個單位,所以兩塊都以「重物位移 ÷ 單位半徑」整塊轉動
     const angle = -rise / UNIT;
     return {
@@ -68,7 +68,7 @@ export default {
         upper: { angle },
         lower: { position: [0, lowerY, LOWER.z], angle },
         weight: { position: weight },
-        handle: { position: handle },
+        ropeEnd: { position: ropeEnd },
       },
       paths: {
         rope: { points: rope.points, closed: false },

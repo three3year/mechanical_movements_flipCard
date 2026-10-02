@@ -10,12 +10,14 @@ const W = { y: -1.45, height: 0.5, depth: 0.6 };
  * radii:由上到下各輪半徑;ys:各輪起始高度;top:最上方定滑輪的 x。
  * 第 i 個輪掛在第 i−1 條繩的左端,所以 x 依序往左錯開一個半徑。
  */
-export function hungFromWeight({ figure, radii, ys, top, range, handleOffset = [-0.65, -0.2] }) {
+export function hungFromWeight({ figure, radii, ys, top, range }) {
   const n = radii.length;
   const xs = [top];
   for (let i = 1; i < n; i++) xs.push(xs[i - 1] - radii[i - 1]);
   const hookX = xs.map((x, i) => x + radii[i]); // 各繩接在重物上的位置
-  const left = Math.min(...xs.map((x, i) => x - radii[i])) - 0.2;
+  // 繩端從最下方輪的左側垂直垂下;重物從它右邊開始,繩端拉到底也碰不到
+  const endX = xs[n - 1] - radii[n - 1];
+  const left = endX + 0.35;
   const right = Math.max(...hookX) + 0.2;
   const weightX = (left + right) / 2;
   const ratio = 2 ** n - 1;
@@ -29,12 +31,12 @@ export function hungFromWeight({ figure, radii, ys, top, range, handleOffset = [
     for (let i = 1; i < n; i++) drops.push(2 * drops[i - 1] + rise);
     const circles = xs.map((x, i) => ({ center: [x, ys[i] - drops[i], 0], axis: Z, radius: radii[i], sense: 1 }));
     // 最後一條繩:繩端下降 = 2 × 最下方輪的下降量 + 重物上升量 = pull
-    const handle = [xs[n - 1] - radii[n - 1] + handleOffset[0], ys[n - 1] + handleOffset[1] - pull, 0];
+    const ropeEnd = [endX, ys[n - 1] - 0.2 - pull, 0];
     const ropes = circles.map((c, i) => {
-      const end = i < n - 1 ? [circles[i + 1].center[0], circles[i + 1].center[1] + radii[i + 1] + 0.14, 0] : handle;
+      const end = i < n - 1 ? [circles[i + 1].center[0], circles[i + 1].center[1] + radii[i + 1] + 0.14, 0] : ropeEnd;
       return routeRope([{ point: [hookX[i], weightTop, 0] }, { circle: c }, { point: end }]);
     });
-    return { rise, weightY, circles, handle, ropes };
+    return { rise, weightY, circles, ropeEnd, ropes };
   }
 
   const rest = layout(range[0]);
@@ -59,13 +61,13 @@ export function hungFromWeight({ figure, radii, ys, top, range, handleOffset = [
       ...rest.circles.slice(1).map((_, i) => ({ id: `hook${i + 2}`, kind: "rod" })),
       { id: "weight", kind: "box", center: [weightX, W.y, 0], size: [right - left, W.height, W.depth] },
       ...ropeIds.map((id) => ({ id, kind: "rope" })),
-      { id: "handle", kind: "handle", center: rest.handle },
+      { id: "ropeEnd", kind: "ropeEnd", center: rest.ropeEnd },
     ],
-    driver: { part: "handle", type: "translation", range, direction: [0, -1, 0] },
+    driver: { part: "ropeEnd", type: "translation", range, direction: [0, -1, 0] },
     pose(value) {
       const pull = clamp(value, ...range);
-      const { rise, weightY, circles, handle, ropes } = layout(pull);
-      const parts = { weight: { position: [weightX, weightY, 0] }, handle: { position: handle } };
+      const { rise, weightY, circles, ropeEnd, ropes } = layout(pull);
+      const parts = { weight: { position: [weightX, weightY, 0] }, ropeEnd: { position: ropeEnd } };
       const paths = { hanger: rod([top, CEILING, 0], circles[0].center) };
       circles.forEach((c, i) => {
         parts[pulleyIds[i]] = { position: c.center, angle: sheaveAngle(ropes[i], rest.ropes[i], 0, c) };

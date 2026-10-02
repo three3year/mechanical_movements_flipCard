@@ -235,7 +235,7 @@
           console.error(err);
           if (seq !== renderSeq) return;
           figMode = "illustration";
-          notice = "模型載入失敗,先顯示插圖;請檢查網路後再試。";
+          notice = "模型載入失敗,先顯示插圖;請檢查網路後重新整理頁面。";
         }
       }
 
@@ -363,10 +363,10 @@
       if (e.key === "Escape") goBack();
     });
 
-    // 手機左右滑動換頁;模型區與切換列上的手勢是在操作模型,不翻頁
+    // 手機左右滑動換頁;模型區上的手勢是在操作模型,不翻頁
     let touchX = null;
     cardEl.addEventListener("touchstart", (e) => {
-      if (e.target.closest(".stage, .figbar")) {
+      if (e.target.closest(".stage")) {
         touchX = null;
         return;
       }
