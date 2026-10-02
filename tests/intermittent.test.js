@@ -244,3 +244,32 @@ test("第 84 種:抬起 A 時框架被推向左方,降下 A 時推向右方,置�
   assert.equal(frameShift(turns, "middle"), 0, "置中:不動");
   close(Math.abs(frameShift(2 * Math.PI * 2 + 3.5, "raised") - frameShift(2 * Math.PI + 3.5, "raised")), 0.32, "每圈推一齒");
 });
+
+import { pump, lift as lift86 } from "../models/fig086.js";
+import { reverser, leverF } from "../models/fig087.js";
+import { wheelB } from "../models/fig088.js";
+
+test("第 86 種:凸輪每轉一圈抓住制動裝置 B,帶輪 A 轉起、抬起繩索;到擋止處釋放,輪被泵桶拉回原位", () => {
+  close(pump(lift86 * 0.5).wheel, lift86 * 0.5, "鉤住時輪與凸輪同轉");
+  assert.equal(pump(lift86 * 0.5).hooked, true);
+  close(pump(Math.PI * 1.9).wheel, 0, "釋放後回到原位");
+  close(pump(2 * Math.PI + 0.3).wheel, pump(0.3).wheel, "每圈重複");
+});
+
+test("第 87 種:軸自動反向——驅動齒輪連續轉,軸來回往復;每次反向時加重槓桿 F 倒向另一側", () => {
+  const span = (300 * Math.PI) / 180;
+  const a = reverser(span * 0.5).shaft;
+  const b = reverser(span * 1.0 - 1e-9).shaft;
+  const c = reverser(span * 1.5).shaft;
+  assert.ok((b - a) * (c - b) < 0, "前一程與後一程轉向相反");
+  close(reverser(span * 2).shaft, reverser(0).shaft, "兩程後回到原處", 1e-9);
+  assert.ok(leverF(span * 0.5) * leverF(span * 1.5) < 0, "兩程中 F 倒向不同側");
+  close(leverF(span * (1 - 1e-6)), 0, "一程結束時 F 被推到垂直", 1e-3);
+});
+
+test("第 88 種:凸輪 A 連續旋轉,輪 B 每圈被帶著轉半圈、其餘半圈靜止", () => {
+  close(wheelB(2 * Math.PI) - wheelB(0), Math.PI, "每圈半圈");
+  const rest = sweep(2 * Math.PI - 0.05, 20, Math.PI + 0.05).map(wheelB);
+  for (const r of rest) close(r, rest[0], "後半圈靜止");
+  close(wheelB(1) - wheelB(0.5), 0.5, "前半圈與凸輪同轉");
+});
