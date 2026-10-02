@@ -43,6 +43,7 @@
       if (q.get("play") !== "1") session.setPlaying(false);
       session.transition = null;
       session.activate();
+      window.session = session;
       document.title = "ready";
     } catch (err) {
       document.getElementById("msg").textContent = String(err.stack ?? err);

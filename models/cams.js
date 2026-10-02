@@ -39,3 +39,27 @@ export function sampleOutline(radiusAt, samples = 360) {
     return [r * Math.cos(a), r * Math.sin(a)];
   });
 }
+
+/**
+ * 滾子從動件用的凸輪輪廓:滾子中心走的是節曲線 pitchAt(φ),凸輪輪廓是滾子掃過範圍的邊界
+ * (沿每個方向取最先碰到任一滾子圓的距離)。滾子中心因此精確地照節曲線移動。
+ */
+export function outlineForRoller(pitchAt, roller, samples = 360) {
+  const centers = Array.from({ length: samples * 2 }, (_, i) => {
+    const a = (i / (samples * 2)) * TAU;
+    const r = pitchAt(a);
+    return [r * Math.cos(a), r * Math.sin(a)];
+  });
+  return Array.from({ length: samples }, (_, i) => {
+    const a = (i / samples) * TAU;
+    const ux = Math.cos(a);
+    const uy = Math.sin(a);
+    let best = pitchAt(a);
+    for (const [cx, cy] of centers) {
+      const along = cx * ux + cy * uy;
+      const h2 = roller * roller - (cx * cx + cy * cy - along * along);
+      if (h2 >= 0 && along > 0) best = Math.min(best, along - Math.sqrt(h2));
+    }
+    return [best * ux, best * uy];
+  });
+}

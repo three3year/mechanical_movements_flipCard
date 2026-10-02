@@ -62,7 +62,7 @@ function pulley(part, material, mark) {
   if (part.style === "spoked") {
     const rim = Math.max(0.06, r * 0.13);
     g.add(mesh(ring(r, r - rim, w), material));
-    spokes(g, 4, r * 0.18, r - rim * 0.5, Math.max(0.05, r * 0.1), w * 0.45, material)[0].material = mark;
+    spokes(g, part.spokes ?? 4, r * 0.18, r - rim * 0.5, Math.max(0.05, r * 0.1), w * 0.45, material)[0].material = mark;
     g.add(mesh(cylinder(r * 0.22, w * 0.9), material));
   } else {
     // 實心輪:輪緣+內凹的輪板+輪轂,輪板上一條從輪轂到輪緣的記號條
@@ -230,21 +230,23 @@ function markDot(g, at, size, thickness, mark) {
   g.add(mesh(cylinder(size, thickness * 1.15, size, 20), mark, [at[0], at[1], 0]));
 }
 
+// 板面上的刻線圓:細圓環在法線上的落差描出一圈線,正面看也看得到(原圖的同心圓)
+function faceCircle(g, r, z, material, tube) {
+  g.add(mesh(new THREE.TorusGeometry(r, tube, 6, Math.max(24, Math.round(r * 60))), material, [0, 0, z]));
+}
+
 function plate(part, material, mark) {
   const g = new THREE.Group();
   const t = part.thickness ?? 0.2;
   g.add(mesh(extrude(part.shape, t), material));
   if (part.mark) markDot(g, part.mark, part.markSize ?? 0.08, t, mark);
   if (part.hub) g.add(mesh(cylinder(part.hub, t * 1.6), material));
+  // circles:板面上的刻線圓(原圖的同心圓)
+  for (const r of part.circles ?? []) for (const z of [t / 2, -t / 2]) faceCircle(g, r, z, material, Math.max(0.008, r * 0.008));
   return g;
 }
 
 const internalRim = (part) => part.rim ?? part.radius + 2.6 * gearSize(part.radius, part.teeth).addendum;
-
-// 板面上的刻線圓:細圓環在法線上的落差描出一圈線,正面看也看得到(原圖的同心圓)
-function faceCircle(g, r, z, material, tube) {
-  g.add(mesh(new THREE.TorusGeometry(r, tube, 6, Math.max(24, Math.round(r * 60))), material, [0, 0, z]));
-}
 
 // 齒輪:外齒輪板面上有齒圈內緣與輪轂兩圈刻線(原圖的同心圓),齒 0 塗記號色;內齒輪是帶內齒的環
 function gear(part, material, mark) {

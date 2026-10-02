@@ -33,7 +33,7 @@ const fragmentShader = /* glsl */ `
     vec3 n = texture2D(tNormal, uv).xyz * 2.0 - 1.0;
     float d = viewZ(uv);
     float normalEdge = smoothstep(0.25, 0.45, 1.0 - dot(n0, n));
-    float depthEdge = smoothstep(0.015, 0.03, abs(d - d0) / d0);
+    float depthEdge = smoothstep(0.005, 0.01, abs(d - d0) / d0);
     return max(normalEdge, depthEdge);
   }
 
