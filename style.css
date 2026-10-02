@@ -234,7 +234,52 @@ nav.tabs button.active {
 /* ── 模型 ─────────────────────────── */
 
 .card .stage {
-  padding: 1rem 1.2rem 0.5rem;
+  position: relative;
+  padding: 1rem 1.6rem 0.5rem;
+  /* 3D 畫面以外的留白可點擊翻頁 */
+  cursor: pointer;
+  user-select: none;
+}
+
+.stage .stage-view,
+.stage .stage-speed {
+  cursor: default;
+}
+
+/* 模型模式的翻頁提示:只佔左右留白,不蓋住 3D 畫面 */
+.card .stage .hint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  transition: background 0.2s;
+}
+
+.card .stage .hint.prev {
+  left: 0;
+}
+
+.card .stage .hint.next {
+  right: 0;
+}
+
+.card .stage .hint span {
+  opacity: 0.3;
+  transition: opacity 0.2s;
+}
+
+.card .stage .hint:hover {
+  background: rgba(61, 50, 38, 0.06);
+}
+
+.card .stage .hint:hover span {
+  opacity: 0.85;
 }
 
 .stage .stage-view {

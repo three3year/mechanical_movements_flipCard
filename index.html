@@ -248,6 +248,9 @@
         entryIndex === chapter.entries.length - 1;
       const imgs = [];
       if (session) {
+        // 左右留白的翻頁提示,和插圖模式一致
+        if (!atStart) stage.appendChild(makeHint("prev", "‹"));
+        if (!atEnd) stage.appendChild(makeHint("next", "›"));
         fragment.appendChild(stage);
       } else {
         const fig = document.createElement("div");
@@ -346,11 +349,13 @@
     prevBtn.addEventListener("click", () => step(-1));
     nextBtn.addEventListener("click", () => step(1));
 
-    // 點圖片區左半邊=上一張,右半邊=下一張;文字區不翻頁,保留選取複製
+    // 點圖片區左半邊=上一張,右半邊=下一張;文字區不翻頁,保留選取複製。
+    // 模型模式下,3D 畫面與控制項是在操作模型,只有它們以外的留白才翻頁
     cardEl.addEventListener("click", (e) => {
-      const fig = e.target.closest(".fig");
-      if (!fig) return;
-      const rect = fig.getBoundingClientRect();
+      const area = e.target.closest(".fig, .stage");
+      if (!area) return;
+      if (area.matches(".stage") && e.target.closest(".stage-view, button, input, label")) return;
+      const rect = area.getBoundingClientRect();
       step(e.clientX - rect.left < rect.width / 2 ? -1 : 1);
     });
 
