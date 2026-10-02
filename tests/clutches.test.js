@@ -64,3 +64,38 @@ test("第 53 種:雙離合器接合左輪或右輪,水平軸朝相反方向轉;�
   close(Math.abs(left), Math.abs(right));
   assert.equal(turned(fig53, "shaft", 0, 0.5, "neutral"), 0);
 });
+
+import fig54 from "../models/fig054.js";
+import fig55, { A as A55, C as C55 } from "../models/fig055.js";
+import fig56 from "../models/fig056.js";
+import fig57, { train, teeth as teeth57 } from "../models/fig057.js";
+
+test("第 54 種:星形輪產生交替方向的旋轉——小齒輪 A 轉向不變,換到齒條另一面時輪反轉", () => {
+  const front = turned(fig54, "wheel", 0, 0.8, "front");
+  const back = turned(fig54, "wheel", 0, 0.8, "back");
+  assert.ok(front * back < 0);
+  close(Math.abs(front), (0.8 * 8) / 36);
+});
+
+test("第 55 種:同一軸線上的 A 與 C 經小齒輪產生不同的轉速(反向,齒數反比)", () => {
+  close(turned(fig55, "c", 0, 1), -(A55.teeth / C55.teeth));
+});
+
+test("第 56 種:按下槓桿時大齒輪的軸被往後拉、退出嚙合,主軸照轉而大齒輪停住", () => {
+  const on = fig56.pose(0.5, "engaged").parts.gear;
+  const off = fig56.pose(0.5, "free").parts.gear;
+  assert.ok(off.position[0] < on.position[0], "大齒輪往後退");
+  assert.notEqual(turned(fig56, "gear", 0, 1, "engaged"), 0);
+  assert.equal(turned(fig56, "gear", 0, 1, "free"), 0);
+});
+
+test("第 57 種:大齒輪與同心齒輪被皮帶以相反方向驅動,中間小齒輪既自轉又繞共同中心公轉", () => {
+  const a = train(0);
+  const b = train(0.6);
+  assert.ok((b.ring - a.ring) * (b.sun - a.sun) < 0, "兩個同心齒輪反向");
+  assert.notEqual(b.carrier, a.carrier, "小齒輪繞共同中心公轉");
+  assert.notEqual(b.planet, a.planet, "小齒輪自轉");
+  // 周轉輪系:以行星架為參考,大齒輪與同心齒輪的相對轉角比為 −N日/N環
+  const dc = b.carrier - a.carrier;
+  close((b.ring - a.ring - dc) / (b.sun - a.sun - dc), -teeth57.sun / teeth57.ring);
+});
