@@ -3,9 +3,9 @@
 import { deg, polar, add, dist } from "./kit.js";
 import { circleCircle, angleOf } from "./linkage.js";
 
-const DISC = { center: [-1.6, 0, 0], radius: 1.45, pin: 1.05 };
+const DISC = { center: [-1.6, 0, 0], radius: 1.45, pin: 0.62 };
 const PIVOT = [1.55, 0.05, 0.25];
-const UP = { length: 1.35, at: deg(98) }; // 上臂(原圖位置)
+const UP = { length: 1.6, at: deg(98) }; // 上臂(原圖位置)
 const RIGHT = { length: 1.55, at: deg(4) }; // 右臂
 const START = deg(155);
 const PIN0 = add(DISC.center, polar(DISC.pin, START));
