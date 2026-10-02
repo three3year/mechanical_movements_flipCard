@@ -5,8 +5,9 @@
 // 作圖軌跡(trace)是繪圖儀器畫出的線,以單一鉛筆色呈現。
 import * as THREE from "three";
 import { MOVING_KINDS } from "../models/kinds.js";
+import { FLUID_LAYER } from "./lineart.js";
 
-const RADIUS = { belt: 0.05, rope: 0.045, rod: 0.03, chain: 0.06, trace: 0.025 };
+const RADIUS = { belt: 0.05, rope: 0.045, rod: 0.03, chain: 0.06, trace: 0.035 };
 const MARK_SPACING = { belt: 0.42, rope: 0.24, chain: 0.36 }; // 相鄰兩個記號的距離,也就是一個色段的長度
 const TRACE_COLOR = "#b3261e";
 const SEGMENT_COLORS = ["#f0b429", "#3aa676", "#7b4bb7"];
@@ -57,13 +58,15 @@ export class PathPart {
     this.kind = part.kind;
     this.radius = part.radius ?? RADIUS[part.kind];
     this.material = material.clone();
-    if (part.kind === "trace") this.material.color.set(TRACE_COLOR);
+    if (part.kind === "trace") this.material = new THREE.MeshBasicMaterial({ color: TRACE_COLOR });
     if (MOVING_KINDS.has(part.kind)) {
       this.spacing = MARK_SPACING[part.kind];
       this.texture = segmentTexture();
       this.material.map = this.texture;
     }
     this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), this.material);
+    // 作圖軌跡是畫在紙上的線,不描邊(放在流體層,只畫顏色)
+    if (part.kind === "trace") this.mesh.layers.set(FLUID_LAYER);
     this.points = null;
   }
 

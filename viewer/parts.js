@@ -2,7 +2,7 @@
 // 由 viewer 對齊到定義中的 axis;皮帶、繩、連桿這類路徑零件由 paths.js 依姿勢建立。
 // 零件種類的清單在 models/kinds.js;齒輪、凸輪等板件的輪廓由 models/shapes.js 計算。
 import * as THREE from "three";
-import { gearShape, gearSize, rackShape, toothOutline } from "../models/shapes.js";
+import { gearShape, gearSize, rackShape, toothOutline, sectorShape } from "../models/shapes.js";
 import { PATH_KINDS } from "../models/kinds.js";
 
 const SEGMENTS = 48;
@@ -256,6 +256,14 @@ function gear(part, material, mark) {
   const { dedendum } = gearSize(part.radius, part.teeth);
   const root = part.radius - dedendum;
   const hub = Math.max((part.bore ?? 0) * 1.6, root * 0.28);
+  if (part.span) {
+    // 扇形齒輪:只有一段齒,第一個齒塗記號色
+    g.add(mesh(extrude(sectorShape(part), w), material));
+    g.add(mesh(cylinder(Math.max(part.bore ?? 0, part.radius * 0.12), w * 1.4), material));
+    const first = Math.ceil(part.span[0] / ((2 * Math.PI) / part.teeth) + 0.5 - 1e-9);
+    g.add(mesh(extrude({ outline: toothOutline(part, first) }, w * 1.08), mark));
+    return g;
+  }
   g.add(mesh(extrude(gearShape({ ...part, mask }), w), material));
   if (!part.internal) {
     const tube = Math.max(0.008, part.radius * 0.011);

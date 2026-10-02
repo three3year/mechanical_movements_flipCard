@@ -130,6 +130,32 @@ export function gearShape({ teeth, radius, internal = false, rim, bore = 0, mask
   return { outline: profile, holes: bore ? [circle(bore).reverse()] : [] };
 }
 
+/**
+ * 扇形齒輪:只有 span = [a0, a1](局部角)範圍內的齒,兩側直線收到軸心。
+ * 齒 i 的中心在 i·齒距,與完整齒輪相同,所以咬合計算照用 gears.meshAngle。
+ */
+export function sectorShape({ teeth, radius, span, bore = 0 }) {
+  const { m, addendum, dedendum, pitch } = gearSize(radius, teeth);
+  const tip = radius + addendum;
+  const root = radius - dedendum;
+  const [a0, a1] = span;
+  const first = Math.ceil(a0 / pitch + 0.5 - 1e-9);
+  const last = Math.floor(a1 / pitch - 0.5 + 1e-9);
+  const wr = halfWidth(radius, m, root, false);
+  const wt = halfWidth(radius, m, tip, false);
+  const pts = [[0, 0]];
+  let at = a0;
+  for (let i = first; i <= last; i++) {
+    const a = i * pitch;
+    pts.push(...arcPoints(root, at, a - wr).slice(0, -1));
+    pts.push([root * Math.cos(a - wr), root * Math.sin(a - wr)]);
+    pts.push(...arcPoints(tip, a - wt, a + wt));
+    at = a + wr;
+  }
+  pts.push(...arcPoints(root, at, a1));
+  return { outline: pts, holes: bore ? [circle(bore).reverse()] : [] };
+}
+
 /** 齒條:沿局部 X,齒朝 +Y,節線在 y = 0;齒 k 的中心在 x = (k − (n−1)/2)·齒距 */
 export function rackShape({ teeth, pitch, depth }) {
   const m = pitch / Math.PI;

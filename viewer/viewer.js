@@ -135,7 +135,7 @@ class Session {
     const fluidMaterials = {};
     const fluidMaterial = (fluid) =>
       (fluidMaterials[fluid] ??= (() => {
-        const m = new THREE.MeshBasicMaterial({ color: FLUID_COLORS[fluid], transparent: true, opacity: 0.45, depthWrite: false });
+        const m = new THREE.MeshBasicMaterial({ color: FLUID_COLORS[fluid], transparent: true, opacity: 0.6, depthWrite: false });
         this.materials.push(m);
         return m;
       })());
@@ -672,7 +672,10 @@ class Session {
     const { object } = this.objects.get(grip);
     const local = object.worldToLocal(hit.point.clone());
     local.multiply(object.scale); // worldToLocal 已除掉縮放;placement 不含縮放
-    this.drag = { id: e.pointerId, last: this.pointer(e), grab: hit.point.clone(), grip, local };
+    // 抓取處本身會移動(不只繞固定軸轉)時,改用數值微分的拖動
+    const now = this.pose(this.value).parts[grip] ?? {};
+    const moving = !!(now.position || now.from || now.rotation);
+    this.drag = { id: e.pointerId, last: this.pointer(e), grab: hit.point.clone(), grip, local, moving };
     this.setPlaying(false);
   }
 
@@ -688,7 +691,7 @@ class Session {
     this.drag.last = p;
     const move = new THREE.Vector2(p.x - last.x, p.y - last.y);
     const d = this.def.driver;
-    const simple = !this.cycle && this.drag.grip === d.part;
+    const simple = !this.cycle && this.drag.grip === d.part && !this.drag.moving;
 
     if (!simple) {
       this.dragNumeric(move, p);
