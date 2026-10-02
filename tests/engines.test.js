@@ -145,3 +145,47 @@ test("第 169 種:以短連桿取代溝槽,主曲柄半徑固定、轉一圈", (
     close(dist(e, q), sizes169.LINK, "連桿長度", 1e-9);
   }
 });
+
+import { valveGear as valve171 } from "../models/fig171.js";
+import { stroke as stroke175 } from "../models/fig175.js";
+import { reverser } from "../models/fig179.js";
+import { gear as gear185 } from "../models/fig185.js";
+
+const travel = (fn, n = 360) => {
+  const xs = sweep(TAU, n).map(fn);
+  return Math.max(...xs) - Math.min(...xs);
+};
+
+test("第 185 種:滑塊在連桿一端得到偏心輪的全部行程;在中間時閥門(幾乎)靜止;在兩者之間只得到部分行程", () => {
+  const full = travel((t) => gear185(t, "forward").valve);
+  const part = travel((t) => gear185(t, "cutoff").valve);
+  const mid = travel((t) => gear185(t, "mid").valve);
+  assert.ok(full > part && part > mid, "全程 > 膨脹 > 中位");
+  assert.ok(mid < full * 0.2, "中位時閥門幾乎不動");
+  // 前進與後退:閥門的動作相位相反(由兩個不同的偏心輪帶動)
+  const f = gear185(0.4, "forward").valve - gear185(0, "forward").valve;
+  const b = gear185(0.4, "backward").valve - gear185(0, "backward").valve;
+  assert.ok(f * b < 0, "前進與後退時閥門反向");
+});
+
+test("第 171 種:連桿運動帶動閥桿,經曲面滑塊與搖臂軸傳給閥門;中位時幾乎不動", () => {
+  const fwd = travel((t) => valve171(t, "forward").armAngle);
+  const mid = travel((t) => valve171(t, "mid").armAngle);
+  assert.ok(fwd > 0.05 && mid < fwd * 0.2);
+});
+
+test("第 175 種:曲柄轉一圈,長槽中的銷往返一次", () => {
+  const ys = sweep(TAU, 720).map((t) => stroke175(t).y);
+  let turns = 0;
+  for (let i = 2; i < ys.length; i++) if ((ys[i] - ys[i - 1]) * (ys[i - 1] - ys[i - 2]) < 0) turns++;
+  assert.ok(turns <= 2, "一圈內只往返一次");
+  close(ys[0], ys[ys.length - 1], "回到原處", 1e-9);
+});
+
+test("第 179 種:偏心輪相對軸轉半圈,閥門的動作反向(引擎因此反轉)", () => {
+  for (const t of sweep(TAU, 12)) {
+    const a = reverser(t, "forward").valveX - reverser(0, "forward").valveX;
+    const b = reverser(t, "backward").valveX - reverser(0, "backward").valveX;
+    close(a, -b, `轉角 ${t}`, 0.04); // 偏心桿的斜度造成少許不對稱
+  }
+});
