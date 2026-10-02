@@ -140,3 +140,27 @@ test("第 125 種:三個齒輪的曲柄銷經兩層槓桿合成,頂桿做變化�
   const { pins, u1 } = compound(1.3);
   close(Math.hypot(u1[0] - pins[0][0], u1[1] - pins[0][1]), 4.0, "連桿長度不變", 1e-9);
 });
+
+import { spindleAngle, pulleyRadius } from "../models/fig124.js";
+import { crank, arms as arms126 } from "../models/fig126.js";
+import { racks as racks127 } from "../models/fig127.js";
+
+test("第 124 種:提琴式鑽——弓往復拉動,弦帶著鑽軸交替正反旋轉(弓移動量 = 輪緣轉過的弧長)", () => {
+  close(spindleAngle(0.6) - spindleAngle(0), -0.6 / pulleyRadius);
+  assert.ok((spindleAngle(0.5) - spindleAngle(0)) * (spindleAngle(-0.5) - spindleAngle(0)) < 0, "來回拉時轉向相反");
+});
+
+test("第 126 種:曲柄搖臂改變力的方向——往下拉繩,直臂下端往左(水平)移動", () => {
+  const a = crank(0);
+  const b = crank(0.5);
+  close(b.across[1] - a.across[1], 0.5, "橫臂端被拉起的量 = 繩被拉下的量");
+  assert.ok(b.down[0] < a.down[0], "直臂下端往左");
+  close(Math.hypot(b.down[0] - 1.45, b.down[1] + 0.95), arms126.down, "直臂長度不變");
+});
+
+test("第 127 種:槓桿振動,齒輪兩側的齒條一根上升時另一根下降", () => {
+  const a = racks127(0);
+  const b = racks127(0.4);
+  assert.ok((b.left - a.left) * (b.right - a.right) < 0, "兩根齒條反向");
+  close(Math.abs(b.left - a.left), 1.05 * 0.4, "移動量 = 節圓半徑 × 轉角");
+});
