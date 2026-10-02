@@ -35,8 +35,9 @@ test("滑輪組的主動件是繩端:位移型、有範圍、往下拉", () => {
     assert.equal(def.driver.part, "ropeEnd");
     assert.equal(def.driver.type, "translation");
     assert.ok(def.driver.range[0] < def.driver.range[1]);
-    // 第 15 種的繩端從下方滑輪塊往上拉,其餘往下拉
-    assert.deepEqual(def.driver.direction, def === fig15 ? [0, 1, 0] : [0, -1, 0]);
+    // 第 15 種的繩端從下方滑輪塊往上拉,其餘往下拉(第 18 種依原圖往左下斜拉)
+    const down = def.driver.direction[1];
+    assert.ok(def === fig15 ? down > 0 : down < 0);
   }
 });
 

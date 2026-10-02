@@ -1,33 +1,57 @@
-// 第 23 種:把旋轉運動傳到可動皮帶輪。皮帶輪 A 裝在可沿導軌滑動的框架裡(框架原圖未繪出,此處省略),
-// 由繞過兩個導引輪 B、B 的繩懸掛,另一端掛配重 C,讓皮帶維持均勻張力。
-// A 抬升或降下時,配重 C 依繩長守恆反向移動同樣的距離。
+// 第 23 種:把旋轉運動傳到可動皮帶輪(圖底部的輪)。底部輪抬升或降下時皮帶會鬆弛或繃緊;
+// 為了讓皮帶保持均勻張力,皮帶輪 A 裝在可沿導軌滑動的框架裡(框架原圖未繪出,此處省略),
+// 由繞過兩個導引輪 B、B 的繩懸掛,另一端掛配重 C。
+// 依原圖,一條皮帶從左側主動輪頂端越過 A 的前溝、繞過底部輪,再越過 A 的後溝回到主動輪;
+// A 的兩道溝是並排的兩個鬆動輪,皮帶在兩溝上方向相反。
+// 底部輪升降時,A 的高度由「皮帶總長不變」算出;C 再依繩長守恆反向移動同樣的距離。
 import { Z, routeBelt, routeRope, beltTravel, wheelAngle, memo, rod } from "./kit.js";
 
-const FRONT = 0.12; // 左輪 ↔ A 外溝的皮帶在前,A 內溝 ↔ 下方輪的皮帶在後
-const LEFT = { center: [-2.6, 0, FRONT], axis: Z, radius: 0.9, sense: 1 };
-const A = { x: 0, y: 0.35, outer: 0.42, inner: 0.26 };
-const BOTTOM = { center: [0.45, -2.1, -FRONT], axis: Z, radius: 0.55, sense: 1 };
-const GUIDE = 0.2;
-const B1 = { center: [A.x + GUIDE, 2.0, 0], axis: Z, radius: GUIDE, sense: -1 };
-const B2 = { center: [1.7, 2.0, 0], axis: Z, radius: GUIDE, sense: -1 };
+const GROOVE = 0.12; // A 的前溝與後溝沿軸的位置
+const LEFT = { center: [-4.1, -0.55, 0], axis: Z, radius: 0.9, sense: -1 };
+const A = { x: 0, y: 0, outer: 0.5, inner: 0.32 };
+const BOTTOM = { x: 1.27, y: -2.85, radius: 0.73, sense: -1 };
+const GUIDE = 0.25;
+const B1 = { center: [A.x + GUIDE, 1.6, 0], axis: Z, radius: GUIDE, sense: -1 };
+const B2 = { center: [2.62, 1.6, 0], axis: Z, radius: GUIDE, sense: -1 };
 const HOOK = 0.62; // A 軸心到框架吊點
-const C = { x: B2.center[0] + GUIDE, y: 0.8, size: [0.5, 0.45, 0.4] };
-const LIFT = { raised: 0.3, middle: 0, lowered: -0.3 };
+const C = { x: B2.center[0] + GUIDE, y: -0.55, size: [0.9, 0.65, 0.5] };
+const LIFT = { raised: 0.35, middle: 0, lowered: -0.35 };
+
+const pulleysAt = (ay, by) => ({
+  outer: { center: [A.x, ay, GROOVE], axis: Z, radius: A.outer, sense: -1 },
+  inner: { center: [A.x, ay, -GROOVE], axis: Z, radius: A.inner, sense: 1 },
+  bottom: { center: [BOTTOM.x, by, 0], axis: Z, radius: BOTTOM.radius, sense: BOTTOM.sense },
+});
+const beltAt = (ay, by) => {
+  const p = pulleysAt(ay, by);
+  return routeBelt([LEFT, p.outer, p.bottom, p.inner]);
+};
+const BELT_LENGTH = beltAt(A.y, BOTTOM.y).length;
+
+// 皮帶越過 A 的上方:A 越高皮帶越長。用二分法找出讓皮帶總長不變的 A 高度
+function tensionerHeight(by) {
+  let lo = A.y - 2;
+  let hi = A.y + 2;
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2;
+    if (beltAt(mid, by).length < BELT_LENGTH) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
 
 const layout = memo((state) => {
-  const h = LIFT[state];
-  const ay = A.y + h;
-  const outer = { center: [A.x, ay, FRONT], axis: Z, radius: A.outer, sense: 1 };
-  const inner = { center: [A.x, ay, -FRONT], axis: Z, radius: A.inner, sense: 1 };
+  const by = BOTTOM.y + LIFT[state];
+  const ay = tensionerHeight(by);
   const hook = [A.x, ay + HOOK, 0];
-  const cy = C.y - h; // 繩繞過兩個固定導引輪:A 升多少,C 就降多少
+  const cy = C.y - (ay - A.y); // 繩繞過兩個固定導引輪:A 升多少,C 就降多少
   const cTop = [C.x, cy + C.size[1] / 2 + 0.08, 0];
   return {
-    a: [A.x, ay, 0],
+    ay,
+    by,
     hook,
     c: [C.x, cy, 0],
-    belt1: routeBelt([LEFT, outer]),
-    belt2: routeBelt([inner, BOTTOM]),
+    belt: beltAt(ay, by),
     rope: routeRope([{ point: hook }, { circle: B1 }, { circle: B2 }, { point: cTop }]),
   };
 });
@@ -41,7 +65,7 @@ const guide = (id, c) => ({
   radius: GUIDE,
   width: 0.16,
   label: "B",
-  labelOffset: [0, GUIDE + 0.28, 0],
+  labelOffset: [-0.25, GUIDE + 0.25, 0],
 });
 
 const rest = layout("middle");
@@ -53,16 +77,24 @@ export default {
     {
       id: "pulleyA",
       kind: "pulley",
-      style: "spoked",
-      center: [A.x, A.y, FRONT],
+      style: "disc",
+      center: [A.x, A.y, GROOVE],
       axis: Z,
       radius: A.outer,
-      width: 0.2,
+      width: 0.18,
       label: "A",
-      labelOffset: [-0.35, -0.6, 0],
+      labelOffset: [-0.45, -0.75, 0],
     },
-    { id: "pulleyAInner", kind: "pulley", style: "disc", center: [A.x, A.y, -FRONT], axis: Z, radius: A.inner, width: 0.2 },
-    { id: "bottom", kind: "pulley", style: "spoked", center: BOTTOM.center, axis: Z, radius: BOTTOM.radius, width: 0.24 },
+    { id: "pulleyAInner", kind: "pulley", style: "disc", center: [A.x, A.y, -GROOVE], axis: Z, radius: A.inner, width: 0.18 },
+    {
+      id: "movable",
+      kind: "pulley",
+      style: "spoked",
+      center: [BOTTOM.x, BOTTOM.y, 0],
+      axis: Z,
+      radius: BOTTOM.radius,
+      width: 0.24,
+    },
     guide("guide1", B1),
     guide("guide2", B2),
     { id: "hanger", kind: "rod" },
@@ -73,39 +105,35 @@ export default {
       center: rest.c,
       size: C.size,
       label: "C",
-      labelOffset: [0.5, 0, 0],
+      labelOffset: [0.75, -0.3, 0],
     },
-    { id: "belt1", kind: "belt" },
-    { id: "belt2", kind: "belt" },
+    { id: "belt", kind: "belt" },
   ],
   driver: { part: "driver", type: "rotation" },
   states: {
     options: [
-      { id: "raised", label: "抬升 A" },
+      { id: "raised", label: "抬升底部皮帶輪" },
       { id: "middle", label: "原位" },
-      { id: "lowered", label: "降下 A" },
+      { id: "lowered", label: "降下底部皮帶輪" },
     ],
     initial: "middle",
   },
-  view: { direction: [0.15, 0.1, 1] },
+  view: { direction: [0.1, 0.08, 1] },
   pose(angle, state = "middle") {
-    const { a, hook, c, belt1, belt2, rope } = layout(state);
-    const travel1 = beltTravel(angle, LEFT.radius, LEFT.sense);
-    const angleA = wheelAngle(travel1, A.outer, 1);
-    const travel2 = beltTravel(angleA, A.inner, 1);
+    const { ay, by, hook, c, belt, rope } = layout(state);
+    const travel = beltTravel(angle, LEFT.radius, LEFT.sense);
     return {
       parts: {
         driver: { angle },
-        pulleyA: { position: [a[0], a[1], FRONT], angle: angleA },
-        pulleyAInner: { position: [a[0], a[1], -FRONT], angle: angleA },
-        bottom: { angle: wheelAngle(travel2, BOTTOM.radius, BOTTOM.sense) },
+        pulleyA: { position: [A.x, ay, GROOVE], angle: wheelAngle(travel, A.outer, -1) },
+        pulleyAInner: { position: [A.x, ay, -GROOVE], angle: wheelAngle(travel, A.inner, 1) },
+        movable: { position: [BOTTOM.x, by, 0], angle: wheelAngle(travel, BOTTOM.radius, BOTTOM.sense) },
         counterweight: { position: c },
       },
       paths: {
-        belt1: { points: belt1.points, closed: true, phase: travel1 },
-        belt2: { points: belt2.points, closed: true, phase: travel2 },
+        belt: { points: belt.points, closed: true, phase: travel },
         rope: { points: rope.points, closed: false },
-        hanger: rod(hook, a),
+        hanger: rod(hook, [A.x, ay, 0]),
       },
       readouts: [],
     };
