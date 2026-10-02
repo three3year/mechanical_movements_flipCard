@@ -168,6 +168,199 @@ nav.tabs button.active {
   mix-blend-mode: multiply;
 }
 
+/* ── 插圖 / 模型切換列 ─────────────── */
+
+.card .figbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.8rem;
+  margin: 0.2rem 1.2rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.card .figbar button {
+  font: inherit;
+  letter-spacing: 0.15em;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line-dark);
+  padding: 0.15rem 0.8rem;
+  cursor: pointer;
+}
+
+.card .figbar button:hover {
+  background: var(--paper);
+}
+
+.card .figbar button.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.card .mode-toggle {
+  display: inline-flex;
+}
+
+.card .mode-toggle button + button {
+  border-left: none;
+}
+
+.card .mode-toggle.loading button:not(.active) {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.card .fig-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.card .fig-tabs button {
+  font-size: 0.8rem;
+  padding: 0.1rem 0.6rem;
+}
+
+.card .fig-notice {
+  flex-basis: 100%;
+  text-align: center;
+  color: #9a3b1e;
+  font-size: 0.8rem;
+}
+
+/* ── 模型 ─────────────────────────── */
+
+.card .stage {
+  padding: 1rem 1.2rem 0.5rem;
+}
+
+.stage .stage-view {
+  position: relative;
+  height: 340px;
+  background: #fff;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.stage .model-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.stage .stage-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.stage .stage-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: #111;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+}
+
+.stage .stage-readouts {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--line);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.stage .stage-readouts[hidden] {
+  display: none;
+}
+
+.stage .stage-readouts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.stage .stage-readouts b {
+  font-weight: normal;
+}
+
+.stage button {
+  font: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line-dark);
+  padding: 0.15rem 0.7rem;
+  cursor: pointer;
+}
+
+.stage button:hover {
+  background: var(--paper);
+}
+
+.stage .stage-reset {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.stage .stage-controls,
+.stage .stage-states {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem 1rem;
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+}
+
+.stage .stage-play {
+  min-width: 5.5em;
+}
+
+.stage .stage-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-soft);
+}
+
+.stage .stage-speed input {
+  width: 7rem;
+  accent-color: var(--ink);
+}
+
+.stage .stage-speed output {
+  min-width: 2.8em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage .stage-states {
+  gap: 0.3rem;
+  min-height: 1.9rem;
+}
+
+.stage .stage-states button.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
 .card .no {
   display: flex;
   align-items: center;
@@ -296,6 +489,12 @@ footer {
     zoom: 1.6;
   }
   .card .no {
+    font-size: 0.95rem;
+  }
+  .stage .stage-view {
+    height: 480px;
+  }
+  .card .figbar {
     font-size: 0.95rem;
   }
   .card .body {

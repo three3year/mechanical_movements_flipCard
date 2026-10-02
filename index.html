@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>機構圖鑑</title>
   <link rel="stylesheet" href="style.css">
+  <!-- 模型用的 Three.js:固定版本,第一次切到模型才會真正下載 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
   <div class="book">
@@ -43,6 +52,53 @@
     const backEl = document.getElementById("back");
     const backStack = []; // 交互參照的跳轉來源,可多層依序退回
 
+    // ── 模型 ──
+    // 圖片區模式(插圖 / 模型)是頁面層級的狀態,翻頁、切章、交互參照都保留;
+    // 卡片沒有模型時只是暫時顯示插圖,不清除這個狀態。
+    let figMode = "illustration";
+    let selectedFig = null; // 多插圖條目在模型模式下選中的圖號
+    let registry = null; // 圖號 → 模型定義;ES module 載入失敗(如 file:// 開啟)時維持 null,不出現切換
+    let viewerPromise = null;
+    let viewerModule = null;
+
+    import("./models/registry.js").then(
+      (m) => {
+        registry = m.registry;
+        render();
+      },
+      () => {},
+    );
+
+    // 3D 函式庫延遲到第一次切到模型才載入;失敗時清掉快取,下次切換可重試
+    function loadViewer() {
+      viewerPromise ??= import("./viewer/viewer.js").then(
+        (m) => (viewerModule = m),
+        (err) => {
+          viewerPromise = null;
+          throw err;
+        },
+      );
+      return viewerPromise;
+    }
+
+    const figureNo = (src) => parseInt(src.match(/(\d+)\.png$/)[1], 10);
+
+    function modelFiguresOf(entry) {
+      return registry ? entry.images.map(figureNo).filter((n) => registry.has(n)) : [];
+    }
+
+    function setFigMode(mode) {
+      if (figMode === mode) return;
+      figMode = mode;
+      render();
+    }
+
+    function selectFigure(no) {
+      if (selectedFig === no) return;
+      selectedFig = no;
+      render();
+    }
+
     // 「第 N 種」交互參照:依圖號找到所在卡片
     function findEntry(no) {
       const target = "images/" + no + ".png";
@@ -60,9 +116,11 @@
         c: chapterIndex,
         i: entryIndex,
         no: chapters[chapterIndex].entries[entryIndex].no,
+        fig: selectedFig,
       });
       chapterIndex = found.c;
       entryIndex = found.i;
+      selectedFig = no; // 跳到多插圖條目時,選中被引用的那一張
       render();
     }
 
@@ -71,6 +129,7 @@
       if (!from) return;
       chapterIndex = from.c;
       entryIndex = from.i;
+      selectedFig = from.fig;
       render();
     }
 
@@ -110,31 +169,101 @@
       return hint;
     }
 
+    // 圖片區下方的列:插圖 / 模型切換、模型模式下多插圖條目的圖號小頁籤,以及載入失敗提示
+    function buildFigBar(modelFigs, showingModel, notice) {
+      const bar = document.createElement("div");
+      bar.className = "figbar";
+      const toggle = document.createElement("div");
+      toggle.className = "mode-toggle";
+      toggle.setAttribute("role", "group");
+      toggle.setAttribute("aria-label", "圖片區模式");
+      for (const [mode, label] of [["illustration", "插圖"], ["model", "模型"]]) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = label;
+        const on = (mode === "model") === showingModel;
+        btn.classList.toggle("active", on);
+        btn.setAttribute("aria-pressed", String(on));
+        btn.addEventListener("click", () => setFigMode(mode));
+        toggle.appendChild(btn);
+      }
+      bar.appendChild(toggle);
+      if (showingModel && modelFigs.length > 1) {
+        const tabs = document.createElement("div");
+        tabs.className = "fig-tabs";
+        for (const n of modelFigs) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = "圖 " + n;
+          btn.classList.toggle("active", n === selectedFig);
+          btn.setAttribute("aria-pressed", String(n === selectedFig));
+          btn.addEventListener("click", () => selectFigure(n));
+          tabs.appendChild(btn);
+        }
+        bar.appendChild(tabs);
+      }
+      if (notice) {
+        const note = document.createElement("span");
+        note.className = "fig-notice";
+        note.textContent = notice;
+        bar.appendChild(note);
+      }
+      return bar;
+    }
+
     async function render() {
       const seq = ++renderSeq;
       const chapter = chapters[chapterIndex];
       const entry = chapter.entries[entryIndex];
 
+      const modelFigs = modelFiguresOf(entry);
+      if (!modelFigs.includes(selectedFig)) selectedFig = modelFigs[0] ?? null;
+
+      // 模型模式:先把場景組好(第一次會等 3D 函式庫下載),再和卡片一起換上,避免閃白
+      let session = null;
+      let stage = null;
+      let notice = "";
+      if (figMode === "model" && modelFigs.length) {
+        cardEl.querySelector(".mode-toggle")?.classList.add("loading");
+        try {
+          const viewer = await loadViewer();
+          if (seq !== renderSeq) return;
+          stage = document.createElement("div");
+          stage.className = "stage";
+          session = viewer.prepare(registry.get(selectedFig), stage);
+        } catch (err) {
+          console.error(err);
+          if (seq !== renderSeq) return;
+          figMode = "illustration";
+          notice = "模型載入失敗,先顯示插圖;請檢查網路後再試。";
+        }
+      }
+
       // 先在畫面外組好整張卡
       const fragment = document.createDocumentFragment();
 
-      const fig = document.createElement("div");
-      fig.className = "fig";
-      const imgs = [];
-      for (const src of entry.images) {
-        const img = document.createElement("img");
-        img.src = src;
-        img.alt = "圖 " + entry.no;
-        imgs.push(img);
-        fig.appendChild(img);
-      }
       const atStart = chapterIndex === 0 && entryIndex === 0;
       const atEnd =
         chapterIndex === chapters.length - 1 &&
         entryIndex === chapter.entries.length - 1;
-      if (!atStart) fig.appendChild(makeHint("prev", "‹"));
-      if (!atEnd) fig.appendChild(makeHint("next", "›"));
-      fragment.appendChild(fig);
+      const imgs = [];
+      if (session) {
+        fragment.appendChild(stage);
+      } else {
+        const fig = document.createElement("div");
+        fig.className = "fig";
+        for (const src of entry.images) {
+          const img = document.createElement("img");
+          img.src = src;
+          img.alt = "圖 " + entry.no;
+          imgs.push(img);
+          fig.appendChild(img);
+        }
+        if (!atStart) fig.appendChild(makeHint("prev", "‹"));
+        if (!atEnd) fig.appendChild(makeHint("next", "›"));
+        fragment.appendChild(fig);
+      }
+      if (modelFigs.length) fragment.appendChild(buildFigBar(modelFigs, !!session, notice));
 
       const no = document.createElement("div");
       no.className = "no";
@@ -154,9 +283,14 @@
       } catch (_) {
         // 個別圖片壞掉就照常顯示(破圖示意),不擋整張卡
       }
-      if (seq !== renderSeq) return; // 期間又翻頁了,放棄這次結果
+      if (seq !== renderSeq) {
+        session?.dispose(); // 期間又翻頁了,放棄這次結果
+        return;
+      }
 
       cardEl.replaceChildren(fragment);
+      if (session) session.activate();
+      else viewerModule?.deactivate();
 
       tabsEl.querySelectorAll("button").forEach((btn, i) => {
         btn.classList.toggle("active", i === chapterIndex);
@@ -205,6 +339,7 @@
       backStack.length = 0; // 手動翻頁即離開參照脈絡,返回鍵消失
       chapterIndex = c;
       entryIndex = i;
+      selectedFig = null;
       render();
     }
 
@@ -222,14 +357,19 @@
     backEl.addEventListener("click", goBack);
 
     document.addEventListener("keydown", (e) => {
+      if (e.target.closest?.("input, select, textarea")) return; // 例如調整速度滑桿時不翻頁
       if (e.key === "ArrowLeft") step(-1);
       if (e.key === "ArrowRight") step(1);
       if (e.key === "Escape") goBack();
     });
 
-    // 手機左右滑動換頁
+    // 手機左右滑動換頁;模型區與切換列上的手勢是在操作模型,不翻頁
     let touchX = null;
     cardEl.addEventListener("touchstart", (e) => {
+      if (e.target.closest(".stage, .figbar")) {
+        touchX = null;
+        return;
+      }
       touchX = e.changedTouches[0].clientX;
     }, { passive: true });
     cardEl.addEventListener("touchend", (e) => {
@@ -247,6 +387,7 @@
         backStack.length = 0; // 手動切章視為新的閱讀起點
         chapterIndex = i;
         entryIndex = 0;
+        selectedFig = null;
         render();
       });
       tabsEl.appendChild(btn);
