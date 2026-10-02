@@ -56,3 +56,36 @@ test("第 160 種:踩下踏板,繞在皮帶輪上的帶子使它轉動;放開時
   assert.ok((down.pulley - lathe160(0).pulley) * (up.pulley - lathe160(0).pulley) < 0, "來回時轉向相反");
   close(down.pulley - lathe160(0).pulley, -(down.pull - lathe160(0).pull) / 0.55, "轉過的弧長 = 帶子被拉下的長度");
 });
+
+import fig161, { governor as gov161 } from "../models/fig161.js";
+import { regulator as reg162 } from "../models/fig162.js";
+import { regulator as reg163 } from "../models/fig163.js";
+import { governor as gov170 } from "../models/fig170.js";
+
+test("第 161 種:引擎速度增加,球向外飛出,把底部的滑塊抬升;速度降低時相反", () => {
+  const s = sweep(10, 40).map((v) => gov161(v));
+  for (let i = 1; i < s.length; i++) {
+    assert.ok(s[i].alpha >= s[i - 1].alpha - 1e-12, "轉速越大張角越大");
+    assert.ok(s[i].sleeve >= s[i - 1].sleeve - 1e-12, "滑塊越高");
+  }
+  assert.ok(gov161(10).sleeve > gov161(0).sleeve + 0.2);
+  assert.equal(fig161.driver.label, "轉速");
+});
+
+test("第 162 種:速度正常時兩個斜齒輪靜止;過快與過慢時下方水平軸朝相反方向轉", () => {
+  assert.equal(reg162(0.7, "normal").gate, 0);
+  assert.ok(reg162(0.7, "fast").gate * reg162(0.7, "slow").gate < 0);
+});
+
+test("第 163 種:皮帶在鬆動輪上時不傳動;過快時移到下輪、過慢時移到上輪,傳動方向相反", () => {
+  assert.equal(reg163(0.5, "normal").travel, 0);
+  assert.ok(reg163(0.5, "fast").y < reg163(0.5, "normal").y && reg163(0.5, "slow").y > reg163(0.5, "normal").y);
+  assert.ok(reg163(0.5, "fast").travel !== 0 && reg163(0.5, "slow").travel !== 0);
+  assert.ok(reg163(0.5, "fast").direction * reg163(0.5, "slow").direction < 0);
+});
+
+test("第 170 種:交叉的搖臂隨轉速張開,經短連桿移動閥桿", () => {
+  const rods = sweep(10, 20, 7).map((v) => gov170(v).rod);
+  assert.ok(Math.abs(rods[rods.length - 1] - rods[0]) > 0.05, "閥桿隨轉速移動");
+  for (let i = 1; i < rods.length; i++) assert.ok(rods[i] <= rods[i - 1] + 1e-12, "單調");
+});
