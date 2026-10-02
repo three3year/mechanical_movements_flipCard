@@ -73,3 +73,40 @@ for (const def of [fig40, fig41, fig44]) {
 test("第 45 種:摩擦式溝槽傳動,兩輪反向轉,轉角比為半徑反比", () => {
   close(turned(fig45, "bottom", 0, 0.8), (-0.8 * radii45[0]) / radii45[1]);
 });
+
+import fig25 from "../models/fig025.js";
+import fig26 from "../models/fig026.js";
+import fig29, { gearAngle as gear29, TEETH as TEETH29 } from "../models/fig029.js";
+import fig31, { TEETH as TEETH31 } from "../models/fig031.js";
+import fig42 from "../models/fig042.js";
+import fig43 from "../models/fig043.js";
+
+const ratioTest = (def, a, b) => {
+  const na = part(def, a).teeth;
+  const nb = part(def, b).teeth;
+  close(Math.abs(turned(def, b, 0, 0.6)), (0.6 * na) / nb, "轉角比為齒數反比");
+};
+
+test("第 25 種:斜齒輪把旋轉傳到成直角的軸,轉角比為齒數反比", () => {
+  ratioTest(fig25, "top", "left");
+  const axes = [part(fig25, "top").axis, part(fig25, "left").axis];
+  close(axes[0][0] * axes[1][0] + axes[0][1] * axes[1][1] + axes[0][2] * axes[1][2], 0, "兩軸成直角");
+});
+
+test("第 26 種:冠狀齒輪與正齒輪咬合,轉角比為齒數反比", () => {
+  ratioTest(fig26, "spur", "crown");
+});
+
+test("第 29 種:碟形輪上的螺旋螺紋帶動正齒輪,碟形輪每轉一圈正齒輪移動一齒", () => {
+  close(turned(fig29, "gear", 0, 2 * Math.PI), (2 * Math.PI) / TEETH29, "一圈一齒");
+  close(gear29(3 * 2 * Math.PI), (3 * 2 * Math.PI) / TEETH29);
+});
+
+test("第 31 種:蝸桿與蝸輪,達成與第 29 種相同的結果——蝸桿每轉一圈蝸輪轉一齒", () => {
+  close(Math.abs(turned(fig31, "wheel", 0, 2 * Math.PI)), (2 * Math.PI) / TEETH31);
+});
+
+test("第 42、43 種:兩軸斜向配置的齒輪,轉角比為齒數反比", () => {
+  ratioTest(fig42, "top", "bottom");
+  ratioTest(fig43, "big", "small");
+});

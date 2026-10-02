@@ -250,7 +250,39 @@ function plate(part, material, mark) {
 const internalRim = (part) => part.rim ?? part.radius + 2.6 * gearSize(part.radius, part.teeth).addendum;
 
 // 齒輪:外齒輪板面上有齒圈內緣與輪轂兩圈刻線(原圖的同心圓),齒 0 塗記號色;內齒輪是帶內齒的環
+// 傘齒輪:把正齒輪沿軸往錐頂收窄(局部 +Z 朝錐頂,節錐角 cone)
+function taper(geometry, part, w) {
+  const apex = part.radius / Math.tan(part.cone);
+  const pos = geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const s = 1 - (pos.getZ(i) + w / 2) / apex;
+    pos.setXY(i, pos.getX(i) * s, pos.getY(i) * s);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+// 冠狀齒輪:圓盤的 +Z 面上一圈徑向的齒
+function crown(part, material, mark) {
+  const g = new THREE.Group();
+  const w = part.width ?? 0.25;
+  const depth = part.toothDepth ?? (2.2 * part.radius) / part.teeth;
+  const inner = part.radius - (part.faceWidth ?? part.radius * 0.22);
+  g.add(mesh(cylinder(part.radius + depth * 0.2, w), material));
+  g.add(mesh(cylinder(part.hub ?? part.radius * 0.18, w * 2), material));
+  const pitch = (2 * Math.PI) / part.teeth;
+  const thick = 0.42 * pitch * part.radius;
+  for (let i = 0; i < part.teeth; i++) {
+    const tooth = mesh(new THREE.BoxGeometry(part.radius - inner, thick, depth), i === 0 ? mark : material);
+    tooth.position.set(Math.cos(i * pitch) * (inner + part.radius) / 2, Math.sin(i * pitch) * (inner + part.radius) / 2, w / 2 + depth / 2);
+    tooth.rotation.z = i * pitch;
+    g.add(tooth);
+  }
+  return g;
+}
+
 function gear(part, material, mark) {
+  if (part.crown) return crown(part, material, mark);
   const g = new THREE.Group();
   const w = part.width ?? 0.25;
   const mask = part.mask ?? (part.toothed ? (i) => part.toothed.includes(i) : undefined);
@@ -276,8 +308,17 @@ function gear(part, material, mark) {
       slice.rotation.z = sliceAngle(part, i);
       g.add(slice);
     }
+  } else if (part.cone) {
+    g.add(mesh(taper(extrude(gearShape({ ...part, mask }), w), part, w), material));
   } else {
     g.add(mesh(extrude(gearShape({ ...part, mask }), w), material));
+  }
+  if (part.cone) {
+    // 傘齒輪的輪轂在大端(背面)
+    g.add(mesh(cylinder(Math.max(part.bore ?? 0, part.radius * 0.25), w * 0.8), material, [0, 0, -w * 0.7]));
+    const marked = mesh(taper(extrude({ outline: toothOutline(part, 0) }, w * 1.02), part, w * 1.02), mark);
+    g.add(marked);
+    return g;
   }
   if (!part.internal) {
     const tube = Math.max(0.008, part.radius * 0.011);
@@ -414,6 +455,12 @@ function fill(part, material) {
 
 const group = () => new THREE.Group();
 
+// 固定在零件上的曲線凸條(例如碟形輪面上的螺旋螺紋):沿 points 的管
+function tube(part, material) {
+  const curve = new THREE.CatmullRomCurve3(part.points.map((p) => new THREE.Vector3(...p)));
+  return mesh(new THREE.TubeGeometry(curve, part.points.length * 2, part.radius ?? 0.05, 8, false), material);
+}
+
 const builders = {
   pulley,
   drum,
@@ -437,6 +484,7 @@ const builders = {
   worm,
   fill,
   group,
+  tube,
 };
 
 export { PATH_KINDS };

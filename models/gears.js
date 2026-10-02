@@ -98,3 +98,26 @@ export function sliceAngle({ slices, twist = 0, twistMode = "helical", teeth }, 
   if (twistMode === "herringbone") return twist * (1 - Math.abs(2 * f - 1));
   return twist * (f - 0.5);
 }
+
+/**
+ * 傘齒輪:節錐頂在 apex,軸 axis 由大端指向錐頂,節錐角 cone,大端節圓半徑 radius,齒寬 width。
+ * 回傳的 center 是齒寬中點(繪圖層的局部原點),heel 是大端節圓的圓心。
+ */
+export function bevelGear({ apex, axis, teeth, radius, cone, width }) {
+  const u = norm(axis);
+  const heel = sub(apex, scale(u, radius / Math.tan(cone)));
+  return { apex, axis: u, teeth, radius, cone, width, heel, center: add(heel, scale(u, width / 2)) };
+}
+
+/** 兩軸相交、夾角 shaft 的一對傘齒輪的節錐角(齒數 na、nb) */
+export function pitchCones(na, nb, shaft = Math.PI / 2) {
+  const a = Math.atan2(Math.sin(shaft), nb / na + Math.cos(shaft));
+  return [a, shaft - a];
+}
+
+/** 兩個傘齒輪的接觸點:a 的大端節圓上、朝 b 那一側 */
+export function bevelContact(a, b) {
+  const d = sub(b.heel, a.heel);
+  const across = sub(d, scale(a.axis, dot(d, a.axis)));
+  return add(a.heel, scale(norm(across), a.radius));
+}

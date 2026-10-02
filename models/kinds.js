@@ -25,6 +25,7 @@ export const PART_KINDS = new Set([
   "worm", // 蝸桿、螺桿:圓柱外繞螺旋齒
   "fill", // 容器內的存量:半透明填色,姿勢的 level(0–1)決定高度
   "group", // 只由 pieces 組成的零件
+  "tube", // 固定在零件上的曲線凸條(螺旋螺紋等)
 ]);
 
 /** 路徑零件:姿勢回傳折線 */
