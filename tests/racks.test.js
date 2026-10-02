@@ -79,3 +79,64 @@ test("第 113 種:任何轉角下小齒輪的齒都嵌在齒條的齒槽裡、�
     }
   }
 });
+
+
+import fig117, { pitchAt, yokeY, breadth } from "../models/fig117.js";
+import { doubler } from "../models/fig118.js";
+import { feed, swingAngle } from "../models/fig121.js";
+import { linkage, rods as rods122 } from "../models/fig122.js";
+import { substitute, stroke as stroke123 } from "../models/fig123.js";
+import { compound } from "../models/fig125.js";
+
+test("第 117 種:凸輪在軛內兩個滾子之間轉動,軛做往復運動;兩個滾子始終同時貼著凸輪", () => {
+  const ys = sweep(TAU, 360).map(yokeY);
+  assert.ok(Math.max(...ys) - Math.min(...ys) > 0.5, "軛有明顯的行程");
+  for (const phi of sweep(TAU, 36)) close(pitchAt(phi) + pitchAt(phi + Math.PI), breadth, "上下滾子中心距不變");
+  assert.ok(fig117.parts.length >= 2);
+});
+
+test("第 118 種:下齒條固定,小齒輪一邊前進一邊滾動,上齒條移動小齒輪的兩倍距離", () => {
+  close(doubler(0.8).upper - doubler(0).upper, 1.6, "行程加倍");
+  close(doubler(-0.5).upper - doubler(0).upper, -1.0);
+});
+
+test("第 121 種:碟形輪往復擺動,制動爪使棘輪間歇地單向轉動;翻轉制動爪則反向", () => {
+  const cw = sweep(swingAngle * 6, 300).map((v) => feed(v, 1).cog);
+  for (let i = 1; i < cw.length; i++) assert.ok(cw[i] <= cw[i - 1] + 1e-12, "只往一個方向轉");
+  close(feed(swingAngle * 2, 1).cog - feed(0, 1).cog, -swingAngle, "每次往復推進一次");
+  close(feed(swingAngle * 2, -1).cog - feed(0, -1).cog, swingAngle, "翻轉後反向");
+  const back = sweep(swingAngle * 2, 10, swingAngle).map((v) => feed(v, 1).cog);
+  for (const c of back) close(c, back[0], "回程不動");
+});
+
+test("第 122 種:兩個轉速不同的齒輪經連桿使水平桿做變速的交替橫移,連桿長度不變", () => {
+  const xs = sweep(TAU * 6, 600).map((t) => linkage(t).x);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.3, "水平桿往復");
+  for (const t of sweep(TAU * 6, 60)) {
+    const { w1, w2, a, b } = linkage(t);
+    close(Math.hypot(a[0] - w1[0], a[1] - w1[1]), rods122.l1, "上連桿長度", 1e-6);
+    close(Math.hypot(b[0] - w2[0], b[1] - w2[1]), rods122.l2, "下連桿長度", 1e-6);
+  }
+  // 齒數比 26 : 22,同一個輪的轉角下兩手腕相位一直在變:每一趟的行程不盡相同
+  const span = (from) => {
+    const seg = sweep(from + TAU, 200, from).map((t) => linkage(t).x);
+    return Math.max(...seg) - Math.min(...seg);
+  };
+  assert.ok(Math.abs(span(0) - span(TAU * 2)) > 1e-3, "變速、每圈的行程不同");
+});
+
+test("第 123 種:雙齒條往復,兩個齒扇形段交替嚙合,中央齒輪連續朝同一方向旋轉", () => {
+  const c = sweep(stroke123 * 6, 300).map((v) => substitute(v).central);
+  const dir = Math.sign(c[c.length - 1] - c[0]);
+  assert.ok(dir !== 0);
+  for (let i = 1; i < c.length; i++) assert.ok((c[i] - c[i - 1]) * dir > 0, "中央齒輪一直朝同一方向轉");
+  const ys = sweep(stroke123 * 4, 400).map((v) => substitute(v).y);
+  close(Math.max(...ys) - Math.min(...ys), stroke123, "齒條往復一個行程", 1e-9);
+});
+
+test("第 125 種:三個齒輪的曲柄銷經兩層槓桿合成,頂桿做變化的上下運動", () => {
+  const tops = sweep(TAU * 4, 400).map((t) => compound(t).top[1]);
+  assert.ok(Math.max(...tops) - Math.min(...tops) > 0.2, "頂桿上下運動");
+  const { pins, u1 } = compound(1.3);
+  close(Math.hypot(u1[0] - pins[0][0], u1[1] - pins[0][1]), 4.0, "連桿長度不變", 1e-9);
+});
