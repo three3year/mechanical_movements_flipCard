@@ -10,7 +10,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { LineArtRenderer, FLUID_LAYER } from "./lineart.js";
 import { buildPart, buildSpinArrow, spinPlacement, PATH_KINDS } from "./parts.js";
-import { PathPart } from "./paths.js";
+import { PathPart, ChainPart } from "./paths.js";
 import { FlowCues, FLUID_COLORS } from "./flows.js";
 import { clamp, lerp3 } from "../models/kit.js";
 
@@ -147,7 +147,7 @@ class Session {
     for (const part of def.parts) {
       const isDriver = this.grips.includes(part.id);
       if (PATH_KINDS.has(part.kind)) {
-        const path = new PathPart(part, base);
+        const path = part.kind === "chain" ? new ChainPart(part, base) : new PathPart(part, base);
         this.paths.set(part.id, path);
         this.scene.add(path.mesh);
         continue;
@@ -361,6 +361,14 @@ class Session {
     return (this.bounds[1] - this.bounds[0]) / (d.type === "rotation" ? 2.5 : 4);
   }
 
+  // 拖動改主動量:有範圍就夾住;有擋止(driver.backstop)時往回只能轉到最近的擋止位置
+  setValue(next) {
+    const d = this.def.driver;
+    if (this.bounds) next = clamp(next, ...this.bounds);
+    if (d.backstop && next < this.value) next = Math.max(next, d.backstop(this.value));
+    this.value = next;
+  }
+
   // 拖動時一次事件最多改變的主動量,以及數值微分的步長
   valueScale() {
     if (this.cycle) return Math.abs(this.cycle[1] - this.cycle[0]);
@@ -533,7 +541,14 @@ class Session {
       this.apply(this.pose(v), 0);
       // 精確外框(逐頂點):旋轉中的零件不會因軸對齊外框而顯得過小
       for (const { object } of this.objects.values()) if (object.visible) box.expandByObject(object, true);
-      for (const path of this.paths.values()) if (path.mesh.visible) box.expandByObject(path.mesh, true);
+      for (const path of this.paths.values()) {
+        if (!path.mesh.visible) continue;
+        if (path.instances) {
+          // 鍊條的鏈節是 InstancedMesh:用逐節的外框
+          path.instances.computeBoundingBox();
+          box.expandByObject(path.mesh);
+        } else box.expandByObject(path.mesh, true);
+      }
     }
     this.apply(this.pose(this.value), 0);
     const center = box.getCenter(new THREE.Vector3());
@@ -649,7 +664,7 @@ class Session {
       if (!dv) break;
       dv = clamp(dv, -maxStep, maxStep);
       const before = this.value;
-      this.value = this.bounds ? clamp(this.value + dv, ...this.bounds) : this.value + dv;
+      this.setValue(this.value + dv);
       if (this.value === before) break;
       remaining.sub(this.gripScreen(this.value, p).sub(at));
     }
@@ -702,7 +717,7 @@ class Session {
       // 指標沿繩方向(投影到螢幕上)的分量作為位移增量
       const dir = new THREE.Vector3(...d.direction);
       const before = this.value;
-      this.value = clamp(this.value + this.alongScreen(move, dir, p), ...this.bounds);
+      this.setValue(this.value + this.alongScreen(move, dir, p));
       this.drag.grab.addScaledVector(dir, this.value - before);
       return;
     }
@@ -727,7 +742,7 @@ class Session {
       delta = this.alongScreen(move, tangent, p);
     }
     const before = this.value;
-    this.value = this.bounds ? clamp(this.value + delta, ...this.bounds) : this.value + delta;
+    this.setValue(this.value + delta);
     const applied = this.value - before;
     this.drag.grab.sub(center).applyAxisAngle(axis, applied).add(center);
   }

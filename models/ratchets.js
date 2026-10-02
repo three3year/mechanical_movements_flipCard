@@ -63,3 +63,23 @@ export function ratchetAdvance(v, span, step, pushed) {
   const { cycle, forward } = swingPhase(v, 0, span);
   return cycle * step + (forward ? pushed : step);
 }
+
+/**
+ * 棘輪當作接觸的障礙物(世界座標多邊形):每個齒一個三角形,加上齒根圓。
+ * 拆成小塊,接觸判斷時外框測試就能略過大部分的齒。
+ */
+export function ratchetObstacles({ teeth, outer, inner, dir = 1 }, angle, center = [0, 0]) {
+  const pitch = (2 * Math.PI) / teeth;
+  const at = (r, a) => [center[0] + r * Math.cos(a + angle), center[1] + r * Math.sin(a + angle)];
+  const tri = [];
+  for (let i = 0; i < teeth; i++) {
+    const a = i * pitch;
+    tri.push(
+      dir < 0
+        ? [at(inner, a), at(outer, a + 0.92 * pitch), at(inner, a + 0.98 * pitch)]
+        : [at(inner, a + 0.02 * pitch), at(outer, a + 0.08 * pitch), at(inner, a + pitch)],
+    );
+  }
+  const disc = Array.from({ length: teeth * 2 }, (_, i) => at(inner, (i / (teeth * 2)) * 2 * Math.PI));
+  return [...tri, disc];
+}
