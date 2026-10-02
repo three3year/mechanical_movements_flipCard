@@ -128,3 +128,65 @@ test("第 139 種:小齒輪連續旋轉,齒條在框架內上下換邊,矩形框
   assert.ok(Math.max(...ys) > 0 && Math.min(...ys) < 0, "齒條在框架內上下換邊");
   near(rackPosition(alphaPerLoop).x, rackPosition(0).x, "一圈回到原處", 1e-6);
 });
+
+import { toggle, links as links140 } from "../models/fig140.js";
+import fig140 from "../models/fig140.js";
+import { bandTravel } from "../models/fig141.js";
+import { traverse as traverse142, relativeTurns } from "../models/fig142.js";
+import { traverse as traverse143 } from "../models/fig143.js";
+import { tongs } from "../models/fig144.js";
+import { beamEngine } from "../models/fig145.js";
+import { dist } from "../models/kit.js";
+
+test("第 140 種:扳下槓桿,水平連桿把肘節拉向伸直,衝頭往下;越接近伸直下移越慢(力越大)", () => {
+  const [lo, hi] = fig140.driver.range;
+  const ys = sweep(lo, 40, hi).map((p) => toggle(p).y);
+  for (let i = 1; i < ys.length; i++) assert.ok(ys[i] < ys[i - 1] + 1e-12, "衝頭一路往下");
+  const first = Math.abs(ys[1] - ys[0]);
+  const last = Math.abs(ys[ys.length - 1] - ys[ys.length - 2]);
+  assert.ok(last < first, "接近伸直時每單位轉角的下移量變小");
+  for (const p of sweep(lo, 10, hi)) {
+    const { k, y } = toggle(p);
+    near(dist(k, [-1.0, 2.25, 0]), links140.L1, "上連桿長度", 1e-9);
+    near(dist(k, [-1.0, y, 0]), links140.L2, "下連桿長度", 1e-9);
+  }
+});
+
+test("第 141 種:無端帶鋸,皮帶輪連續旋轉使鋸帶連續直線移動", () => {
+  assert.ok(bandTravel(1) !== bandTravel(0));
+  near(Math.abs(bandTravel(TAU) - bandTravel(0)), TAU * 0.85);
+});
+
+test("第 142 種:正齒輪繞固定小齒輪自轉,曲柄離圓盤中心的距離逐圈改變,導桿的行程也逐圈縮短再加長", () => {
+  const stroke = (k) => {
+    const ys = sweep((k + 1) * TAU, 180, k * TAU).map((p) => traverse142(p).y);
+    return Math.max(...ys) - Math.min(...ys);
+  };
+  const strokes = [0, 1, 2].map(stroke);
+  assert.ok(Math.max(...strokes) - Math.min(...strokes) > 0.1, "各圈的行程不同");
+  // 正齒輪相對圓盤轉滿一圈要 N正齒輪 / N小齒輪 圈
+  near(stroke(relativeTurns), stroke(0), "轉完正齒輪的一圈後回到原樣", 1e-6);
+});
+
+test("第 143 種:蝸桿使齒輪轉動,連桿強迫橫移框架來回移動", () => {
+  const xs = sweep(24 * TAU, 600).map((t) => traverse143(t).x);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.8, "框架來回移動");
+  near(traverse143(24 * TAU).x, traverse143(0).x, "齒輪轉一圈(蝸桿轉 24 圈)回到原處", 1e-9);
+});
+
+test("第 144 種:懶剪——右側的桿移動一小段,左側的桿移動三倍的距離", () => {
+  const a = tongs(0.7);
+  const b = tongs(0.9);
+  near((b.left[0] - a.left[0]) / (b.right[0] - a.right[0]), -3, "反向、三倍");
+});
+
+test("第 145 種:樑往復擺動,經槓桿與連桿使曲柄與飛輪連續旋轉(各桿長度不變)", () => {
+  const ref = beamEngine(0);
+  for (const t of sweep(TAU, 36)) {
+    const { pin, j, e } = beamEngine(t);
+    near(dist(j, pin), dist(ref.j, ref.pin), "連桿長度", 1e-9);
+    near(dist(e, j), dist(ref.e, ref.j), "直立桿長度", 1e-9);
+  }
+  const es = sweep(TAU, 180).map((t) => beamEngine(t).e[1]);
+  assert.ok(Math.max(...es) - Math.min(...es) > 0.3, "樑的左端上下擺動");
+});
