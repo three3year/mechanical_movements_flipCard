@@ -230,3 +230,29 @@ test("第 151 種:蝸桿帶動螺桿軸,左右旋螺紋上的螺帽彼此靠近�
   near(b.right - a.right, -(b.left - a.left), "兩螺帽對稱移動");
   near(Math.abs(b.right - a.right), 0.3, "蝸桿轉 N 圈,螺帽移動一個螺距");
 });
+
+import fig147, { governor } from "../models/fig147.js";
+import { shuttle, stroke as stroke153 } from "../models/fig153.js";
+import { lift as lift154 } from "../models/fig154.js";
+
+test("第 147 種:轉速越快,十字頭越落後、滾子沿斜面越往上,十字頭被抬得越高", () => {
+  const rises = sweep(10, 20).map((s) => governor(s).rise);
+  for (let i = 1; i < rises.length; i++) assert.ok(rises[i] > rises[i - 1], "轉速越大抬升越高");
+  near(governor(0).rise, 0, "靜止時在最低處");
+  near(governor(-5).rise, governor(0).rise, "超出範圍的轉速被夾住");
+  assert.equal(fig147.driver.label, "轉速");
+});
+
+test("第 153 種:凸柱把水平桿往右推,下一根凸柱經曲柄搖臂把它推回左邊(每半圈一個來回)", () => {
+  const xs = sweep(Math.PI, 360).map((c) => shuttle(c).x);
+  near(Math.max(...xs), stroke153, "推到右端", 1e-6);
+  near(xs[0], xs[xs.length - 1], "半圈後回到原處", 1e-9);
+});
+
+test("第 154 種:凸柱撥動曲柄搖臂,繞過滑輪的繩把重物拉起;凸柱滑過後重物落回(每圈四次)", () => {
+  const ys = sweep(2 * Math.PI, 1440).map((c) => lift154(c).y);
+  let ups = 0;
+  for (let i = 1; i < ys.length; i++) if (ys[i - 1] <= ys[0] + 1e-9 && ys[i] > ys[0] + 1e-6) ups++;
+  assert.equal(ups, 4);
+  assert.ok(Math.max(...ys) - Math.min(...ys) > 0.2, "重物明顯上下");
+});
