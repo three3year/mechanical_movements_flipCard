@@ -46,3 +46,46 @@ test("第 111 種:千分螺桿——外側空心螺桿每轉一圈,模具只移�
   close(differential(TAU).inner - differential(0).inner, p111.coarse - p111.fine);
   close(differential(TAU).outer, p111.coarse, "外側螺桿前進一個粗螺距");
 });
+
+import { rodX as rod106, amp as amp106 } from "../models/fig106.js";
+import { rodX as rod107, waves as waves107 } from "../models/fig107.js";
+import { slideY, travel as travel108, pitch as pitch108 } from "../models/fig108.js";
+import { traverse, pitch as pitch110 } from "../models/fig110.js";
+import { drillAngle, lead as lead112 } from "../models/fig112.js";
+
+// 往返次數:位移方向改變的次數 ÷ 2
+const strokes = (fn, span, n = 2000) => {
+  const xs = Array.from({ length: n + 1 }, (_, i) => fn((span * i) / n));
+  let turns = 0;
+  for (let i = 2; i < xs.length; i++) if ((xs[i] - xs[i - 1]) * (xs[i - 1] - xs[i - 2]) < 0) turns++;
+  return turns / 2;
+};
+
+test("第 106 種:開槽凸輪均勻旋轉,桿做均勻的往復直線運動(每轉一圈往返一次)", () => {
+  assert.equal(strokes(rod106, 4 * TAU), 4);
+  // 銷在圓筒局部角 π/2 − θ;θ 在 2.9–3.5 之間是一程的中段
+  const rate = (rod106(3.0) - rod106(2.9)) / 0.1;
+  close((rod106(3.5) - rod106(3.4)) / 0.1, rate, "中段等速", 1e-9);
+  close(Math.max(...Array.from({ length: 721 }, (_, i) => rod106((i / 720) * TAU))), amp106, "行程兩端", 1e-3);
+});
+
+test("第 107 種:溝彎繞成幾個波,圓筒每轉一圈桿往返幾次", () => {
+  assert.equal(strokes(rod107, TAU), waves107);
+});
+
+test("第 108 種:兩道反向的螺旋溝使尖點從圓筒一端均勻橫移到另一端,再自動回來", () => {
+  const ys = Array.from({ length: 3001 }, (_, i) => slideY((12 * TAU * i) / 3000));
+  close(Math.max(...ys) - Math.min(...ys), travel108, "走完整個長度", 1e-3);
+  assert.equal(strokes(slideY, 12 * TAU), 2, "來回各一次");
+  close(Math.abs(slideY(-5) - slideY(-5 - TAU)), pitch108, "每圈移動一個螺距", 1e-9);
+});
+
+test("第 110 種:槓桿扳向右或向左,換一個半螺帽嚙合,心軸朝相反方向均勻橫移", () => {
+  close(traverse(TAU, "right"), pitch110);
+  close(traverse(TAU, "left"), -pitch110);
+});
+
+test("第 112 種:波斯鑽——螺帽沿快螺紋上下拉動,柄部交替向右、向左旋轉;螺帽移動一個導程,柄轉一圈", () => {
+  close(drillAngle(lead112) - drillAngle(0), TAU);
+  assert.ok(drillAngle(0.3) - drillAngle(0) > 0 && drillAngle(0) - drillAngle(0.3) < 0, "上拉與下推轉向相反");
+});
