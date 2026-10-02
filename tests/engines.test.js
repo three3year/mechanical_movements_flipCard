@@ -16,6 +16,12 @@ import { slotting as slotting178, crankLength as crankLength178 } from "../model
 import { clamp as clamp180, nose as nose180, grip as grip180 } from "../models/fig180.js";
 import { screwClamp as clamp190 } from "../models/fig190.js";
 import { rot2 } from "../models/kit.js";
+import { coupling, ARM as ARM176, INSERT as INSERT176, GROOVE as GROOVE176, WRIST as WRIST176 } from "../models/uncoupling.js";
+import { cornish, crossing, valves, ANGLES as CORNISH, TAPPET, SPAN as SPAN181 } from "../models/cornish-gear.js";
+import { quadrantOutlines } from "../models/cornish-model.js";
+import { polygonsOverlap } from "../models/contact.js";
+import fig181 from "../models/fig181.js";
+import fig182 from "../models/fig182.js";
 
 const TAU = 2 * Math.PI;
 
@@ -273,4 +279,77 @@ test("第 190 種:轉動手柄,螺桿往上頂住槓桿,支點另一側的壓腳
   assert.ok(tight.lift < loose.lift, "壓腳隨之下降");
   close(tight.foot[1] - 0.45, -0.45, "旋緊時壓腳底面貼著木塊頂面", 1e-9);
   assert.ok(tight.foot[0] < 0, "壓腳在支點另一側(左),螺桿在右");
+});
+
+test("第 176、177 種:溝槽在第 176 種位置時手腕帶動曲柄;轉到第 177 種位置時手腕穿過溝槽、曲柄不動", () => {
+  for (const t of sweep(TAU, 36)) {
+    const c = coupling(t, "coupled");
+    close(c.arm, t, "接上:曲柄隨手腕轉");
+    close(dist(c.wrist, c.eye), 0, "手腕卡在環中心的溝槽裡", 1e-9);
+    assert.equal(coupling(t, "uncoupled").arm, 0, "脫開:曲柄不動");
+  }
+  // 脫開時,手腕經過環的那段路都在溝槽裡(溝槽沿手腕的路徑方向)
+  const inside = sweep(TAU, 3600).map((t) => coupling(t, "uncoupled")).filter((c) => dist(c.wrist, c.eye) < INSERT176);
+  assert.ok(inside.length > 0);
+  for (const c of inside) assert.ok(Math.abs(c.wrist[1] - ARM176) + WRIST176 <= GROOVE176, "手腕在溝槽內");
+});
+
+const cornishSamples = sweep(2 * SPAN181, 1200);
+
+test("第 181、182 種:活塞上升時撥爪抬起下方手柄並被卡住,上方手柄同時被放開;下降時撥爪把上方手柄壓回", () => {
+  const start = cornish(0);
+  close(start.lower, CORNISH.lower.A);
+  close(start.upper, CORNISH.upper.A);
+  assert.deepEqual(valves(start).map((r) => r.value), ["關", "開", "上升"], "第 181 種:下方蒸汽閥與上方排氣閥開,活塞上升");
+  const top = cornish(SPAN181);
+  close(top.lower, CORNISH.lower.B);
+  close(top.upper, CORNISH.upper.B);
+  assert.deepEqual(valves(top).map((r) => r.value).slice(0, 2), ["開", "關"], "第 182 種:上方蒸汽閥與下方排氣閥開");
+  // 上升途中:下方手柄先被抬到頭,上方手柄才放開
+  let lowerDoneAt = null;
+  let upperMovedAt = null;
+  for (const v of cornishSamples.filter((v) => v <= SPAN181)) {
+    const s = cornish(v);
+    if (lowerDoneAt === null && Math.abs(s.lower - CORNISH.lower.B) < 1e-9) lowerDoneAt = v;
+    if (upperMovedAt === null && Math.abs(s.upper - CORNISH.upper.A) > 1e-9) upperMovedAt = v;
+  }
+  assert.ok(lowerDoneAt !== null && upperMovedAt !== null && lowerDoneAt <= upperMovedAt);
+  // 一整個往返回到第 181 種的位置
+  const back = cornish(2 * SPAN181 - 1e-9);
+  close(back.lower, CORNISH.lower.A, "下方手柄落回", 1e-6);
+  close(back.upper, CORNISH.upper.A, "上方手柄被壓回", 1e-6);
+  // 兩張圖是同一機構的兩個時刻
+  assert.equal(fig181.driver.initial, 0);
+  assert.equal(fig182.driver.initial, SPAN181);
+});
+
+test("第 181–184 種:撥爪只在推手柄時碰到手柄,從不穿過手柄", () => {
+  for (const v of cornishSamples) {
+    const s = cornish(v);
+    for (const which of ["upper", "lower"]) {
+      const c = crossing(which, s[which]);
+      if (c === null) continue;
+      assert.ok(!(c > s.y - TAPPET.half + 1e-6 && c < s.y + TAPPET.half - 1e-6), `v = ${v.toFixed(3)} ${which}`);
+    }
+  }
+});
+
+test("第 183、184 種:兩個象限器輪流以圓弧擋住對方的一角,彼此不穿透", () => {
+  const shrink = (poly) => {
+    const cx = poly.reduce((a, p) => a + p[0], 0) / poly.length;
+    const cy = poly.reduce((a, p) => a + p[1], 0) / poly.length;
+    return poly.map(([x, y]) => [cx + (x - cx) * 0.99, cy + (y - cy) * 0.99]);
+  };
+  for (const v of cornishSamples) {
+    const q = quadrantOutlines(cornish(v));
+    assert.ok(!polygonsOverlap(shrink(q.upper), shrink(q.lower)), `v = ${v.toFixed(3)}`);
+  }
+  // A 位置:上方象限器若再順時針轉(放開的方向)就會撞上下方象限器——被鎖住
+  const a = cornish(0);
+  const blocked = quadrantOutlines({ ...a, upper: a.upper - 0.08 });
+  assert.ok(polygonsOverlap(blocked.upper, blocked.lower), "A:上方被擋住");
+  // B 位置:下方象限器若逆時針落回就會撞上上方象限器
+  const b = cornish(SPAN181);
+  const held = quadrantOutlines({ ...b, lower: b.lower + 0.08 });
+  assert.ok(polygonsOverlap(held.upper, held.lower), "B:下方被擋住");
 });
