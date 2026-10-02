@@ -1,17 +1,24 @@
-// 模型登記表的完整性:第一章「皮帶與滑輪」圖 1–23 都有模型,且每份定義都符合繪圖層需要的形狀
+// 模型登記表的完整性:清單中的每個定義都逐一載入,並符合繪圖層需要的形狀
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { registry, models } from "../models/registry.js";
+import { sources, hasModel, loadModel } from "../models/registry.js";
 
 const PATH_KINDS = new Set(["belt", "rope", "rod"]);
 
+const figures = Object.keys(sources).map(Number);
+const models = await Promise.all(figures.map((n) => loadModel(n)));
+
 test("第一章圖 1–23 都有登記的模型", () => {
-  for (let figure = 1; figure <= 23; figure++) assert.ok(registry.has(figure), `圖 ${figure} 沒有模型`);
+  for (let figure = 1; figure <= 23; figure++) assert.ok(hasModel(figure), `圖 ${figure} 沒有模型`);
 });
 
-test("登記表以模型的圖號為鍵,沒有重複", () => {
-  assert.equal(registry.size, models.length);
-  for (const [figure, def] of registry) assert.equal(def.figure, figure);
+test("登記表的圖號與定義的圖號一致", () => {
+  figures.forEach((figure, i) => assert.equal(models[i].figure, figure));
+});
+
+test("未登記的圖號載入時失敗,不回傳定義", async () => {
+  assert.equal(hasModel(0), false);
+  await assert.rejects(loadModel(0));
 });
 
 for (const def of models) {

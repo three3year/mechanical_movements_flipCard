@@ -1,28 +1,49 @@
-// 模型登記表:以圖號為鍵。新增模型時寫一份定義檔,再在這裡登記即可。
-import fig1 from "./fig01.js";
-import fig2 from "./fig02.js";
-import fig3 from "./fig03.js";
-import fig4 from "./fig04.js";
-import fig5 from "./fig05.js";
-import fig6 from "./fig06.js";
-import fig7 from "./fig07.js";
-import fig8 from "./fig08.js";
-import fig9 from "./fig09.js";
-import fig10 from "./fig10.js";
-import fig11 from "./fig11.js";
-import fig12 from "./fig12.js";
-import fig13 from "./fig13.js";
-import fig14 from "./fig14.js";
-import fig15 from "./fig15.js";
-import fig16 from "./fig16.js";
-import fig17 from "./fig17.js";
-import fig18 from "./fig18.js";
-import fig19 from "./fig19.js";
-import fig20 from "./fig20.js";
-import fig21 from "./fig21.js";
-import fig22 from "./fig22.js";
-import fig23 from "./fig23.js";
+// 模型登記表:圖號 → 定義檔位置(相對於本檔)。開頁時只載入這份清單,不載入任何模型定義;
+// 讀者切到某張插圖的模型時,才以 loadModel() 載入那一張的定義。
+// 新增模型:寫一份定義檔,再在這裡登記一行。
+export const sources = {
+  1: "./fig001.js",
+  2: "./fig002.js",
+  3: "./fig003.js",
+  4: "./fig004.js",
+  5: "./fig005.js",
+  6: "./fig006.js",
+  7: "./fig007.js",
+  8: "./fig008.js",
+  9: "./fig009.js",
+  10: "./fig010.js",
+  11: "./fig011.js",
+  12: "./fig012.js",
+  13: "./fig013.js",
+  14: "./fig014.js",
+  15: "./fig015.js",
+  16: "./fig016.js",
+  17: "./fig017.js",
+  18: "./fig018.js",
+  19: "./fig019.js",
+  20: "./fig020.js",
+  21: "./fig021.js",
+  22: "./fig022.js",
+  23: "./fig023.js",
+};
 
-export const models = [fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9, fig10, fig11, fig12, fig13, fig14, fig15, fig16, fig17, fig18, fig19, fig20, fig21, fig22, fig23];
+/** 這張插圖有沒有模型(只查清單,不載入定義) */
+export const hasModel = (figure) => Object.hasOwn(sources, figure);
 
-export const registry = new Map(models.map((m) => [m.figure, m]));
+const loading = new Map();
+
+/** 載入一張插圖的模型定義;失敗時清掉快取,下次切換可重試 */
+export function loadModel(figure) {
+  if (!hasModel(figure)) return Promise.reject(new Error(`圖 ${figure} 沒有模型`));
+  if (!loading.has(figure)) {
+    const promise = import(sources[figure]).then(
+      (m) => m.default,
+      (err) => {
+        loading.delete(figure);
+        throw err;
+      },
+    );
+    loading.set(figure, promise);
+  }
+  return loading.get(figure);
+}

@@ -1,17 +1,17 @@
 // 皮帶傳動模型的測試:斷言直接對應原文描述(同向、反向、半徑比)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fig1 from "../models/fig01.js";
-import fig2 from "../models/fig02.js";
-import fig5 from "../models/fig05.js";
-import fig7 from "../models/fig07.js";
-import fig3 from "../models/fig03.js";
-import fig4 from "../models/fig04.js";
-import fig6 from "../models/fig06.js";
-import fig11 from "../models/fig11.js";
-import fig8 from "../models/fig08.js";
-import fig9 from "../models/fig09.js";
-import fig10 from "../models/fig10.js";
+import fig1 from "../models/fig001.js";
+import fig2 from "../models/fig002.js";
+import fig5 from "../models/fig005.js";
+import fig7 from "../models/fig007.js";
+import fig3 from "../models/fig003.js";
+import fig4 from "../models/fig004.js";
+import fig6 from "../models/fig006.js";
+import fig11 from "../models/fig011.js";
+import fig8 from "../models/fig008.js";
+import fig9 from "../models/fig009.js";
+import fig10 from "../models/fig010.js";
 
 const close = (actual, expected, msg) =>
   assert.ok(Math.abs(actual - expected) < 1e-9, `${msg ?? ""} 期望 ${expected},實際 ${actual}`);

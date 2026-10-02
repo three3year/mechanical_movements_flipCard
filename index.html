@@ -57,13 +57,15 @@
     // 卡片沒有模型時只是暫時顯示插圖,不清除這個狀態。
     let figMode = "illustration";
     let selectedFig = null; // 多插圖條目在模型模式下選中的圖號
-    let registry = null; // 圖號 → 模型定義;ES module 載入失敗(如 file:// 開啟)時維持 null,不出現切換
+    // 模型登記表:只有「圖號 → 定義所在」的清單,定義本身切到模型時才載入。
+    // ES module 載入失敗(如 file:// 開啟)時維持 null,不出現切換
+    let registry = null;
     let viewerPromise = null;
     let viewerModule = null;
 
     import("./models/registry.js").then(
       (m) => {
-        registry = m.registry;
+        registry = m;
         render();
       },
       () => {},
@@ -84,11 +86,13 @@
     const figureNo = (src) => parseInt(src.match(/(\d+)\.png$/)[1], 10);
 
     function modelFiguresOf(entry) {
-      return registry ? entry.images.map(figureNo).filter((n) => registry.has(n)) : [];
+      return registry ? entry.images.map(figureNo).filter((n) => registry.hasModel(n)) : [];
     }
 
     function setFigMode(mode) {
-      if (figMode === mode) return;
+      // 這張模型載入失敗而暫時顯示插圖時,再按「模型」是重試
+      const retry = mode === "model" && !cardEl.querySelector(".stage");
+      if (figMode === mode && !retry) return;
       figMode = mode;
       render();
     }
@@ -225,17 +229,32 @@
       let notice = "";
       if (figMode === "model" && modelFigs.length) {
         cardEl.querySelector(".mode-toggle")?.classList.add("loading");
+        // 3D 函式庫與這一張的定義同時載入。3D 函式庫失敗(多半是網路)就退回插圖模式;
+        // 單一定義載入或組場景失敗只影響這一張,其他卡片照常顯示模型
+        const defPromise = registry.loadModel(selectedFig);
+        defPromise.catch(() => {});
+        let viewer = null;
         try {
-          const viewer = await loadViewer();
-          if (seq !== renderSeq) return;
-          stage = document.createElement("div");
-          stage.className = "stage";
-          session = viewer.prepare(registry.get(selectedFig), stage);
+          viewer = await loadViewer();
         } catch (err) {
           console.error(err);
           if (seq !== renderSeq) return;
           figMode = "illustration";
           notice = "模型載入失敗,先顯示插圖;請檢查網路後重新整理頁面。";
+        }
+        if (viewer) {
+          try {
+            const def = await defPromise;
+            if (seq !== renderSeq) return;
+            stage = document.createElement("div");
+            stage.className = "stage";
+            session = viewer.prepare(def, stage);
+          } catch (err) {
+            console.error(err);
+            if (seq !== renderSeq) return;
+            stage = null;
+            notice = "這張模型載入失敗,先顯示插圖。";
+          }
         }
       }
 

@@ -2,7 +2,7 @@
 // A 由繞過導引輪 B、B 的繩懸掛、另一端掛配重 C,底部輪升降時 A 自動跟著升降,讓皮帶保持張力。
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fig23 from "../models/fig23.js";
+import fig23 from "../models/fig023.js";
 
 const close = (actual, expected, msg, eps = 1e-9) =>
   assert.ok(Math.abs(actual - expected) < eps, `${msg ?? ""} 期望 ${expected},實際 ${actual}`);

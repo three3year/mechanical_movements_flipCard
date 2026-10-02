@@ -1,17 +1,17 @@
 // 滑輪組模型的測試:拉繩端的位移與重物上升的位移比,直接對應原文的省力比
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fig12 from "../models/fig12.js";
-import fig13 from "../models/fig13.js";
-import fig16 from "../models/fig16.js";
-import fig17 from "../models/fig17.js";
-import fig14 from "../models/fig14.js";
-import fig15 from "../models/fig15.js";
-import fig18 from "../models/fig18.js";
-import fig19 from "../models/fig19.js";
-import fig20 from "../models/fig20.js";
-import fig21 from "../models/fig21.js";
-import fig22 from "../models/fig22.js";
+import fig12 from "../models/fig012.js";
+import fig13 from "../models/fig013.js";
+import fig16 from "../models/fig016.js";
+import fig17 from "../models/fig017.js";
+import fig14 from "../models/fig014.js";
+import fig15 from "../models/fig015.js";
+import fig18 from "../models/fig018.js";
+import fig19 from "../models/fig019.js";
+import fig20 from "../models/fig020.js";
+import fig21 from "../models/fig021.js";
+import fig22 from "../models/fig022.js";
 
 const HOISTS = [fig12, fig13, fig14, fig15, fig16, fig17, fig18, fig19, fig20, fig21, fig22];
 

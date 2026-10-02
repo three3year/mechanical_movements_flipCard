@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>模型預覽</title>
+  <!-- 維護用:插圖與模型初始視角並排,供截圖對照。用法:tools/model-preview.html?fig=24[&v=主動量][&state=狀態][&play=1] -->
+  <link rel="stylesheet" href="../style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    body { padding: 8px; background: #fff; }
+    .row { display: flex; gap: 8px; align-items: flex-start; }
+    .row > img { width: 440px; height: 400px; object-fit: contain; border: 1px solid #ccc; }
+    .card { width: 520px; }
+    .card .stage { padding: 0; }
+    .stage .stage-view { height: 400px; }
+    #msg { font: 12px monospace; white-space: pre-wrap; color: #a00; }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <img id="ill" alt="">
+    <div class="card"><div class="stage" id="stage"></div></div>
+  </div>
+  <div id="msg"></div>
+  <script type="module">
+    import { loadModel } from "../models/registry.js";
+    import { prepare } from "../viewer/viewer.js";
+    const q = new URLSearchParams(location.search);
+    const fig = Number(q.get("fig"));
+    document.getElementById("ill").src = `../images/${fig}.png`;
+    try {
+      const def = await loadModel(fig);
+      const session = prepare(def, document.getElementById("stage"));
+      if (q.has("state")) session.setState(q.get("state"));
+      if (q.has("v")) session.value = Number(q.get("v"));
+      if (q.get("play") !== "1") session.setPlaying(false);
+      session.transition = null;
+      session.activate();
+      document.title = "ready";
+    } catch (err) {
+      document.getElementById("msg").textContent = String(err.stack ?? err);
+      document.title = "error";
+    }
+  </script>
+</body>
+</html>
