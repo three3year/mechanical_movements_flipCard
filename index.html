@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>機構圖鑑</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="book">
+    <header>
+      <h1>機構圖鑑</h1>
+      <p class="subtitle"><a href="https://ia803103.us.archive.org/12/items/Mechanical_Movements_507/Mechanical_Movements_507.pdf" target="_blank" rel="noopener">Mechanical Movements</a> · 圖文對照</p>
+    </header>
+
+    <nav class="tabs" id="tabs"></nav>
+
+    <main class="viewer">
+      <button class="back" id="back" hidden></button>
+      <article class="card" id="card"></article>
+      <div class="pager">
+        <button id="prev">‹ 上一張</button>
+        <span class="pos" id="pos"></span>
+        <button id="next">下一張 ›</button>
+      </div>
+    </main>
+
+    <footer id="footer"></footer>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    const tabsEl = document.getElementById("tabs");
+    const cardEl = document.getElementById("card");
+    const posEl = document.getElementById("pos");
+    const prevBtn = document.getElementById("prev");
+    const nextBtn = document.getElementById("next");
+    const footerEl = document.getElementById("footer");
+
+    let chapterIndex = 0;
+    let entryIndex = 0;
+    let renderSeq = 0;
+    const backEl = document.getElementById("back");
+    const backStack = []; // 交互參照的跳轉來源,可多層依序退回
+
+    // 「第 N 種」交互參照:依圖號找到所在卡片
+    function findEntry(no) {
+      const target = "images/" + no + ".png";
+      for (let c = 0; c < chapters.length; c++) {
+        const i = chapters[c].entries.findIndex((e) => e.images.includes(target));
+        if (i !== -1) return { c, i };
+      }
+      return null;
+    }
+
+    function jumpTo(no) {
+      const found = findEntry(no);
+      if (!found || (found.c === chapterIndex && found.i === entryIndex)) return;
+      backStack.push({
+        c: chapterIndex,
+        i: entryIndex,
+        no: chapters[chapterIndex].entries[entryIndex].no,
+      });
+      chapterIndex = found.c;
+      entryIndex = found.i;
+      render();
+    }
+
+    function goBack() {
+      const from = backStack.pop();
+      if (!from) return;
+      chapterIndex = from.c;
+      entryIndex = from.i;
+      render();
+    }
+
+    // 把段落文字中的「第 N 種」轉成可點的連結
+    function buildParagraph(text) {
+      const p = document.createElement("p");
+      // 支援「第 3 種」與「第 181 與 182 種」;複合參照連到第一個編號的卡片
+      const re = /第\s*(\d+)(?:\s*與\s*\d+)*\s*種/g;
+      let last = 0;
+      let m;
+      while ((m = re.exec(text))) {
+        p.appendChild(document.createTextNode(text.slice(last, m.index)));
+        const a = document.createElement("a");
+        a.className = "xref";
+        a.href = "#";
+        a.textContent = m[0];
+        const no = parseInt(m[1], 10);
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          jumpTo(no);
+        });
+        p.appendChild(a);
+        last = m.index + m[0].length;
+      }
+      p.appendChild(document.createTextNode(text.slice(last)));
+      return p;
+    }
+
+    // 圖片區左右半邊的翻頁提示:平時只露淡箭頭,滑到哪半邊才亮起
+    function makeHint(side, glyph) {
+      const hint = document.createElement("span");
+      hint.className = "hint " + side;
+      hint.setAttribute("aria-hidden", "true");
+      const arrow = document.createElement("span");
+      arrow.textContent = glyph;
+      hint.appendChild(arrow);
+      return hint;
+    }
+
+    async function render() {
+      const seq = ++renderSeq;
+      const chapter = chapters[chapterIndex];
+      const entry = chapter.entries[entryIndex];
+
+      // 先在畫面外組好整張卡
+      const fragment = document.createDocumentFragment();
+
+      const fig = document.createElement("div");
+      fig.className = "fig";
+      const imgs = [];
+      for (const src of entry.images) {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "圖 " + entry.no;
+        imgs.push(img);
+        fig.appendChild(img);
+      }
+      const atStart = chapterIndex === 0 && entryIndex === 0;
+      const atEnd =
+        chapterIndex === chapters.length - 1 &&
+        entryIndex === chapter.entries.length - 1;
+      if (!atStart) fig.appendChild(makeHint("prev", "‹"));
+      if (!atEnd) fig.appendChild(makeHint("next", "›"));
+      fragment.appendChild(fig);
+
+      const no = document.createElement("div");
+      no.className = "no";
+      no.textContent = "圖 " + entry.no;
+      fragment.appendChild(no);
+
+      const body = document.createElement("div");
+      body.className = "body";
+      for (const paragraph of entry.text) {
+        body.appendChild(buildParagraph(paragraph));
+      }
+      fragment.appendChild(body);
+
+      // 等所有圖片解碼完成才換上去,避免空白閃爍
+      try {
+        await Promise.all(imgs.map((img) => img.decode()));
+      } catch (_) {
+        // 個別圖片壞掉就照常顯示(破圖示意),不擋整張卡
+      }
+      if (seq !== renderSeq) return; // 期間又翻頁了,放棄這次結果
+
+      cardEl.replaceChildren(fragment);
+
+      tabsEl.querySelectorAll("button").forEach((btn, i) => {
+        btn.classList.toggle("active", i === chapterIndex);
+      });
+      posEl.textContent = (entryIndex + 1) + " / " + chapter.entries.length;
+      prevBtn.disabled = atStart;
+      nextBtn.disabled = atEnd;
+      const figCount = chapter.entries.reduce((sum, e) => sum + e.images.length, 0);
+      footerEl.textContent = chapter.title + " · 共 " + figCount + " 圖";
+
+      const from = backStack[backStack.length - 1];
+      backEl.hidden = !from;
+      if (from) backEl.textContent = "‹ 返回 圖 " + from.no;
+
+      preloadAround();
+    }
+
+    // 預載當前卡片前後各 2 張的圖,圖庫再大開啟也不變慢
+    const preloaded = new Set();
+    function preloadAround() {
+      const entries = chapters[chapterIndex].entries;
+      for (let d = -2; d <= 2; d++) {
+        const entry = entries[entryIndex + d];
+        if (!entry) continue;
+        for (const src of entry.images) {
+          if (preloaded.has(src)) continue;
+          preloaded.add(src);
+          new Image().src = src;
+        }
+      }
+    }
+
+    // 翻越章節邊界時自動切到前一章末張/下一章首張
+    function step(delta) {
+      let c = chapterIndex;
+      let i = entryIndex + delta;
+      if (i < 0) {
+        if (c === 0) return;
+        c -= 1;
+        i = chapters[c].entries.length - 1;
+      } else if (i >= chapters[c].entries.length) {
+        if (c === chapters.length - 1) return;
+        c += 1;
+        i = 0;
+      }
+      backStack.length = 0; // 手動翻頁即離開參照脈絡,返回鍵消失
+      chapterIndex = c;
+      entryIndex = i;
+      render();
+    }
+
+    prevBtn.addEventListener("click", () => step(-1));
+    nextBtn.addEventListener("click", () => step(1));
+
+    // 點圖片區左半邊=上一張,右半邊=下一張;文字區不翻頁,保留選取複製
+    cardEl.addEventListener("click", (e) => {
+      const fig = e.target.closest(".fig");
+      if (!fig) return;
+      const rect = fig.getBoundingClientRect();
+      step(e.clientX - rect.left < rect.width / 2 ? -1 : 1);
+    });
+
+    backEl.addEventListener("click", goBack);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") step(-1);
+      if (e.key === "ArrowRight") step(1);
+      if (e.key === "Escape") goBack();
+    });
+
+    // 手機左右滑動換頁
+    let touchX = null;
+    cardEl.addEventListener("touchstart", (e) => {
+      touchX = e.changedTouches[0].clientX;
+    }, { passive: true });
+    cardEl.addEventListener("touchend", (e) => {
+      if (touchX === null) return;
+      const dx = e.changedTouches[0].clientX - touchX;
+      touchX = null;
+      if (Math.abs(dx) < 50) return;
+      step(dx < 0 ? 1 : -1);
+    }, { passive: true });
+
+    chapters.forEach((chapter, i) => {
+      const btn = document.createElement("button");
+      btn.textContent = chapter.title;
+      btn.addEventListener("click", () => {
+        backStack.length = 0; // 手動切章視為新的閱讀起點
+        chapterIndex = i;
+        entryIndex = 0;
+        render();
+      });
+      tabsEl.appendChild(btn);
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+:root {
+  --paper: #f1e9d4;
+  --card: #f9f3e2;
+  --ink: #3d3226;
+  --ink-soft: #6b5d49;
+  --line: #c3b088;
+  --line-dark: #9b8760;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", "PMingLiU", "MingLiU", serif;
+  line-height: 1.9;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.book {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ── 頁首 ─────────────────────────── */
+
+header {
+  text-align: center;
+  padding-bottom: 1.2rem;
+  border-bottom: 4px double var(--line-dark);
+  margin-bottom: 1.5rem;
+}
+
+header h1 {
+  font-size: 2rem;
+  font-weight: normal;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em; /* 抵銷最後一字的字距,讓標題真正置中 */
+}
+
+header .subtitle {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.25em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+
+header .subtitle a {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+header .subtitle a:hover {
+  color: var(--ink);
+  text-decoration: underline solid;
+}
+
+/* ── 章節頁籤 ─────────────────────── */
+
+nav.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-bottom: 2.2rem;
+}
+
+nav.tabs button {
+  font: inherit;
+  font-size: 0.95rem;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line-dark);
+  padding: 0.35rem 1.3rem;
+  cursor: pointer;
+}
+
+nav.tabs button:hover {
+  background: var(--card);
+}
+
+nav.tabs button.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+/* ── 單張檢視 ─────────────────────── */
+
+.viewer {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 2px 3px 0 rgba(61, 50, 38, 0.08);
+}
+
+.card .fig {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.2rem 1.2rem 0.6rem;
+  cursor: pointer;
+  /* 雙擊翻頁時不要讓瀏覽器選取圖片 */
+  user-select: none;
+  position: relative;
+}
+
+/* 翻頁提示:各蓋住半邊圖片區,箭頭落在左右留白裡不壓到圖 */
+.card .fig .hint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  display: flex;
+  align-items: center;
+  padding: 0 0.3rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  transition: background 0.2s;
+}
+
+.card .fig .hint.prev {
+  left: 0;
+  justify-content: flex-start;
+}
+
+.card .fig .hint.next {
+  right: 0;
+  justify-content: flex-end;
+}
+
+.card .fig .hint span {
+  opacity: 0.3;
+  transition: opacity 0.2s;
+}
+
+.card .fig .hint.prev:hover {
+  background: linear-gradient(to right, rgba(61, 50, 38, 0.06), transparent 45%);
+}
+
+.card .fig .hint.next:hover {
+  background: linear-gradient(to left, rgba(61, 50, 38, 0.06), transparent 45%);
+}
+
+.card .fig .hint:hover span {
+  opacity: 0.85;
+}
+
+.card .fig img {
+  max-width: 100%;
+  max-height: 320px;
+  /* 讓掃描圖的泛黃紙底融入卡片底色 */
+  mix-blend-mode: multiply;
+}
+
+.card .no {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0 1.2rem 0.6rem;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  white-space: nowrap;
+}
+
+.card .no::before,
+.card .no::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+.card .body {
+  padding: 0 1.4rem 1.4rem;
+  font-size: 1.02rem;
+  text-align: justify;
+}
+
+.card .body p + p {
+  margin-top: 0.7em;
+}
+
+.card .body a.xref {
+  color: #7a5c2e;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.card .body a.xref:hover {
+  text-decoration: underline solid;
+}
+
+/* ── 返回跳轉來源 ─────────────────── */
+
+.viewer .back {
+  display: block;
+  font: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  color: #7a5c2e;
+  background: transparent;
+  border: 1px dashed var(--line-dark);
+  padding: 0.3rem 1rem;
+  margin-bottom: 0.8rem;
+  cursor: pointer;
+}
+
+.viewer .back:hover {
+  background: var(--card);
+}
+
+/* display: block 會壓過 hidden 屬性的預設隱藏,需明確補上 */
+.viewer .back[hidden] {
+  display: none;
+}
+
+/* ── 翻頁控制 ─────────────────────── */
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.2rem;
+}
+
+.pager button {
+  font: inherit;
+  font-size: 0.95rem;
+  letter-spacing: 0.15em;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line-dark);
+  padding: 0.45rem 1.4rem;
+  cursor: pointer;
+}
+
+.pager button:hover:not(:disabled) {
+  background: var(--card);
+}
+
+.pager button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.pager .pos {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  letter-spacing: 0.15em;
+  font-variant-numeric: tabular-nums;
+}
+
+footer {
+  margin-top: 3rem;
+  text-align: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 1.2rem 0.8rem 3rem;
+  }
+  header h1 {
+    font-size: 1.5rem;
+  }
+}
+
+/* 電腦版:放大卡片、圖片與文字 */
+@media (min-width: 768px) {
+  .viewer {
+    max-width: 760px;
+  }
+  .card .fig {
+    padding: 1.2rem 1.2rem 0.5rem;
+    /* 原圖多在 200px 上下,放大 1.6 倍才有閱讀尺寸;zoom 會連版面一起縮放 */
+    zoom: 1.6;
+  }
+  .card .no {
+    font-size: 0.95rem;
+  }
+  .card .body {
+    padding: 0 2.2rem 1.8rem;
+    font-size: 1.2rem;
+  }
+  .pager button {
+    font-size: 1.05rem;
+    padding: 0.55rem 1.8rem;
+  }
+  .pager .pos {
+    font-size: 1rem;
+  }
+}
