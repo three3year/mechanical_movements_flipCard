@@ -463,8 +463,8 @@ const group = () => new THREE.Group();
 
 // 固定在零件上的曲線凸條(例如碟形輪面上的螺旋螺紋):沿 points 的管
 function tube(part, material) {
-  const curve = new THREE.CatmullRomCurve3(part.points.map((p) => new THREE.Vector3(...p)));
-  return mesh(new THREE.TubeGeometry(curve, part.points.length * 2, part.radius ?? 0.05, 8, false), material);
+  const curve = new THREE.CatmullRomCurve3(part.points.map((p) => new THREE.Vector3(...p)), !!part.closed);
+  return mesh(new THREE.TubeGeometry(curve, part.points.length * 2, part.radius ?? 0.05, 8, !!part.closed), material);
 }
 
 const builders = {

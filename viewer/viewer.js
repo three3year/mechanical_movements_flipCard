@@ -314,8 +314,10 @@ class Session {
   setState(id) {
     if (id === this.state) return;
     const next = this.def.pose(this.value, id);
-    // 轉角與皮帶相位以偏移量接續,切換瞬間不跳動;之後的轉向與比例仍完全依 pose
+    // 轉角與皮帶相位以偏移量接續,切換瞬間不跳動;之後的轉向與比例仍完全依 pose。
+    // 定義標 posed 的零件(離合器的從動半、撥桿……)不接續,而是以短動畫轉到新狀態的姿勢
     for (const [pid, p] of Object.entries(next.parts)) {
+      if (this.objects.get(pid)?.part.posed) continue;
       if (p.angle != null && this.lastAngles[pid] != null) this.angleOffsets[pid] = this.lastAngles[pid] - p.angle;
     }
     for (const [pid, p] of Object.entries(next.paths ?? {})) {
@@ -393,7 +395,7 @@ class Session {
       const from = tr && t < 1 ? tr.objects[id] : null;
       if (from) {
         object.position.lerpVectors(from.position, place.position, t);
-        if (p.from || p.rotation || part.kind === "link") object.quaternion.slerpQuaternions(from.quaternion, place.quaternion, t);
+        if (p.from || p.rotation || part.kind === "link" || part.posed) object.quaternion.slerpQuaternions(from.quaternion, place.quaternion, t);
         else object.quaternion.copy(place.quaternion);
       } else {
         object.position.copy(place.position);
@@ -536,6 +538,9 @@ class Session {
 
   fitCamera() {
     const { camera, controls } = getShared();
+    // 原圖是正視的立面圖時,定義可用較窄的視角(view.fov)讓透視變形小一點
+    camera.fov = this.def.view?.fov ?? FOV;
+    camera.updateProjectionMatrix();
     const box = new THREE.Box3();
     for (const v of this.fitSamples()) {
       this.apply(this.pose(v), 0);
@@ -559,7 +564,7 @@ class Session {
     camera.updateMatrixWorld();
     const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
     const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
-    const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+    const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     let distance = 0;
     for (let i = 0; i < 8; i++) {
       const corner = new THREE.Vector3(

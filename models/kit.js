@@ -263,3 +263,28 @@ export function swingPhase(v, from, to) {
 
 /** 累計行程 v 對應的往復位置 */
 export const swing = (v, from, to) => swingPhase(v, from, to).at;
+
+/** 由三個互相垂直的單位向量(局部 X、Y、Z 在世界中的方向)求四元數 */
+export function quatFromBasis(x, y, z) {
+  const [m00, m10, m20] = x;
+  const [m01, m11, m21] = y;
+  const [m02, m12, m22] = z;
+  const trace = m00 + m11 + m22;
+  if (trace > 0) {
+    const s = 0.5 / Math.sqrt(trace + 1);
+    return [(m21 - m12) * s, (m02 - m20) * s, (m10 - m01) * s, 0.25 / s];
+  }
+  if (m00 > m11 && m00 > m22) {
+    const s = 2 * Math.sqrt(1 + m00 - m11 - m22);
+    return [0.25 * s, (m01 + m10) / s, (m02 + m20) / s, (m21 - m12) / s];
+  }
+  if (m11 > m22) {
+    const s = 2 * Math.sqrt(1 + m11 - m00 - m22);
+    return [(m01 + m10) / s, 0.25 * s, (m12 + m21) / s, (m02 - m20) / s];
+  }
+  const s = 2 * Math.sqrt(1 + m22 - m00 - m11);
+  return [(m02 + m20) / s, (m12 + m21) / s, 0.25 * s, (m10 - m01) / s];
+}
+
+/** 向量 v 繞單位軸 axis 轉 angle */
+export const rotateAbout = (v, axis, angle) => quatRotate(quatAxisAngle(axis, angle), v);
