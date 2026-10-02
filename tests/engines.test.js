@@ -9,6 +9,13 @@ import { bellCrank as crank157 } from "../models/fig157.js";
 import { treadle as treadle158 } from "../models/fig158.js";
 import { treadle as treadle159, ropeLengthAt } from "../models/fig159.js";
 import { lathe as lathe160 } from "../models/fig160.js";
+import { oval as oval172 } from "../models/fig172.js";
+import { traverse as traverse173 } from "../models/fig173.js";
+import { clamp as clamp174, nose as nose174, grip as grip174 } from "../models/fig174.js";
+import { slotting as slotting178, crankLength as crankLength178 } from "../models/fig178.js";
+import { clamp as clamp180, nose as nose180, grip as grip180 } from "../models/fig180.js";
+import { screwClamp as clamp190 } from "../models/fig190.js";
+import { rot2 } from "../models/kit.js";
 
 const TAU = 2 * Math.PI;
 
@@ -188,4 +195,82 @@ test("第 179 種:偏心輪相對軸轉半圈,閥門的動作反向(引擎因此
     const b = reverser(t, "backward").valveX - reverser(0, "backward").valveX;
     close(a, -b, `轉角 ${t}`, 0.04); // 偏心桿的斜度造成少許不對稱
   }
+});
+
+test("第 172 種:連桿上的一點畫出蛋形的橢圓(一頭大、一頭小)", () => {
+  const pts = sweep(TAU, 720).map((t) => oval172(t).point);
+  close(dist(pts[0], pts[pts.length - 1]), 0, "一圈畫出封閉曲線", 1e-9);
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
+  assert.ok(Math.max(...ys) - Math.min(...ys) < x1 - x0, "橢圓:寬大於高");
+  // 蛋形:在左右兩端各 1/4 寬處量高度,兩頭不一樣大
+  const heightAt = (x) => {
+    const near = pts.filter((p) => Math.abs(p[0] - x) < 0.03).map((p) => p[1]);
+    return Math.max(...near) - Math.min(...near);
+  };
+  const left = heightAt(x0 + (x1 - x0) / 4);
+  const right = heightAt(x1 - (x1 - x0) / 4);
+  assert.ok(Math.abs(left - right) > 0.03, `兩頭大小不同(${left.toFixed(3)} vs ${right.toFixed(3)})`);
+});
+
+test("第 173 種:圓盤每轉一圈,撥爪輪被撥一次、螺帽移動,導桿的行程跟著改變", () => {
+  for (let k = -5; k < 3; k++) {
+    const a = traverse173(k * TAU + 1);
+    const b = traverse173((k + 1) * TAU + 1);
+    close(b.steps - a.steps, 1, "每圈撥一次");
+    assert.ok(b.stroke < a.stroke, "行程逐圈縮短");
+    close(a.stroke - b.stroke, 0.2, "每圈變化相同的量", 1e-9);
+  }
+  // 一圈之中撥爪輪只在經過固定銷時轉動,其餘時間行程不變
+  const stroke = sweep(TAU, 360, 0.01).map((t) => traverse173(t).stroke);
+  assert.ok(stroke.filter((v) => Math.abs(v - stroke[0]) > 1e-9).length < 360 * 0.06);
+  // 導桿(T 形桿)的位移就是手腕銷的 x:一圈內往返一次,幅度等於行程
+  const xs = sweep(TAU, 720, 0.3).map((t) => traverse173(t).x);
+  close(Math.max(...xs) - Math.min(...xs), traverse173(0.3).stroke, "幅度 = 行程", 0.01);
+});
+
+const noseAt = (local, pivot, angle) => {
+  const [x, y] = rot2(local, angle);
+  return [x + pivot[0], y + pivot[1]];
+};
+
+test("第 174 種:把木料推入兩夾爪之間,夾爪繞螺絲轉、夾緊木料兩側", () => {
+  const PIVOT = 1.2;
+  const out = clamp174(0);
+  const inn = clamp174(1);
+  assert.ok(inn.end < out.end, "木料往左推進");
+  assert.ok(inn.angle < out.angle, "上夾爪順時針轉(下夾爪對稱)");
+  close(noseAt(nose174, [0, PIVOT], inn.angle)[1], grip174.HALF, "推到底時上鉤貼著木料上緣", 0.01);
+  assert.ok(noseAt(nose174, [0, PIVOT], out.angle)[1] > grip174.HALF + 0.2, "木料抽出時夾爪張開");
+  // 木料還沒頂到內緣時,夾爪不動
+  close(clamp174(0.2).angle, out.angle);
+});
+
+test("第 178 種:滑塊由偏心的圓形溝槽引導,接近底部時曲柄變短,連桿的速度降低", () => {
+  close(crankLength178(Math.PI / 2), 2.1 + 0.92, "頂部最長");
+  close(crankLength178(-Math.PI / 2), 2.1 - 0.92, "底部最短");
+  // 曲柄以等速轉動時,刀具滑塊的速度:曲柄在上方時快、在下方時慢
+  const speed = (t) => Math.abs(slotting178(t + 1e-4).slide[0] - slotting178(t - 1e-4).slide[0]) / 2e-4;
+  const top = Math.max(...sweep(0.3, 30, -0.3).map(speed));
+  const bottom = Math.max(...sweep(Math.PI + 0.3, 30, Math.PI - 0.3).map(speed));
+  assert.ok(bottom < top * 0.6, `底部 ${bottom.toFixed(2)} < 頂部 ${top.toFixed(2)}`);
+});
+
+test("第 180 種:單一夾爪與固定側板:推入木料,夾爪轉動把木料壓向側板", () => {
+  const out = clamp180(0);
+  const inn = clamp180(1);
+  assert.ok(inn.top > out.top, "木料往上推");
+  assert.ok(inn.angle < out.angle, "夾爪順時針轉");
+  close(noseAt(nose180, [0, 0], inn.angle)[0], grip180.BOARD.x[1], "推到底時鉤貼著木料", 0.01);
+  assert.ok(noseAt(nose180, [0, 0], out.angle)[0] > grip180.BOARD.x[1] + 0.2, "木料退出時夾爪張開");
+});
+
+test("第 190 種:轉動手柄,螺桿往上頂住槓桿,支點另一側的壓腳夾住木塊", () => {
+  const tight = clamp190(0);
+  const loose = clamp190(-TAU * 2);
+  assert.ok(tight.rise > loose.rise, "旋緊時螺桿上升");
+  assert.ok(tight.lift < loose.lift, "壓腳隨之下降");
+  close(tight.foot[1] - 0.45, -0.45, "旋緊時壓腳底面貼著木塊頂面", 1e-9);
+  assert.ok(tight.foot[0] < 0, "壓腳在支點另一側(左),螺桿在右");
 });
