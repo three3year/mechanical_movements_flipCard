@@ -1,7 +1,7 @@
 // 第三章「間歇與棘輪運動」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
+import { close, sweep, turned } from "./helpers.js";
 import fig75, { motion, wheelSpec } from "../models/fig075.js";
 import { ratchetRadius } from "../models/ratchets.js";
 
@@ -95,4 +95,60 @@ test("第 76 種:大輪每轉一圈,凸柱 D 撞擊撥爪一次,棘輪 A 轉動�
   close(register(5 * 2 * Math.PI).a - register(0).a, 5 * pitch76);
   const back = sweep(2 * Math.PI * 0.9, 20, 2 * Math.PI * 0.11).map((v) => register(v).a);
   for (const a of back) close(a, back[0], "撥爪回落與等待時 A 不動");
+});
+
+import fig65, { indexing, studStep } from "../models/fig065.js";
+import { cAngle as c68, notchStep } from "../models/fig068.js";
+import { aAngle as a69, toothStep } from "../models/fig069.js";
+import { aAngle as a70, step as step70 } from "../models/fig070.js";
+import { cAngle as c71, step as step71 } from "../models/fig071.js";
+import fig74, { angles as angles74 } from "../models/fig074.js";
+
+// 驅動件轉一圈從動件前進 step,而且一圈中大部分時間被鎖住不動
+function assertIndexing(fn, step, label) {
+  const TAU = 2 * Math.PI;
+  close(Math.abs(fn(TAU * 3) - fn(0)), 3 * step, `${label}:每轉一圈前進一格`);
+  const samples = sweep(TAU, 360).map(fn);
+  let still = 0;
+  for (let i = 1; i < samples.length; i++) if (Math.abs(samples[i] - samples[i - 1]) < 1e-12) still++;
+  assert.ok(still > 360 * 0.6, `${label}:其餘時間鎖住不動`);
+  const dir = Math.sign(fn(TAU) - fn(0));
+  for (let i = 1; i < samples.length; i++) assert.ok((samples[i] - samples[i - 1]) * dir >= -1e-12, `${label}:只朝一個方向前進`);
+}
+
+test("第 65 種:撥爪 A 每轉一圈撥動 D 一個凸柱的距離;撥動時槓桿擋止擺開,其餘時間不動", () => {
+  assertIndexing((c) => indexing(c).d, studStep, "第 65 種");
+  assert.ok(indexing(0.2).swing > 0.5, "撥動時槓桿擺開");
+  assert.equal(indexing(2).swing, 0, "其餘時間槓桿擋住凸柱");
+  assert.ok(turned(fig65, "c", 0, 1) !== 0);
+});
+
+test("第 68 種:驅動輪 B 每轉一圈,C 轉動一個凹槽的距離,其餘時間被 B 的圓周鎖住", () => {
+  assertIndexing(c68, notchStep, "第 68 種");
+});
+
+test("第 69 種:單齒小輪 B 每轉一圈,A 轉過一齒;其餘時間被鎖住", () => {
+  assertIndexing(a69, toothStep, "第 69 種");
+});
+
+test("第 70、71 種:撥爪每轉一圈,凸柱輪轉過一個凸柱的距離,其餘時間凸柱靠在輪緣上被鎖住", () => {
+  assertIndexing(a70, step70, "第 70 種");
+  assertIndexing(c71, step71, "第 71 種");
+});
+
+test("第 74 種:缺齒式斜齒輪 C 使 A、B 間歇地、朝相反方向轉動", () => {
+  const TAU = 2 * Math.PI;
+  const a = sweep(TAU * 2, 720).map((t) => angles74(t).a);
+  const b = sweep(TAU * 2, 720).map((t) => angles74(t).b);
+  // A 的軸朝 +x、B 的軸朝 −x;都換成繞 +x 的轉角後比較
+  assert.ok((a[a.length - 1] - a[0]) * -(b[b.length - 1] - b[0]) < 0, "A、B 轉向相反");
+  let both = 0;
+  for (let i = 1; i < a.length; i++) {
+    const da = Math.abs(a[i] - a[i - 1]) > 1e-9;
+    const db = Math.abs(b[i] - b[i - 1]) > 1e-9;
+    if (da && db) both++;
+  }
+  assert.ok(both <= 4, "A 與 B 輪流轉動(只在交接處同時)");
+  close(Math.abs(angles74(TAU).a - angles74(0).a), (Math.PI * 32) / 26, "每圈 A 轉 半圈 × 齒數比", 1e-9);
+  assert.ok(fig74.parts.find((p) => p.id === "c").toothed.length === 16, "C 只有一半有齒");
 });

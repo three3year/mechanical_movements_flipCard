@@ -37,3 +37,31 @@ export const cycleOf = (v, period) => {
   const k = Math.floor(v / period);
   return { k, u: (v - k * period) / period };
 };
+
+const TWO_PI = Math.PI * 2;
+/** 擺線形的 0→1 過渡(起止速度為零,像撥爪推凸柱那樣平順地起動、停住) */
+export const cycloid = (x) => {
+  const t = Math.min(1, Math.max(0, x));
+  return t - Math.sin(TWO_PI * t) / TWO_PI;
+};
+
+/**
+ * 每轉一圈前進一步(單齒輪、撥爪撥凸柱):驅動角 theta 落在 [from, from + span] 時從動件前進 step,
+ * 其餘時間被鎖住不動。回傳相對於 theta = from 之前的累計前進量。
+ */
+export function indexStep(theta, { from, span, step }) {
+  const k = Math.floor((theta - from) / TWO_PI);
+  const u = theta - from - k * TWO_PI;
+  return (k + (u < span ? cycloid(u / span) : 1)) * step;
+}
+
+/**
+ * 缺齒輪:接觸點在缺齒輪的局部角 contact − theta(theta 增加時往回掃);
+ * 有齒的扇區是局部角 [start, start + len]。回傳到 theta 為止「有齒經過接觸點」的累計角度,
+ * 從 theta0 = contact − start − len(第一次開始咬合)算起。
+ */
+export function sectorEngaged(theta, { contact, start, len }) {
+  const t = theta - (contact - start - len);
+  const k = Math.floor(t / TWO_PI);
+  return k * len + Math.min(t - k * TWO_PI, len);
+}
