@@ -196,3 +196,51 @@ test("第 80 種:槓桿 C 振動,兩根鉤形棘爪交替把槽形齒條桿 A �
   assertBothStrokes(barHeight, swing80, "第 80 種");
   assert.ok(barHeight(swing80 * 4) > 0, "往上");
 });
+
+import { hammerLift } from "../models/fig072.js";
+import { rackRise, stroke as stroke81, engagedSpan } from "../models/fig081.js";
+import { wheelAngle as wheel82, swing as swing82 } from "../models/fig082.js";
+import { wheelAngle as wheel83, swing as swing83 } from "../models/fig083.js";
+import { frameShift } from "../models/fig084.js";
+import { rodLift } from "../models/fig085.js";
+
+// 每一圈中「抬起」幾次:從 0 升起、再落回 0 算一次
+const lifts = (fn, turns = 1) => {
+  const samples = sweep(2 * Math.PI * turns, 2000).map(fn);
+  let count = 0;
+  for (let i = 1; i < samples.length; i++) if (samples[i - 1] < 1e-9 && samples[i] > 1e-9) count++;
+  return count;
+};
+
+test("第 72 種:推板輪 B 每旋轉一圈將錘子 A 抬起四次", () => {
+  assert.equal(lifts(hammerLift), 4);
+  assert.ok(Math.max(...sweep(2 * Math.PI, 400).map(hammerLift)) > 0.05, "錘子確實被抬起");
+});
+
+test("第 85 種:軸上的兩個凸輪每轉一圈把桿 A 抬起兩次,桿憑自重落下", () => {
+  assert.equal(lifts(rodLift), 2);
+});
+
+test("第 81 種:缺齒式正齒輪 A 的齒咬住齒條時把桿 B 推上去,齒離開後彈簧 C 把桿推回原位", () => {
+  close(rackRise(engagedSpan / 2) / (engagedSpan / 2), 0.75, "咬合時齒條位移 = 節圓上轉過的弧長");
+  close(rackRise(engagedSpan), stroke81, "推到最高");
+  close(rackRise(Math.PI * 1.9), 0, "脫離後回到原位");
+  close(rackRise(2 * Math.PI + engagedSpan / 2), rackRise(engagedSpan / 2), "每圈重複");
+});
+
+test("第 82 種:兩個踏板交替踩下,振動臂上的棘爪使棘輪 A 近乎連續地(順時針)轉動", () => {
+  assertBothStrokes(wheel82, swing82, "第 82 種");
+  assert.ok(wheel82(swing82 * 4) < 0);
+});
+
+test("第 83 種:兩塊齒向相反的弧形板交替作用,使輪 D 近乎連續地旋轉", () => {
+  assertBothStrokes(wheel83, swing83, "第 83 種");
+});
+
+test("第 84 種:抬起 A 時框架被推向左方,降下 A 時推向右方,置中時凸輪不作用", () => {
+  const turns = 3 * 2 * Math.PI;
+  assert.ok(frameShift(turns, "raised") < 0, "抬起:往左");
+  assert.ok(frameShift(turns, "lowered") > 0, "降下:往右");
+  assert.equal(frameShift(turns, "middle"), 0, "置中:不動");
+  close(Math.abs(frameShift(2 * Math.PI * 2 + 3.5, "raised") - frameShift(2 * Math.PI + 3.5, "raised")), 0.32, "每圈推一齒");
+});
