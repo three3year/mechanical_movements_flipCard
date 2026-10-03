@@ -33,6 +33,10 @@ import * as m202 from "../models/fig202.js";
 import * as m208 from "../models/fig208.js";
 import * as m216 from "../models/fig216.js";
 import { woolComb, STEP as WOOL_STEP } from "../models/wool-comb.js";
+import * as m219 from "../models/fig219.js";
+import * as m220 from "../models/fig220.js";
+import * as m223 from "../models/fig223.js";
+import * as m224 from "../models/fig224.js";
 
 /** 等間隔取樣的序列:相鄰差的最大 / 最小(絕對值),量「速度變化多大」 */
 function spread(values) {
@@ -342,4 +346,43 @@ test("第 217、218 種:凸柱從 C 到 D 使滾軸後退,從 D 到 e 前進(後
     }
   }
   assert.equal(woolComb(0).lift, 0, "在 C 時卡榫已落下");
+});
+
+test("第 219 種:冠狀輪偏心,與小齒輪接觸處的相對半徑一直在變,小齒輪的轉速也跟著變", () => {
+  const { R, E, RP } = m219.geometry;
+  const radii = sweep(2 * Math.PI, 360).map(m219.contactRadius);
+  close(Math.max(...radii), R + E, "最遠", 1e-3);
+  close(Math.min(...radii), R - E, "最近", 1e-3);
+  const rate = (t) => Math.abs(m219.pinionAngle(t + 1e-4) - m219.pinionAngle(t - 1e-4)) / 2e-4;
+  const rates = sweep(2 * Math.PI, 72).map(rate);
+  close(Math.max(...rates) / Math.min(...rates), (R + E) / (R - E), "快慢比 = 半徑比", 0.01);
+  assert.ok(RP > 0);
+});
+
+test("第 220 種:手腕在開槽曲柄的槽內作動,離後者軸心的距離一直在變,所以等速轉動傳成變速轉動", () => {
+  const { SLOT } = m220.geometry;
+  const states = sweep(2 * Math.PI, 720).map((t) => m220.cranks(t));
+  for (const s of states) assert.ok(s.along > SLOT.from && s.along < SLOT.to, "手腕一直在槽內");
+  const angles = states.map((s) => s.angle);
+  const steps = angles.slice(1).map((a, i) => Math.abs(Math.atan2(Math.sin(a - angles[i]), Math.cos(a - angles[i]))));
+  assert.ok(Math.max(...steps) / Math.min(...steps) > 2, "變速");
+  close(steps.reduce((x, y) => x + y, 0), 2 * Math.PI, "開槽曲柄也轉一整圈", 1e-6);
+});
+
+test("第 223 種:兩對扇形輪流咬合,下軸一快一慢;上軸一圈時下軸也是一圈", () => {
+  const { K, SPAN_A } = m223.geometry;
+  const rate = (t) => (m223.sectors(t + 1e-4).lower - m223.sectors(t - 1e-4).lower) / 2e-4;
+  close(rate(SPAN_A / 2), -K, "大扇形帶小扇形:快", 1e-6);
+  close(rate(SPAN_A + 0.5), -1 / K, "小扇形帶大扇形:慢", 1e-6);
+  close(m223.sectors(2 * Math.PI).lower, -2 * Math.PI, "一圈對一圈", 1e-9);
+});
+
+test("第 224 種:轉動小齒輪 d,輪 c 經曲線槽把凸柱往外或往內推,皮帶輪變大或變小", () => {
+  const [lo, hi] = m224.range;
+  const small = m224.expand(lo);
+  const big = m224.expand(hi);
+  assert.ok(big.rim > small.rim + 0.3, "轉一個方向變大");
+  assert.ok(Math.sign(big.c - small.c) !== Math.sign(hi - lo), "c 與 d 反向轉");
+  const rims = sweep(hi, 50, lo).map((a) => m224.expand(a).rim);
+  for (let i = 1; i < rims.length; i++) assert.ok(rims[i] > rims[i - 1], "連續地變大");
 });
