@@ -29,6 +29,10 @@ import * as m212 from "../models/fig212.js";
 import * as m213 from "../models/fig213.js";
 import * as m214 from "../models/fig214.js";
 import * as m215 from "../models/fig215.js";
+import * as m202 from "../models/fig202.js";
+import * as m208 from "../models/fig208.js";
+import * as m216 from "../models/fig216.js";
+import { woolComb, STEP as WOOL_STEP } from "../models/wool-comb.js";
 
 /** 等間隔取樣的序列:相鄰差的最大 / 最小(絕對值),量「速度變化多大」 */
 function spread(values) {
@@ -299,4 +303,43 @@ test("第 214 種:兩個齒數不同的齒輪,轉了幾圈後面上的指片相�
 test("第 215 種:環上的銷每轉一圈把星形輪推過一格(六分之一圈)", () => {
   close(m215.step(2 * Math.PI).b - m215.step(0).b, -(2 * Math.PI) / 6, "每圈一格", 1e-9);
   close(m215.step(2.5).b, m215.step(3.5).b, "鎖住時不動", 1e-12);
+});
+
+test("第 202 種:沙漏形蝸桿每轉一圈,蝸輪轉過一齒", () => {
+  const { N } = m202.geometry;
+  close(m202.wheelAngle(2 * Math.PI) - m202.wheelAngle(0), -(2 * Math.PI) / N, "一圈一齒", 1e-12);
+});
+
+test("第 208 種:開槽小齒輪移到三圈銷中的任一圈,得到三種速度(與那一圈的銷數成正比)", () => {
+  const speeds = ["outer", "middle", "inner"].map((ring) => Math.abs(m208.pinion(1, ring).angle));
+  assert.ok(speeds[0] > speeds[1] && speeds[1] > speeds[2], "外圈最快、內圈最慢");
+  close(speeds[0] / speeds[2], m208.rings.outer / m208.rings.inner, "比例 = 銷數比", 1e-12);
+});
+
+test("第 216 種:外側與內側缺齒輪交替與小齒輪咬合:一個方向慢、另一個方向快", () => {
+  const { RS, RP, RI } = m216.radii;
+  const rate = (t) => (m216.pinion(t + 1e-4).angle - m216.pinion(t - 1e-4).angle) / 2e-4;
+  // 原圖位置:內側小輪的齒在下方咬合 → 小齒輪與輪反向、較慢
+  assert.equal(m216.pinion(0.3).by, "inner");
+  close(rate(0.3), -RS / RP, "內側:反向、慢", 1e-6);
+  // 轉過半圈:外側大圈的齒在下方 → 同向、較快
+  assert.equal(m216.pinion(Math.PI + 0.3).by, "outer");
+  close(rate(Math.PI + 0.3), RI / RP, "外側:同向、快", 1e-6);
+  assert.ok(RI / RP > RS / RP);
+});
+
+test("第 217、218 種:凸柱從 C 到 D 使滾軸後退,從 D 到 e 前進(後退一份、前進兩份);e 到 C 時卡榫抬起、滾軸不動", () => {
+  const states = sweep(1, 1000).map((u) => woolComb(u));
+  const rollers = states.map((s) => s.roller);
+  const minBack = Math.min(...rollers);
+  close(minBack, -WOOL_STEP, "先後退", 1e-9);
+  close(Math.max(...rollers) - minBack, 2 * WOOL_STEP, "再前進兩倍", 1e-9);
+  close(rollers[rollers.length - 1], WOOL_STEP, "每一循環淨前進一格,卡榫落進下一個凹槽", 1e-9);
+  for (const s of states) {
+    if (s.stage === "e→C") {
+      assert.equal(s.lift, 1, "卡榫抬起");
+      close(s.roller, WOOL_STEP, "滾軸不動", 1e-12);
+    }
+  }
+  assert.equal(woolComb(0).lift, 0, "在 C 時卡榫已落下");
 });
