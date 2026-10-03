@@ -62,6 +62,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation" },
+  target: "treadle", // 原文是踏板帶動圓盤;模型以圓盤為主動件,目標件標另一端的踏板
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { pin, psi, j } = treadle(theta);

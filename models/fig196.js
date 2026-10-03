@@ -46,7 +46,7 @@ export default {
     },
   ],
   driver: { part: "pinionB", type: "rotation" },
-  target: "wheelA",
+  target: "arm", // 原文:給承載輪 A 的搖臂不規則的振動
   view: { direction: [0.06, 0.05, 1] },
   pose(angle) {
     const { center, a, pinion } = swing(angle);

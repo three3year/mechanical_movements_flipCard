@@ -43,17 +43,19 @@ export default {
         // 右管:碗 → 下方容器;左管:下方容器的空氣 → 中間容器的空氣;中央管:中間容器的水 → 噴嘴
         { kind: "plate", shape: shape(thickLine([[0.5, BASIN.y - 0.25], [RIGHT_X, BASIN.y - 0.25], [RIGHT_X, LOW.y0 + 0.15]], 0.06)), thickness: 0.2, at: [0, 0, 0.3] },
         { kind: "plate", shape: shape(thickLine([[LEFT_X, LOW.y1 - 0.05], [LEFT_X, MID.y1 - 0.05]], 0.06)), thickness: 0.2, at: [0, 0, 0.3] },
-        { kind: "box", size: [0.1, NOZZLE - MID.y0 + 0.1, 0.1], at: [0, (NOZZLE + MID.y0) / 2, 0] },
         // 腳
         { kind: "box", size: [0.4, 0.15, 0.6], at: [-W / 2 + 0.3, LOW.y0 - 0.15, 0] },
         { kind: "box", size: [0.4, 0.15, 0.6], at: [W / 2 - 0.3, LOW.y0 - 0.15, 0] },
       ],
     },
+    // 中央的噴水管(水柱從它的頂端噴出):獨立成一個零件當目標件
+    { id: "nozzle", kind: "group", pieces: [{ kind: "box", size: [0.1, NOZZLE - MID.y0 + 0.1, 0.1], at: [0, (NOZZLE + MID.y0) / 2, 0] }] },
     { id: "midWater", kind: "fill", fluid: "water", center: [0, (MID.y0 + MID.y1) / 2, 0], size: [W - 0.14, MID.y1 - MID.y0, 0.6], level: 0.9 },
     { id: "lowWater", kind: "fill", fluid: "water", center: [0, (LOW.y0 + LOW.y1) / 2, 0], size: [W - 0.14, LOW.y1 - LOW.y0, 0.6], level: 0.1 },
     { id: "basinWater", kind: "fill", fluid: "water", center: [0, BASIN.y - 0.15, 0], size: [1.2, 0.3, 0.6], level: 0.8 },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.06 },
+  target: "nozzle", // 只有水與空氣在動;標噴出水柱的中央管
   view: { direction: [0.06, 0.06, 1] },
   pose(v) {
     const f = fountain(v);

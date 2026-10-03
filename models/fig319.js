@@ -51,6 +51,7 @@ export default {
     { id: "weightB2", kind: "box", size: [0.42, 0.42, 0.3], label: "b'", labelOffset: [-0.45, 0, 0.3] },
   ],
   driver: { type: "virtual", label: "溫度", mode: "balance", range: RANGE, initial: 20, unit: "°C" },
+  targets: ["weightB", "weightB2"], // 隨弧桿彎曲往內、往外移的兩個配重 b、b'
   view: { direction: [0.03, 0.04, 1] },
   pose(t) {
     const r = rim(t, 1);

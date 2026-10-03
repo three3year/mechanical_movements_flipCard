@@ -50,12 +50,14 @@ export default {
       pieces: [
         { kind: "cylinder", radius: 0.12, length: 0.46, at: [0, 0, -0.1] },
         { kind: "cylinder", radius: 0.12, length: 0.46, at: [STUDS, 0, -0.1] },
-        { kind: "lathe", profile: [[0, -0.22], [0.06, -0.12], [0.08, 0.3], [0, 0.3]], at: [A_X, 0, 0], accent: true },
       ],
     },
+    // 鉛筆:裝在橫移桿的桿端、跟著桿走(姿勢與桿相同);獨立成一個零件,好標成目標件
+    { id: "pencil", kind: "group", pieces: [{ kind: "lathe", profile: [[0, -0.22], [0.06, -0.12], [0.08, 0.3], [0, 0.3]], at: [A_X, 0, 0] }] },
     { id: "ellipse", kind: "trace" },
   ],
   driver: { part: "bar", type: "rotation", initial: START },
+  target: "pencil", // 畫出橢圓的鉛筆
   view: { direction: [0.06, 0.05, 1] },
   pose(t) {
     const { vertical } = trammel(t);
@@ -68,7 +70,7 @@ export default {
       return [p[0], p[1], Z.trace];
     });
     return {
-      parts: { bar: { position: [vertical[0], vertical[1], Z.bar], angle: t } },
+      parts: { bar: { position: [vertical[0], vertical[1], Z.bar], angle: t }, pencil: { position: [vertical[0], vertical[1], Z.bar], angle: t } },
       paths: { ellipse: { points, closed: false } },
       readouts: [],
     };

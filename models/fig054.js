@@ -130,7 +130,7 @@ export default {
     },
   ],
   driver: { part: "pinionA", type: "rotation", initial: L / 2, speed: 4 },
-  target: "pinionB",
+  target: "wheel", // 交替正反轉的曼格輪(原文的輸出;B 只是把它的轉向顯示出來的從動小齒輪)
   view: { direction: [0.15, 0.1, 1] },
   pose(theta) {
     const m = mangle(theta);

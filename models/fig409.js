@@ -56,6 +56,7 @@ export default {
     ],
   },
   driver: { part: "legA", grips: ["legB"], type: "rotation", range: RANGE, initial: deg(20) },
+  target: "slider", // 帶著樞軸的滑塊:它的位置決定放大、縮小的比例
   view: { direction: [0.03, 0.05, 1] },
   pose(half0, state = "double") {
     const half = clamp(half0, ...RANGE);

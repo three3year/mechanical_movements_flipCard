@@ -27,6 +27,7 @@ export default {
     ...Array.from({ length: RUNGS }, (_, i) => ({ id: `rung${i}`, kind: "plate", shape: shape(rect(W, 0.12, W / 2, 0)), thickness: 0.1, arrow: false, pieces: [{ kind: "cylinder", radius: 0.06, length: 0.2 }, { kind: "cylinder", radius: 0.06, length: 0.2, at: [W, 0, 0] }] })),
   ],
   driver: { part: "railR", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 0 },
+  target: "rung2", // 橫檔:側件一推就跟著斜起來、收合(取中間一根代表)
   view: { direction: [0.15, 0.05, 1] },
   pose(s0) {
     const f = fold(s0);

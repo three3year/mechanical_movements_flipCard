@@ -85,6 +85,7 @@ export default {
     },
   ],
   driver: { part: "input", type: "rotation" },
+  target: "output", // 被接頭帶動的輸出軸
   view: { direction: [0.05, 0.4, 1] },
   pose(angle) {
     const { middle, output, cross1, cross2 } = doubleJoint(angle);

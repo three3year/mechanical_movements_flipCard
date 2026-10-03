@@ -81,7 +81,7 @@ export function makeForcePump(figure, { air = false } = {}) {
       leverPart("handle", HANDLE),
       { id: "link", kind: "link", width: 0.08, thickness: 0.05 },
     ],
-    driver: { part: "handle", grips: ["piston"], type: "rotation", cycle: SWING },
+    driver: { part: "handle", type: "rotation", cycle: SWING },
     target: "piston", // 第 450、451 種:被手柄壓下去送水的活塞
     view: { direction: [0.08, 0.06, 1] },
     pose(v) {

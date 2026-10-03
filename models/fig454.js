@@ -54,8 +54,8 @@ export default {
     flap("suctionValve", 0.3),
     flap("deliveryValve", 0.36),
   ],
-  driver: { part: "handle", grips: ["rod"], type: "rotation", cycle: SWING },
-  target: "membrane",
+  driver: { part: "handle", type: "rotation", cycle: SWING },
+  target: "rod", // 隔膜是路徑零件(不上目標色),標接在隔膜中心、帶著它起落的桿
   view: { direction: [0.08, 0.08, 1] },
   pose(v) {
     const { at, forward } = stroke(v, ...SWING);

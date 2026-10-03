@@ -48,7 +48,7 @@ export default {
     { id: "treadle", kind: "group", center: PEDAL.pivot, arrow: false, pieces: [{ kind: "plate", shape: shape(thickLine([[0, 0], [-PEDAL.length - 0.3, 0]], 0.1)), thickness: 0.08 }, { kind: "cylinder", radius: 0.08, length: 0.3 }] },
   ],
   driver: { part: "flywheel", type: "rotation" },
-  target: "treadle", // 模型反過來由飛輪帶動;滑塊 A 是越過死點的手段
+  target: "slider", // 開槽滑塊 A:帶著手腕沿槽移過死點,是這個專利的重點(踏板是原文的輸入)
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const w = wrist(theta);

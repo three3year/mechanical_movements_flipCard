@@ -35,15 +35,22 @@ export default {
       pieces: [
         // U 形管:左管腳、右管腳(開口)、下面的彎
         ...tube([[LEFT, TOP_L], [LEFT, BOTTOM + RIGHT]]),
-        ...tube([[RIGHT, TOP_R], [RIGHT, BOTTOM + RIGHT]]),
         { kind: "plate", shape: shape(thickLine(Array.from({ length: 13 }, (_, i) => { const a = Math.PI + (Math.PI * i) / 12; return [RIGHT * Math.cos(a), BOTTOM + RIGHT + (RIGHT + BORE) * Math.sin(a)]; }), 0.04)), thickness: 0.1 },
         { kind: "plate", shape: shape(thickLine(Array.from({ length: 13 }, (_, i) => { const a = Math.PI + (Math.PI * i) / 12; return [(RIGHT - 2 * BORE) * Math.cos(a), BOTTOM + RIGHT + (RIGHT - BORE) * Math.sin(a)]; }), 0.04)), thickness: 0.1 },
         // 接鍋爐的彎管與旋塞
         { kind: "plate", shape: shape(thickLine([[LEFT, TOP_L], [LEFT - 0.25, TOP_L + 0.3], [-2.0, TOP_L + 0.3]], 0.1)), thickness: 0.1 },
         { kind: "plate", shape: shape(circle(0.18, -1.45, TOP_L + 0.3)), thickness: 0.2 },
+        { kind: "box", size: [0.18, 0.02, 0.02], at: [LEFT - 0.25, ZERO, 0.06] },
+      ],
+    },
+    // 標刻度的開口管腳(水銀在裡面升起、指出壓力):獨立成一個零件當目標件
+    {
+      id: "gaugeLeg",
+      kind: "group",
+      pieces: [
+        ...tube([[RIGHT, TOP_R], [RIGHT, BOTTOM + RIGHT]]),
         // 右管腳的刻度
         ...Array.from({ length: 7 }, (_, k) => ({ kind: "box", size: [0.18, 0.02, 0.02], at: [RIGHT + 0.25, ZERO + (k * UNIT) / 2, 0.06] })),
-        { kind: "box", size: [0.18, 0.02, 0.02], at: [LEFT - 0.25, ZERO, 0.06] },
       ],
     },
     ...Array.from({ length: 7 }, (_, k) => ({ id: `tick${k}`, kind: "group", pieces: [], label: String(k), labelOffset: [RIGHT + 0.5, ZERO + (k * UNIT) / 2, 0.1] })),
@@ -52,7 +59,7 @@ export default {
     { id: "bendMercury", kind: "fill", fluid: "mercury", center: [0, BOTTOM + RIGHT / 2 - 0.02, 0], size: [2 * RIGHT + 2 * BORE - 0.04, RIGHT + BORE, 0.08], level: 1 },
   ],
   driver: { type: "virtual", label: "壓力", mode: "balance", range: RANGE, initial: 2 },
-  target: "rightMercury", // 標刻度那一腳的水銀柱
+  target: "gaugeLeg", // 水銀是流體(不上目標色);標水銀柱在裡面升起的那根刻度管腳
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const l = levels(p);

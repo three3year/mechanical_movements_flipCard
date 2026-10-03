@@ -40,11 +40,18 @@ export default {
       id: "tube",
       kind: "group",
       pieces: [
-        ...wall([[LONG_X, TOP], [LONG_X, BEND_Y]]),
-        { kind: "box", size: [2 * BORE + 0.06, 0.04, 0.08], at: [LONG_X, TOP + 0.02, 0] },
         ...wall([[SHORT_X, SHORT_TOP], [SHORT_X, BEND_Y]]),
         { kind: "plate", shape: shape(thickLine(bend(LONG_X + BORE), 0.03)), thickness: 0.08 },
         { kind: "plate", shape: shape(thickLine(bend(LONG_X - BORE), 0.03)), thickness: 0.08 },
+      ],
+    },
+    // 標刻度、頂端封閉的長管腳(水銀柱在裡面隨氣壓升降):獨立成一個零件當目標件
+    {
+      id: "longLeg",
+      kind: "group",
+      pieces: [
+        ...wall([[LONG_X, TOP], [LONG_X, BEND_Y]]),
+        { kind: "box", size: [2 * BORE + 0.06, 0.04, 0.08], at: [LONG_X, TOP + 0.02, 0] },
         // 長管腳旁的英吋刻度(28–31)
         ...Array.from({ length: 4 }, (_, k) => ({ kind: "box", size: [0.25, 0.02, 0.02], at: [LONG_X + 0.25, columns(RANGE[0] + k).long, 0.05] })),
       ],
@@ -55,7 +62,7 @@ export default {
     { id: "bendMercury", kind: "fill", fluid: "mercury", center: [0, BEND_Y - LONG_X / 2 - 0.02, 0], size: [2 * LONG_X + 2 * BORE - 0.04, LONG_X + BORE, 0.06], level: 1 },
   ],
   driver: { type: "virtual", label: "大氣壓力", mode: "balance", range: RANGE, initial: 29.9, format: (h) => `${h.toFixed(1)} 吋` },
-  target: "longMercury", // 標刻度的長管腳裡的水銀柱
+  target: "longLeg", // 水銀是流體(不上目標色);標水銀柱在裡面升降的那根刻度長管腳
   view: { direction: [0.03, 0.05, 1] },
   pose(h) {
     const c = columns(h);

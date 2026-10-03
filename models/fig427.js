@@ -77,6 +77,7 @@ export default {
     ...[0, 1].map((k) => ({ id: `piston${k + 1}`, kind: "plate", shape: shape(rect(PISTON, 0.14, -PISTON / 2, 0)), thickness: 0.48, label: "A", labelOffset: [0, 0, 0.4], arrow: false })),
   ],
   driver: { part: "hub", type: "rotation", speed: -0.6, initial: deg(150) },
+  targets: ["piston1", "piston2"], // 軸 B 就是主動件(輪轂);標受蒸汽推、在輪轂裡滑進滑出的兩個活塞 A
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const ps = pistons(theta);

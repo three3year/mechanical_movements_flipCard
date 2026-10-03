@@ -96,6 +96,7 @@ export default {
     { id: "hawser", kind: "rope", radius: 0.025 },
   ],
   driver: { type: "virtual", label: "拖曳", mode: "balance", range: [0, 1], initial: 0.45, format: (u) => Math.round(u * 100) + "%" },
+  target: "segment0", // 管頭(北端)那一節:被拖過河、順著河床起伏
   view: { direction: [0.1, 0.12, 1] },
   pose(u) {
     const pts = joints(u);

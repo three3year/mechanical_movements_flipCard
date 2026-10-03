@@ -33,6 +33,7 @@ export default {
     { id: "nutMark", kind: "group", axis: Y, center: [0, 0, 0], spin: 1.34, spinOffset: FLANGE + LIP, pieces: [{ kind: "box", size: [0.2, 0.2, 0.1], at: [1.15, 0, FLANGE + LIP + 0.04] }] },
   ],
   driver: { part: "nutB", grips: ["nutMark"], type: "rotation", range: [0, TURNS * TAU], initial: 0 },
+  target: "pipeA", // 被螺帽帶著壓緊在 C 上的管
   view: { direction: [0.08, 0.12, 1] },
   pose(angle) {
     const { gap, nut } = union(angle);

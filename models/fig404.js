@@ -32,6 +32,8 @@ export default {
       ],
     },
     { id: "bar", kind: "rod", radius: 0.08 },
+    // 螺絲頂端的壓塊,托著拱形桿的正中(拱形桿是路徑零件,不上目標色,以壓塊代表它被頂高的量;推斷)
+    { id: "pad", kind: "box", size: [0.4, 0.1, 0.3] },
     {
       id: "screw",
       kind: "group",
@@ -46,6 +48,7 @@ export default {
     },
   ],
   driver: { part: "screw", type: "rotation", range: RANGE, initial: RANGE[1] / 2 },
+  target: "pad", // 托著拱形桿正中的壓塊:螺絲把它頂高,弧就更彎
   view: { direction: [0.03, 0.05, 1] },
   pose(a0) {
     const s = arch(a0);
@@ -55,7 +58,7 @@ export default {
       return [s.center[0] + s.r * Math.cos(t), s.center[1] + s.r * Math.sin(t), 0];
     });
     return {
-      parts: { screw: { angle: clamp(a0, ...RANGE), position: [0, -0.6 + (s.h - H0), 0] } },
+      parts: { screw: { angle: clamp(a0, ...RANGE), position: [0, -0.6 + (s.h - H0), 0] }, pad: { position: [0, 0.5 + s.h - 0.13, 0] } },
       paths: { bar: { points, closed: false } },
       readouts: [],
     };

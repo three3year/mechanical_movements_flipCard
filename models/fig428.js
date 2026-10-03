@@ -62,6 +62,7 @@ export default {
     ...[0, 1, 2].map((k) => ({ id: `roller${k + 1}`, kind: "pulley", style: "disc", radius: ROLLER - 0.04, width: 0.5, label: "A", labelOffset: [0, 0, 0.45], arrow: false })),
   ],
   driver: { part: "arms", type: "rotation", speed: -0.5, initial: deg(80) },
+  targets: ["roller1", "roller2", "roller3"], // 主軸 B 就是主動件(搖臂);標代替活塞、被橡膠內襯推著走的滾子 A
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const pts = Array.from({ length: 241 }, (_, i) => {

@@ -80,7 +80,7 @@ export default {
     })),
   ],
   driver: { part: "pinionD", type: "rotation", range, initial: range[1] * 0.6 },
-  targets: ["arm0", "arm1", "arm2", "arm3", "arm4", "arm5"], // 六段輪緣隨輻臂一起縮放
+  target: "arm3", // 六支輻臂(連輪緣段)一起縮放,只標有凸柱 a 標號的那一支作代表
   view: { direction: [0.06, 0.05, 1] },
   pose(alpha) {
     const { c, stud, rim } = expand(alpha);

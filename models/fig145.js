@@ -59,6 +59,7 @@ export default {
     },
   ],
   driver: { part: "wheel", type: "rotation" },
+  target: "beam", // 原文是樑帶動飛輪;模型以飛輪為主動件,目標件標運動鏈另一端的樑
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { pin, j, e } = beamEngine(theta);

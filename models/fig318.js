@@ -97,6 +97,7 @@ export default {
     { id: "labelFast", kind: "group", center: [2.1, -1.9, 0], label: "FAST", labelOffset: [0.3, 0, 0] },
   ],
   driver: { part: "lever", type: "rotation", range: RANGE, initial: 0 },
+  target: "balance", // 快慢被調節的擺輪(模型裡它不動,只有游絲的作用長度隨槓桿改變)
   view: { direction: [0.03, 0.04, 1] },
   pose(lever0) {
     const lever = clamp(lever0, ...RANGE);

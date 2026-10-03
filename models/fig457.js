@@ -55,7 +55,7 @@ export default {
     { id: "bucket", kind: "lathe", axis: [0, 1, 0], profile: [[0.22, -0.25], [0.27, 0.25], [0.24, 0.25], [0.19, -0.21], [0, -0.21], [0, -0.25]], pieces: [{ kind: "box", size: [0.56, 0.03, 0.03], at: [0, 0.32, 0] }] },
     { id: "water", kind: "fill", fluid: "water", shape: "cylinder", size: [0.42, 0.4, 0], level: 0 },
   ],
-  driver: { part: "pole", grips: ["bucket"], type: "rotation", cycle: SWING },
+  driver: { part: "pole", type: "rotation", cycle: SWING },
   target: "bucket",
   view: { direction: [0.15, 0.1, 1] },
   pose(v) {

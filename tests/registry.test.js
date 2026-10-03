@@ -2,7 +2,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { sources, hasModel, loadModel } from "../models/registry.js";
-import { PART_KINDS, PATH_KINDS, FLUIDS } from "../models/kinds.js";
+import { PART_KINDS, PATH_KINDS, FLUIDS, targetsOf, canBeTarget } from "../models/kinds.js";
+
+// 只有主動件自己是會動的實體(其餘是皮帶 / 繩 / 鍊或靜止件):沒有別的零件可標,維持主動件的橘色(維護者決定)
+// 第 134 種鼓輪 + 繩、第 227–229 種輪 + 鍊、第 254–259 種皮帶輪 + 皮帶、第 322、323、325 種平行尺、第 363 種蹺蹺板
+const ONLY_DRIVER_MOVES = new Set([134, 227, 228, 229, 254, 255, 256, 257, 258, 259, 322, 323, 325, 363]);
 
 const figures = Object.keys(sources).map(Number);
 const models = await Promise.all(figures.map((n) => loadModel(n)));
@@ -59,10 +63,14 @@ for (const def of models) {
       if (d.type === "translation" && !d.cycle && !d.grips) assert.ok(d.range && d.direction);
       if (d.cycle) assert.ok(d.cycle[0] !== d.cycle[1], "往復的兩端不同");
     }
-    for (const t of def.targets ?? (def.target ? [def.target] : [])) {
+    const targets = targetsOf(def);
+    for (const t of targets) {
       assert.ok(ids.includes(t), `目標件 ${t} 指向存在的零件`);
       assert.notEqual(t, d.part, "目標件不是主動件");
+      assert.ok(canBeTarget(def, t), `目標件 ${t} 要是畫得出目標色的實體零件(不是皮帶 / 繩 / 鍊 / 流體 / 空群組,也不在主動件的抓取處裡)`);
     }
+    if (ONLY_DRIVER_MOVES.has(def.figure)) assert.equal(targets.length, 0, "只有主動件自己在動的模型不標目標件");
+    else assert.ok(targets.length >= 1 && targets.length <= 3, `每個模型有一個目標件(成組動作的最多三個),現在是 ${targets.length} 個`);
     if (def.states) {
       const options = def.states.options.map((o) => o.id);
       assert.ok(options.includes(def.states.initial), "預設狀態在狀態清單中");

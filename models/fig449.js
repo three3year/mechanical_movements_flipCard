@@ -51,6 +51,7 @@ export default {
     flap("outValve", 0.3),
   ],
   driver: { part: "piston", type: "translation", direction: [0, 1, 0], cycle: STROKE },
+  target: "outValve", // 出水口向上開的瓣閥:水從這裡被送到泵上方
   view: { direction: [0.08, 0.06, 1] },
   pose(v) {
     const { at: y, forward: up } = stroke(v, ...STROKE);

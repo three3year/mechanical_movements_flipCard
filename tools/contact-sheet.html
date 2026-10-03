@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>模型對照表</title>
   <!-- 維護用:一次把一串模型的初始畫面(插圖 + 模型)排成一張表,供肉眼抽查結構。
-       用法:tools/contact-sheet.html?from=1&to=12[&cols=4][&v=主動量] ;畫好後 document.title 變成 ready -->
+       用法:tools/contact-sheet.html?from=1&to=12[&cols=4][&v=主動量],或 ?figs=152,403,487 指定圖號;畫好後 document.title 變成 ready -->
   <link rel="stylesheet" href="../style.css">
   <script type="importmap">
     { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
@@ -25,7 +25,8 @@
     const q = new URLSearchParams(location.search);
     const from = Number(q.get("from") ?? 1), to = Number(q.get("to") ?? from + 11), cols = Number(q.get("cols") ?? 4);
     const W = 330, H = 300, PAD = 4;
-    const figs = []; for (let n = from; n <= to; n++) if (hasModel(n)) figs.push(n);
+    const figs = q.has("figs") ? q.get("figs").split(",").map(Number).filter(hasModel) : [];
+    if (!q.has("figs")) for (let n = from; n <= to; n++) if (hasModel(n)) figs.push(n);
     const rows = Math.ceil(figs.length / cols);
     const sheet = document.getElementById("sheet");
     sheet.width = cols * (W * 2 + PAD) ; sheet.height = rows * (H + 24);

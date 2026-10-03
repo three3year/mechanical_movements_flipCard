@@ -44,6 +44,7 @@ export default {
     ...Array.from({ length: STEPS }, (_, i) => ({ id: `hanger${i}`, kind: "link", width: 0.04, thickness: 0.04 })),
   ],
   driver: { type: "virtual", label: "水位", mode: "balance", range: RANGE, initial: 0.5 },
+  target: "step3", // 踏階:梯子隨水位擺到什麼角度都保持水平(取中間一階代表)
   view: { direction: [0.15, 0.12, 1] },
   pose(h0) {
     const l = ladder(h0);

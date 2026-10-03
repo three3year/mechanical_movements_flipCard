@@ -67,6 +67,7 @@ export default {
     { id: "centerLine", kind: "trace" },
   ],
   driver: { part: "bar", grips: ["jaw"], type: "translation", direction: [0, 0, -1], range: RANGE, initial: -1.2 },
+  target: "tip", // 始終在兩夾頰正中間的尖頂
   view: { direction: [0.8, 0.9, 1] },
   pose(g0) {
     const s = gauge(g0);

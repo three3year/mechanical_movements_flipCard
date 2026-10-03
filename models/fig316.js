@@ -44,6 +44,7 @@ export default {
     { id: "mercury", kind: "fill", fluid: "mercury", shape: "cylinder", size: [2 * (JAR.r - JAR.wall) - 0.02, FILL_H, 0], level: LEVEL0 / FILL_H },
   ],
   driver: { type: "virtual", label: "溫度", mode: "balance", range: RANGE, initial: 20, unit: "°C" },
+  target: "jar", // 當擺錘的水銀玻璃瓶(隨擺桿伸長下降,瓶裡的水銀把重心補回去)
   view: { direction: [0.05, 0.12, 1] },
   pose(t) {
     const { rod, level } = compensation(t);

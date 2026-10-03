@@ -40,6 +40,7 @@ export default {
     { id: "trace", kind: "trace" },
   ],
   driver: { part: "ruler", type: "rotation", range: RANGE, initial: deg(90) },
+  target: "pencil", // 畫出雙曲線的鉛筆
   view: { direction: [0.03, 0.05, 1] },
   pose(theta0) {
     const theta = clamp(theta0, ...RANGE);

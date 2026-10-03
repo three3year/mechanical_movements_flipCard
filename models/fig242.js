@@ -60,7 +60,7 @@ export default {
     },
   ],
   driver: { part: "lever", type: "rotation", range: [-MAX, 0], initial: 0 },
-  target: "strap", // 收緊在煞車輪上的帶
+  target: "drum", // 煞車帶是路徑零件不上色,標被它煞住的煞車輪
   view: { direction: [0.06, 0.05, 1] },
   pose(psi) {
     const { gap, strap } = brake(psi);

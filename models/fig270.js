@@ -57,6 +57,7 @@ export default {
     { id: "beltR", kind: "rope", radius: 0.05 },
   ],
   driver: { part: "pulleyL", grips: ["pulleyR"], type: "rotation" },
+  target: "roller0", // 抗摩擦軸承的滾子(六個相同,標一個代表:看得出它一邊自轉一邊繞軸公轉)
   view: { direction: [0.04, 0.05, 1] },
   pose(angle) {
     const { carrier, spin } = rollers(angle);

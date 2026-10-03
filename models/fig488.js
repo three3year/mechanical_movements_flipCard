@@ -20,18 +20,27 @@ export default {
         { kind: "cylinder", radius: 0.12, length: 3.2, at: [0, 0, 0.2] },
         { kind: "cylinder", radius: 0.22, length: 0.5 },
         { kind: "cylinder", radius: 0.2, length: 0.12, at: [0, 0, 1.6] },
-        // 兩片槳葉:在旋轉平面(局部 xy)上,各繞自己的長邊斜 PITCH_ANGLE
+      ],
+    },
+    // 兩片槳葉(固定在軸上、跟著軸轉;獨立成一個零件當目標件):在旋轉平面(局部 xy)上,各繞自己的長邊斜 PITCH_ANGLE
+    {
+      id: "blades",
+      kind: "group",
+      axis: X,
+      arrow: false,
+      pieces: [
         ...[0, 1].map((k) => ({ kind: "plate", shape: BLADE, thickness: 0.05, rotation: quatMul(quatAxisAngle([0, 0, 1], k * Math.PI + Math.PI / 2), quatAxisAngle([1, 0, 0], PITCH_ANGLE)), ...(k === 0 ? { mark: [1.3, 0] } : {}) })),
       ],
     },
   ],
   driver: { part: "shaft", type: "rotation", speed: 1.0 },
+  target: "blades", // 槳軸就是主動件;標把水往後推、沿軸向產生推力的槳葉
   view: { direction: [0.3, 0.2, 1] },
   pose(theta) {
     // 槳每轉一圈把水往右推一個螺距(示意)
     const wash = [-0.6, 0, 0.6].flatMap((y) => [-0.5, 0.5].flatMap((z) => stream([[-2.4, y, z], [2.4, y, z]], theta * 0.4, { spacing: 0.4 })));
     return {
-      parts: { shaft: { rotation: quatMul(quatFromZ(X), quatAxisAngle([0, 0, 1], theta)) } },
+      parts: { shaft: { rotation: quatMul(quatFromZ(X), quatAxisAngle([0, 0, 1], theta)) }, blades: { rotation: quatMul(quatFromZ(X), quatAxisAngle([0, 0, 1], theta)) } },
       flows: [{ fluid: "water", points: wash }],
       readouts: [{ label: "推力", value: "沿軸向左(水被推向右)" }],
     };

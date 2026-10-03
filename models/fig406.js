@@ -37,6 +37,7 @@ export default {
     { id: "trace", kind: "trace" },
   ],
   driver: { part: "square", type: "translation", direction: [1, 0, 0], range: RANGE, initial: 0 },
+  target: "pencil", // 畫出拋物線的鉛筆
   view: { direction: [0.03, 0.05, 1] },
   pose(x0) {
     const x = clamp(x0, ...RANGE);

@@ -72,6 +72,7 @@ export default {
     },
   ],
   driver: { part: "tubeA", type: "translation", direction: [0, 1, 0], range: [0, 2], initial: 0 },
+  target: "socketB", // 接頭的另一半:與管 A 相接的承插座
   view: { direction: [0.02, 0.18, 1] },
   pose(v) {
     const { angle, lift } = bayonet(v);

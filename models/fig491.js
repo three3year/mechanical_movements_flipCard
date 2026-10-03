@@ -19,8 +19,9 @@ export function capstan(theta) {
   return { hauled: DRUM_R * theta, lift: 0.4 * phase };
 }
 
-// 鼓的剖面:上下粗、中間細的腰身
-const drumProfile = [[0, -1.05], [0.75, -1.05], [0.75, -0.85], [0.62, -0.7], [DRUM_R, -0.2], [DRUM_R, 0.25], [0.68, 0.6], [0.68, 0.75], [0.85, 0.75], [0.85, 1.05], [0, 1.05]];
+// 鼓的剖面:上下粗、中間細的腰身;絞盤頭(插推桿的那一段)另成一段,兩段是同一個剛體
+const drumProfile = [[0, -1.05], [0.75, -1.05], [0.75, -0.85], [0.62, -0.7], [DRUM_R, -0.2], [DRUM_R, 0.25], [0.68, 0.6], [0.68, 0.75], [0, 0.75]];
+const headProfile = [[0, 0.75], [0.85, 0.75], [0.85, 1.05], [0, 1.05]];
 
 // 底座上的棘輪(鋸齒)
 const ratchet = Array.from({ length: TEETH * 2 }, (_, i) => {
@@ -47,10 +48,20 @@ export default {
       axis: Y,
       spin: 1.0,
       pieces: [
-        { kind: "lathe", profile: drumProfile },
+        { kind: "lathe", profile: headProfile },
         // 推桿(插在頭部的孔裡)
         { kind: "box", size: [4.2, 0.1, 0.1], at: [0, 0, 0.95] },
         { kind: "box", size: [4.2, 0.1, 0.1], at: [0, 0, 0.95], angle: Math.PI / 2 },
+      ],
+    },
+    // 絞盤鼓(纜繩繞在上面被收進;與絞盤頭是同一個剛體,獨立成一個零件當目標件)
+    {
+      id: "drum",
+      kind: "group",
+      axis: Y,
+      arrow: false,
+      pieces: [
+        { kind: "lathe", profile: drumProfile },
         // 棘爪的鉸座
         { kind: "box", size: [0.15, 0.15, 0.2], at: [PAWL_AT, 0, -0.9] },
       ],
@@ -60,7 +71,7 @@ export default {
     { id: "rope", kind: "rope", radius: 0.04 },
   ],
   driver: { part: "capstan", type: "rotation", speed: 0.4 },
-  target: "rope", // 被收進的纜繩
+  target: "drum", // 纜繩是路徑零件(不上目標色);標把纜繩捲進來的絞盤鼓
   view: { direction: [0.25, 0.3, 1] },
   pose(theta) {
     const c = capstan(theta);
@@ -73,6 +84,7 @@ export default {
     return {
       parts: {
         capstan: { angle: theta },
+        drum: { angle: theta },
         // 棘爪隨絞盤轉,爪尖朝下往後,在棘齒上抬起又落下
         pawl: { position: pivot, rotation: quatMul(quatAxisAngle(Y, theta - Math.PI / 2), quatAxisAngle(Z, -0.5 + c.lift)) },
       },

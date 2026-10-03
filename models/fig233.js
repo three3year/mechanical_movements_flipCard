@@ -88,6 +88,7 @@ export default {
     speed: 0.5,
     backstop: (v) => lastStop(v, STOP, PERIOD),
   },
+  targets: ["bar", "lever"], // 兩種擋止裝置
   view: { direction: [0.08, 0.06, 1] },
   pose(wheel) {
     return {

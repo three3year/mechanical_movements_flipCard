@@ -55,7 +55,8 @@ export default {
       { kind: "box", size: [0.42, 0.26, 0.2], at: [0.45, 0.2, 0.05], angle: 0.42 },
     ] },
   ],
-  driver: { part: "tracerB", type: "translation", grips: ["pencilA"], speed: 0.08 },
+  // grips 留空:描跡針沿任意路徑走(數值微分拖動,不需要 direction);鉛筆 A 是目標件,不當抓取處
+  driver: { part: "tracerB", type: "translation", grips: [], speed: 0.08 },
   target: "pencilA",
   view: { direction: [0.03, 0.06, 1] },
   pose(s) {

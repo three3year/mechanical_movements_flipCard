@@ -47,6 +47,7 @@ export default {
     },
   ],
   driver: { part: "shaft", type: "rotation" },
+  targets: ["left", "right"], // 托著軸、跟著滾動的兩個支撐輪
   view: { direction: [0.04, 0.06, 1] },
   pose(angle) {
     const a = supportAngle(angle);

@@ -37,6 +37,7 @@ export default {
     { id: "work", kind: "box", center: [0.25, -1.55, 0], size: [1.2, 0.2, 0.8] },
   ],
   driver: { part: "drill", type: "rotation", range: [0, MAX], initial: 0 },
+  target: "feedScrew", // 把鑽頭心軸往下送的進料螺桿
   view: { direction: [0.08, 0.06, 1] },
   pose(theta0) {
     const theta = clamp(theta0, 0, MAX);

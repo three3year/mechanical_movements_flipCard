@@ -39,6 +39,7 @@ export default {
     ...rulerLineParts(),
   ],
   driver: { part: "rulerTop", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 1.6 },
+  target: "midBar", // 連著兩個鉸點、讓尺的兩端都保持平行的中介桿
   view: { direction: [0.03, 0.06, 1] },
   pose(h0) {
     const { h, dx } = hinge(h0);

@@ -155,8 +155,8 @@ export default {
     },
     { id: "record", kind: "trace" },
   ],
-  driver: { part: "frame", grips: ["drum", "pendulum"], type: "translation", direction: [1, 0, 0], range: RANGE, initial: -3.6 },
-  target: "drum", // 由輪經傘齒輪帶動、捲著記錄紙的鼓輪
+  driver: { part: "frame", grips: ["drum"], type: "translation", direction: [1, 0, 0], range: RANGE, initial: -3.6 },
+  target: "pendulum", // 帶著鉛筆的擺:在鼓輪的紙上畫出地面的剖面線
   view: { direction: [0.08, 0.1, 1] },
   pose(u0) {
     const c = carriage(u0);

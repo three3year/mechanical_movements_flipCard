@@ -59,6 +59,7 @@ export default {
     },
   ],
   driver: { part: "gear", type: "rotation", initial: deg(4) },
+  targets: ["pawlLeft", "pawlRight"], // 兩支止動爪
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const angle = (which) => {

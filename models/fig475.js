@@ -22,18 +22,20 @@ export default {
       pieces: [
         // 腔室 D 與上下的管(剖開前半)
         { kind: "lathe", axis: Y, profile: [...chamber.map(([r, y]) => [r, y]), ...chamber.slice().reverse().map(([r, y]) => [r + 0.07, y])], ...backHalf(Y) },
-        { kind: "lathe", axis: Y, profile: [[PIPE_R, 1.0], [PIPE_R + 0.07, 1.0], [PIPE_R + 0.07, 2.2], [PIPE_R, 2.2]], ...backHalf(Y) },
         { kind: "lathe", axis: Y, profile: [[PIPE_R, -2.1], [PIPE_R + 0.07, -2.1], [PIPE_R + 0.07, -0.9], [PIPE_R, -0.9]], ...backHalf(Y) },
         // 蒸汽管 A
         { kind: "plate", shape: shape(thickLine(STEAM_IN, 0.16)), thickness: 0.16, at: [0, 0, 0.0] },
       ],
     },
+    // 排水管 C(水被蒸汽帶著從這裡送出):獨立成一個零件當目標件
+    { id: "discharge", kind: "group", pieces: [{ kind: "lathe", axis: Y, profile: [[PIPE_R, 1.0], [PIPE_R + 0.07, 1.0], [PIPE_R + 0.07, 2.2], [PIPE_R, 2.2]], ...backHalf(Y) }] },
     { id: "labelA", kind: "group", pieces: [], label: "A", labelOffset: [1.3, -0.05, 0.4] },
     { id: "labelB", kind: "group", pieces: [], label: "B", labelOffset: [0.0, -1.6, 0.5] },
     { id: "labelC", kind: "group", pieces: [], label: "C", labelOffset: [0.0, 1.7, 0.5] },
     { id: "labelD", kind: "group", pieces: [], label: "D", labelOffset: [-0.45, 0.1, 0.6] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.15 },
+  target: "discharge", // 只有蒸汽與水在動;標水被送出去的排水管 C
   view: { direction: [0.12, 0.05, 1] },
   pose(v) {
     const z = 0.2;

@@ -43,6 +43,7 @@ export default {
     },
   ],
   driver: { part: "mirror", type: "rotation", range: RANGE, initial: deg(-10) },
+  target: "stem", // 支柱:升降、左右轉,帶著玻璃到要的位置
   states: {
     initial: "high",
     options: [

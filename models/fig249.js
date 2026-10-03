@@ -53,6 +53,7 @@ export default {
     { id: "pipe", kind: "lathe", axis: Y, center: [0, 0, 0], profile: ball },
   ],
   driver: { part: "pipe", type: "rotation", range: [-TILT, TILT], initial: 0 },
+  target: "socket", // 接頭的另一半:夾住球的球窩
   view: { direction: [0.06, 0.1, 1] },
   pose(t) {
     return { parts: { pipe: { rotation: pipeRotation(t) } }, readouts: [] };

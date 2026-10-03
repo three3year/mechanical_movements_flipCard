@@ -56,6 +56,7 @@ export default {
     { id: "labelF", kind: "group", center: F, label: "F", labelOffset: [-0.2, 0.35, 0] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.08 },
+  target: "diskC", // 高速自轉、帶著環繞鉛直軸進動的碟片 C
   view: { direction: [0.9, 0.35, 0.7] },
   pose(p) {
     const g = gyro(p);

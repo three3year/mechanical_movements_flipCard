@@ -47,7 +47,7 @@ export default {
     { id: "labelM", kind: "group", pieces: [], label: "M", labelOffset: [0, 0, 0.5] },
   ],
   driver: { part: "arm", type: "rotation", speed: 0.3 },
-  targets: ["wheelE", "wheelF", "wheelG"], // 展示悖論的三個輪
+  target: "wheelE", // 展示悖論的三個輪疊在銷 N 上,取最上面看得到的 E 代表
   view: { direction: [0.08, 0.1, 1] },
   pose(arm) {
     const p = paradox(arm);

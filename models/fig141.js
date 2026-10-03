@@ -31,7 +31,7 @@ export default {
     },
   ],
   driver: { part: "bottom", type: "rotation" },
-  target: "band",
+  target: "top", // 鋸帶是路徑零件不上色,標它帶動的上輪
   view: { direction: [0.06, 0.05, 1] },
   pose(angle) {
     const travel = bandTravel(angle);

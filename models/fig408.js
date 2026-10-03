@@ -55,7 +55,9 @@ export default {
     },
     { id: "pencilLine", kind: "trace" },
   ],
-  driver: { part: "blade", grips: ["legA", "legB", "joint"], type: "rotation", range: RANGE, initial: 0 },
+  // 讀者推的是靠著兩根銷的兩條腿(與接頭);葉片是結果——它的畫線邊始終指向會聚點
+  driver: { part: "legA", grips: ["legB", "joint"], type: "rotation", range: RANGE, initial: 0 },
+  target: "blade", // 畫線邊始終指向會聚點的葉片
   view: { direction: [0.03, 0.05, 1] },
   pose(psi0) {
     const { J, angle } = joint(psi0);

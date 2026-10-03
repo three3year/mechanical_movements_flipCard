@@ -28,7 +28,8 @@ export default {
     { id: "upper", kind: "group", arrow: false, pieces: half(1) },
     { id: "lower", kind: "group", arrow: false, pieces: half(-1) },
   ],
-  driver: { part: "upper", grips: ["lower"], type: "translation", direction: [0, -1, 0], range: [0, tighten(RANGE[1])], initial: 0 },
+  driver: { part: "upper", type: "translation", direction: [0, -1, 0], range: [0, tighten(RANGE[1])], initial: 0 },
+  target: "lower", // 鏈節的另一半:被螺帽拉近
   view: { direction: [0.08, 0.05, 1] },
   pose(d0) {
     const d = clamp(d0, 0, tighten(RANGE[1]));

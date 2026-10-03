@@ -78,6 +78,7 @@ export default {
     { id: "abutment", kind: "box", size: [2 * SLOT, 1.2, 0.56], label: "D", labelOffset: [0.35, 0.2, 0.3] },
   ],
   driver: { part: "pistonC", type: "rotation", speed: -0.8, initial: -Math.PI / 2 },
+  target: "abutment", // 軸 B 就是主動件(偏心活塞);標被活塞推開讓路的滑動擋板 D
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const tip = abutment(theta);

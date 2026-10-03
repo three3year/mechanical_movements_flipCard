@@ -107,7 +107,7 @@ export default {
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
 
-  target: "flangeB",
+  targets: ["hook0", "hook1", "hook2"], // 重點是甩出去鉤住凸柱的制動鉤
   view: { direction: [0.04, 0.04, 1] },
   pose(p) {
     const { drum, beta } = check(p);

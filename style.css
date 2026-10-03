@@ -117,6 +117,18 @@ nav.tabs button.active {
   font-variant-numeric: tabular-nums;
 }
 
+/* 提示文字要一眼看出是「還沒輸入」:淡色、斜體、字距收窄,點進去就消失 */
+.goto input::placeholder {
+  color: var(--line);
+  font-style: italic;
+  letter-spacing: 0.05em;
+  opacity: 1;
+}
+
+.goto input:focus::placeholder {
+  color: transparent;
+}
+
 .goto input::-webkit-outer-spin-button,
 .goto input::-webkit-inner-spin-button {
   -webkit-appearance: none;

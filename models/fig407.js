@@ -32,17 +32,18 @@ export default {
         // 有溝槽的水平桿(起拱線)與左邊的拱腳
         { kind: "plate", shape: shape(rect(SPAN + 0.6, 0.35, 0, CENTER[1] - 0.18), [rect(SPAN - 0.6, 0.12, 0.2, CENTER[1] - 0.18).reverse()]), thickness: 0.15 },
         { kind: "box", size: [0.12, 4.2, 0.12], at: [-SPAN / 2 - 0.12, CENTER[1] + 2.1, 0] },
-        // 彈性的拱形尺
-        { kind: "plate", shape: shape(thickLine(arcLine, 0.16)), thickness: 0.12 },
         { kind: "box", size: [0.25, 0.2, 0.2], at: [CENTER[0], CENTER[1] - 0.18, 0.08] },
         { kind: "cylinder", radius: 0.05, length: 0.4, at: [CENTER[0], CENTER[1], 0.1] },
       ],
     },
+    // 彈性的拱形尺(鉛筆固定在它與繩相連處,沿著它畫出拱的弧)
+    { id: "bow", kind: "plate", shape: shape(thickLine(arcLine, 0.16)), thickness: 0.12 },
     { id: "string", kind: "rope", radius: 0.02 },
     { id: "pencil", kind: "lathe", profile: [[0, -0.1], [0.05, 0], [0.06, 0.4], [0, 0.4]] },
     { id: "trace", kind: "trace" },
   ],
   driver: { part: "pencil", type: "rotation", range: RANGE, initial: deg(150) },
+  target: "bow", // 鉛筆就是主動件;標鉛筆沿著畫的拱形尺
   view: { direction: [0.03, 0.05, 1] },
   pose(a0) {
     const a = clamp(a0, ...RANGE);

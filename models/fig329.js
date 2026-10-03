@@ -69,7 +69,7 @@ export default {
     ...cylinderParts(CYL),
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
-  target: "rodA", // 被導引得保持直立的活塞桿
+  target: "flywheel", // 蒸汽最終帶動的軸(板 C 與飛輪);活塞桿 A 在輸入這一側,被導引得保持直立
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const h = hypo(p);

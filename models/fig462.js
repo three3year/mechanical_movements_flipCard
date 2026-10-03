@@ -48,11 +48,18 @@ export default {
       kind: "group",
       pieces: [
         { kind: "lathe", axis: [0, 1, 0], profile: [[TUBE.r, 0], [TUBE.r + 0.06, 0], [TUBE.r + 0.06, TUBE.y1 - TUBE.y0], [TUBE.r, TUBE.y1 - TUBE.y0]], at: [TUBE.x, TUBE.y0, 0], ...backHalf([0, 1, 0]) },
-        // 左上的水槽與岸
-        { kind: "box", size: [1.6, 0.08, 0.6], at: [TUBE.x - 0.9, TUBE.y1 - 0.05, 0] },
-        { kind: "box", size: [1.6, 0.35, 0.05], at: [TUBE.x - 0.9, TUBE.y1 + 0.1, -0.3] },
+        // 左上的岸
         { kind: "box", size: [1.2, 0.5, 1.2], at: [TUBE.x - 1.7, TUBE.y1 - 0.35, 0] },
         { kind: "box", size: [4.4, 0.2, 1.4], at: [0, BOTTOM[1] - R - 0.4, 0] },
+      ],
+    },
+    // 左上的水槽(接住碟片抬上來的水):獨立成一個零件當目標件
+    {
+      id: "trough",
+      kind: "group",
+      pieces: [
+        { kind: "box", size: [1.6, 0.08, 0.6], at: [TUBE.x - 0.9, TUBE.y1 - 0.05, 0] },
+        { kind: "box", size: [1.6, 0.35, 0.05], at: [TUBE.x - 0.9, TUBE.y1 + 0.1, -0.3] },
       ],
     },
     { id: "pond", kind: "fill", fluid: "water", center: [0, (WATER + BOTTOM[1] - R - 0.3) / 2, 0], size: [4.2, WATER - BOTTOM[1] + R + 0.3, 1.3], level: 1 },
@@ -62,7 +69,7 @@ export default {
     ...Array.from({ length: DISCS }, (_, i) => ({ id: `disc${i}`, kind: "cylinder", radius: TUBE.r - 0.02, length: 0.05, arrow: false })),
   ],
   driver: { part: "upper", type: "rotation", speed: -0.6 },
-  target: "chain", // 帶著碟片抬水的無端鏈
+  target: "trough", // 鏈條是路徑零件(不上目標色);標接住碟片抬上來的水的水槽
   view: { direction: [0.15, 0.12, 1] },
   pose(theta) {
     const s = -theta * R; // 上輪順時針轉,左邊的鏈條往上

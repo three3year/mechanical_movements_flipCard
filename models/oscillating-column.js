@@ -40,9 +40,8 @@ export function makeModel(figure, initial) {
         kind: "group",
         pieces: [
           // 供水管(水平,從左來)與細管
-          wall([[-2.5, SUPPLY_Y + 0.25], [cx - NARROW.half, SUPPLY_Y + 0.25], [cx - NARROW.half, NARROW.top]]),
-          wall([[-2.5, SUPPLY_Y - 0.25], [cx - NARROW.half, SUPPLY_Y - 0.25], [cx - NARROW.half, NARROW.bottom]]),
-          wall([[cx + NARROW.half, NARROW.top], [cx + NARROW.half, NARROW.bottom]]),
+          wall([[-2.5, SUPPLY_Y + 0.25], [cx - NARROW.half, SUPPLY_Y + 0.25]]),
+          wall([[-2.5, SUPPLY_Y - 0.25], [cx - NARROW.half, SUPPLY_Y - 0.25]]),
           // 粗管:箱形,右下有出水口
           wall([[cx - NARROW.half, WIDE.top], [cx - WIDE.half, WIDE.top], [cx - WIDE.half, WIDE.bottom], [cx + 2.3, WIDE.bottom]]),
           wall([[cx + NARROW.half, WIDE.top], [cx + WIDE.half, WIDE.top], [cx + WIDE.half, WIDE.bottom + 0.4], [cx + 2.3, WIDE.bottom + 0.4]]),
@@ -50,6 +49,16 @@ export function makeModel(figure, initial) {
           // 圓板與支柱
           { kind: "cylinder", radius: DISC.radius, length: 0.06, axis: [0, 1, 0], at: [cx, DISC.y, 0] },
           { kind: "cylinder", radius: 0.05, length: DISC.y - WIDE.bottom, axis: [0, 1, 0], at: [cx, (DISC.y + WIDE.bottom) / 2, 0] },
+        ],
+      },
+      // 細管(水柱在裡面升到高於水頭、從頂端溢出):獨立成一個零件,當目標件
+      {
+        id: "riser",
+        kind: "group",
+        pieces: [
+          wall([[cx - NARROW.half, SUPPLY_Y + 0.21], [cx - NARROW.half, NARROW.top]]),
+          wall([[cx - NARROW.half, SUPPLY_Y - 0.21], [cx - NARROW.half, NARROW.bottom]]),
+          wall([[cx + NARROW.half, NARROW.top], [cx + NARROW.half, NARROW.bottom]]),
         ],
       },
       // 供水管裡的水(一直滿著)
@@ -60,6 +69,7 @@ export function makeModel(figure, initial) {
       ...Array.from({ length: LAYERS }, (_, k) => ({ id: `cone${k}`, kind: "fill", fluid: "water", shape: "cylinder", size: [2 * DISC.radius * (1 - k / LAYERS) + 0.05, (CONE_TOP - DISC.y) / LAYERS, 0], level: 0 })),
     ],
     driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "週期", speed: 0.12, initial },
+    target: "riser", // 第 445、446 種:只有水在動,標水柱升起、溢出的那根細管
     view: { direction: [0.05, 0.06, 1] },
     pose(v) {
       const c = column(v);

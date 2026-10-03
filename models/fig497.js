@@ -28,10 +28,18 @@ export default {
       id: "casing",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape(thickLine([...wall, ...OUTLET.slice(1, 3)], 0.1)), thickness: 0.8 },
-        { kind: "plate", shape: shape(thickLine(OUTLET.slice(2), 0.1)), thickness: 0.8 },
+        { kind: "plate", shape: shape(thickLine(wall, 0.1)), thickness: 0.8 },
         { kind: "plate", shape: shape(circle(casing(TURN) + 0.1), [circle(EYE).reverse()]), thickness: 0.04, at: [0, 0, -0.42] },
         { kind: "box", size: [3.0, 0.2, 1.0], at: [0.3, -2.1, 0] },
+      ],
+    },
+    // 噴口(空氣在壓力下從這裡送出):獨立成一個零件當目標件
+    {
+      id: "outlet",
+      kind: "group",
+      pieces: [
+        { kind: "plate", shape: shape(thickLine(OUTLET.slice(0, 3), 0.1)), thickness: 0.8 },
+        { kind: "plate", shape: shape(thickLine(OUTLET.slice(2), 0.1)), thickness: 0.8 },
       ],
     },
     {
@@ -46,6 +54,7 @@ export default {
     },
   ],
   driver: { part: "fan", type: "rotation", speed: 1.2 },
+  target: "outlet", // 扇葉的軸就是主動件;標空氣被送出去的噴口
   view: { direction: [0.15, 0.1, 1] },
   pose(theta) {
     const travel = theta * 0.6;

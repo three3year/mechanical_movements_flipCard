@@ -21,19 +21,25 @@ export default {
         { kind: "plate", shape: shape(circle(R.rim * 0.62 + 0.05), [circle(R.rim * 0.62 - 0.05).reverse()]), thickness: 0.1 },
         { kind: "plate", shape: shape(circle(0.3), [circle(0.1).reverse()]), thickness: 0.3 },
         ...Array.from({ length: PADDLES }, (_, i) => ({ kind: "box", size: [R.rim, 0.07, 0.07], at: polar(R.rim / 2, (i * TAU) / PADDLES), angle: (i * TAU) / PADDLES })),
-        // 槳板(徑向,伸出輪緣)
-        ...Array.from({ length: PADDLES }, (_, i) => ({ kind: "box", size: [R.paddle - R.rim + 0.2, 0.06, 0.8], at: polar((R.paddle + R.rim) / 2 - 0.1, (i * TAU) / PADDLES), angle: (i * TAU) / PADDLES })),
       ],
+    },
+    // 槳板(徑向,伸出輪緣;固定在輪上、跟著輪轉):獨立成一個零件當目標件
+    {
+      id: "floats",
+      kind: "group",
+      arrow: false,
+      pieces: Array.from({ length: PADDLES }, (_, i) => ({ kind: "box", size: [R.paddle - R.rim + 0.2, 0.06, 0.8], at: polar((R.paddle + R.rim) / 2 - 0.1, (i * TAU) / PADDLES), angle: (i * TAU) / PADDLES })),
     },
     { id: "river", kind: "fill", fluid: "water", center: [0, (WATER - 2.2) / 2, 0], size: [5.5, WATER + 2.2, 1.2], level: 1 },
   ],
   driver: { part: "wheel", type: "rotation", speed: 0.5 },
+  target: "floats", // 明輪就是主動件;標把水往後推、讓船前進的槳板
   view: { direction: [0.1, 0.06, 1] },
   pose(theta) {
     // 下方的槳板往右推水:水往右流,船往左
     const wash = [-1.6, -1.9].flatMap((y) => stream([[-2.6, y, 0.65], [2.6, y, 0.65]], theta * R.paddle, { spacing: 0.4 }));
     return {
-      parts: { wheel: { angle: theta } },
+      parts: { wheel: { angle: theta }, floats: { angle: theta } },
       flows: [{ fluid: "water", points: wash }],
       readouts: [{ label: "船", value: "往左前進(槳板把水往右後推)" }],
     };

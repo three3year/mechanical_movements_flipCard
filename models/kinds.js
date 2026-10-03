@@ -35,6 +35,20 @@ export const PART_KINDS = new Set([
 /** 路徑零件:姿勢回傳折線 */
 export const PATH_KINDS = new Set(["belt", "rope", "rod", "chain", "trace"]);
 
+/** 模型定義的目標件 id 清單 */
+export const targetsOf = (def) => def.targets ?? (def.target ? [def.target] : []);
+
+/**
+ * 這個零件標成目標件時,畫面上出不出得了目標色:路徑零件與流體有自己的顏色;只有標籤的空群組沒有形體;
+ * 主動件與它的抓取處(driver.grips)畫的是主動件的顏色。
+ */
+export function canBeTarget(def, id) {
+  const part = def.parts.find((p) => p.id === id);
+  if (!part || PATH_KINDS.has(part.kind) || part.kind === "fill") return false;
+  if (part.kind === "group" && !part.pieces?.length) return false;
+  return id !== def.driver.part && !(def.driver.grips ?? []).includes(id);
+}
+
 /** 會運動的線狀零件:黑色間隔記號分段、每段一種實色,跟著材料移動 */
 export const MOVING_KINDS = new Set(["belt", "rope", "chain"]);
 

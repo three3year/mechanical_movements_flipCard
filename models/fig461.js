@@ -56,11 +56,19 @@ export default {
         ...BOXES.map(([x, y]) => ({ kind: "box", size: [0.26, 0.22, 0.26], at: [x, y, 0] })),
         // 底端的舀斗與頂端開口的管
         { kind: "plate", shape: shape(thickLine([BOXES[0], [BOXES[0][0] - 0.25, BOXES[0][1] - 0.45], [BOXES[0][0] + 0.15, BOXES[0][1] - 0.55]], 0.09)), thickness: 0.26 },
-        { kind: "plate", shape: shape(thickLine([BOXES[LEVELS - 1], [-BOXES[LEVELS - 1][0] * 1.5, BOXES[LEVELS - 1][1] + RISE]], 0.08)), thickness: 0.08 },
       ],
+    },
+    // 頂端開口的管(水從這裡流出):固定在擺上、跟著擺,獨立成一個零件當目標件
+    {
+      id: "spout",
+      kind: "group",
+      center: PIVOT,
+      arrow: false,
+      pieces: [{ kind: "plate", shape: shape(thickLine([BOXES[LEVELS - 1], [-BOXES[LEVELS - 1][0] * 1.5, BOXES[LEVELS - 1][1] + RISE]], 0.08)), thickness: 0.08 }],
     },
   ],
   driver: { part: "pendulum", type: "rotation", cycle: SWING },
+  target: "spout", // 整個擺就是主動件;標頂端的出水管——水一層層被送到這裡流出
   view: { direction: [0.1, 0.08, 1] },
   pose(v) {
     const { at } = stroke(v, ...SWING);
@@ -75,7 +83,7 @@ export default {
     const outflowing = (spout[0] - top[0]) * Math.sin(at) + (spout[1] - top[1]) * Math.cos(at) < 0;
     if (outflowing) dots.push(...stream([local(top, at), local(spout, at), [local(spout, at)[0] - Math.sign(spout[0]) * -0.2, local(spout, at)[1] - 0.8, 0.1]], v * 6, { spacing: 0.15 }));
     return {
-      parts: { pendulum: { angle: at } },
+      parts: { pendulum: { angle: at }, spout: { angle: at } },
       flows: [{ fluid: "water", points: dots }],
       readouts: [{ label: "送水的管段", value: act.map((on, k) => (on ? k + 1 : null)).filter(Boolean).join("、") || "無(換邊中)" }],
     };

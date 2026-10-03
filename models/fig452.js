@@ -67,6 +67,7 @@ export default {
     flap("valve4", 0.22, { label: "4", labelOffset: [-0.12, 0.12, 0.3] }),
   ],
   driver: { part: "piston", type: "translation", direction: [0, 1, 0], cycle: STROKE },
+  targets: ["valve3", "valve4"], // 兩個排水閥:活塞上下兩程輪流把水送進排水管 B
   view: { direction: [0.06, 0.06, 1] },
   pose(v) {
     const p = pump(v);

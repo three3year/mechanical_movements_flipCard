@@ -133,7 +133,7 @@ export default {
   ],
   driver: { part: "drive", type: "rotation", speed: 1.2 },
 
-  target: "rod",
+  target: "shaft", // 自動來回反轉的軸(連桿只是撥動離合器的中間件)
   view: { direction: [0.04, 0.12, 1], fov: 22 },
   pose(v) {
     const { shaft, sigma, f } = reverser(v);

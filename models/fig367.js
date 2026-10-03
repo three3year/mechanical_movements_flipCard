@@ -47,6 +47,7 @@ export default {
     ...rulerLineParts(),
   ],
   driver: { part: "upper", grips: ["linkL", "linkR"], type: "rotation", range: RANGE, initial: deg(55) },
+  target: "pointer", // 在刻度上指出兩片尺葉間距的指針
   view: { direction: [0.03, 0.06, 1] },
   pose(a0) {
     const r = ruler(a0);

@@ -40,6 +40,7 @@ export default {
     ...rulerLineParts(),
   ],
   driver: { part: "rulerTop", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 1.4 },
+  targets: ["armUp", "armDown"], // 讓兩尺保持平行的兩根交叉臂(主動件是尺本身)
   view: { direction: [0.03, 0.06, 1] },
   pose(h0) {
     const { h, xl } = cross(h0);

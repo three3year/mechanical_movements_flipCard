@@ -33,16 +33,18 @@ export default {
       pieces: [
         ...walls(LEG(-1).slice(0, 4), W),
         ...walls(LEG(1).slice(0, 4), W),
-        ...walls(C, W),
         { kind: "plate", shape: shape(thickLine(JET, 0.14)), thickness: 0.14, at: [0, 0, 0.12] },
       ],
     },
+    // 排水管 C(兩根吸水管的水匯合後從這裡往上送):獨立成一個零件當目標件
+    { id: "discharge", kind: "group", pieces: walls(C, W) },
     { id: "labelA", kind: "group", pieces: [], label: "A", labelOffset: [0.45, -0.25, 0.5] },
     { id: "labelB1", kind: "group", pieces: [], label: "B", labelOffset: [-1.15, -1.4, 0.5] },
     { id: "labelB2", kind: "group", pieces: [], label: "B", labelOffset: [1.15, -1.4, 0.5] },
     { id: "labelC", kind: "group", pieces: [], label: "C", labelOffset: [0, 1.7, 0.5] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.15 },
+  target: "discharge", // 只有蒸汽與水在動;標水被送出去的排水管 C
   view: { direction: [0.05, 0.05, 1] },
   pose(v) {
     const z = 0.3;

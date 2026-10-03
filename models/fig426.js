@@ -79,6 +79,7 @@ export default {
     { id: "piston2", kind: "plate", shape: shape(rect(PISTON, 0.14, -PISTON / 2, 0)), thickness: 0.54, label: "A", labelOffset: [0, 0, 0.4], arrow: false },
   ],
   driver: { part: "hub", type: "rotation", speed: 0.6, initial: Math.PI / 2 },
+  targets: ["piston1", "piston2"], // 軸 B 就是主動件(輪轂);標受蒸汽推、在輪轂裡滑進滑出的兩個活塞 A
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const angles = [theta, theta + Math.PI];

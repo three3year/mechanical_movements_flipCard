@@ -160,7 +160,7 @@ export default {
     speed: 0.5,
     backstop: (v) => Math.max(...Object.values(DROPS).map((d) => lastStop(v, d, PERIOD))),
   },
-  target: "pawlC",
+  targets: ["hook", "bar", "pawlC"], // 三種擋止爪都是這張圖的重點
   view: { direction: [0.08, 0.06, 1] },
   pose(wheel) {
     const pawlC = pawlCAngle(wheel);

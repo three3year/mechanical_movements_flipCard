@@ -32,9 +32,12 @@ export default {
     { id: "rulerL", kind: "plate", shape: ruler(4.8), thickness: 0.06, arrow: false },
     { id: "rulerR", kind: "plate", shape: ruler(4.8), thickness: 0.06, arrow: false },
     { id: "brace", kind: "link", width: 0.18, thickness: 0.06 },
+    // 兩根直尺夾角處的鉛筆
+    { id: "pencil", kind: "lathe", profile: [[0, -0.1], [0.05, 0], [0.06, 0.4], [0, 0.4]] },
     { id: "arc", kind: "trace" },
   ],
   driver: { part: "rulerL", grips: ["rulerR", "brace"], type: "rotation", range: RANGE, initial: TOP },
+  target: "pencil", // 夾角處畫出圓弧的鉛筆
   view: { direction: [0.03, 0.05, 1] },
   pose(phi0) {
     const phi = clamp(phi0, ...RANGE);
@@ -54,6 +57,7 @@ export default {
         rulerL: { position: [P[0], P[1], 0.06], angle: aL },
         rulerR: { position: [P[0], P[1], 0.12], angle: aR },
         brace: { from: along(aL, 3.0), to: along(aR, 3.0) },
+        pencil: { position: [P[0], P[1], 0.1] },
       },
       paths: { arc: { points, closed: false } },
       readouts: [],
