@@ -508,8 +508,13 @@ export function buildPart(part, material, mark) {
   for (const piece of part.pieces ?? []) {
     const child = buildPart(piece, piece.accent ? mark : material, mark);
     if (piece.at) child.position.set(...piece.at);
-    child.quaternion.setFromUnitVectors(Z_AXIS, new THREE.Vector3(...(piece.axis ?? [0, 0, 1])).normalize());
-    if (piece.angle) child.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Z_AXIS, piece.angle));
+    if (piece.rotation) {
+      // 直接指定附件的朝向(四元數 [x, y, z, w]),例如冠狀棘輪上立在輪緣、面朝外的鋸齒
+      child.quaternion.set(...piece.rotation);
+    } else {
+      child.quaternion.setFromUnitVectors(Z_AXIS, new THREE.Vector3(...(piece.axis ?? [0, 0, 1])).normalize());
+      if (piece.angle) child.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Z_AXIS, piece.angle));
+    }
     object.add(child);
   }
   return object;

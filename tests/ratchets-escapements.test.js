@@ -13,6 +13,11 @@ import * as m230 from "../models/fig230.js";
 import * as m231 from "../models/fig231.js";
 import * as m232 from "../models/fig232.js";
 import { dist } from "../models/kit.js";
+import * as m234 from "../models/fig234.js";
+import * as m235 from "../models/fig235.js";
+import * as m236 from "../models/fig236.js";
+import * as m237 from "../models/fig237.js";
+import * as m238 from "../models/fig238.js";
 
 const PIN_PERIOD = (2 * Math.PI) / 16;
 
@@ -133,4 +138,45 @@ test("第 232 種:B 抬起時棘爪 C 先抬出齒間、再往後越過;B 下降
   const down = m232.motion(2 * span);
   close(down.wheel - m232.motion(0).wheel, -PITCH, "下降時輪前進一齒", 1e-12);
   close(down.lift, 0, "C 落回齒間", 1e-9);
+});
+
+const monotone = (values, sign) => values.every((v, i) => i === 0 || sign * (v - values[i - 1]) >= -1e-12);
+
+test("第 234 種:心軸 S 往復擺動,冠狀輪間歇地轉:每擺一程半個齒", () => {
+  const { PITCH, SWING } = m234.geometry;
+  const span = 2 * SWING;
+  close(m234.wheelAngle(span) - m234.wheelAngle(0), -PITCH / 2, "一程半齒", 1e-12);
+  close(m234.wheelAngle(0.3 * span), m234.wheelAngle(0), "一程的前段被叉瓦擋住", 1e-12);
+  assert.ok(monotone(sweep(4 * span, 200).map(m234.wheelAngle), -1), "只朝一個方向");
+});
+
+test("第 235 種:撥爪臂往上擺時推星形輪轉一格,回程撥爪讓開、輪不動", () => {
+  const one = m235.motion((24 * Math.PI) / 180); // 上擺一程(24°)
+  close(one.star - m235.motion(0).star, m235.step, "上擺一程轉一格", 1e-9);
+  const back = m235.motion(0.6);
+  close(back.star, one.star, "回程不動", 1e-12);
+  assert.ok(back.yieldAngle > 0, "回程撥爪讓開");
+});
+
+test("第 236 種:槓桿 a 振動,兩根棘爪 b、c 輪流推,棘輪近乎連續地朝同一方向轉", () => {
+  const S = m236.swing;
+  const ws = sweep(4 * S, 400).map(m236.wheelAngle);
+  assert.ok(monotone(ws, 1), "只朝一個方向");
+  assert.ok(m236.wheelAngle(S) > 0.05 && m236.wheelAngle(2 * S) - m236.wheelAngle(S) > 0.05, "兩個方向的擺動都在推");
+});
+
+test("第 237 種:搖臂往復轉動,棘爪帶冠狀鋸齒輪間歇地轉;回程時棘爪沿斜面滑過齒", () => {
+  const { SPAN, PITCH } = m237.geometry;
+  close(m237.motion(SPAN).wheel - m237.motion(0).wheel, -SPAN, "推程:輪跟著搖臂轉", 1e-9);
+  close(m237.motion(2 * SPAN).wheel, m237.motion(SPAN).wheel, "回程:輪不動", 1e-12);
+  const lifts = sweep(2 * SPAN, 200, SPAN).map((v) => m237.motion(v).lift);
+  assert.ok(Math.max(...lifts) > 0.3, "回程時棘爪被齒的斜面抬起");
+  assert.ok(PITCH > 0);
+});
+
+test("第 238 種:叉瓦架往復擺動,叉瓦 B、C 輪流放走擒縱輪 D:每擺一程半個齒", () => {
+  const { PITCH } = m238.geometry;
+  const span = 2 * (10 * Math.PI) / 180;
+  close(m238.wheelAngle(span) - m238.wheelAngle(0), PITCH / 2, "一程半齒", 1e-9);
+  assert.ok(monotone(sweep(4 * span, 200).map(m238.wheelAngle), 1), "逆時針、只朝一個方向");
 });
