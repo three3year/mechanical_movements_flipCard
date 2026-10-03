@@ -190,6 +190,13 @@ export class Scene {
     return best;
   }
 
+  /** 軸線 axle(兩個端點定出的無限長直線)是否穿過凸塊 piece */
+  lineHits(axle, piece) {
+    tmpV.subVectors(axle.to, axle.from).normalize();
+    tmpP.copy(axle.from).addScaledVector(tmpV, -100);
+    return piece.collider.castRay(new RAPIER.Ray(tmpP, tmpV), 200, true) >= 0;
+  }
+
   dispose() {
     this.world.free();
   }

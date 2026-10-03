@@ -111,7 +111,7 @@ function staticChecks(def, scene, opt) {
       const ahead = def.pose(next, state);
       const moving = new Set();
       for (const e of entries) {
-        if (!e.visible) continue;
+        if (!e.visible || !e.pieces.length) continue; // 沒有形體的零件(只有標籤的空群組)不算
         if (e.path ? pathMoving(pose.paths?.[e.id], ahead.paths?.[e.id]) : partMoving(pose.parts[e.id], ahead.parts[e.id])) moving.add(e.id);
       }
       const edges = new Map(entries.map((e) => [e.id, []]));
@@ -124,7 +124,7 @@ function staticChecks(def, scene, opt) {
           const key = `${a.id}×${b.id}`;
           let hit = !first && !a.changed && !b.changed ? cache.get(key) : undefined;
           if (hit === undefined) {
-            hit = measure(scene, a, b, prediction);
+            hit = measure(scene, a, b, prediction, opt.tolerance);
             cache.set(key, hit);
           }
           if (!hit) continue;
@@ -247,7 +247,7 @@ function relativeMotion(placed, idA, idB) {
 }
 
 // 兩個零件之間:gap(實體間隙,≤ 0 表示相貼或相交)與 depth(干涉的穿入深度)
-function measure(scene, a, b, prediction) {
+function measure(scene, a, b, prediction, tolerance) {
   let gap = null;
   let solid = 0; // 算作干涉的那些凸塊配對中最小的距離
   let where = null; // 穿得最深的是哪兩塊
@@ -282,11 +282,29 @@ function measure(scene, a, b, prediction) {
       if (pb.axle && !(pa.axle && pa.axle.radius < pb.axle.radius)) fits.push([pb, a]);
       pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}` });
     } else if (d < solid) {
-      solid = d;
-      where = `${describe(a, pa)} 與 ${describe(b, pb)}`;
+      // 鉸接處的軸眼:某根軸(任一方的圓柱)的軸線同時穿過這兩塊,而且那根軸是裝在孔裡的鉸接軸,
+      // 那麼這兩塊在軸周圍的重疊是鉸接處互相套著的軸眼(連桿端頭疊在槓桿上),和軸本身一樣等走完再判斷
+      const fits = d < -tolerance ? knuckles(scene, a, b, pa, pb) : [];
+      if (fits.length) pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}` });
+      else {
+        solid = d;
+        where = `${describe(a, pa)} 與 ${describe(b, pb)}`;
+      }
     }
   });
   return gap == null ? null : { gap, depth: -solid, pins, where };
+}
+
+// 軸線同時穿過凸塊 pa、pb 的那些軸(a 或 b 的圓柱凸塊),各配上「它裝在哪個零件的孔裡」
+function knuckles(scene, a, b, pa, pb) {
+  const fits = [];
+  for (const [owner, other] of [[a, b], [b, a]]) {
+    for (const axle of owner.pieces) {
+      if (!axle.axle || axle.axle.from.distanceTo(axle.axle.to) < 1e-6) continue;
+      if (scene.lineHits(axle.axle, pa) && scene.lineHits(axle.axle, pb)) fits.push([axle, other]);
+    }
+  }
+  return fits;
 }
 
 // 憑空連動的零件離最近的實體多遠:重走一次這個狀態的取樣,往外找到 reach 為止

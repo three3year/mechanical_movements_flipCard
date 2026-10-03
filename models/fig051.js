@@ -74,6 +74,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["input", "output"], reason: "兩軸端頭的環互相套住:兩個環畫成同樣大小、在兩極互相交叉,實物是一個環套在另一個環裡" },
+  ],
   driver: { part: "input", type: "rotation" },
   target: "output", // 被接頭帶動的輸出軸
   view: { direction: [0.05, 0.35, 1] },

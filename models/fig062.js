@@ -43,6 +43,10 @@ export default {
     { id: "beltLeft", kind: "belt" },
     { id: "beltRight", kind: "belt" },
   ],
+  waivers: [
+    { check: "interference", parts: ["sun2", "planet"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.06" },
+    { check: "interference", parts: ["sun1", "planet"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.06" },
+  ],
   driver: { part: "top", type: "rotation" },
   target: "shaft", // 得到差動變速的軸
   states: {

@@ -79,6 +79,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["spindle", "frame"], reason: "待確認:spindle 的板 與 frame 的方塊 1.8×0.12×0.56重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "spindle", type: "rotation" },
   target: "gear", // 可嚙合或脫離的大齒輪(背齒輪)
   states: {

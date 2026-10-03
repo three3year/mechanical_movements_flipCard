@@ -78,6 +78,16 @@ test("一起動、彼此沒有相對運動的兩個零件是同一個剛體,重�
   assert.equal(interference(model([piston, rod], (v) => ({ piston: { position: [v, 0, 0] } }))).length, 1, "桿不動、活塞橫著掃過它");
 });
 
+test("鉸接處互相套著的軸眼不算干涉;離開鉸接軸的地方互相穿過才算", () => {
+  // 同一層的兩根桿,以左端的銷鉸接,其中一根繞銷擺動
+  const bar = (id, extra = {}) => ({ id, kind: "group", center: [0, 0, 0], pieces: [{ kind: "box", size: [2, 0.2, 0.1], at: [0.9, 0, 0] }, ...(extra.pieces ?? [])] });
+  const pinned = model([bar("a", { pieces: [{ kind: "cylinder", radius: 0.05, length: 0.3 }] }), bar("b")], (v) => ({ a: { angle: 1 + v } }));
+  assert.deepEqual(interference(pinned), []);
+  // 另一根桿橫在遠處,擺動的桿掃過它
+  const crossing = { id: "c", kind: "box", size: [0.2, 3, 0.1], center: [0.6, 1, 0] };
+  assert.deepEqual(interference(model([bar("a", { pieces: [{ kind: "cylinder", radius: 0.05, length: 0.3 }] }), bar("b"), crossing], (v) => ({ a: { angle: 1 + v } }))).map((f) => f.parts), [["a", "c"], ["b", "c"]]);
+});
+
 test("兩個齒輪正常嚙合不報;中心距太近、齒咬進對方實體才報", () => {
   const teeth = 20;
   const radius = 1;

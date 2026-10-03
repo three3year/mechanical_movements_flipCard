@@ -31,6 +31,7 @@ function ring(outer, inner, width) {
     curveSegments: SEGMENTS,
   });
   geometry.translate(0, 0, -width / 2);
+  geometry.userData.tube = { radius: outer, length: width }; // 空心圓柱(套筒、軸環):實體驗證把它當成軸
   return geometry;
 }
 

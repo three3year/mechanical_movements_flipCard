@@ -53,6 +53,10 @@ export default {
     },
     bellCrank({ ...LEVER, z: 0.5 }),
   ],
+  waivers: [
+    { check: "interference", parts: ["right", "clutch"], reason: "簡化爪形:離合器的爪畫成方塊而不是扇形,接合時內緣互相重疊 0.10" },
+    { check: "interference", parts: ["left", "clutch"], reason: "簡化爪形:離合器的爪畫成方塊而不是扇形,接合時內緣互相重疊 0.10" },
+  ],
   driver: { part: "top", type: "rotation" },
   target: "shaft", // 可正反轉的水平軸
   states: {
@@ -76,7 +80,7 @@ export default {
         left: { angle: left },
         right: { angle: right },
         shaft: { angle: shaft },
-        clutch: { position: [x, Y, 0], angle: shaft + Math.PI / JAWS },
+        clutch: { position: [x, Y, 0], angle: shaft },
         lever: { angle: -Math.asin(x / LEVER.up) },
       },
       readouts: [],

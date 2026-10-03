@@ -6,7 +6,7 @@ import { X } from "./kit.js";
 import { pulleyOnX, belt, driven, travel } from "./belt-shift.js";
 import { bevelDifferential } from "./bevel-differential.js";
 
-const DRUM = { y: 3.3, radius: 1.0, x: 0.2 };
+const DRUM = { y: 3.3, radius: 1.0, x: -0.2 }; // 鼓輪要蓋住三個皮帶輪的位置
 const R = 1.05;
 const PX = { loose: -1.0, middle: -0.4, right: 0.55 };
 const DIFF = bevelDifferential({ x0: 0.55 });
@@ -33,7 +33,7 @@ const cage = {
 export default {
   figure: 61,
   parts: [
-    pulleyOnX("drum", DRUM.x, DRUM.y, DRUM.radius, 2.2, { pieces: [{ kind: "cylinder", radius: 0.09, length: 3.4 }] }),
+    pulleyOnX("drum", DRUM.x, DRUM.y, DRUM.radius, 2.4, { pieces: [{ kind: "cylinder", radius: 0.09, length: 3.4 }] }),
     pulleyOnX("loose", PX.loose, 0, R, 0.55),
     pulleyOnX("middle", PX.middle, 0, R, 0.55),
     { id: "right", kind: "group", axis: X, center: [PX.right, 0, 0], spin: R, pieces: cage.pieces },
@@ -50,6 +50,10 @@ export default {
       ],
     },
     { id: "belt", kind: "belt" },
+  ],
+  waivers: [
+    { check: "interference", parts: ["sun2", "planet"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.06" },
+    { check: "interference", parts: ["sun1", "planet"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.06" },
   ],
   driver: { part: "drum", type: "rotation" },
   target: "shaft", // 得到單純或雙倍速度的軸

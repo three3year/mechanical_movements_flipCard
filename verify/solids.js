@@ -17,7 +17,7 @@ export function buildSolid(part) {
   object.traverse((o) => {
     if (!o.isMesh || o.material === MARK || o.userData.engraving) return;
     const hulls = convexPieces(o.geometry);
-    if (hulls.length) meshes.push({ mesh: o, hulls, axle: axleOf(o.geometry), radius: o.geometry.parameters?.radius ?? Math.max(o.geometry.parameters?.radiusTop ?? 0, o.geometry.parameters?.radiusBottom ?? 0) });
+    if (hulls.length) meshes.push({ mesh: o, hulls, axle: axleOf(o.geometry), radius: o.geometry.userData.tube?.radius ?? o.geometry.parameters?.radius ?? Math.max(o.geometry.parameters?.radiusTop ?? 0, o.geometry.parameters?.radiusBottom ?? 0) });
   });
   return { object, meshes };
 }
@@ -26,6 +26,8 @@ export function buildSolid(part) {
 // 用來認出「裝在沒畫出來的孔裡」的軸承、鉸接與球接頭
 function axleOf(geometry) {
   if (geometry.type === "SphereGeometry") return [new THREE.Vector3(), new THREE.Vector3()];
+  const tube = geometry.userData.tube; // 空心圓柱(繪圖層的 ring):軸線沿局部 Z
+  if (tube) return [new THREE.Vector3(0, 0, tube.length / 2), new THREE.Vector3(0, 0, -tube.length / 2)];
   if (geometry.type !== "CylinderGeometry") return null;
   const pos = geometry.attributes.position;
   const n = geometry.parameters.radialSegments;

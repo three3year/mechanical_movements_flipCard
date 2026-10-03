@@ -14,10 +14,11 @@ const J = 0.78; // 兩個接頭離中心的距離
 const PIN = 0.42;
 
 const fork = (back) => [
-  { kind: "box", size: [2 * PIN + 0.2, 0.22, 0.16], at: [0, 0, back * 0.5] },
-  { kind: "box", size: [0.14, 0.24, 0.62], at: [PIN, 0, back * 0.2] },
-  { kind: "box", size: [0.14, 0.24, 0.62], at: [-PIN, 0, back * 0.2] },
-  { kind: "cylinder", radius: 0.13, length: 2.2, at: [0, 0, back * 1.6] },
+  // 叉的底樑離十字遠一點、叉臂加長:中間件的環(半徑 0.55)轉動時才不會撞到底樑
+  { kind: "box", size: [2 * PIN + 0.2, 0.22, 0.16], at: [0, 0, back * 0.78] },
+  { kind: "box", size: [0.14, 0.24, 0.94], at: [PIN, 0, back * 0.34] },
+  { kind: "box", size: [0.14, 0.24, 0.94], at: [-PIN, 0, back * 0.34] },
+  { kind: "cylinder", radius: 0.13, length: 2.2, at: [0, 0, back * 1.95] },
 ];
 
 const yoke = (id, axis, at, back) => ({ id, kind: "group", axis, center: at, spin: 0.55, spinOffset: back * 1.4, pieces: fork(back) });

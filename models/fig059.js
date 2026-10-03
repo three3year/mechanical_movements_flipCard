@@ -6,7 +6,7 @@ import { X } from "./kit.js";
 import { meshAngle } from "./gears.js";
 import { pulleyOnX, belt, driven, travel } from "./belt-shift.js";
 
-const DRUM = { y: 3.3, radius: 1.0, x: 0.6 };
+const DRUM = { y: 3.3, radius: 1.0, x: 0.05 }; // 鼓輪要蓋住三個皮帶輪的位置(皮帶在鬆動輪時也還在鼓輪上)
 const R = 1.05;
 const PX = { loose: -0.55, middle: 0.05, right: 0.65 };
 const M = 0.075;
@@ -17,15 +17,16 @@ const gearOf = (n, y) => ({ center: [0, y, 0], axis: X, teeth: n, radius: (n * M
 
 export function speeds(angle, state) {
   const belted = driven(angle, DRUM.radius, R);
-  if (state === "loose") return { loose: belted, middle: 0, right: 0, lower: 0 };
-  const pair = state === "middle" ? SLOW : FAST;
-  const lower = meshAngle(gearOf(pair.up, 0), gearOf(pair.down, LOWER_Y), belted);
-  const other = state === "middle" ? FAST : SLOW;
+  // 皮帶在鬆動輪時齒輪都停著,但仍停在互相咬合的相位(input = 0)
+  const input = state === "loose" ? 0 : belted;
+  const pair = state === "right" ? FAST : SLOW;
+  const lower = meshAngle(gearOf(pair.up, 0), gearOf(pair.down, LOWER_Y), input);
+  const other = state === "right" ? SLOW : FAST;
   const back = meshAngle(gearOf(other.down, LOWER_Y), gearOf(other.up, 0), lower);
   return {
-    loose: 0,
-    middle: state === "middle" ? belted : back,
-    right: state === "right" ? belted : back,
+    loose: state === "loose" ? belted : 0,
+    middle: state === "right" ? back : input,
+    right: state === "right" ? input : back,
     lower,
   };
 }
@@ -43,7 +44,11 @@ export default {
     gearPart("slowDown", SLOW.down, LOWER_Y, SLOW.x),
     gearPart("fastUp", FAST.up, 0, FAST.x),
     gearPart("fastDown", FAST.down, LOWER_Y, FAST.x),
-    { id: "shafts", kind: "group", pieces: [{ kind: "cylinder", radius: 0.1, length: 3.8, axis: X, at: [0.1, 0, 0] }, { kind: "cylinder", radius: 0.1, length: 3.9, axis: X, at: [0.1, LOWER_Y, 0] }] },
+    // 三根軸各自跟著它帶動的輪轉:中間輪的實心軸通到左端的小齒輪;右側輪的空心軸(套在實心軸外)通到右端的大齒輪;
+    // 下方軸帶著兩個齒輪。鬆動輪空套在實心軸上
+    { id: "shaft", kind: "cylinder", axis: X, center: [0.1, 0, 0], radius: 0.08, length: 3.8 },
+    { id: "sleeve", kind: "cylinder", axis: X, center: [(PX.right + FAST.x) / 2, 0, 0], radius: 0.14, inner: 0.09, length: FAST.x - PX.right + 0.3 },
+    { id: "lowerShaft", kind: "cylinder", axis: X, center: [0.1, LOWER_Y, 0], radius: 0.1, length: 3.9 },
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "drum", type: "rotation" },
@@ -70,6 +75,9 @@ export default {
         fastUp: { angle: s.right },
         slowDown: { angle: s.lower },
         fastDown: { angle: s.lower },
+        shaft: { angle: s.middle },
+        sleeve: { angle: s.right },
+        lowerShaft: { angle: s.lower },
       },
       paths: { belt: { points: path.points, closed: true, phase: travel(angle, DRUM.radius) } },
       readouts: [],

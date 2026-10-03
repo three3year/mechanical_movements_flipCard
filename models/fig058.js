@@ -28,12 +28,14 @@ export const states = ["loose", "p2", "p3", "p4"];
  */
 export function speeds(angle, state) {
   const belted = driven(angle, DRUM.radius, R);
-  if (state === "loose") return { p2: 0, p3: 0, p4: 0, loose: belted, lower: 0 };
   const up = (k) => gearOf(PAIRS[k].up, 0, 0);
   const down = (k) => gearOf(PAIRS[k].down, LOWER_Y, 0);
-  const lower = meshAngle(up(state), down(state), belted);
-  const back = (k) => (k === state ? belted : meshAngle(down(k), up(k), lower));
-  return { p2: back("p2"), p3: back("p3"), p4: back("p4"), loose: 0, lower };
+  // 皮帶在鬆動輪時齒輪都停著,但仍停在互相咬合的相位(以第二輪轉角 0 推算)
+  const live = state === "loose" ? "p2" : state;
+  const input = state === "loose" ? 0 : belted;
+  const lower = meshAngle(up(live), down(live), input);
+  const back = (k) => (k === live ? input : meshAngle(down(k), up(k), lower));
+  return { p2: back("p2"), p3: back("p3"), p4: back("p4"), loose: state === "loose" ? belted : 0, lower };
 }
 
 const gearPart = (id, n, y, x) => ({ id, kind: "gear", axis: X, center: [x, y, 0], teeth: n, radius: (n * M) / 2, width: 0.32, web: false });
@@ -52,7 +54,10 @@ export default {
     gearPart("down2", PAIRS.p2.down, LOWER_Y, PAIRS.p2.x),
     gearPart("down3", PAIRS.p3.down, LOWER_Y, PAIRS.p3.x),
     gearPart("down4", PAIRS.p4.down, LOWER_Y, PAIRS.p4.x),
-    { id: "shafts", kind: "group", pieces: [{ kind: "cylinder", radius: 0.12, length: 4.2, axis: X, at: [3.4, 0, 0] }] },
+    // 主軸與兩層空心軸各自跟著自己的皮帶輪與齒輪轉;鬆動輪空套在主軸上
+    { id: "shaft2", kind: "cylinder", axis: X, center: [3.8, 0, 0], radius: 0.07, length: 5.0, arrow: false },
+    { id: "sleeve3", kind: "cylinder", axis: X, center: [(PX.p3 + PAIRS.p3.x) / 2, 0, 0], radius: 0.11, inner: 0.08, length: PX.p3 - PAIRS.p3.x + 0.3, arrow: false },
+    { id: "sleeve4", kind: "cylinder", axis: X, center: [(PX.p4 + PAIRS.p4.x) / 2, 0, 0], radius: 0.15, inner: 0.12, length: PX.p4 - PAIRS.p4.x + 0.3, arrow: false },
     { id: "lowerShaft", kind: "cylinder", axis: X, center: [2.4, LOWER_Y, 0], radius: 0.12, length: 2.6, arrow: false },
     { id: "belt", kind: "belt" },
   ],
@@ -87,6 +92,9 @@ export default {
         down3: { angle: s.lower, ...live("p3") },
         down4: { angle: s.lower, ...live("p4") },
         lowerShaft: { angle: s.lower },
+        shaft2: { angle: s.p2 },
+        sleeve3: { angle: s.p3 },
+        sleeve4: { angle: s.p4 },
       },
       paths: { belt: { points: path.points, closed: true, phase: travel(angle, DRUM.radius) } },
       readouts: [],
