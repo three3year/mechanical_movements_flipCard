@@ -21,7 +21,7 @@ export function helicograph(psi0) {
 export default {
   figure: 384,
   parts: [
-    { id: "paper", kind: "box", center: [0, -0.05, 0], size: [6.5, 0.04, 6.5] },
+    { id: "paper", kind: "box", center: [0, -0.05, 0], size: [6.2, 0.04, 6.2] },
     {
       id: "arm",
       kind: "group",
@@ -32,14 +32,14 @@ export default {
         // 中心尖、帶螺紋的軸
         { kind: "lathe", axis: [0, 0, 1], profile: [[0, -WHEEL], [0.04, -WHEEL + 0.12], [0.06, 0.25], [0, 0.25]], at: [0, 0, 0] },
         { kind: "cylinder", radius: 0.15, length: 0.08, at: [0, 0, 0.12] },
-        { kind: "worm", axis: [1, 0, 0], radius: 0.07, length: 4.6, pitch: PITCH, thread: 0.025, at: [2.35, 0, 0] },
+        { kind: "worm", axis: [1, 0, 0], radius: 0.07, length: 3.0, pitch: PITCH, thread: 0.025, at: [1.55, 0, 0] },
       ],
     },
     { id: "wheel", kind: "gear", axis: [1, 0, 0], teeth: 30, radius: WHEEL, width: 0.12, pieces: [{ kind: "cylinder", radius: 0.12, length: 0.35, at: [0, 0, 0.2] }] },
     { id: "spiral", kind: "trace" },
   ],
   driver: { part: "arm", type: "rotation", range: RANGE, initial: 0 },
-  view: { direction: [0.15, 0.5, 1] },
+  view: { direction: [0.1, 0.45, 1], fit: ["arm", "wheel"] },
   pose(psi0) {
     const h = helicograph(psi0);
     const n = Math.max(2, Math.round((h.psi / TAU) * 64));

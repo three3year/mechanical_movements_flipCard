@@ -26,6 +26,12 @@ import * as m369 from "../models/fig369.js";
 import * as m370 from "../models/fig370.js";
 import * as m384 from "../models/fig384.js";
 import { lineAngle } from "../models/ruler-lines.js";
+import * as m371 from "../models/fig371.js";
+import * as m372 from "../models/fig372.js";
+import * as m373 from "../models/fig373.js";
+import * as m374 from "../models/fig374.js";
+import * as m375 from "../models/fig375.js";
+import * as m376 from "../models/fig376.js";
 
 test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓桿把橫移運動傳給導件 a、a 內的桿", () => {
   const xs = sweep(0.6, 20, -1.6).map((x) => m350.traverse(x).rod);
@@ -196,4 +202,50 @@ test("第 384 種:螺旋線描繪儀:小輪繞中心滾動,同時沿螺紋移動
   assert.ok(ds.every((d, i) => i === 0 || d > ds[i - 1]), "離中心越來越遠(渦線)");
   const h = m384.helicograph(1);
   close(Math.log(h.d / m384.helicograph(0).d), m384.K, "每轉一弧度,距離按固定比例增加", 1e-12);
+});
+
+test("第 371 種:兩面有齒的曼格輪:小齒輪均勻旋轉,輪交替地往兩個方向轉,換向時小齒輪穿過開口到另一面", () => {
+  const ws = sweep(4 * Math.PI * 60 / 8, 800).map((t) => m371.mangle(t));
+  const dirs = ws.slice(1).map((w, i) => Math.sign(w.wheel - ws[i].wheel)).filter(Boolean);
+  const changes = dirs.slice(1).filter((d, i) => d !== dirs[i]).length;
+  assert.ok(changes >= 1, "輪換向");
+  assert.ok(ws.some((w) => w.z > 0.2) && ws.some((w) => w.z < -0.2), "小齒輪在兩面之間換");
+  close(Math.max(...ws.map((w) => w.wheel)) - Math.min(...ws.map((w) => w.wheel)), m371.TRAVEL, "單向轉將近一圈", 0.01);
+});
+
+test("第 372 種:懷特氏測功計:框架靜止時運動經水平齒輪傳到另一個垂直齒輪;框架放開時框架隨之旋轉", () => {
+  const held = m372.dynamometer(1, "held");
+  close(held.carrier, 0, "框架不動");
+  close(held.sun2, -1, "另一個垂直齒輪反向轉");
+  const free = m372.dynamometer(1, "free");
+  close(free.carrier, 0.5, "框架跟著轉(負載擋住另一個齒輪時,轉一半)");
+});
+
+test("第 373 種:羅伯特氏裝置:指示器的讀數不隨大輪轉速改變,只隨載重改變", () => {
+  const def = m373.default;
+  close(def.pose(0.5, "light").parts.needle.angle, def.pose(5, "light").parts.needle.angle, "速度不同,指示器不變");
+  assert.notEqual(def.pose(1, "light").parts.needle.angle, def.pose(1, "heavy").parts.needle.angle, "重量不同,指示器改變");
+});
+
+test("第 374 種:踏板上的滾子經無端皮帶帶動軸上的偏心輪:軸轉一圈,踏板上下一次", () => {
+  const angles = sweep(2 * Math.PI, 72).map((t) => m374.treadle(t).angle);
+  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.3, "踏板上下擺");
+  for (const t of sweep(2 * Math.PI, 12)) {
+    const r = m374.treadle(t);
+    close(Math.hypot(r.roller[0] - r.e[0], r.roller[1] - r.e[1]), m374.SPAN, "皮帶長度不變", 1e-9);
+  }
+});
+
+test("第 375 種:滾壓輪:輪軸接在直立軸上,輪在環形鍋盆裡繞行並滾動(不打滑)", () => {
+  const a = m375.runners(0);
+  const b = m375.runners(1);
+  const { RUN, WHEEL } = m375.geometry;
+  close(Math.abs(b.roll - a.roll) * WHEEL, Math.abs(b.shaft - a.shaft) * RUN, "輪滾過的長度 = 繞行的弧長");
+  close(Math.abs(b.shaft - a.shaft), 1, "斜齒輪 1:1");
+});
+
+test("第 376 種:踏輪馬力裝置:馬往上走,輪在牠腳下轉", () => {
+  close(m376.treadWheel(1).wheel, 2 * Math.PI, "進程一圈,輪轉一圈");
+  const strides = sweep(0.2, 40).map((p) => m376.treadWheel(p).stride);
+  assert.ok(Math.max(...strides) > 0.9 && Math.min(...strides) < -0.9, "腿交替擺動");
 });
