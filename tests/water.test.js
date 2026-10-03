@@ -10,6 +10,11 @@ import * as m433 from "../models/fig433.js";
 import * as m437 from "../models/fig437.js";
 import * as m438 from "../models/fig438.js";
 import * as m441 from "../models/fig441.js";
+import * as m434 from "../models/fig434.js";
+import * as m435 from "../models/fig435.js";
+import * as m436 from "../models/fig436.js";
+import * as m442 from "../models/fig442.js";
+import * as m443 from "../models/fig443.js";
 
 test("第 430 種:上射式水車,進程增加時水車依原圖箭頭順時針轉", () => {
   const a = fig430.pose(0.1).parts.wheel.angle;
@@ -114,4 +119,49 @@ test("第 441 種:波斯水車:水桶在低處裝滿,滿著升到高處,碰到�
   assert.equal(after.tilt, 0, "離開銷後又垂直掛著");
   assert.ok(angle(m441.default, "wheel", 0.2) > 0, "輪逆時針轉(原圖箭頭)");
   assert.ok(-m441.RIM < m441.RIVER, "輪的下半部浸在水流裡");
+});
+
+test("第 434 種:福內隆渦輪:固定導葉 A 在中央,旋轉輪 B 在外側,水從圓周排出", () => {
+  assert.ok(m434.GUIDE.r1 < m434.WHEEL.r0, "導葉在輪的內側");
+  const def = m434.default;
+  assert.ok(def.pose(0.2).parts.wheel.angle < 0, "輪順時針轉(原圖箭頭)");
+  assert.equal(def.pose(0.2).parts.guides, undefined, "導葉固定不動");
+  const dots = def.pose(0.37).flows[0].points;
+  assert.ok(dots.some((p) => Math.hypot(p[0], p[1]) > m434.WHEEL.r1), "水從圓周排出");
+});
+
+test("第 435 種:華倫渦輪:導葉 a 在外側,輪 b 在內側轉,水從中央排出", () => {
+  assert.ok(m435.WHEEL.r0 < m435.GUIDE.r1, "輪在導葉的內側");
+  const def = m435.default;
+  assert.equal(def.pose(0.2).parts.guides, undefined, "導葉固定不動");
+  const dots = def.pose(0.37).flows[0].points;
+  assert.ok(dots.some((p) => Math.hypot(p[0], p[1]) < m435.WHEEL.r1 - 0.2), "水流到中央排出");
+});
+
+test("第 436 種:容瓦爾渦輪:導水槽固定在筒身裡,輪 c 的水斗比導水槽多、斜向排列", () => {
+  assert.ok(m436.WHEEL.count > m436.GUIDE.count, "水斗比導水槽多");
+  assert.ok(Math.sign(m436.WHEEL.tilt) !== Math.sign(m436.GUIDE.tilt), "水斗斜向與導水槽相反(水轉向後推輪)");
+  assert.ok(m436.WHEEL.y < m436.GUIDE.y, "輪在導水槽下面");
+  const def = m436.default;
+  close(def.pose(0.25).parts.wheel.angle, Math.PI / 2, "進程四分之一圈,輪轉 90°");
+});
+
+test("第 442 種:戽水車:罐子依序在水裡裝滿,升到上方倒進水槽", () => {
+  const deg = Math.PI / 180;
+  assert.equal(m442.potLevel(-60 * deg), 1, "過了底部的罐子已裝滿");
+  assert.equal(m442.potLevel(60 * deg), 1, "上升途中滿著");
+  assert.equal(m442.potLevel(150 * deg), 0, "過了頂端已倒空");
+  assert.equal(m442.potLevel(-150 * deg), 0, "下降時空著");
+  assert.ok(-m442.RIM < m442.RIVER, "輪的下端浸在水裡");
+});
+
+test("第 443 種:阿基米德螺旋:水流轉動下端的輪,水沿螺旋通道連續往上送,從頂端排出", () => {
+  const def = m443.default;
+  const z0 = m443.pockets(-2 * Math.PI * 0.1);
+  const z1 = m443.pockets(-2 * Math.PI * 0.2);
+  // 每團水往上移:同一團水轉十分之一圈上移十分之一螺距
+  close(z1[0] - z0[0], m443.PITCH * 0.1, "螺旋轉一圈,水上移一個螺距", 1e-9);
+  assert.ok(z0.length >= 4, "通道裡一路都有水(連續輸送)");
+  assert.ok(def.pose(0.3).flows[0].points.length > 0);
+  assert.ok(m443.BASE[1] - 1.25 < m443.RIVER, "下端的輪浸在水裡");
 });
