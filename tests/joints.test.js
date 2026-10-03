@@ -18,6 +18,11 @@ import * as m267 from "../models/fig267.js";
 import * as m270 from "../models/fig270.js";
 import { sweep } from "./helpers.js";
 import * as m247 from "../models/fig247.js";
+import * as m244 from "../models/fig244.js";
+import * as m246 from "../models/fig246.js";
+import * as m252 from "../models/fig252.js";
+import * as m273 from "../models/fig273.js";
+import { dist, sub, len } from "../models/kit.js";
 import * as m251 from "../models/fig251.js";
 import * as m253 from "../models/fig253.js";
 import * as m277 from "../models/fig277.js";
@@ -171,4 +176,41 @@ test("第 278 種:平台升降時棘爪縮在棘齒外;繩索斷裂時彈簧壓�
     const broken = m278.platform(v, true).top;
     assert.ok(broken <= intact + 1e-9 && intact - broken < pitch, "斷繩時平台只落到下方最近的棘齒");
   }
+});
+
+test("第 244 種:測功計:軸轉動時輪 A 在木塊間轉,槓桿 D 由擋止 C、C' 限制;夾緊程度剛好時槓桿呈水平", () => {
+  const def = m244.default;
+  close(def.pose(1, "right").parts.leverD.angle, 0, "剛好時槓桿水平");
+  assert.ok(def.pose(1, "loose").parts.leverD.angle < 0, "太鬆時槓桿被砝碼拉下,靠在 C 上");
+  assert.ok(def.pose(1, "tight").parts.leverD.angle > 0, "太緊時槓桿被帶上去,頂住 C'");
+  close(turned(def, "drumA", 0, 2), 2, "輪 A 隨軸轉動");
+  close(turned(def, "leverD", 0, 2, "right"), 0, "槓桿不隨輪轉");
+});
+
+test("第 246 種:縮放圖器:以描摹點 B 描畫平面圖,鉛筆 A 畫出兩倍大小的圖形", () => {
+  const C = m246.fixedC;
+  for (const s of sweep(1, 40)) {
+    const B = m246.planPoint(s);
+    const { A } = m246.pantograph(B);
+    close(dist(A, C), 2 * dist(B, C), "CA = 2·CB", 1e-9);
+    close(len(sub(sub(A, C), [2 * (B[0] - C[0]), 2 * (B[1] - C[1]), 0])), 0, "C、B、A 共線", 1e-9);
+  }
+  const a = m246.pantograph(m246.planPoint(0.1)).A;
+  const b = m246.pantograph(m246.planPoint(0.35)).A;
+  close(dist(a, b), 2 * dist(m246.planPoint(0.1), m246.planPoint(0.35)), "圖上任兩點的距離放大兩倍", 1e-9);
+});
+
+test("第 252 種:把部件 D 上下移動,滾子 A 和 B 在溝槽 C 內以相同幅度、相反方向來回移動", () => {
+  const rest = m252.rollers(0);
+  for (const v of sweep(0.6, 6, -0.6)) {
+    const { a, b } = m252.rollers(v);
+    close(a - rest.a, -(b - rest.b), "相同幅度、相反方向");
+  }
+  assert.ok(m252.rollers(0.5).b > rest.b, "D 往上時兩滾子分開");
+});
+
+test("第 273 種:當桿 A 和 B 被拉近時,桿 C 和 D 會被進一步推開,反之亦然", () => {
+  const [lo, hi] = m273.RANGE;
+  assert.ok(m273.spread(lo) > m273.spread(hi), "A、B 拉近時 C、D 推開");
+  for (const w of sweep(hi, 10, lo)) close(Math.hypot(w, m273.spread(w)), m273.SIDE, "四根桿長度不變");
 });
