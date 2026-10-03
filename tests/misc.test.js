@@ -19,6 +19,13 @@ import * as m360 from "../models/fig360.js";
 import * as m361 from "../models/fig361.js";
 import * as m362 from "../models/fig362.js";
 import * as m364 from "../models/fig364.js";
+import * as m366 from "../models/fig366.js";
+import * as m367 from "../models/fig367.js";
+import * as m368 from "../models/fig368.js";
+import * as m369 from "../models/fig369.js";
+import * as m370 from "../models/fig370.js";
+import * as m384 from "../models/fig384.js";
+import { lineAngle } from "../models/ruler-lines.js";
 
 test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓桿把橫移運動傳給導件 a、a 內的桿", () => {
   const xs = sweep(0.6, 20, -1.6).map((x) => m350.traverse(x).rod);
@@ -140,4 +147,53 @@ test("第 364 種:小輪連續旋轉,大輪間歇旋轉:每根凸柱經過時推
   const as = sweep(-2 * Math.PI, 360).map(m364.bigAngle);
   const still = as.slice(1).filter((a, i) => a === as[i]).length;
   assert.ok(still > 150, "大部分時間停住");
+});
+
+test("第 366 種:鑽床:大斜齒輪帶動鑽桿旋轉;踩下踏板時鑽桿被壓下,但照樣跟著小斜齒輪轉", () => {
+  const def = m366.default;
+  const up = def.pose(1.3, "up").parts.spindle;
+  const down = def.pose(1.3, "down").parts.spindle;
+  close(up.angle, down.angle, "鑽桿在小斜齒輪中滑動,仍一起轉");
+  close(up.position[1] - down.position[1], m366.PRESS, "踩下踏板,鑽桿下降");
+  close(Math.abs(m366.drill(1) - m366.drill(0)), 30 / 12, "轉速比 = 齒數比", 1e-9);
+});
+
+test("第 367 種:平行尺:尺葉保持平行,刻度指示兩尺葉之間的寬度", () => {
+  for (const a of sweep(m367.RANGE[1], 6, m367.RANGE[0])) {
+    const { lineStart, lineNow } = m367.default.pose(a).paths;
+    close(lineAngle(lineStart.points), lineAngle(lineNow.points), "兩條線平行", 1e-12);
+  }
+  assert.ok(m367.ruler(m367.RANGE[1]).gap > m367.ruler(m367.RANGE[0]).gap, "擺開時寬度變大");
+});
+
+test("第 368 種:在圓筒上畫螺旋線:圓筒轉動,同一個正齒輪帶齒條使標記點從一端移到另一端,每轉移動一個螺距", () => {
+  close(m368.marker(-2 * Math.PI) - m368.marker(0), m368.PITCH, "每轉一個螺距");
+  const pts = m368.default.pose(-4 * Math.PI).paths.helix.points;
+  const ys = pts.map((p) => p[1]);
+  assert.ok(ys.every((y, i) => i === 0 || y >= ys[i - 1] - 1e-12), "螺旋線沿圓筒單調上升");
+});
+
+test("第 369 種:擺線擺:擺錘沿擺線運動(擺線的長度不變,擺錘始終在擺線上)", () => {
+  for (const p of sweep(1, 36)) {
+    const { bob, phi, side } = m369.pendulum(p);
+    // 擺線上的點:(a(φ + sin φ), −3a − a cos φ)(相對懸掛點)
+    close(bob[0] - m369.top[0], side * m369.A * (phi + Math.sin(phi)), "擺錘在擺線上", 1e-12);
+    close(bob[1] - m369.top[1], -3 * m369.A - m369.A * Math.cos(phi), "擺錘在擺線上", 1e-12);
+  }
+});
+
+test("第 370 種:拋光鏡面:長桿有縱向與擺動運動,棘輪(鏡面)每圈間歇地轉一格", () => {
+  const ps = sweep(2 * Math.PI, 36).map((t) => m370.polish(t));
+  const angles = ps.map((p) => p.angle);
+  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.2, "長桿擺動");
+  const slide = ps.map((p) => Math.hypot(p.pin[0] - p.center[0], p.pin[1] - p.center[1]));
+  assert.ok(Math.max(...slide) - Math.min(...slide) > 0.6, "長桿沿長度方向在銷上滑動");
+  close(m370.polish(2 * Math.PI).ratchet - m370.polish(0).ratchet, -m370.STEP, "每圈轉一格", 1e-12);
+});
+
+test("第 384 種:螺旋線描繪儀:小輪繞中心滾動,同時沿螺紋移動,畫出渦線", () => {
+  const ds = sweep(m384.RANGE[1], 30).map((p) => m384.helicograph(p).d);
+  assert.ok(ds.every((d, i) => i === 0 || d > ds[i - 1]), "離中心越來越遠(渦線)");
+  const h = m384.helicograph(1);
+  close(Math.log(h.d / m384.helicograph(0).d), m384.K, "每轉一弧度,距離按固定比例增加", 1e-12);
 });
