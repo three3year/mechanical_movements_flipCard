@@ -80,3 +80,71 @@ test("第 475、476 種:噴射泵:蒸汽朝排水管噴出,水從吸水管被吸
     assert.ok(Math.max(...steam.points.map((p) => p[1])) > 1.5, "蒸汽朝排水管噴");
   }
 });
+
+import * as m477 from "../models/fig477.js";
+import * as m478 from "../models/fig478.js";
+import * as gas from "../models/gasometer.js";
+import fig479 from "../models/fig479.js";
+import fig480 from "../models/fig480.js";
+import * as m481 from "../models/fig481.js";
+import * as m482 from "../models/fig482.js";
+import * as m483 from "../models/fig483.js";
+
+test("第 477 種:蒸汽疏水器:有蒸汽時閥門被頂上封住;冷凝水積多、閥冷卻後落下排水", () => {
+  for (const v of sweep(1, 100)) {
+    const t = m477.trap(v);
+    if (t.temp > 0.9) close(t.valve, m477.CLOSED, "蒸汽:閥門頂到 a、a 封住");
+    if (t.temp < 0.3) close(t.valve, m477.OPEN, "冷卻:閥門落下");
+    if (t.draining) assert.ok(t.valve < m477.CLOSED, "排水時閥門是開的");
+  }
+  assert.ok(sweep(1, 100).some((v) => m477.trap(v).draining), "會排水");
+});
+
+test("第 478 種:Ray 疏水器:管裡是水時管子短、閥門開;是蒸汽時管子伸長頂住柱塞、閥門關", () => {
+  assert.ok(m478.trap(0).open, "水:閥門打開");
+  assert.ok(!m478.trap(1).open, "蒸汽:閥門關閉");
+  assert.ok(m478.trap(1).end > m478.trap(0).end, "受熱伸長");
+  for (const t of sweep(1, 20)) {
+    const s = m478.trap(t);
+    assert.ok(s.plunger >= m478.STOP - 1e-12, "柱塞被槓桿推到擋止為止");
+    assert.ok(s.plunger >= s.end - 1e-12, "管端不會穿過柱塞");
+  }
+});
+
+test("第 479、480 種:儲氣槽:氣體進入時容器 A 上升,而且下緣一直浸在水裡", () => {
+  for (const def of [fig479, fig480]) {
+    const lo = def.pose(0.1).parts.bell.position[1];
+    const hi = def.pose(0.9).parts.bell.position[1];
+    assert.ok(hi > lo, `第 ${def.figure} 種:氣量多,A 升高`);
+    assert.ok(gas.bellBottom(1) < gas.WATER, "A 的下緣始終在水面下(封住氣體)");
+  }
+  // 第 479 種:A 上升時重物 C 下降
+  const w = (g) => fig479.pose(g).parts.weightL.position[1];
+  assert.ok(w(0.9) < w(0.1), "重物隨 A 上升而下降(部分平衡)");
+});
+
+test("第 481 種:濕式氣錶:水面在中心以上;氣體依序進入各隔室,鼓轉一圈通過四室的氣", () => {
+  assert.ok(m481.WATER > 0, "注水到中心以上");
+  const seen = new Set(sweep(1, 200).map((p) => m481.filling(-2 * Math.PI * p)).filter((k) => k >= 0));
+  assert.equal(seen.size, m481.CHAMBERS, "四個隔室輪流進氣");
+  assert.match(m481.default.pose(1).readouts[0].value, /^4\.0/, "轉一圈記下四室");
+});
+
+test("第 482 種:氣體調節器:主管壓力增加時杯子 H 升起、閥 D 沒入水銀,缺口縮小,送出的氣量大致不變", () => {
+  const lo = m482.regulate(0.8);
+  const hi = m482.regulate(1.4);
+  assert.ok(hi.lift > lo.lift, "壓力大,杯子升高");
+  assert.ok(hi.drop > lo.drop, "閥被槓桿壓低");
+  assert.ok(hi.opening < lo.opening, "缺口 h 縮小");
+  assert.ok(Math.abs(hi.flow - lo.flow) < 0.5 * (1.4 - 0.8), "送出的氣量變化遠小於壓力變化");
+});
+
+test("第 483 種:乾式氣錶:兩個風箱腔室輪流充氣,滑閥 B 由腔室帶動,錶盤記錄次數", () => {
+  for (const v of sweep(1, 24)) {
+    const m = m483.meter(v);
+    assert.ok(Math.abs(m.d[0]) <= m483.STROKE + 1e-12 && Math.abs(m.d[1]) <= m483.STROKE + 1e-12);
+  }
+  const fills = sweep(1, 100).map((v) => m483.meter(v).filling);
+  assert.ok(fills.some((f) => f[0] && !f[1]) && fills.some((f) => !f[0] && f[1]), "兩個腔室輪流進氣");
+  assert.ok(m483.meter(1).dial < m483.meter(0).dial, "錶盤指針隨通過的氣量轉");
+});
