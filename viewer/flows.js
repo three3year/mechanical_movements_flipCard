@@ -3,8 +3,8 @@
 import * as THREE from "three";
 import { FLUID_LAYER } from "./lineart.js";
 
-export const FLUID_COLORS = { water: "#2a9df4", steam: "#9aa0b8", air: "#7cc96b" };
-const DOT = { water: 0.06, steam: 0.075, air: 0.06 };
+export const FLUID_COLORS = { water: "#2a9df4", steam: "#9aa0b8", air: "#7cc96b", mercury: "#5f6772" };
+const DOT = { water: 0.06, steam: 0.075, air: 0.06, mercury: 0.06 };
 
 export class FlowCues {
   constructor(scene) {

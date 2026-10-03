@@ -35,4 +35,4 @@ export const PATH_KINDS = new Set(["belt", "rope", "rod", "chain", "trace"]);
 export const MOVING_KINDS = new Set(["belt", "rope", "chain"]);
 
 /** 流體示意的種類,各一種顏色 */
-export const FLUIDS = new Set(["water", "steam", "air"]);
+export const FLUIDS = new Set(["water", "steam", "air", "mercury"]);
