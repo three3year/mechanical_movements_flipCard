@@ -52,6 +52,9 @@ export default {
     },
     { id: "pipe", kind: "lathe", axis: Y, center: [0, 0, 0], profile: ball },
   ],
+  waivers: [
+    { check: "interference", parts: ["socket", "pipe"], reason: "待確認:socket 的旋轉體 與 pipe 的旋轉體重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "pipe", type: "rotation", range: [-TILT, TILT], initial: 0 },
   target: "socket", // 接頭的另一半:夾住球的球窩
   view: { direction: [0.06, 0.1, 1] },

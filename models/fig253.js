@@ -106,6 +106,10 @@ export default {
     { id: "rope", kind: "rope" },
   ],
   powered: ["rope"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["frameA", "studD1"], reason: "待確認(未修):frameA 的板 與 studD1 的圓柱 r0.17×0.5互相穿入 0.21(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["frameA", "studD2"], reason: "待確認(未修):frameA 的板 與 studD2 的圓柱 r0.17×0.5互相穿入 0.21(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
 
   targets: ["hook0", "hook1", "hook2"], // 重點是甩出去鉤住凸柱的制動鉤

@@ -60,6 +60,9 @@ export default {
     { id: "labelA", kind: "group", center: [W[0] - R, W[1] + 0.35, 0.3], label: "A", labelOffset: [0.3, 0, 0] },
     { id: "labelB", kind: "group", center: [W[0] - R, W[1] - 0.35, 0.3], label: "B", labelOffset: [0.3, 0, 0] },
   ],
+  waivers: [
+    { check: "interference", parts: ["wheel", "anchor"], reason: "待確認:wheel 的板 與 anchor 的板重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "anchor", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.04, 0.05, 1] },

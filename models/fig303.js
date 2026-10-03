@@ -47,6 +47,10 @@ export default {
     { id: "labelE", kind: "group", center: [C[0] + 1.2, C[1] - 1.05, 0], label: "E", labelOffset: [0.3, 0.15, 0.3] },
     { id: "labelF", kind: "group", center: [C[0], C[1] - 4.6, 0], label: "F", labelOffset: [0.3, 0, 0.3] },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["anchor"], reason: "待確認:anchor 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["wheel"], reason: "待確認:wheel 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+  ],
   driver: { part: "anchor", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },

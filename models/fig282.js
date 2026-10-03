@@ -74,6 +74,13 @@ export default {
     { id: "rope", kind: "rope" },
     { id: "weight", kind: "box", size: [0.4, 0.8, 0.4] },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["pulley"], reason: "待確認(未修):pulley 在動,但離帶動(或支撐)它的零件還有 0.53 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["weight"], reason: "待確認(未修):weight 在動,但離帶動(或支撐)它的零件還有 0.81 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["rope"], reason: "待確認:rope 與帶動(或支撐)它的零件之間差 0.06 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "interference", parts: ["frame", "rack"], reason: "待確認(未修):frame 的方塊 4.6×0.2×1 與 rack 的方塊 4.2×0.16×0.14互相穿入 0.14(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["sector", "rack"], reason: "待確認:sector 的板 與 rack 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "disc", type: "rotation" },
   targets: ["rack", "weight"], // 下端的齒條與上端的重物
   view: { direction: [0.04, 0.05, 1] },

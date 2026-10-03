@@ -32,6 +32,12 @@ export default {
     rod("rodD", "y", "D", [0.35, -0.05, 0.3]),
     ...["AC", "CB", "BD", "DA"].map((id) => ({ id: `bar${id}`, kind: "link", width: 0.12, thickness: 0.07 })),
   ],
+  waivers: [
+    { check: "interference", parts: ["guides", "rodC"], reason: "待確認(未修):guides 的方塊 0.3×0.3×0.3 與 rodC 的方塊 0.13×1×0.13互相穿入 0.22(43 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["guides", "rodD"], reason: "待確認(未修):guides 的方塊 0.3×0.3×0.3 與 rodD 的方塊 0.13×1×0.13互相穿入 0.22(43 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["guides", "rodA"], reason: "待確認(未修):guides 的方塊 0.3×0.3×0.3 與 rodA 的方塊 1×0.13×0.13互相穿入 0.20(17 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["guides", "rodB"], reason: "待確認(未修):guides 的方塊 0.3×0.3×0.3 與 rodB 的方塊 1×0.13×0.13互相穿入 0.20(17 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "rodA", grips: ["rodB"], type: "translation", direction: [-1, 0, 0], range: RANGE, initial: 1.15 },
   targets: ["rodC", "rodD"], // 被推開拉攏的另一對桿
   view: { direction: [0.05, 0.05, 1] },

@@ -64,6 +64,10 @@ export default {
     { id: "carriage", kind: "group", pieces: [{ kind: "box", size: [0.5, 0.08, 0.08], at: [0, 0, -0.3] }, { kind: "box", size: [0.1, 1.3, 0.1], at: [0, 0.65, -0.5] }] },
     { id: "rail", kind: "box", center: [0.3, R.big + 0.95, -0.5], size: [5.2, 0.06, 0.06] },
   ],
+  waivers: [
+    { check: "interference", parts: ["drum", "roller"], reason: "待確認:drum 的旋轉體 與 roller 的圓柱 r0.42×0.3重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["carriage", "rail"], reason: "待確認:carriage 的方塊 0.1×1.3×0.1 與 rail 的方塊 5.2×0.06×0.06重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "drum", type: "rotation", speed: 2.4 },
   target: "roller", // 得到變速旋轉的滾子
   view: { direction: [0.12, 0.3, 1] },

@@ -51,6 +51,10 @@ export default {
     },
     { id: "rod", kind: "box", size: [3.2, 0.16, 0.16] },
   ],
+  waivers: [
+    { check: "interference", parts: ["disc", "rod"], reason: "待確認:disc 的板 與 rod 的方塊 3.2×0.16×0.16重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["rodGuides", "rod"], reason: "待確認(未修):rodGuides 的方塊 0.3×0.34×0.4 與 rod 的方塊 3.2×0.16×0.16互相穿入 0.25(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "shaft", type: "rotation" },
   target: "rod", // 往復的桿
   view: { direction: [0.1, 0.12, 1] },

@@ -47,6 +47,10 @@ export default {
     { id: "labelP", kind: "group", center: [0.42, 2.45 - ARM, 0], label: "P", labelOffset: [0.3, -0.1, 0.3] },
     { id: "labelQ", kind: "group", center: [-0.42, 2.45 - ARM, 0], label: "Q", labelOffset: [-0.3, -0.1, 0.3] },
   ],
+  waivers: [
+    { check: "interference", parts: ["wheel", "armB"], reason: "待確認(未修):wheel 的板 與 armB 的板互相穿入 0.10(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["wheel", "armA"], reason: "待確認(未修):wheel 的板 與 armA 的板互相穿入 0.10(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },

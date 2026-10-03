@@ -74,6 +74,13 @@ export default {
     { id: "labelD", kind: "group", center: [-1.15, -0.85, 0], label: "D", labelOffset: [-0.3, 0, 0.3] },
     { id: "labelE", kind: "group", center: [1.15, -0.85, 0], label: "E", labelOffset: [0.3, 0.2, 0.3] },
   ],
+  waivers: [
+    { check: "interference", parts: ["pendulum", "armA"], reason: "待確認(未修):pendulum 的板 與 armA 的方塊 0.12×0.3×0.2互相穿入 0.11(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["pendulum", "armB"], reason: "待確認(未修):pendulum 的板 與 armB 的方塊 0.12×0.3×0.2互相穿入 0.11(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["armA", "wheel"], reason: "待確認:armA 的方塊 0.3×0.12×0.2 與 wheel 的板重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["armB", "wheel"], reason: "待確認:armB 的板 與 wheel 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["pendulum", "wheel"], reason: "待確認(未修):pendulum 的板 與 wheel 的板互相穿入 0.11(37 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },

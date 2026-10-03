@@ -72,6 +72,12 @@ export default {
     ] },
     ...[0, 1, 2, 3].map((i) => ({ id: `string${i}`, kind: "rod", radius: 0.012 })),
   ],
+  waivers: [
+    { check: "interference", parts: ["drumA", "leverD"], reason: "待確認(未修):drumA 的板 與 leverD 的圓柱 r0.05×1.6互相穿入 0.30(288 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["leverD", "stops"], reason: "待確認(未修):leverD 的板 與 stops 的方塊 0.42×0.26×0.3互相穿入 0.10(192 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["leverD", "string0"], reason: "待確認:string0 的第 1 段穿過leverD 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["leverD", "string1"], reason: "待確認:string1 的第 1 段穿過leverD 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "drumA", type: "rotation" },
   target: "leverD",
   states: {

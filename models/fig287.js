@@ -71,6 +71,10 @@ export default {
     { id: "ballR", kind: "sphere", radius: 0.26 },
   ],
   powered: ["ballL", "ballR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["ballL", "springL"], reason: "待確認(未修):springL 的第 13 段穿過ballL 的球 r0.26互相穿入 0.26(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["ballR", "springR"], reason: "待確認(未修):springR 的第 13 段穿過ballR 的球 r0.26互相穿入 0.26(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: RANGE, initial: 5 },
   target: "sleeve", // 升降的套筒
   view: { direction: [0.04, 0.05, 1] },

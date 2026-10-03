@@ -85,6 +85,12 @@ export default {
     { id: "weight", kind: "box", size: [0.9, 0.6, 0.5] },
   ],
   powered: ["weight"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "unsupported", parts: ["wheelG"], reason: "待確認:wheelG 與帶動(或支撐)它的零件之間差 0.06 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "interference", parts: ["bigRatchet", "springS"], reason: "待確認:bigRatchet 的板 與 springS 的Tube重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["bigRatchet", "springS2"], reason: "待確認:bigRatchet 的板 與 springS2 的Tube重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["clickT", "frame"], reason: "待確認:clickT 的板 與 frame 的圓柱 r0.08×0.4重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.08 },
   target: "wheelG", // 上發條時照走的主輪
   view: { direction: [0.03, 0.04, 1] },

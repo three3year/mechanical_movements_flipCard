@@ -74,6 +74,10 @@ export default {
     { id: "ropeA", kind: "rope", label: "a", center: [0, 2.2, 0.25], labelOffset: [0.3, 0, 0] },
     { id: "ropeEnd", kind: "rope" },
   ],
+  waivers: [
+    { check: "interference", parts: ["platform", "pawlL"], reason: "待確認:platform 的板 與 pawlL 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["platform", "pawlR"], reason: "待確認:platform 的板 與 pawlR 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "platform", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 1.4 },
   targets: ["pawlL", "pawlR"], // 繩斷時撐進棘齒的棘爪
   states: {

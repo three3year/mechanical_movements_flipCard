@@ -38,4 +38,9 @@ export const { travel, def } = facePulley({
   },
   strand: { kind: "chain", style: "ring", pitch: 0.42, width: 0.3, normal: [1, 0, 0] },
 });
-export default def;
+export default {
+  ...def,
+  waivers: [
+    { check: "interference", parts: ["wheel", "strand"], reason: "待確認:strand 的第 1 段穿過wheel 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
+};
