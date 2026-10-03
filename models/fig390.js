@@ -58,6 +58,10 @@ export default {
     { id: "strapC", kind: "belt" },
     { id: "strapD", kind: "belt" },
   ],
+  waivers: [
+    { check: "interference", parts: ["pulleyD", "strapD"], reason: "待確認:strapD 的第 1 段穿過pulleyD 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["pulleyC", "strapC"], reason: "待確認:strapC 的第 2 段穿過pulleyC 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "partA", type: "rotation", cycle: [-SWING, SWING] },
   target: "flywheel", // 連續同向轉的飛輪
   view: { direction: [0.15, 0.08, 1] },

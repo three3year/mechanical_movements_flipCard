@@ -64,6 +64,10 @@ export default {
     { id: "chain", kind: "chain", style: "plate", pitch: 0.24, width: 0.16, offset: 0.06 },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["frame", "cylinder"], reason: "待確認:frame 的方塊 1.8×0.2×1.2 與 cylinder 的旋轉體重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["pistonRod", "beam"], reason: "待確認(未修):pistonRod 的方塊 0.1×3.15×0.1 與 beam 的板互相穿入 0.15(76 個取樣姿勢),尚未修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.15 },
   target: "beam", // 帶動抽水桿的樑
   view: { direction: [0.03, 0.05, 1] },

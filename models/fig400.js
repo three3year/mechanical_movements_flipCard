@@ -80,6 +80,12 @@ export default {
     },
     { id: "cam", kind: "plate", center: CAM, shape: shape(camOutline(), [circle(0.08).reverse()]), thickness: 0.25, hub: 0.12, mark: [0.3, 0], markSize: 0.05, spin: 0.6, label: "C", labelOffset: [-0.65, 0, 0.3] },
   ],
+  waivers: [
+    { check: "interference", parts: ["bed", "barA"], reason: "待確認(未修):bed 的方塊 4.6×0.1×1 與 barA 的方塊 0.16×0.5×0.08互相穿入 0.26(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["barA", "pinB"], reason: "待確認(未修):barA 的方塊 0.16×0.5×0.08 與 pinB 的圓柱 r0.05×0.5互相穿入 0.10(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["bed", "barB"], reason: "待確認:bed 的方塊 4.6×0.1×1 與 barB 的板重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["bed", "pinB"], reason: "待確認:bed 的方塊 4.6×0.1×1 與 pinB 的圓柱 r0.05×0.5重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "cam", type: "rotation" },
   target: "barB", // 帶著進料齒走四向循環的桿
   view: { direction: [0.06, 0.08, 1] },

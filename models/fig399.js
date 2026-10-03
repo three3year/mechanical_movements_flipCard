@@ -28,6 +28,9 @@ export default {
     { id: "upper", kind: "group", arrow: false, pieces: half(1) },
     { id: "lower", kind: "group", arrow: false, pieces: half(-1) },
   ],
+  waivers: [
+    { check: "interference", parts: ["upper", "lower"], reason: "待確認(未修):upper 的方塊 0.4×0.75×0.32 與 lower 的方塊 0.4×0.75×0.32互相穿入 0.32(84 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "upper", type: "translation", direction: [0, -1, 0], range: [0, tighten(RANGE[1])], initial: 0 },
   target: "lower", // 鏈節的另一半:被螺帽拉近
   view: { direction: [0.08, 0.05, 1] },

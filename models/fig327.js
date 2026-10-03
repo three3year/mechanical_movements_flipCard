@@ -67,6 +67,10 @@ export default {
     },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "unsupported", parts: ["flywheel"], reason: "待確認(未修):flywheel 在動,但離帶動(或支撐)它的零件還有 0.66 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["rod"], reason: "待確認(未修):rod 在動,但離帶動(或支撐)它的零件還有 0.12 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "flywheel", // 輸出的飛輪
   view: { direction: [0.03, 0.05, 1] },

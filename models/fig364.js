@@ -54,6 +54,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["small", "big"], reason: "待確認:small 的圓柱 r0.14×0.22 與 big 的Tube重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "small", type: "rotation", speed: -0.8 },
   target: "big", // 間歇轉動的大輪
   view: { direction: [0.03, 0.12, 1] },

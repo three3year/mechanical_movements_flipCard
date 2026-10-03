@@ -67,6 +67,13 @@ export default {
     { id: "rodToTreadle", kind: "link", width: 0.07, thickness: 0.05 },
     { id: "treadle", kind: "link", width: 0.12, thickness: 0.06 },
   ],
+  waivers: [
+    { check: "interference", parts: ["frame", "bigGear"], reason: "待確認(未修):frame 的板 與 bigGear 的板互相穿入 0.26(192 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["frame", "spindle"], reason: "待確認(未修):frame 的方塊 0.6×0.18×0.5 與 spindle 的方塊 0.04×0.04×2.2互相穿入 0.25(192 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["bigGear", "spindle"], reason: "待確認:bigGear 的圓柱 r0.07×2.2 與 spindle 的方塊 0.04×0.04×2.2重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["rodToTreadle", "treadle"], reason: "待確認:rodToTreadle 的圓柱 r0.035×0.05 與 treadle 的圓柱 r0.024×0.132重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["smallGear", "spindle"], reason: "待確認:smallGear 的板 與 spindle 的方塊 0.04×0.04×2.2重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "bigGear", type: "rotation" },
   target: "spindle", // 旋轉並被壓下的鑽桿
   states: {

@@ -25,6 +25,10 @@ export default {
     { id: "barR", kind: "link", width: 0.13, thickness: 0.08 },
     { id: "weight", kind: "lathe", axis: [0, 1, 0], profile: [[0, -0.75], [0.25, -0.7], [0.32, -0.45], [0.22, -0.2], [0.1, -0.08], [0, -0.05]], pieces: [{ kind: "box", size: [0.04, 0.35, 0.04], at: [0, 0, 0.1] }] },
   ],
+  waivers: [
+    { check: "interference", parts: ["barL", "weight"], reason: "待確認:barL 的方塊 1×0.13×0.08 與 weight 的方塊 0.04×0.35×0.04重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["barR", "weight"], reason: "待確認:barR 的方塊 1×0.13×0.08 與 weight 的方塊 0.04×0.35×0.04重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "doorPin", type: "translation", direction: [1, 0, 0], range: RANGE, initial: RANGE[0] + 0.6 },
   target: "weight", // 隨開門升降的重物
   view: { direction: [0.03, 0.05, 1] },

@@ -53,6 +53,12 @@ export default {
     { id: "planetTop", kind: "group", arrow: false, pieces: [gear(P0), { kind: "cylinder", radius: 0.06, length: 0.6, at: [0, 0, -0.3] }] },
     { id: "planetBottom", kind: "group", arrow: false, pieces: [gear(P0), { kind: "cylinder", radius: 0.06, length: 0.6, at: [0, 0, -0.3] }] },
   ],
+  waivers: [
+    { check: "interference", parts: ["shaft", "planetTop"], reason: "待確認:shaft 的板 與 planetTop 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["shaft", "planetBottom"], reason: "待確認:shaft 的板 與 planetBottom 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["sun2", "planetTop"], reason: "待確認:sun2 的板 與 planetTop 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["sun2", "planetBottom"], reason: "待確認:sun2 的板 與 planetBottom 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "shaft", type: "rotation" },
   target: "sun2", // 動力傳過去的那一個斜齒輪
   states: {

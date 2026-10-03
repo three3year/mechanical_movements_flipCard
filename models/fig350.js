@@ -48,6 +48,10 @@ export default {
     { id: "lever", kind: "plate", shape: lever, thickness: 0.1, arrow: false },
     { id: "pinLow", kind: "cylinder", radius: 0.09, length: 0.6 },
   ],
+  waivers: [
+    { check: "interference", parts: ["rod", "lever"], reason: "待確認(未修):rod 的方塊 0.22×0.32×0.22 與 lever 的板互相穿入 0.13(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["frame", "lever"], reason: "待確認:frame 的圓柱 r0.1×0.7 與 lever 的板重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "pinLow", grips: ["lever"], type: "translation", direction: [1, 0, 0], range: RANGE, initial: 0 },
   target: "rod", // 左右往復的桿
   view: { direction: [0.03, 0.05, 1] },

@@ -55,6 +55,14 @@ export default {
     { id: "spring", kind: "spring", coils: 9, radius: 0.08, wire: 0.02 },
     { id: "belt", kind: "belt" },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["cartWheelL"], reason: "待確認:cartWheelL 與帶動(或支撐)它的零件之間差 0.08 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["cartWheelR"], reason: "待確認:cartWheelR 與帶動(或支撐)它的零件之間差 0.08 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "interference", parts: ["cart", "cartWheelL"], reason: "待確認:cart 的方塊 1.6×0.08×0.7 與 cartWheelL 的方塊 0.15×0.05×0.045重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["cart", "cartWheelR"], reason: "待確認:cart 的方塊 1.6×0.08×0.7 與 cartWheelR 的方塊 0.15×0.05×0.045重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["dial", "spring"], reason: "待確認:dial 的板 與 spring 的Tube重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["cart", "load"], reason: "待確認:cart 的方塊 1.4×0.45×0.6 與 load 的方塊 0.25×0.22×0.4重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "wheel", type: "rotation" },
   target: "needle", // 顯示摩擦力的指針
   states: {

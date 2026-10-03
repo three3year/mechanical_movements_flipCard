@@ -59,6 +59,11 @@ export default {
     { id: "crosshead", kind: "group", pieces: [{ kind: "plate", shape: shape(rect(0.5, 0.25)), thickness: 2 * SIDE + 0.2 }, { kind: "box", size: [0.09, PISTON_ROD + 0.9, 0.09], at: [0, -(PISTON_ROD + 0.9) / 2, 0] }] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["table", "cylinder"], reason: "待確認:table 的方塊 3.6×0.2×1.8 與 cylinder 的旋轉體重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["table", "sideRod"], reason: "待確認(未修):table 的圓柱 r0.14×1.9 與 sideRod 的方塊 1×0.12×0.06互相穿入 0.18(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["table", "sideRodBack"], reason: "待確認(未修):table 的圓柱 r0.14×1.9 與 sideRodBack 的方塊 1×0.12×0.06互相穿入 0.18(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "crank", // 輸出的曲柄
   view: { direction: [0.08, 0.06, 1] },

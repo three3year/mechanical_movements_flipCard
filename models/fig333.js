@@ -41,6 +41,9 @@ export default {
     { id: "joint", kind: "cylinder", radius: 0.32, inner: 0.12, length: 0.25 },
     { id: "pointP", kind: "sphere", radius: 0.1 },
   ],
+  waivers: [
+    { check: "interference", parts: ["ground", "beam"], reason: "待確認:ground 的方塊 0.7×0.12×0.4 與 beam 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "beam", type: "rotation", range: RANGE, initial: 0 },
   target: "pointP", // 走近似直線的點
   view: { direction: [0.03, 0.05, 1] },

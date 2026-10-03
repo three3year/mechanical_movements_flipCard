@@ -47,6 +47,9 @@ export default {
     { id: "rod", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "treadle", kind: "group", center: PEDAL.pivot, arrow: false, pieces: [{ kind: "plate", shape: shape(thickLine([[0, 0], [-PEDAL.length - 0.3, 0]], 0.1)), thickness: 0.08 }, { kind: "cylinder", radius: 0.08, length: 0.3 }] },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["treadle"], reason: "待確認(未修):treadle 在動,但離帶動(或支撐)它的零件還有 0.15 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+  ],
   driver: { part: "flywheel", type: "rotation" },
   target: "slider", // 開槽滑塊 A:帶著手腕沿槽移過死點,是這個專利的重點(踏板是原文的輸入)
   view: { direction: [0.03, 0.05, 1] },

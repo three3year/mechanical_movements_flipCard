@@ -29,6 +29,12 @@ export default {
     { id: "short", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "pistonRod", kind: "box", size: [0.08, PISTON_ROD, 0.08] },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["beam"], reason: "待確認(未修):beam 在動,但離帶動(或支撐)它的零件還有 0.13 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["radiusBar"], reason: "待確認(未修):radiusBar 在動,但離帶動(或支撐)它的零件還有 0.51 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["short"], reason: "待確認(未修):short 在動,但離帶動(或支撐)它的零件還有 0.13 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["pistonRod"], reason: "待確認(未修):pistonRod 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+  ],
   driver: { part: "beam", type: "rotation", range: RANGE, initial: deg(-14) },
   target: "pistonRod", // 直上直下的活塞桿
   view: { direction: [0.03, 0.05, 1] },

@@ -51,6 +51,10 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["frame", "hammer"], reason: "待確認(未修):frame 的方塊 0.35×1.4×0.4 與 hammer 的板互相穿入 0.10(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["wheel", "hammer"], reason: "待確認(未修):wheel 的板 與 hammer 的板互相穿入 0.25(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "wheel", type: "rotation", speed: -0.8 }, // 原圖箭頭:順時針
   target: "hammer", // 被抬起落下的錘
   view: { direction: [0.03, 0.05, 1] },

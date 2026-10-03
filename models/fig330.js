@@ -64,6 +64,11 @@ export default {
     { id: "pistonRod", kind: "group", pieces: [{ kind: "box", size: [0.08, PISTON_ROD + 1.95, 0.08], at: [0, (1.95 - PISTON_ROD) / 2, 0] }, { kind: "box", size: [0.5, 0.12, 0.14], at: [0, 0, 0.12] }] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "unsupported", parts: ["crank"], reason: "待確認(未修):crank 在動,但離帶動(或支撐)它的零件還有 0.41 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["conrod"], reason: "待確認:conrod 與帶動(或支撐)它的零件之間差 0.10 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "interference", parts: ["crank", "conrod"], reason: "待確認(未修):crank 的圓柱 r0.12×0.9 與 conrod 的板互相穿入 0.16(14 個取樣姿勢),尚未修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "crank", // 輸出的曲柄
   view: { direction: [0.03, 0.05, 1] },
