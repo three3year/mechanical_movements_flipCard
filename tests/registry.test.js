@@ -63,6 +63,13 @@ for (const def of models) {
     }
   });
 
+  test(`圖 ${def.figure}:平板的記號(mark)是一個位置 [x, y]`, () => {
+    const all = (parts) => parts.flatMap((p) => [p, ...all(p.pieces ?? [])]);
+    for (const p of all(def.parts).filter((q) => q.kind === "plate" && q.mark != null)) {
+      assert.ok(Array.isArray(p.mark) && p.mark.length === 2 && p.mark.every(Number.isFinite), `平板的 mark 應為 [x, y],實際 ${JSON.stringify(p.mark)}`);
+    }
+  });
+
   test(`圖 ${def.figure}:每個狀態的姿勢都涵蓋所有路徑零件,且只指向存在的零件`, () => {
     const ids = new Set(def.parts.map((p) => p.id));
     const pathIds = def.parts.filter((p) => PATH_KINDS.has(p.kind)).map((p) => p.id);
