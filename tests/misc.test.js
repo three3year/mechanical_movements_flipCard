@@ -44,6 +44,12 @@ import * as m386 from "../models/fig386.js";
 import * as m387 from "../models/fig387.js";
 import * as m388 from "../models/fig388.js";
 import * as m389 from "../models/fig389.js";
+import * as m390 from "../models/fig390.js";
+import * as m391 from "../models/fig391.js";
+import * as m392 from "../models/fig392.js";
+import * as m393 from "../models/fig393.js";
+import * as m394 from "../models/fig394.js";
+import * as m395 from "../models/fig395.js";
 
 test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓桿把橫移運動傳給導件 a、a 內的桿", () => {
   const xs = sweep(0.6, 20, -1.6).map((x) => m350.traverse(x).rod);
@@ -341,4 +347,55 @@ test("第 389 種:升降千斤頂:偏心輪每轉一圈,棘爪把棘齒桿推上
   close(m389.rack(2 * Math.PI) - m389.rack(0), 0.22, "每圈一齒");
   const hs = sweep(4 * Math.PI, 200).map(m389.rack);
   assert.ok(hs.every((h, i) => i === 0 || h >= hs[i - 1] - 1e-12), "只升不降");
+});
+
+test("第 390 種:部件 A 往兩個方向擺時,開口皮帶 C 與交叉皮帶 D 的棘爪輪流帶動飛輪 B,得到連續旋轉", () => {
+  const S = m390.SWING;
+  const fs = sweep(8 * S, 400).map((v) => m390.oscillation(v).fly);
+  assert.ok(fs.every((f, i) => i === 0 || f >= fs[i - 1] - 1e-12), "飛輪只朝一個方向轉");
+  assert.ok(m390.oscillation(2 * S).fly > 0 && m390.oscillation(4 * S).fly > m390.oscillation(2 * S).fly, "兩個方向的擺動都在推");
+  const o = m390.oscillation(S);
+  close(o.c, -o.d, "開口皮帶與交叉皮帶的皮帶輪反向轉");
+});
+
+test("第 391 種:一根齒條上升時、另一根下降時作用於齒輪,得到連續旋轉", () => {
+  const S = m391.geometry.STROKE;
+  const gs = sweep(4 * S, 200).map((v) => m391.racks(v).gear);
+  assert.ok(gs.every((g, i) => i === 0 || g <= gs[i - 1] + 1e-12), "齒輪只朝一個方向轉");
+  close(m391.racks(2 * S).gear, (-2 * S) / m391.geometry.GEAR.r, "上、下兩程都推動齒輪");
+});
+
+test("第 392 種:跳鋸:下端由曲柄帶動上下,上端的彈簧讓鋸子保持繃緊", () => {
+  const lows = sweep(2 * Math.PI, 36).map((t) => m392.gigSaw(t).low);
+  close(Math.max(...lows) - Math.min(...lows), 0.9, "行程 = 曲柄直徑", 0.01);
+  for (const t of sweep(2 * Math.PI, 8)) {
+    const g = m392.gigSaw(t);
+    close(g.top - g.low, 2.6, "鋸條長度不變(被彈簧拉直)");
+  }
+});
+
+test("第 393 種:拋光透鏡:杯子繞共同的軸轉,同時繞自己的軸轉", () => {
+  const a = m393.polisher(0).center;
+  const b = m393.polisher(Math.PI / 2).center;
+  close(Math.hypot(a[0], a[2]), Math.hypot(b[0], b[2]), "杯子繞軸公轉");
+  assert.ok(Math.abs(m393.polisher(1).self) > 0, "杯子自轉");
+});
+
+test("第 394 種:Parsons 無端齒條:小齒輪連續朝同一方向轉,齒條框往復", () => {
+  const xs = sweep(-6 * Math.PI, 600).map((t) => m394.parsons(t).x);
+  const dirs = xs.slice(1).map((x, i) => Math.sign(x - xs[i])).filter(Boolean);
+  assert.ok(dirs.includes(1) && dirs.includes(-1), "框往復");
+  close(Math.max(...xs) - Math.min(...xs), m394.geometry.LEN, "行程 = 直線段長", 1e-6);
+});
+
+test("第 395 種:四向活塞閥:閥塞轉 1/4 圈,進汽與排汽的端互換", () => {
+  close(m395.plugAngle(0.2), 0, "位置 0");
+  close(m395.plugAngle(0.7), Math.PI / 2, "轉 1/4 圈到位置 1");
+  assert.equal(m395.position(m395.plugAngle(0.2)), 0);
+  assert.equal(m395.position(m395.plugAngle(0.7)), 1);
+  assert.equal(m395.position(Math.PI / 4), null, "轉到一半時通道關閉");
+  const flows0 = m395.default.pose(0.2).flows;
+  const flows1 = m395.default.pose(0.7).flows;
+  assert.ok(flows0.length === 2 && flows1.length === 2, "兩個位置都有進汽與排汽");
+  assert.equal(m395.default.pose(0.45).flows.length, 0, "轉換時不流動");
 });
