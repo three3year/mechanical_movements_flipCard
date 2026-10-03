@@ -6,7 +6,7 @@ const top = { center: [0.25, 1.6, 0], axis: Z, radius: 0.95, sense: 1 };
 const bottom = { center: [0.25, -1.75, 0], axis: Z, radius: 0.55, sense: 1 };
 const B_RADIUS = 0.26;
 const B_AT = { pressed: [-0.6, 0, 0], released: [-1.25, 0, 0] };
-const ARM_OFFSET = [-0.42, -0.21, 0]; // B 的操作桿,跟著 B 移動
+const ARM_OFFSET = [-0.42, -0.21, -0.26]; // B 的操作桿,跟著 B 移動;在輪的背面,端頭接在輪軸上(原圖桿畫在輪前,照畫會穿過輪身)
 
 // 壓下時 B 從外側把皮帶往內推;放開時皮帶鬆垂、向外鼓出
 const slack = { center: [-0.48, 0, 0], axis: Z, radius: B_RADIUS, sense: 1 };

@@ -31,7 +31,8 @@ export function hungFromWeight({ figure, radii, ys, top, range }) {
     for (let i = 1; i < n; i++) drops.push(2 * drops[i - 1] + rise);
     const circles = xs.map((x, i) => ({ center: [x, ys[i] - drops[i], 0], axis: Z, radius: radii[i], sense: 1 }));
     // 最後一條繩:繩端下降 = 2 × 最下方輪的下降量 + 重物上升量 = pull
-    const ropeEnd = [endX, ys[n - 1] - 0.2 - pull, 0];
+    // 起點在最下方輪的下緣以下:握把(半徑 0.16)才不會卡進輪身
+    const ropeEnd = [endX, ys[n - 1] - radii[n - 1] - 0.22 - pull, 0];
     const ropes = circles.map((c, i) => {
       const end = i < n - 1 ? [circles[i + 1].center[0], circles[i + 1].center[1] + radii[i + 1] + 0.14, 0] : ropeEnd;
       return routeRope([{ point: [hookX[i], weightTop, 0] }, { circle: c }, { point: end }]);
