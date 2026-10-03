@@ -15,6 +15,13 @@ import * as m435 from "../models/fig435.js";
 import * as m436 from "../models/fig436.js";
 import * as m442 from "../models/fig442.js";
 import * as m443 from "../models/fig443.js";
+import * as m439 from "../models/fig439.js";
+import * as m440 from "../models/fig440.js";
+import * as m444 from "../models/fig444.js";
+import * as col from "../models/oscillating-column.js";
+import fig445 from "../models/fig445.js";
+import fig446 from "../models/fig446.js";
+import * as m447 from "../models/fig447.js";
 
 test("第 430 種:上射式水車,進程增加時水車依原圖箭頭順時針轉", () => {
   const a = fig430.pose(0.1).parts.wheel.angle;
@@ -164,4 +171,63 @@ test("第 443 種:阿基米德螺旋:水流轉動下端的輪,水沿螺旋通道
   assert.ok(z0.length >= 4, "通道裡一路都有水(連續輸送)");
   assert.ok(def.pose(0.3).flows[0].points.length > 0);
   assert.ok(m443.BASE[1] - 1.25 < m443.RIVER, "下端的輪浸在水裡");
+});
+
+test("第 439 種:水桶裝滿就下降,觸地時底部的閥門打開排空,再被配重拉上去", () => {
+  let prevY = m439.cycle(0).y;
+  for (const v of sweep(1, 200).slice(1)) {
+    const c = m439.cycle(v);
+    if (c.y < prevY - 1e-9) assert.equal(c.level, 1, "下降時水桶是滿的");
+    if (c.y > prevY + 1e-9) assert.equal(c.level, 0, "上升時水桶是空的");
+    if (c.open && c.y > m439.BOTTOM + 1e-9) assert.ok(c.y < m439.BOTTOM + 0.2, "閥門只在觸地附近打開");
+    close(c.y + m439.weightY(c.y), m439.TOP + m439.weightY(m439.TOP), "繩長不變");
+    prevY = c.y;
+  }
+  assert.ok(m439.cycle(0.6).open, "觸地時閥門打開");
+});
+
+test("第 440 種:分成兩半的水槽:一邊裝滿就翻過去倒出,另一邊轉到水流下方;可當水錶計數", () => {
+  const a = m440.trough(0.2);
+  assert.ok(a.tilt > 0 && a.right > 0 && a.left === 0, "左邊低時水落進抬高的右邊");
+  const b = m440.trough(0.7);
+  assert.ok(b.tilt < 0 && b.left > 0 && b.right === 0, "翻過去後水落進左邊");
+  assert.equal(m440.trough(0.99).count + 0, 2, "一個來回倒兩次");
+  assert.equal(m440.trough(3.2).count, 6, "計數累加");
+});
+
+test("第 444 種:水錘泵:右閥開時水流越流越快;右閥一關,水的動量打開左閥把水擠進空氣室;兩閥交替", () => {
+  for (const v of sweep(1, 100)) {
+    const r = m444.ram(v);
+    assert.ok(!(r.waste > 0.5 && r.delivery > 0.5), "兩個閥門不同時打開");
+  }
+  assert.ok(m444.ram(0.5).speed > m444.ram(0.1).speed, "右閥開著時水越流越快");
+  assert.equal(m444.ram(0.7).waste, 0, "右閥關上");
+  assert.equal(m444.ram(0.7).delivery, 1, "左閥打開");
+  assert.ok(m444.ram(0.8).level > m444.ram(0.62).level, "水被擠進空氣室");
+  // 噴嘴的水柱一直都有(空氣的彈性使它均勻)
+  for (const v of sweep(1, 10)) assert.ok(m444.default.pose(v).flows[0].points.length > 0, "噴嘴一直出水");
+});
+
+test("第 445–446 種:振盪水柱:水往下流時圓板上堆成圓錐;圓錐擋住水流時細管的水柱上升,圓錐崩解後再往下流", () => {
+  const falling = col.column(0.3);
+  assert.ok(falling.falling && falling.cone > 0 && falling.rise === 0, "第 445 種:往下流,圓錐漸漸堆起");
+  const blocked = col.column(0.72);
+  assert.ok(!blocked.falling && blocked.cone === 1 && blocked.rise > 0.5, "第 446 種:圓錐擋住,水柱上升");
+  assert.ok(blocked.overflow, "水柱升到頂溢出(抬到水頭之上)");
+  assert.ok(col.column(0.95).cone < 0.1 && col.column(0.95).falling, "圓錐崩解,又往下流");
+  close(col.column(1.3).cone, falling.cone, "週期性重複");
+  assert.equal(fig445.driver.initial, 0.3, "第 445 種預設停在往下流的階段");
+  assert.ok(col.column(fig446.driver.initial).cone === 1, "第 446 種預設停在圓錐擋住的階段");
+});
+
+test("第 447 種:渡船:錨繫住船,水流作用在舵上,帶著船以錨為圓心沿圓弧橫渡", () => {
+  const ys = [];
+  for (const v of sweep(1, 40)) {
+    const f = m447.ferry(v);
+    const B = m447.boatAt(f.psi);
+    close(Math.hypot(B[0] - m447.ANCHOR[0], B[1] - m447.ANCHOR[1]), m447.ROPE, "船在以錨為圓心的圓弧上");
+    assert.ok(B[0] > m447.ANCHOR[0], "船在錨的下游");
+    ys.push(B[1]);
+  }
+  assert.ok(Math.max(...ys) > 1.5 && Math.min(...ys) < -1.5, "船從一岸渡到另一岸再回來");
 });
