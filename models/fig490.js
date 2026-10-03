@@ -73,7 +73,10 @@ export default {
     const paths = {};
     PULLEYS.forEach((P, k) => {
       const s = k === 0 ? 1 : -1;
-      paths[k === 0 ? "ropeTop" : "ropeBottom"] = { points: [[DRUM.center[0], s * DRUM.r, 0.1], [P[0] - PULLEY_R, P[1], 0.1], [P[0], P[1] + s * PULLEY_R, 0.1], [T[0], T[1], 0.1]], closed: false };
+      const points = [[DRUM.center[0], s * DRUM.r, 0.1], [P[0] - PULLEY_R, P[1], 0.1], [P[0], P[1] + s * PULLEY_R, 0.1], [T[0], T[1], 0.1]];
+      // 繩端接在舵柄上;路徑起點(鼓輪)處的繩隨捲進放出移動
+      const length = points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p[0] - points[i][0], p[1] - points[i][1]), 0);
+      paths[k === 0 ? "ropeTop" : "ropeBottom"] = { points, closed: false, phase: -length };
     });
     return {
       parts: { wheel: { angle: theta }, tiller: { angle: -psi }, pulley0: { angle: -theta * DRUM.r / PULLEY_R }, pulley1: { angle: theta * DRUM.r / PULLEY_R } },

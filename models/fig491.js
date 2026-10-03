@@ -75,7 +75,7 @@ export default {
         // 棘爪隨絞盤轉,爪尖朝下往後,在棘齒上抬起又落下
         pawl: { position: pivot, rotation: quatMul(quatAxisAngle(Y, theta - Math.PI / 2), quatAxisAngle(Z, -0.5 + c.lift)) },
       },
-      paths: { rope: { points: [[3.0, -0.05, DRUM_R], [0, -0.05, DRUM_R], ...wraps], closed: false } },
+      paths: { rope: { points: [[3.0, -0.05, DRUM_R], [0, -0.05, DRUM_R], ...wraps], closed: false, phase: c.hauled } }, // 繩往鼓走
       readouts: [{ label: "收進的纜繩", value: c.hauled.toFixed(2) }],
     };
   },

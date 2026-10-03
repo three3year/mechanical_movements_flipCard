@@ -64,7 +64,7 @@ export default {
         boat: { position: B, angle: heading },
         rudder: { position: stern, angle: heading - f.dir * deg(35) },
       },
-      paths: { rope: { points: [[ANCHOR[0], ANCHOR[1], 0.1], bow], closed: false } },
+      paths: { rope: { points: [[ANCHOR[0], ANCHOR[1], 0.1], bow], closed: false, phase: 0 } },
       flows: [{ fluid: "water", points: [-0.6, 0.6, -1.7, 1.7].flatMap((y) => stream([[-3.6, y, 0.05], [4.6, y, 0.05]], v * 14, { spacing: 0.6 })) }],
       readouts: [{ label: "船", value: f.dir > 0 ? "往上方的岸" : f.dir < 0 ? "往下方的岸" : "靠岸,扳舵" }],
     };

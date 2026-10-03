@@ -108,8 +108,8 @@ export default {
         rod: { from: stem, to: [stem[0] + 2.6, stem[1], 0.14] },
       },
       paths: {
-        cordB: { points: [place(eEnd(-1), 0.14), place(pawlMid("B"), 0.14)], closed: false },
-        cordC: { points: [place(eEnd(1), 0.14), place(pawlMid("C"), 0.14)], closed: false },
+        cordB: { points: [place(eEnd(-1), 0.14), place(pawlMid("B"), 0.14)], closed: false, phase: 0 },
+        cordC: { points: [place(eEnd(1), 0.14), place(pawlMid("C"), 0.14)], closed: false, phase: 0 },
       },
       readouts: [{ label: "輪 D", value: m.driving ? (state === "C" ? "被帶著逆時針轉" : "被帶著順時針轉") : "停住(棘爪滑過)" }],
     };

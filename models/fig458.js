@@ -65,7 +65,7 @@ export default {
         waterL: { position: [-r, b.left, 0], level: b.leftFull ? 0.9 : 0 },
         waterR: { position: [r, b.right, 0], level: b.rightFull ? 0.9 : 0 },
       },
-      paths: { rope: { points: [[-r, b.left + 0.32, 0], ...arc, [r, b.right + 0.32, 0]], closed: false } },
+      paths: { rope: { points: [[-r, b.left + 0.32, 0], ...arc, [r, b.right + 0.32, 0]], closed: false, phase: 0 } }, // 路徑從繩端(左桶)起算
       readouts: [{ label: "水桶", value: b.rightFull ? "拉空桶(左)往下,滿桶(右)上來" : "拉空桶(右)往下,滿桶(左)上來" }],
     };
   },

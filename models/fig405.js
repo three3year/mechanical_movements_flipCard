@@ -53,7 +53,7 @@ export default {
     return {
       parts: { ruler: { angle: theta }, pencil: { position: [P[0], P[1], 0.1] } },
       paths: {
-        string: { points: [[F2[0], F2[1], 0.08], [P[0], P[1], 0.08], end], closed: false },
+        string: { points: [[F2[0], F2[1], 0.08], [P[0], P[1], 0.08], end], closed: false, phase: 0 }, // 繩端繫在銷上
         trace: { points, closed: false },
         upper: { points: branch(1), closed: false },
         lower: { points: branch(-1), closed: false },

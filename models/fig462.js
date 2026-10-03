@@ -78,7 +78,7 @@ export default {
     const chain = Array.from({ length: 121 }, (_, i) => chainAt((LOOP * i) / 120).p);
     return {
       parts,
-      paths: { chain: { points: chain, closed: true } },
+      paths: { chain: { points: chain, closed: true, phase: s } },
       flows: [{ fluid: "water", points: [...water.filter((q) => q[1] < TUBE.y1 - 0.05), ...stream([[TUBE.x, TUBE.y1, 0.12], [TUBE.x - 0.3, TUBE.y1 + 0.02, 0.12], [TUBE.x - 1.6, TUBE.y1 + 0.02, 0.12]], s * 1.5, { spacing: 0.15 })] }],
       readouts: [],
     };

@@ -103,7 +103,8 @@ export default {
     };
     return {
       parts,
-      paths: { ropeL: { points: hang(xL, l.left), closed: false }, ropeR: { points: hang(xR, l.right), closed: false } },
+      // 繩從滑輪上放下來:繩端在水桶,路徑起點(滑輪)處的繩隨長度進出
+      paths: { ropeL: { points: hang(xL, l.left), closed: false, phase: -(WHEELS[0][1] - l.left) }, ropeR: { points: hang(xR, l.right), closed: false, phase: -(WHEELS[0][1] - l.right) } },
       readouts: [{ label: "蝸桿咬著", value: l.engaged === 0 ? "左輪:左桶上升(滿)、右桶下降" : "右輪:右桶上升(滿)、左桶下降" }],
     };
   },

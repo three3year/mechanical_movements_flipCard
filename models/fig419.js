@@ -98,7 +98,7 @@ export default {
         coupler: { from: [...pinA(alpha).slice(0, 2), 0.3], to: [r.pin[0], r.pin[1], 0.3] },
         cradle: { position: cradle(r.gamma, [0, 0]), angle: r.gamma },
       },
-      paths: { beltC: { points: r.left.points, closed: false }, beltD: { points: r.right.points, closed: false } },
+      paths: { beltC: { points: r.left.points, closed: false, phase: 0 }, beltD: { points: r.right.points, closed: false, phase: 0 } }, // 皮帶的一端固定在立柱上
       readouts: [{ label: "搖籃", value: `${((r.gamma * 180) / Math.PI).toFixed(1)}°` }],
     };
   },

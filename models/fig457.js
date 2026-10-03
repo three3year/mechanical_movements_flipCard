@@ -67,7 +67,7 @@ export default {
         bucket: { position: s.bucket },
         water: { position: s.bucket, level: s.full ? 0.9 : 0 },
       },
-      paths: { rope: { points: [s.end, [s.bucket[0], s.bucket[1] + 0.32, 0]], closed: false } },
+      paths: { rope: { points: [s.end, [s.bucket[0], s.bucket[1] + 0.32, 0]], closed: false, phase: 0 } },
       readouts: [
         { label: "水桶", value: s.down ? "空桶,往下拉進井裡" : "裝滿,由配重幫忙抬起" },
         { label: "手要", value: f > 0 ? `往下拉 ${f.toFixed(1)}` : `往上提 ${(-f).toFixed(1)}(配重分擔一半)` },

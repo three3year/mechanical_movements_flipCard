@@ -49,7 +49,7 @@ export default {
     });
     return {
       parts: { square: { position: [x, 0, 0] }, pencil: { position: [P[0], P[1], 0.1] } },
-      paths: { string: { points: [[FOCUS[0], FOCUS[1], 0.12], [P[0], P[1], 0.12], end], closed: false }, trace: { points, closed: false } },
+      paths: { string: { points: [[FOCUS[0], FOCUS[1], 0.12], [P[0], P[1], 0.12], end], closed: false, phase: 0 }, trace: { points, closed: false } }, // 繩端繫在焦點的銷上
       readouts: [],
     };
   },

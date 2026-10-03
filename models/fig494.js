@@ -70,7 +70,7 @@ export default {
         linkL: { from: up(t.U, 0.1), to: up([0, t.shackle - t.lift, 0], 0.1) },
         linkR: { from: up([-t.U[0], t.U[1], 0], 0.1), to: up([0, t.shackle - t.lift, 0], 0.1) },
       },
-      paths: { rope: { points: [[0, t.shackle + 0.05, 0.1], [0, 3.6, 0.1]], closed: false } },
+      paths: { rope: { points: [[0, t.shackle + 0.05, 0.1], [0, 3.6, 0.1]], closed: false, phase: 0 } },
       readouts: [{ label: "吊鉗", value: t.gripped ? "尖端咬進石塊,一起吊起" : "收攏中" }],
     };
   },

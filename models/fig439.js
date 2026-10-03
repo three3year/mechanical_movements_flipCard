@@ -71,7 +71,7 @@ export default {
         valve: { position: [L, c.y - 0.38, 0], rotation: c.open ? [0, Math.SQRT1_2, 0, Math.SQRT1_2] : [Math.SQRT1_2, 0, 0, Math.SQRT1_2] },
         water: { position: [L, c.y, 0], level: c.level },
       },
-      paths: { rope: { points: ropePath(c.y, yw), closed: false } },
+      paths: { rope: { points: ropePath(c.y, yw), closed: false, phase: 0 } }, // 路徑從繩端(配重)起算
       flows,
       readouts: [{ label: "階段", value: c.phase }],
     };

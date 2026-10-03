@@ -47,7 +47,7 @@ export default {
         packerR: { position: [l.spread, l.lift, 0.05] },
         pin: { position: [0, l.lift + l.wedge, 0.1] },
       },
-      paths: { rope: { points: [[0, l.lift + l.wedge + 1.05, 0.1], [0, 3.2, 0.1]], closed: false } },
+      paths: { rope: { points: [[0, l.lift + l.wedge + 1.05, 0.1], [0, 3.2, 0.1]], closed: false, phase: 0 } },
       readouts: [{ label: "填塊", value: l.tight ? "被楔子擠緊在孔壁上" : "楔子提起中" }],
     };
   },

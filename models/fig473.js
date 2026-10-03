@@ -74,7 +74,7 @@ export default {
         topValve: { position: [-0.1, b.top + 0.3, 0.05], angle: b.rising ? 0 : open },
         pipeValve: { position: [0.15, PIPE_TOP, 0.05], angle: b.rising ? open : 0 },
       },
-      paths: { rope: { points: [[...b.end, 0], [0, b.top + 0.3, 0]], closed: false } },
+      paths: { rope: { points: [[...b.end, 0], [0, b.top + 0.3, 0]], closed: false, phase: 0 } },
       flows,
       readouts: [{ label: "倒扣的桶", value: b.rising ? "被提起:裡面變稀薄,氣體經下方的閥上來" : "下降:空氣經頂上的閥排出" }],
     };

@@ -54,7 +54,7 @@ export default {
     });
     return {
       parts: { pencil: { position: [P[0], P[1], 0.1] } },
-      paths: { string: { points: [[CENTER[0], CENTER[1], 0.12], [P[0], P[1], 0.12]], closed: false }, trace: { points, closed: false } },
+      paths: { string: { points: [[CENTER[0], CENTER[1], 0.12], [P[0], P[1], 0.12]], closed: false, phase: 0 }, trace: { points, closed: false } },
       readouts: [],
     };
   },

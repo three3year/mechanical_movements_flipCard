@@ -109,7 +109,7 @@ export default {
     const head = pts[0];
     return {
       parts,
-      paths: { hawser: { points: [head, [5.4, 0.45, 0]], closed: false } },
+      paths: { hawser: { points: [head, [5.4, 0.45, 0]], closed: false, phase: 0 } },
       readouts: [{ label: "管頭", value: head[0] < 3.2 ? "在河裡,順著河床前進" : "到北岸" }],
     };
   },

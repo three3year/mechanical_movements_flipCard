@@ -48,7 +48,7 @@ export default {
         const a = (s > 0 ? Math.PI : 0) - (s * Math.PI * i) / 8;
         return [s * POST_X + PULLEY_R * Math.cos(a), PULLEY_Y + PULLEY_R * Math.sin(a), 0];
       });
-      paths[`rope${k}`] = { points: [[s * 0.15, top, 0], ...arc, [down[0], wy, 0]], closed: false };
+      paths[`rope${k}`] = { points: [[s * 0.15, top, 0], ...arc, [down[0], wy, 0]], closed: false, phase: 0 }; // 從繩端(A 頂)起算
     }
     return {
       parts,
