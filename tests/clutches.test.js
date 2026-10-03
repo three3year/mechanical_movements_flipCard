@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { close, turned, sweep } from "./helpers.js";
 import fig47 from "../models/fig047.js";
 import fig48 from "../models/fig048.js";
-import fig49, { motion as motion49 } from "../models/fig049.js";
+import fig49, { motion as motion49, RATCHET as RATCHET49 } from "../models/fig049.js";
 import fig50 from "../models/fig050.js";
 import fig51, { shaftAngle } from "../models/fig051.js";
 import fig52 from "../models/fig052.js";
@@ -43,6 +43,20 @@ test("第 49 種:兩個斜齒輪反向轉,推程時左輪隨軸、回程時右�
   const c = motion49(1.2 * span);
   const d = motion49(1.4 * span);
   close(-(d.right - c.right), d.shaft - c.shaft, "回程:右輪(繞 +x)與軸同轉");
+});
+
+test("第 49 種:每一趟帶動時,棘爪都頂在棘輪的同一個齒位上(來回一趟是整數個齒,不會一趟趟錯開)", () => {
+  const span = fig49.driver.cycle[1] - fig49.driver.cycle[0];
+  const pitch = (2 * Math.PI) / RATCHET49.teeth;
+  const offset = (v, id) => {
+    const p = fig49.pose(v).parts;
+    const d = (p[id].angle - p.shaft.angle) / pitch;
+    return d - Math.round(d);
+  };
+  for (let k = 1; k < 4; k++) {
+    close(offset((2 * k + 0.5) * span, "ratchetL"), offset(0.5 * span, "ratchetL"), `第 ${k} 趟推程:左棘爪`, 1e-9);
+    close(offset((2 * k + 1.5) * span, "ratchetR"), offset(1.5 * span, "ratchetR"), `第 ${k} 趟回程:右棘爪`, 1e-9);
+  }
 });
 
 test("第 50 種:兩個萬向接頭串接、夾角相等,輸出軸與輸入軸等速轉", () => {

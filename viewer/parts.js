@@ -3,7 +3,7 @@
 // 零件種類的清單在 models/kinds.js;齒輪、凸輪等板件的輪廓由 models/shapes.js 計算。
 import * as THREE from "three";
 import { gearShape, gearSize, rackShape, toothOutline, sectorShape } from "../models/shapes.js";
-import { sliceAngle } from "../models/gears.js";
+import { sliceAngle, twistAt } from "../models/gears.js";
 import { PATH_KINDS } from "../models/kinds.js";
 
 const SEGMENTS = 48;
@@ -218,10 +218,10 @@ function bar(part, material) {
 
 // ── 板件:沿局部 Z 擠出的 2D 輪廓 ─────────
 
-function extrude({ outline, holes = [] }, thickness) {
+function extrude({ outline, holes = [] }, thickness, steps = 1) {
   const shape = new THREE.Shape(outline.map(([x, y]) => new THREE.Vector2(x, y)));
   for (const hole of holes) shape.holes.push(new THREE.Path(hole.map(([x, y]) => new THREE.Vector2(x, y))));
-  const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 4 });
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, steps, bevelEnabled: false, curveSegments: 4 });
   geometry.translate(0, 0, -thickness / 2);
   return geometry;
 }
@@ -250,6 +250,20 @@ function plate(part, material, mark) {
     for (const z of [t / 2, -t / 2]) g.add(mesh(geometry, material, [0, 0, z]));
   }
   return g;
+}
+
+// 斜齒、人字齒:擠出時沿軸分成 TWIST_STEPS 層(偶數,人字的轉折剛好落在一層上),每層依 twistAt 轉
+const TWIST_STEPS = 24;
+function twist(geometry, part, w) {
+  const pos = geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const a = twistAt(part, (pos.getZ(i) + w / 2) / w);
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    pos.setXY(i, x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a));
+  }
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 const internalRim = (part) => part.rim ?? part.radius + 2.6 * gearSize(part.radius, part.teeth).addendum;
@@ -302,8 +316,12 @@ function gear(part, material, mark) {
     g.add(mesh(extrude({ outline: toothOutline(part, first) }, w * 1.08), mark));
     return g;
   }
-  if (part.slices) {
-    // 斜齒、人字齒、階梯錯齒:沿軸切成幾片,每片依 sliceAngle 轉一點(見 models/gears.js)
+  const twisted = part.slices && part.twistMode !== "stagger";
+  if (twisted) {
+    // 斜齒、人字齒:齒面沿軸連續扭轉,描邊才是一條條連續的斜線(原圖的斜紋、人字紋)
+    g.add(mesh(twist(extrude(gearShape({ ...part, mask }), w, TWIST_STEPS), part, w), material));
+  } else if (part.slices) {
+    // 階梯錯齒:沿軸切成幾片,每片依 sliceAngle 轉一點(見 models/gears.js)
     const n = part.slices;
     const gap = part.sliceGap ?? 0;
     const t = (w - gap * (n - 1)) / n;
@@ -337,6 +355,10 @@ function gear(part, material, mark) {
   }
   const has = mask ?? (() => true);
   const markTooth = [...Array(part.teeth).keys()].find((i) => has(i)) ?? 0;
+  if (twisted) {
+    g.add(mesh(twist(extrude({ outline: toothOutline(part, markTooth) }, w * 1.02, TWIST_STEPS), part, w * 1.02), mark));
+    return g;
+  }
   const markAt = part.slices ? sliceAngle(part, part.slices - 1) : 0;
   const markZ = part.slices ? w / 2 - (w - (part.sliceGap ?? 0) * (part.slices - 1)) / part.slices / 2 : 0;
   const markLen = part.slices ? (w - (part.sliceGap ?? 0) * (part.slices - 1)) / part.slices : w;

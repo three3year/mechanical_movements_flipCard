@@ -115,7 +115,7 @@ import fig30 from "../models/fig030.js";
 import fig33, { D as D33, axes as axes33 } from "../models/fig033.js";
 import fig35, { contactRadius, pinionRadius } from "../models/fig035.js";
 import fig37, { heightAt, radii as radii37 } from "../models/fig037.js";
-import fig38, { sectorSpan } from "../models/fig038.js";
+import fig38, { sectors as sectors38, pitchRadius as pitchRadius38 } from "../models/fig038.js";
 
 // 數值導數:主動量 v 附近從動件 id 的轉速比
 const rate = (def, id, v, h = 1e-4) => (def.pose(v + h).parts[id].angle - def.pose(v - h).parts[id].angle) / (2 * h);
@@ -150,16 +150,27 @@ test("第 37 種:錐形齒輪等速轉,右輪轉速隨螺旋齒栓的高度(兩�
 });
 
 test("第 38 種:旋轉的一部分保持等速、另一部分變速", () => {
-  // 接觸處在主動輪局部角 −θ,變速段(局部角 0–90°)在 θ = 270°–360° 時咬合
-  const uniform = sweep(2 * Math.PI - sectorSpan - 0.1, 20, 0.1).map((v) => -rate(fig38, "driven", v));
-  for (const r of uniform) close(r, uniform[0], "四分之三圈內等速", 1e-3);
-  const varying = sweep(2 * Math.PI - 0.05, 20, 2 * Math.PI - sectorSpan + 0.05).map((v) => -rate(fig38, "driven", v));
-  assert.ok(Math.max(...varying) - Math.min(...varying) > 0.3, "其餘部分變速");
+  // 接觸處在主動輪局部角 −θ:θ 從 0 起先經過大扇形(對從動輪的小扇形)、再經過齒圈、最後是小扇形(對大扇形)
+  const { R, RL, RS, LARGE, SMALL } = sectors38;
+  for (const v of sweep(LARGE - 0.01, 6, 0.01)) close(-rate(fig38, "driven", v), RL / RS, "大扇形帶小扇形:從動輪快", 1e-6);
+  for (const v of sweep(2 * Math.PI - SMALL - 0.01, 30, LARGE + 0.01)) close(-rate(fig38, "driven", v), 1, "齒圈:兩輪等速", 1e-6);
+  for (const v of sweep(2 * Math.PI - 0.01, 6, 2 * Math.PI - SMALL + 0.01)) close(-rate(fig38, "driven", v), RS / RL, "小扇形帶大扇形:從動輪慢", 1e-6);
+  assert.ok(2 * Math.PI - LARGE - SMALL > Math.PI, "等速的齒圈佔一圈的大部分");
+  close(RL + RS, 2 * R, "扇形一大一小,與齒圈同中心距");
+});
+
+test("第 38 種:照原圖,兩輪同形——齒圈加上一段大半徑、一段小半徑的扇形,交界是徑向的階", () => {
+  const { R, RL, RS } = sectors38;
+  const radii = new Set(sweep(2 * Math.PI, 720).map((a) => pitchRadius38(a)));
+  assert.deepEqual([...radii].sort(), [R, RL, RS].sort());
+  assert.deepEqual(part(fig38, "driver").shape.outline.length, part(fig38, "driven").shape.outline.length);
+  close(fig38.pose(0).parts.driven.angle, Math.PI, "右輪是左輪轉半圈");
 });
 
 import fig36, { mangle, radii as radii36 } from "../models/fig036.js";
 import fig39 from "../models/fig039.js";
-import fig46, { fusee } from "../models/fig046.js";
+import fig46, { fusee, centers as centers46 } from "../models/fig046.js";
+import { rotateAbout } from "../models/kit.js";
 
 test("第 36 種:曼格輪把小齒輪的連續旋轉轉換為輪的往復旋轉", () => {
   const w = sweep(80, 2000).map((a) => mangle(a).wheel);
@@ -208,4 +219,33 @@ test("第 46 種:鏈索兩端固定,長度不變", () => {
   const l0 = length(0.1);
   // 鏈索輪是階梯狀的,取樣的螺旋在換層處有落差,長度只近似不變
   for (const u of [0.3, 0.6, 0.9]) assert.ok(Math.abs(length(u) - l0) / l0 < 0.05, `放鬆 ${u}`);
+});
+
+test("第 46 種:兩輪之間的鏈索是水平的,接在鏈索輪目前那一層上;兩端各自跟著所固定的輪轉", () => {
+  const ends = (u) => {
+    const p = fig46.pose(u).paths.chain.points;
+    return { first: p[0], last: p[p.length - 1], p };
+  };
+  // 世界點 → 轉回輪轉角 0 時的位置(輪繞 Y 轉 angle)
+  const local = (center, angle, w) => rotateAbout([w[0] - center[0], w[1] - center[1], w[2] - center[2]], [0, 1, 0], -angle);
+  const a0 = ends(0);
+  for (const u of sweep(1, 20)) {
+    const { first, last, p } = ends(u);
+    const { contact, barrelAngle, fuseeAngle, radius } = fusee(u);
+    // 離開發條盒、接上鏈索輪的兩點:同高度,鏈索輪那一點在目前那層的半徑上
+    const i = p.findIndex((q) => q[0] > 0);
+    close(p[i][1], p[i - 1][1], `放鬆 ${u}:兩輪之間水平`, 1e-9);
+    const r = Math.hypot(p[i][0] - centers46.fusee[0], p[i][2] - centers46.fusee[2]);
+    assert.ok(Math.abs(r - radius) < 0.06, `放鬆 ${u}:接在半徑 ${radius} 那層,實際 ${r}`);
+    assert.ok(contact >= 0);
+    // 兩端固定:在各自輪的局部座標裡不動
+    const fb = local(centers46.barrel, barrelAngle, first);
+    const fb0 = local(centers46.barrel, 0, a0.first);
+    const lf = local(centers46.fusee, fuseeAngle, last);
+    const lf0 = local(centers46.fusee, 0, a0.last);
+    for (let k = 0; k < 3; k++) {
+      close(fb[k], fb0[k], `放鬆 ${u}:發條盒那端固定`, 1e-9);
+      close(lf[k], lf0[k], `放鬆 ${u}:鏈索輪那端固定`, 1e-9);
+    }
+  }
 });

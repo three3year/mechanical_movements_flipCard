@@ -102,8 +102,12 @@ export const centerDistance = (a, b) => len(sub(a.center, b.center));
  * 兩輪咬合時,從動輪的 twist 要取 −twist·N主/N從,各片才都咬合。
  */
 export function sliceAngle({ slices, twist = 0, twistMode = "helical", teeth }, i) {
-  const f = slices > 1 ? i / (slices - 1) : 0;
   if (twistMode === "stagger") return ((2 * Math.PI) / teeth) * (i / slices) * Math.sign(twist || 1);
+  return twistAt({ twist, twistMode }, slices > 1 ? i / (slices - 1) : 0);
+}
+
+/** 斜齒、人字齒沿齒寬連續的偏轉:f 從 0(局部 −Z 端)到 1(+Z 端)。繪圖時齒面依此連續扭轉 */
+export function twistAt({ twist = 0, twistMode = "helical" }, f) {
   if (twistMode === "herringbone") return twist * (1 - Math.abs(2 * f - 1));
   return twist * (f - 0.5);
 }
