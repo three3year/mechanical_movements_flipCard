@@ -15,6 +15,13 @@ import * as m203 from "../models/fig203.js";
 import * as m221 from "../models/fig221.js";
 import * as m222 from "../models/fig222.js";
 import { dist } from "../models/kit.js";
+import * as m195 from "../models/fig195.js";
+import * as m200 from "../models/fig200.js";
+import * as m204 from "../models/fig204.js";
+import * as m207 from "../models/fig207.js";
+import * as m209 from "../models/fig209.js";
+import * as m210 from "../models/fig210.js";
+import fig200 from "../models/fig200.js";
 
 /** 等間隔取樣的序列:相鄰差的最大 / 最小(絕對值),量「速度變化多大」 */
 function spread(values) {
@@ -170,4 +177,68 @@ test("第 222 種:偏心轉動的普通正齒輪,以連桿維持節距;輪 A 同
     close(dist(s.b, s.cc), rB + rC, "連桿維持 B 與 C 的節距", 1e-6);
   }
   assert.ok(spread(states.map((s) => s.thetaA)) > 1.5, "A 的轉動不規則");
+});
+
+test("第 195 種:兩個相同的輪與中間的蝸桿咬合,相對的表面朝同一方向走;蝸桿每轉一圈輪轉一齒", () => {
+  const { N, R } = m195.geometry;
+  const a = m195.rolls(0);
+  const b = m195.rolls(2 * Math.PI);
+  close(b.upper - a.upper, -(2 * Math.PI) / N, "上輪轉一齒", 1e-9);
+  close(b.lower - a.lower, (2 * Math.PI) / N, "下輪反向轉一齒", 1e-9);
+  // 上輪最下緣的速度 = R·dθu(往 +x 為正),下輪最上緣 = −R·dθl
+  const du = b.upper - a.upper;
+  const dl = b.lower - a.lower;
+  assert.ok(R * du * (-R * dl) > 0, "相對的表面同向");
+});
+
+test("第 207 種:兩個旋向相反的蝸桿帶兩個蝸輪反向轉,相對的兩側朝同一方向", () => {
+  const [l0, r0] = m207.wheels(0);
+  const [l1, r1] = m207.wheels(1);
+  assert.ok((l1 - l0) * (r1 - r0) < 0, "兩輪反向");
+  // 左輪右側(朝右輪)的垂直速度 = R·dθ;右輪左側 = −R·dθ
+  assert.ok((l1 - l0) * -(r1 - r0) > 0, "相對的兩側同向");
+});
+
+test("第 200 種:單一驅動輪在同一軸上得到兩種速度:上下兩輪反向轉、轉速與半徑成反比", () => {
+  const p0 = fig200.pose(0).parts;
+  const p1 = fig200.pose(0.3).parts;
+  const du = p1.upper.angle - p0.upper.angle;
+  const dl = p1.lower.angle - p0.lower.angle;
+  // 上輪的軸朝下(−y)、下輪的軸朝上(+y):換成繞 +y 的轉角再比較
+  assert.ok(-du * dl < 0, "上輪(套筒)與下輪(軸)反向");
+  close(Math.abs(dl / du), m200.upper.radius / m200.lower.radius, "轉速比 = 半徑反比", 1e-6);
+  assert.ok(Math.abs(dl) > Math.abs(du), "小輪(軸)較快");
+});
+
+test("第 204 種:斜交的兩軸以雙曲面滾子滾動接觸,沿接觸線垂直方向的表面速度相同", () => {
+  for (const x of [-2, -1, 0, 1, 2]) {
+    const { upper, lower } = m204.surfaceSpeeds(x);
+    // 兩表面的速度只在接觸線方向(x)上不同(沿線滑動),其餘方向相同(滾動、不分離)
+    close(upper[1], lower[1], `x = ${x}`, 1e-9);
+    close(upper[2], lower[2], `x = ${x}:滾動方向的速度相同`, 1e-9);
+  }
+  const { radius, THROAT } = m204.geometry;
+  close(radius(0), THROAT, "最細處在中間", 1e-12);
+  assert.ok(radius(2) > radius(0), "兩端較粗");
+});
+
+test("第 209 種:兩個橢圓輪滾動接觸;一圈中有光面滾動、也有齒咬合的部分", () => {
+  const { D, r1, r2 } = m209.geometry;
+  const states = sweep(2 * Math.PI, 720).map((t) => m209.pair(t));
+  assert.ok(states.some((s) => s.toothed) && states.some((s) => !s.toothed), "有齒與光面輪流接觸");
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const right = m209.pair(t).right;
+    close(r1(-t) + r2(Math.PI - right), D, "兩輪接觸半徑之和 = 中心距", 2e-3);
+  }
+});
+
+test("第 210 種:轉動開槽臂的軸,垂直桿得到變速的直線運動", () => {
+  const [from, to] = m210.range;
+  const ys = sweep(to, 200, from).map((a) => m210.pin(a).y);
+  assert.ok(Math.max(...ys) - Math.min(...ys) > 0.8, "桿上下移動");
+  assert.ok(spread(ys) > 2, "變速");
+  for (const a of sweep(to, 40, from)) {
+    const { s, length } = m210.pin(a);
+    assert.ok(s > 0.3 && s < length - 0.25, "銷一直在槽內");
+  }
 });
