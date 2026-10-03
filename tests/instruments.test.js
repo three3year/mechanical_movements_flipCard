@@ -8,6 +8,10 @@ import * as m404 from "../models/fig404.js";
 import * as m405 from "../models/fig405.js";
 import * as m406 from "../models/fig406.js";
 import * as m407 from "../models/fig407.js";
+import * as m408 from "../models/fig408.js";
+import * as m409 from "../models/fig409.js";
+import * as m410 from "../models/fig410.js";
+import * as m411 from "../models/fig411.js";
 
 const needle = (p) => fig500.pose(p).parts.needle.angle;
 
@@ -83,4 +87,70 @@ test("第 407 種:尖拱:鉛筆以銷為圓心、繩長為半徑,從拱腳畫到
     near(Math.hypot(P[0] - m407.CENTER[0], P[1] - m407.CENTER[1]), m407.RADIUS, 1e-9, "繩長不變(圓弧)");
   }
   near(m407.pencil(m407.RANGE[0])[0], 0, 1e-9, "拱頂在跨度的正中(等邊尖拱)");
+});
+
+test("第 408 種:中心引導器靠著兩根銷推動,葉片的畫線邊始終指向同一個會聚點", () => {
+  for (const psi of sweep(m408.RANGE[1], 8, m408.RANGE[0])) {
+    const pose = m408.default.pose(psi);
+    const { J, angle } = m408.joint(psi);
+    // 畫線邊的延長線通過會聚點
+    const toV = [m408.V[0] - J[0], m408.V[1] - J[1]];
+    near(Math.cos(angle) * toV[1] - Math.sin(angle) * toV[0], 0, 1e-9, "畫線邊的延長線通過會聚點");
+    // 兩腿的背面靠著兩根銷
+    for (const [leg, pin] of [["legA", m408.PINS[0]], ["legB", m408.PINS[1]]]) {
+      const a = pose.parts[leg].angle;
+      near(Math.cos(a) * (pin[1] - J[1]) - Math.sin(a) * (pin[0] - J[0]), 0, 1e-9, `${leg} 的背面通過銷`);
+    }
+    // 腿與葉片的夾角在接頭處鎖住
+    near(pose.parts.legA.angle - pose.parts.blade.angle, m408.LEGS[0], 1e-12, "腿與葉片的夾角不變");
+  }
+});
+
+test("第 409 種:比例圓規兩組尖端的距離之比,等於兩組尖端到樞軸的距離之比", () => {
+  for (const [state, k] of [["same", 1], ["double", 2], ["triple", 3]]) {
+    const { a, b } = m409.arms(state);
+    close(b / a, k, `${state}:下尖到樞軸 / 上尖到樞軸`);
+    for (const half of sweep(m409.RANGE[1], 4, m409.RANGE[0])) {
+      const s = m409.spans(half, state);
+      close(s.lower / s.upper, b / a, "下兩尖距 / 上兩尖距 = 到樞軸的距離比");
+    }
+  }
+  // 兩腳交叉在樞軸上:兩腳的尖端到樞軸(原點)的距離就是 a、b
+  const pose = m409.default.pose(0.3, "double");
+  const { a } = m409.arms("double");
+  const top = (p) => [p.position[0] - (m409.LENGTH / 2) * Math.sin(p.angle), p.position[1] + (m409.LENGTH / 2) * Math.cos(p.angle)];
+  close(Math.hypot(...top(pose.parts.legA)), a, "上尖到樞軸的距離");
+  assert.ok(top(pose.parts.legA)[0] > 0 && top(pose.parts.legB)[0] < 0, "兩腳交叉:上尖分在兩邊");
+});
+
+test("第 410 種:等分規無論兩夾頰相距多遠,尖頂始終在兩夾頰的正中間", () => {
+  const gaps = new Set();
+  for (const g of sweep(m410.RANGE[1], 24, m410.RANGE[0])) {
+    const s = m410.gauge(g);
+    near(s.tip[0], (s.jaws[0] + s.jaws[1]) / 2, 1e-12, "尖頂在兩夾頰的中間");
+    near(Math.hypot(s.tip[0] - s.a[0], s.tip[1] - s.a[1]), m410.LINK, 1e-12, "短桿長不變");
+    near(Math.hypot(s.tip[0] - s.b[0], s.tip[1] - s.b[1]), m410.LINK, 1e-12, "兩根短桿等長");
+    gaps.add((s.jaws[1] - s.jaws[0]).toFixed(2));
+  }
+  assert.ok(gaps.size > 5, "拉到斜邊時夾頰的間距跟著改變");
+});
+
+test("第 411 種:自動記錄水平儀:輪子的圓周等於底邊;平地上擺把底邊二等分,斜面上擺朝一邊偏離", () => {
+  close(2 * Math.PI * m411.WHEEL, m411.BASE, "輪子的圓周 = 三角形的底邊");
+  const flat = m411.carriage(m411.RANGE[0]);
+  near(flat.tilt, 0, 1e-9, "平地上托架水平");
+  near(flat.offset, 0, 1e-9, "平地上擺把底邊二等分");
+  // 推上坡、再推下坡:擺分別朝後、朝前偏
+  const offsets = sweep(m411.RANGE[1], 60, m411.RANGE[0]).map((u) => m411.carriage(u));
+  const up = offsets.reduce((m, c) => (c.tilt > m.tilt ? c : m));
+  const down = offsets.reduce((m, c) => (c.tilt < m.tilt ? c : m));
+  assert.ok(up.tilt > 0.1 && up.offset < -0.1, "上坡時擺朝後偏離中心");
+  assert.ok(down.tilt < -0.1 && down.offset > 0.1, "下坡時擺朝前偏離中心");
+  // 擺始終鉛直
+  for (const c of [flat, up, down]) assert.equal(m411.default.pose(c.u).parts.pendulum.angle, 0);
+  // 在平地上推過一個底邊長,輪子轉一圈,鼓輪跟著轉(由輪子帶動)
+  const a = m411.carriage(m411.RANGE[0]);
+  const b = m411.carriage(m411.RANGE[0] + m411.BASE * 0.1);
+  near(a.wheel - b.wheel, (2 * Math.PI) * 0.1, 1e-6, "走過底邊的十分之一,輪子轉十分之一圈");
+  near((a.drum - b.drum) / (a.wheel - b.wheel), m411.RATIO, 1e-12, "鼓輪由托架輪帶動");
 });
