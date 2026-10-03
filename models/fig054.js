@@ -2,7 +2,8 @@
 // 小齒輪 A 的軸沿半徑方向,齒從側面嵌進齒條之間,像冠狀齒輪那樣帶動輪轉。
 // 齒條在左側(原圖 A 的位置)留一個開口:A 轉向不變,咬著齒條前面帶輪轉將近一圈;開口轉到 A 處時,
 // A 沿軸向穿過開口到齒條後面(原圖左側的方框軸承讓它能前後移),改咬後面,輪就反過來轉——
-// 與第 371 種同一個原理,只是齒條換成徑向的銷。下方的 B 是被輪帶動的從動小齒輪,看得出輸出軸交替轉向。
+// 與第 371 種同一個原理,只是齒條換成徑向的銷。下方的 B 是被輪帶動的從動小齒輪,看得出輸出軸交替轉向;
+// 開口轉到 B 下方的那一段 B 沒有齒條可咬、停住(開口寬 4 個齒距 = B 的 4 齒,過了開口齒相位剛好接得上)。
 // 推斷:開口的寬度、A 穿過開口時輪停住(像曼格輪的小齒輪繞著末端那根銷轉過去)。
 import { X, Y, TAU, smooth, wrap } from "./kit.js";
 import { meshAngle } from "./gears.js";
@@ -52,6 +53,19 @@ const DWELL1 = dwell(PHI_END, back, slopeB, L);
 const DWELL2 = dwell(PHI_START, front, slopeF, 2 * L + DWELL1);
 export const PERIOD = 2 * L + DWELL1 + DWELL2;
 
+// B 在世界角 −π/2;輪轉角 phi 時 B 對著局部角 −π/2 − phi。開口(含兩側半個齒距)在局部角 [o0, o1]:
+// 輪轉到這一段時 B 沒被帶動。B 的有效轉角 = phi 扣掉從一程的起點算起、輪在開口裡走過的量(來回對稱,週期相接)
+const OPEN = [MISSING[0] * PITCH - PITCH / 2, MISSING[MISSING.length - 1] * PITCH + PITCH / 2];
+// 輪轉角落在哪些區間時,B 正對著開口:phi ∈ [−π/2 − o1, −π/2 − o0] + 2πk
+const BLOCKED = [-1, 0, 1, 2].map((k) => [-Math.PI / 2 - OPEN[1] + k * TAU, -Math.PI / 2 - OPEN[0] + k * TAU]);
+export function wheelForB(phi) {
+  const lo = Math.min(PHI_START, phi);
+  const hi = Math.max(PHI_START, phi);
+  let skipped = 0;
+  for (const [a, b] of BLOCKED) skipped += Math.max(0, Math.min(hi, b) - Math.max(lo, a));
+  return phi - Math.sign(phi - PHI_START) * skipped;
+}
+
 /** A 轉 theta 時:輪的轉角、A 在輪面前後的位置(z)、是否在往前的那一程 */
 export function mangle(theta) {
   const u = theta - PERIOD * Math.floor(theta / PERIOD);
@@ -98,8 +112,9 @@ export default {
       label: "A",
       labelOffset: [-0.75, 0.15, 0],
     },
-    // A 的方框軸承:軸在裡面可以前後滑
+    // A 的方框軸承:軸在裡面可以前後滑;B 的軸承固定
     { id: "bearing", kind: "box", size: [0.36, 0.5, 1.1], center: [-R - 1.0, 0, 0] },
+    { id: "bearingB", kind: "box", size: [0.5, 0.36, 0.4], center: [0, -R - 0.9, SIDE] },
     {
       id: "pinionB",
       kind: "gear",
@@ -123,7 +138,7 @@ export default {
       parts: {
         pinionA: { position: [-R, 0, m.z], angle: theta },
         wheel: { angle: m.wheel },
-        pinionB: { angle: meshAngle(WHEEL, B, m.wheel, CONTACT_B) },
+        pinionB: { angle: meshAngle(WHEEL, B, wheelForB(m.wheel), CONTACT_B) },
       },
       readouts: [],
     };

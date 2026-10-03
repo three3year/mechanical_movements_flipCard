@@ -98,6 +98,21 @@ test("第 54 種:星形輪產生交替方向的旋轉——小齒輪 A 轉向不
   const atTurn = sweep(l * 1.0, 10, l * 0.93).map(mangle);
   assert.ok(atTurn.every((m) => Math.abs(m.wheel - atTurn[0].wheel) < 1e-9), "換面時輪停住");
   close(mangle(PERIOD + 0.37).wheel, mangle(0.37).wheel, "週期性", 1e-9);
+  // 開口轉到 B 下方時 B 沒有齒條可咬、停住;其餘時間輪一轉 B 就轉;一個週期後 B 回到同一個相位
+  const { wheelForB } = fig54m;
+  let stillInGap = 0;
+  let gapSamples = 0;
+  for (const t of sweep(PERIOD, 800)) {
+    const a = fig54.pose(t).parts;
+    const b = fig54.pose(t + 1e-3).parts;
+    const inGap = Math.abs(wheelForB(b.wheel.angle) - wheelForB(a.wheel.angle)) < 1e-9 && Math.abs(b.wheel.angle - a.wheel.angle) > 1e-9;
+    if (inGap) {
+      gapSamples++;
+      if (Math.abs(b.pinionB.angle - a.pinionB.angle) < 1e-9) stillInGap++;
+    }
+  }
+  assert.ok(gapSamples > 20 && stillInGap === gapSamples, "開口經過 B 時 B 停住");
+  close(fig54.pose(PERIOD + 0.37).parts.pinionB.angle, fig54.pose(0.37).parts.pinionB.angle, "B 的相位週期相接", 1e-9);
 });
 
 test("第 55 種:同一軸線上的 A 與 C 經小齒輪產生不同的轉速(反向,齒數反比)", () => {

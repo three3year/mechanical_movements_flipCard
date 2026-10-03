@@ -13,9 +13,10 @@ const NESTLE = 0.03; // B 的圓周嵌進 A 齒尖圓的深度(兩個齒尖之�
 const TOWARD = deg(25); // B 在 A 的哪個方向
 const D = A.tip + B_R - NESTLE;
 const B = { center: [D * Math.cos(TOWARD), D * Math.sin(TOWARD), 0] };
-const TOOTH_TIP = D - A.root - 0.03; // 齒尖到 B 中心的距離:差一點伸到 A 的齒根
+const TOOTH_TIP = 0.59; // 齒尖到 B 中心的距離
 const STEP = TAU / A.teeth;
 export const toothStep = STEP;
+const A0 = TOWARD - STEP; // 鎖住時 A 的相鄰兩個齒尖(局部角 ±半個齒距處)對稱地夾著 B 的圓周
 
 // A 的齒:尖齒(齒尖沒有寬度),齒根之間留一段平的齒槽讓 B 的齒進去
 const FLAT = 0.22; // 齒槽佔齒距的比例(兩側各)
@@ -24,9 +25,16 @@ const aOutline = polarOutline((a) => {
   const t = Math.max(0, 1 - Math.abs(f - 0.5) / (0.5 - FLAT));
   return A.root + (A.tip - A.root) * t;
 }, A.teeth * 10);
-// B:圓盤加一個齒(局部 +x 方向)
+// B:圓盤加一個齒(局部 +x 方向);齒前方(B 轉向那一側)的圓周挖一個缺口,
+// 推動時被推的那個 A 齒尖要從 B 的圓周這一段通過(原圖 B 在齒旁也是凹進去的)
 const tooth = [[0.4, 0.11], [TOOTH_TIP - 0.03, 0.03], [TOOTH_TIP, 0], [TOOTH_TIP - 0.03, -0.03], [0.4, -0.11]];
-const bOutline = [...arcPoints(B_R, deg(10), TAU - deg(10)), [B_R * Math.cos(deg(-10)), B_R * Math.sin(deg(-10))], ...tooth.slice().reverse(), [B_R * Math.cos(deg(10)), B_R * Math.sin(deg(10))]];
+const RECESS = { from: deg(6), to: deg(70), r: 0.36 };
+const bOutline = [
+  ...arcPoints(RECESS.r, RECESS.from, RECESS.to),
+  ...arcPoints(B_R, RECESS.to, TAU - deg(10)),
+  [B_R * Math.cos(deg(-10)), B_R * Math.sin(deg(-10))],
+  ...tooth.slice().reverse(),
+];
 
 // 齒推 A 的視窗:B 的齒尖進到 A 的齒尖圓之內的那一段 B 轉角(齒朝向 A 的方向為中心)
 const TOOTH_TOWARD_A = TOWARD + Math.PI;
@@ -40,7 +48,7 @@ const WINDOW = { from: TOOTH_TOWARD_A - HALF - deg(2), span: 2 * HALF + deg(4) }
 // 查表:視窗內 B 每個轉角對應 A 被推到的轉角(A 順時針,為負;從鎖住的 0 開始)
 const SAMPLES = 160;
 const TABLE = (() => {
-  const aPoly = (angle) => placeOutline(aOutline, [0, 0], angle);
+  const aPoly = (angle) => placeOutline(aOutline, [0, 0], A0 + angle);
   const overlap = (theta, aAngle) => polygonsOverlap(placeOutline(tooth, B.center, theta), aPoly(aAngle));
   const out = [];
   let a = 0;
@@ -90,7 +98,7 @@ export function aAngle(v) {
     const f = x - i;
     within = (TABLE[i] + (TABLE[i + 1] - TABLE[i]) * f) * SCALE;
   }
-  return -STEP * k + within;
+  return A0 - STEP * k + within;
 }
 
 export default {

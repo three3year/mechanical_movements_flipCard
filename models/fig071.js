@@ -12,7 +12,7 @@ const RIM = { inner: 1.55, outer: 1.7 };
 const SPAN = deg(40); // 撥爪推動凸柱的那段 B 轉角(以撥爪正對 C 為中心)
 // 中心距:靠在輪緣上的兩根凸柱(C 局部 ±半個間距)剛好碰到輪緣內側
 const rest = STEP / 2;
-const D = STUDS.radius * Math.cos(rest) + Math.sqrt((RIM.inner - STUDS.size) ** 2 - (STUDS.radius * Math.sin(rest)) ** 2);
+const D = STUDS.radius * Math.cos(rest) + Math.sqrt((RIM.inner - STUDS.size - 0.01) ** 2 - (STUDS.radius * Math.sin(rest)) ** 2); // 留 0.01 間隙
 // 凸柱路徑穿出輪緣外側(含凸柱半徑)時的 C 局部角
 const exitAt = Math.acos((D * D + STUDS.radius ** 2 - (RIM.outer + STUDS.size) ** 2) / (2 * D * STUDS.radius));
 // 凸柱在 C 局部角 phi 時,以 B 為中心的方位角

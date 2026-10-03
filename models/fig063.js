@@ -6,14 +6,16 @@
 // 落板的轉角由接觸算(鉤被哪根插銷頂著);落下的過程演出來(jumps.falling);棘爪靠接觸停在齒面上。
 import { TAU, deg, polar, rot2 } from "./kit.js";
 import { circle, polarOutline, shape, thickLine } from "./shapes.js";
-import { swingUntilContact, circlePolygon, placeOutline, dropValue } from "./contact.js";
+import { swingUntilContact, circlePolygon, dropValue } from "./contact.js";
 import { falling } from "./jumps.js";
 
 const DISC = { center: [2.05, -0.2], radius: 1.3, pins: 3, pinR: 1.0, pinSize: 0.09, z: -0.25 };
 const STAR = { center: [-0.2, -0.87], points: 12, outer: 1.38, inner: 0.9 };
 const PIVOT = [-0.93, 1.98]; // 落板的樞軸
-const PAWL_PIVOT = [0.38, -0.34]; // 棘爪的樞軸(落板局部)
-const PAWL = { length: 1.8, hang: deg(-60) }; // 爪尖的方向(靜止時):伸到星形輪右上方(約 1 點鐘)的齒間
+const PAWL_PIVOT = [2.18, -0.34]; // 棘爪的樞軸(落板局部):在落板右段的下緣
+// 爪尖的方向(靜止時):從右上往左下伸到星形輪約 1 點鐘的齒間,爪身大致沿星形輪的半徑——
+// 這樣棘爪擺動時爪尖是沿著輪緣走的,推得動一整格;爪身若接近切線,擺動只會把爪尖拔出齒間
+const PAWL = { length: 1.8, hang: deg(-120) };
 const STOP = { center: [-2.03, 1.68], r: 0.08 }; // 落板落定時尾端上緣頂著的固定柱(落板往下甩時尾端往上)
 const SPRING = { root: [-3.0, 0.75], tip: [1.1, 0.1] };
 const DROP = deg(9); // 落下的過程佔圓盤轉角多少
@@ -39,7 +41,7 @@ const dropOutline = [
   [2.25, 0.22],
   [0.4, 0.44],
 ];
-// 棘爪(局部,樞軸為原點,爪尖朝 +x):長爪,樞軸後方有一片耳、耳上一根柱子讓落板撞
+// 棘爪(局部,樞軸為原點,爪尖朝 +x):長爪,樞軸旁有一片耳、耳上一根柱子讓落板撞
 const pawlOutline = [
   [0.15, 0.14],
   [1.6, 0.09],
@@ -76,7 +78,46 @@ export const RELEASE = dropValue(restOf, pinPeriod) - pinPeriod / 720; // dropVa
 const HELD = restOf(RELEASE); // 落下前一刻的轉角
 const DOWN = restOf(RELEASE + DROP + 1e-4); // 落定的轉角
 
-/** 進程 w 時:落板轉角、星形輪轉角(落下時推進一格) */
+const pawlPivotWorld = (drop) => {
+  const [x, y] = rot2(PAWL_PIVOT, drop);
+  return [PIVOT[0] + x, PIVOT[1] + y];
+};
+
+// 星形輪的相位與爪尖在齒間的位置:落板落定時,爪尖落在某個齒根(局部角為齒距的整數倍)再偏向被推的那一齒一點
+const STAR0 = (() => {
+  const [px, py] = pawlPivotWorld(DOWN);
+  const tip = [px + PAWL.length * Math.cos(PAWL.hang) - STAR.center[0], py + PAWL.length * Math.sin(PAWL.hang) - STAR.center[1]];
+  const a = Math.atan2(tip[1], tip[0]);
+  return a - starPitch * Math.floor(a / starPitch) - deg(3);
+})();
+// 爪尖在星形輪局部座標的位置(落定時所在的齒間):爪尖沿著這一格走
+const Q0 = (() => {
+  const [px, py] = pawlPivotWorld(DOWN);
+  const tip = [px + PAWL.length * Math.cos(PAWL.hang) - STAR.center[0], py + PAWL.length * Math.sin(PAWL.hang) - STAR.center[1]];
+  return rot2(tip, -(STAR0 + starPitch));
+})();
+
+/** 棘爪指向星形輪上的點 W(相位 phase 的那一格):回傳棘爪轉角與爪尖 */
+function pawlToward(drop, phase) {
+  const [px, py] = pawlPivotWorld(drop);
+  const [qx, qy] = rot2(Q0, phase);
+  const angle = Math.atan2(STAR.center[1] + qy - py, STAR.center[0] + qx - px);
+  return { angle, tip: [px + PAWL.length * Math.cos(angle), py + PAWL.length * Math.sin(angle)] };
+}
+const tipRadius = (drop, phase) => {
+  const { tip } = pawlToward(drop, phase);
+  return Math.hypot(tip[0] - STAR.center[0], tip[1] - STAR.center[1]);
+};
+// 落板降到哪個轉角時爪尖才進到齒間(對著還沒被推的那一格)
+const ENTER = (() => {
+  for (let i = 0; i <= 80; i++) {
+    const drop = HELD + ((DOWN - HELD) * i) / 80;
+    if (tipRadius(drop, STAR0) < STAR.outer - 0.08) return drop;
+  }
+  return HELD;
+})();
+
+/** 進程 w 時:落板轉角、星形輪轉角、棘爪轉角(落板抬起時爪尖擺到下一格上方,落下時推一格) */
 export function counter(w) {
   const k = Math.floor(w / pinPeriod);
   const u = w - k * pinPeriod;
@@ -88,37 +129,15 @@ export function counter(w) {
   } else if (u >= RELEASE + DROP) {
     t = 1;
   }
-  const star = STAR0 + starPitch * (k + t);
-  return { drop, star, height: (drop - DOWN) / (HELD - DOWN) };
+  const height = (drop - DOWN) / (HELD - DOWN);
+  // 星形輪只在爪尖已經落進齒間之後才被推:落板從 ENTER 降到 DOWN 這一段推進一格
+  const push = t === 0 ? 0 : t === 1 ? 1 : Math.min(1, Math.max(0, (ENTER - drop) / (ENTER - DOWN)));
+  const star = STAR0 + starPitch * (k + push);
+  // 爪尖對著的那一格:落下時是正在推的這一格(隨星形輪走);抬起時從剛推完的那一格擺回下一格
+  const phase = t > 0 && t < 1 ? STAR0 + starPitch * push : STAR0 + starPitch * (1 - Math.min(1, Math.max(0, height)));
+  const pawl = pawlToward(drop, phase).angle;
+  return { drop, star, pawl, height };
 }
-
-const pawlPivotWorld = (drop) => {
-  const [x, y] = rot2(PAWL_PIVOT, drop);
-  return [PIVOT[0] + x, PIVOT[1] + y];
-};
-
-/** 棘爪的轉角:繞落板上的樞軸往下(順時針,被落板的柱子壓的方向)擺,停在第一次碰到星形輪的位置 */
-export function pawlRestAngle(drop, star) {
-  const pivot = pawlPivotWorld(drop);
-  const starPoly = placeOutline(starOutline, STAR.center, star);
-  return swingUntilContact({ pivot, outline: pawlOutline, from: PAWL.hang + 0.35, into: -1, sweep: 0.7, steps: 72 }, [starPoly]);
-}
-
-// 星形輪的初始相位:落板落定時,爪尖落在齒根最深處
-const STAR0 = (() => {
-  const drop = DOWN;
-  let best = 0;
-  let deepest = Infinity;
-  for (let i = 0; i < 60; i++) {
-    const phase = (starPitch * i) / 60;
-    const a = pawlRestAngle(drop, phase);
-    const [px, py] = pawlPivotWorld(drop);
-    const tip = [px + PAWL.length * Math.cos(a), py + PAWL.length * Math.sin(a)];
-    const r = Math.hypot(tip[0] - STAR.center[0], tip[1] - STAR.center[1]);
-    if (r < deepest) [deepest, best] = [r, phase];
-  }
-  return best;
-})();
 
 // 板彈簧:固定端在左邊的座上,自由端頂著落板尾端的下緣(下緣是一條斜邊,落板抬起時接觸點沿著它滑)
 const TAIL = [[-1.4, -0.98], [-0.9, -0.75]];
@@ -201,8 +220,7 @@ export default {
   target: "star",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
-    const { drop, star } = counter(-v);
-    const pawl = pawlRestAngle(drop, star);
+    const { drop, star, pawl } = counter(-v);
     return {
       parts: {
         disc: { angle: v },
