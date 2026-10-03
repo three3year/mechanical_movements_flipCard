@@ -13,6 +13,12 @@ import * as m356 from "../models/fig356.js";
 import * as m357 from "../models/fig357.js";
 import * as m363 from "../models/fig363.js";
 import * as m365 from "../models/fig365.js";
+import * as m358 from "../models/fig358.js";
+import * as m359 from "../models/fig359.js";
+import * as m360 from "../models/fig360.js";
+import * as m361 from "../models/fig361.js";
+import * as m362 from "../models/fig362.js";
+import * as m364 from "../models/fig364.js";
 
 test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓桿把橫移運動傳給導件 a、a 內的桿", () => {
   const xs = sweep(0.6, 20, -1.6).map((x) => m350.traverse(x).rod);
@@ -88,4 +94,50 @@ test("第 365 種:滾子的旋轉同時產生桿的縱向運動與旋轉運動(�
   close(m.advance, RR * Math.cos(TILT), "縱向:滾子表面速度沿桿軸的分量");
   close(Math.abs(m.spin) * ROD, RR * Math.sin(TILT), "旋轉:沿桿圓周的分量");
   close(m.back, -1, "兩滾子反向轉");
+});
+
+test("第 358 種:托架的橫移速度依皮帶在鏈索輪上作用處的直徑而變", () => {
+  const rate = (t) => (m358.fusee(t + 1e-4).wound - m358.fusee(t).wound) / 1e-4;
+  const a = rate(0.1);
+  const b = rate(m358.RANGE[1] - 0.1);
+  close(a, m358.fusee(0.1).r, "托架速度 = 作用處的半徑 × 曲柄角速度", 1e-3);
+  assert.ok(a > 1.5 * b, "大直徑處快、小直徑處慢");
+});
+
+test("第 359 種:原始鑽孔裝置:按下橫桿時繩解開、心軸轉;放開時繩反向捲回,下一次心軸往另一個方向轉", () => {
+  const S = m359.STROKE;
+  const down1 = m359.pump(0.5 * S).spindle - m359.pump(0).spindle;
+  const down2 = m359.pump(2.5 * S).spindle - m359.pump(2 * S).spindle;
+  assert.ok(down1 * down2 < 0, "相鄰兩次按下,心軸轉向相反");
+  close(m359.pump(S).spindle, 0, "按到底時繩完全解開", 1e-12);
+  assert.ok(m359.pump(2 * S).bar > m359.pump(S).bar, "飛輪的動量把繩捲回、橫桿被拉起");
+});
+
+test("第 360 種:樑振動時,鼓輪經棘爪與棘輪帶動飛輪軸只朝一個方向轉", () => {
+  const S = m360.SWING;
+  const fs = sweep(8 * S, 400).map((v) => m360.beam(v).fly);
+  assert.ok(fs.every((f, i) => i === 0 || f <= fs[i - 1] + 1e-12), "飛輪只朝一個方向轉");
+  const back = m360.beam(3 * S);
+  close(back.fly, m360.beam(2 * S).fly, "回擺時鼓輪反轉,飛輪不動", 1e-12);
+  assert.ok(back.drum !== m360.beam(2 * S).drum, "鼓輪反轉");
+});
+
+test("第 361 種:皮帶輪離合器:兩銷接觸時下方軸跟著皮帶輪轉,脫開時皮帶輪空轉、軸停住", () => {
+  close(m361.clutch(2, "on").shaft, m361.clutch(2, "on").pulley, "接合");
+  close(m361.clutch(2, "off").shaft, 0, "脫開時軸不轉");
+  assert.ok(Math.abs(m361.clutch(2, "off").pulley) > 1, "皮帶輪照轉");
+});
+
+test("第 362 種:銷在下方圓筒的傾斜溝槽中,圓筒轉一圈,上方軸與鼓輪橫移一個來回", () => {
+  const xs = sweep(2 * Math.PI, 72).map(m362.traverse);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.8, "橫移");
+  close(m362.traverse(2 * Math.PI), m362.traverse(0), "一圈回到原處", 1e-12);
+});
+
+test("第 364 種:小輪連續旋轉,大輪間歇旋轉:每根凸柱經過時推一格,其餘時間不動", () => {
+  const per = (2 * Math.PI) / 8;
+  close(m364.bigAngle(-per) - m364.bigAngle(0), -m364.STEP, "每根凸柱一格", 1e-12);
+  const as = sweep(-2 * Math.PI, 360).map(m364.bigAngle);
+  const still = as.slice(1).filter((a, i) => a === as[i]).length;
+  assert.ok(still > 150, "大部分時間停住");
 });
