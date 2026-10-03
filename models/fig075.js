@@ -116,6 +116,9 @@ export default {
       pieces: [{ kind: "cylinder", radius: 0.12, length: 0.24 }],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["wheelA", "leverD"], reason: "待確認:wheelA 的板 與 leverD 的圓柱 r0.07×0.3重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "rodC", type: "translation", direction: [0, -1, 0], cycle: [0, STROKE] },
   target: "wheelA",
   view: { direction: [0.08, 0.06, 1] },

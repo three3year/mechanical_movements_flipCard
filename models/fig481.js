@@ -66,6 +66,7 @@ export default {
     },
     ...Array.from({ length: CHAMBERS }, (_, k) => ({ id: `labelB${k}`, kind: "group", pieces: [], label: "B", labelOffset: [0, 0, 0.5] })),
   ],
+  powered: ["drum"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "轉", speed: 0.1 },
   target: "drum",
   view: { direction: [0.03, 0.05, 1] },

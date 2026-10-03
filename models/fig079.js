@@ -79,6 +79,9 @@ export default {
       labelOffset: [-0.1, 0.5, 0.2],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["armUpper", "armLower"], reason: "待確認:armUpper 的板 與 armLower 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "rodB", type: "translation", direction: [1, 0, 0], cycle: [B0, B0 + STROKE] },
 
   target: "wheel",

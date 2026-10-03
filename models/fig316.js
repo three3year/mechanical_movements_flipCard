@@ -43,6 +43,7 @@ export default {
     },
     { id: "mercury", kind: "fill", fluid: "mercury", shape: "cylinder", size: [2 * (JAR.r - JAR.wall) - 0.02, FILL_H, 0], level: LEVEL0 / FILL_H },
   ],
+  powered: ["rod"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "溫度", mode: "balance", range: RANGE, initial: 20, unit: "°C" },
   target: "jar", // 當擺錘的水銀玻璃瓶(隨擺桿伸長下降,瓶裡的水銀把重心補回去)
   view: { direction: [0.05, 0.12, 1] },

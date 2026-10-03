@@ -105,6 +105,7 @@ export default {
     ...HOOKS.map((_, i) => ({ id: `hook${i}`, kind: "plate", shape: hookShape, thickness: 0.08, arrow: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.22 }] })),
     { id: "rope", kind: "rope" },
   ],
+  powered: ["rope"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
 
   targets: ["hook0", "hook1", "hook2"], // 重點是甩出去鉤住凸柱的制動鉤

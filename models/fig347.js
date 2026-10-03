@@ -55,6 +55,7 @@ export default {
     { id: "piston", kind: "group", arrow: false, pieces: [{ kind: "cylinder", radius: R_CYL - 0.05, length: 0.08 }, { kind: "sphere", radius: 0.38 }] },
     { id: "rod", kind: "link", width: 0.14, thickness: 0.14 },
   ],
+  powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "crank", // 輸出的曲柄
   view: { direction: [0.08, 0.1, 1] },

@@ -50,6 +50,7 @@ export default {
     { id: "river", kind: "fill", fluid: "water", center: [0, (RIVER - 2.6) / 2, 0], size: [6.8, RIVER + 2.6, 1.4], level: 1 },
     ...Array.from({ length: POTS }, (_, i) => ({ id: `water${i}`, kind: "fill", fluid: "water", shape: "cylinder", size: [0.28, 0.32, 0] })),
   ],
+  powered: ["wheel"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.1 },
   target: "wheel",
   view: { direction: [0.3, 0.15, 1] },

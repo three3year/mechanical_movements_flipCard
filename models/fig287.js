@@ -70,6 +70,7 @@ export default {
     { id: "ballL", kind: "sphere", radius: 0.26 },
     { id: "ballR", kind: "sphere", radius: 0.26 },
   ],
+  powered: ["ballL", "ballR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "轉速", mode: "balance", range: RANGE, initial: 5 },
   target: "sleeve", // 升降的套筒
   view: { direction: [0.04, 0.05, 1] },

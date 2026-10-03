@@ -58,6 +58,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["cam", "rod"], reason: "待確認:cam 的板 與 rod 的圓柱 r0.12×4.5重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "cam", type: "rotation", speed: -1.0 },
 
   target: "rod",

@@ -39,6 +39,7 @@ export default {
     { id: "labelD", kind: "group", center: [-1.3, 1.8, 0], label: "D", labelOffset: [-0.3, 0, 0.3] },
     { id: "labelF", kind: "group", center: [X, 0.85, 0], label: "F", labelOffset: [0.4, 0, 0.3] },
   ],
+  powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.25 },
   target: "lever", // 被帶動的側槓桿
   view: { direction: [0.03, 0.05, 1] },

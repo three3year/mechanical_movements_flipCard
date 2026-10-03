@@ -55,6 +55,7 @@ export default {
     },
     { id: "labelF", kind: "group", center: F, label: "F", labelOffset: [-0.2, 0.35, 0] },
   ],
+  powered: ["diskC"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.08 },
   target: "diskC", // 高速自轉、帶著環繞鉛直軸進動的碟片 C
   view: { direction: [0.9, 0.35, 0.7] },

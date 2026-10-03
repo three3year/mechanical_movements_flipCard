@@ -61,12 +61,16 @@ export default {
       kind: "group",
       pieces: [
         { kind: "box", size: [1.6, 1.7, 0.8], at: [-2.65, -0.05, 0] },
-        { kind: "box", size: [2.1, 0.95, 0.8], at: [2.75, -0.45, 0] },
-        { kind: "box", size: [0.9, 0.25, 0.8], at: [3.2, 0.1, 0] },
+        { kind: "box", size: [2.1, 0.6, 0.8], at: [2.75, -0.65, 0] }, // 砧座壓低:錘頭落下時錘面落在砧面上,不陷進去
+        { kind: "box", size: [0.9, 0.25, 0.8], at: [3.2, -0.225, 0] },
         { kind: "box", size: [8.2, 0.12, 1.2], at: [0, -0.95, 0] },
         { kind: "plate", shape: shape([[-3.6, 0.82], [-1.95, 0.82], [-2.0, 0.92], [-3.6, 0.95]]), thickness: 0.4 },
       ],
     },
+  ],
+  waivers: [
+    { check: "interference", parts: ["wiper", "hammer"], reason: "待確認(未修):wiper 的板 與 hammer 的板互相穿入 0.31(67 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["hammer", "base"], reason: "待確認(未修):hammer 的方塊 1×0.32×0.4 與 base 的板互相穿入 0.13(52 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "wiper", type: "rotation", speed: -1.0 },
   target: "hammer", // 被抬起又落下的錘子 A

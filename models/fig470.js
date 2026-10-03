@@ -57,6 +57,7 @@ export default {
       ],
     },
   ],
+  powered: ["hammer"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "下", speed: 0.25 },
   target: "hammer",
   view: { direction: [0.12, 0.1, 1] },

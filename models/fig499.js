@@ -80,6 +80,7 @@ export default {
     },
     { id: "pointer", kind: "plate", center: PINION.center, shape: shape([[-0.12, -0.03], [1.55, 0], [-0.12, 0.03]]), thickness: 0.03, accent: true, spin: 0.3, pieces: [{ kind: "gear", teeth: PINION.teeth, radius: PINION.radius, width: 0.06, at: [0, 0, GEAR_Z] }] },
   ],
+  powered: ["tubeL", "tubeR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "壓力", mode: "balance", range: RANGE, initial: 4 },
   target: "pointer", // 在錶盤上指示壓力的指針
   view: { direction: [0.03, 0.05, 1] },

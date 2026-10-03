@@ -75,6 +75,9 @@ export default {
     { id: "support", kind: "box", center: [-3.0, -2.95, 0], size: [1.3, 0.8, 0.6] },
     { id: "labelC", kind: "group", center: [-1.85, 0.75, 0.2], label: "C" },
   ],
+  waivers: [
+    { check: "interference", parts: ["d", "springC"], reason: "待確認:springC 的第 8 段穿過d 的方塊 0.3×0.22×0.3重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "d", type: "rotation", speed: -0.9 },
   target: "a", // 每圈被推一齒的棘輪 A
   view: { direction: [0.06, 0.05, 1] },

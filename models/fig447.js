@@ -55,6 +55,7 @@ export default {
     },
     { id: "rudder", kind: "plate", shape: shape(rect(0.5, 0.06, 0.25, 0)), thickness: 0.15, arrow: false },
   ],
+  powered: ["boat"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "來回", speed: 0.08, initial: 0.3 },
   target: "boat",
   view: { direction: [0.03, 0.05, 1] },

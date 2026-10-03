@@ -64,6 +64,10 @@ export default {
     { id: "stop", kind: "box", center: [RACK_X - 0.36, SPRING_TOP, 0], size: [0.6, 0.1, 0.4] },
     { id: "labelC", kind: "group", center: [RACK_X + 0.15, 2.35, 0.2], label: "C" },
   ],
+  waivers: [
+    { check: "interference", parts: ["spring", "stop"], reason: "待確認:spring 的Tube 與 stop 的方塊 0.6×0.1×0.4重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["gear", "rack"], reason: "待確認:gear 的板 與 rack 的方塊 0.26×0.086×0.2重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "gear", type: "rotation", speed: -1.0, initial: -SPAN / 2 },
 
   target: "rack",

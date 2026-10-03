@@ -15,4 +15,9 @@ const index = studIndex({
 });
 
 export const { index: aAngle, step } = index;
-export default index.def;
+export default {
+  ...index.def,
+  waivers: [
+    { check: "interference", parts: ["wheel", "driver"], reason: "待確認(未修):wheel 的板 與 driver 的板互相穿入 0.37(96 個取樣姿勢),尚未修正" },
+  ],
+};

@@ -42,6 +42,7 @@ export default {
     { id: "linkR", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "rod", kind: "group", pieces: [{ kind: "cylinder", axis: Y, radius: 0.06, length: 1.3, at: [0, 0.6, 0] }, { kind: "cylinder", radius: 0.12, inner: 0.05, length: 0.15 }] },
   ],
+  powered: ["ballL", "ballR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, MAX], initial: 8.8 },
   target: "rod",
   view: { direction: [0.04, 0.06, 1] },

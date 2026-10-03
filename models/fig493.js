@@ -53,6 +53,7 @@ export default {
     { id: "pin", kind: "plate", shape: pin, thickness: 0.5, arrow: false, pieces: [{ kind: "plate", shape: shape(thickLine([[-0.25, 0.75], [-0.25, 1.05], [0.25, 1.05], [0.25, 0.75]], 0.07), [circle(0.03, 0, 0.9).reverse()]), thickness: 0.12 }] },
     { id: "rope", kind: "rope", radius: 0.04 },
   ],
+  powered: ["rope"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "吊起", mode: "balance", range: [0, 1], initial: 0, format: (u) => Math.round(u * 100) + "%" },
   target: "stone", // 要被吊起的石塊
   view: { direction: [0.06, 0.06, 1] },

@@ -59,6 +59,7 @@ export default {
     { id: "labelA1", kind: "group", center: GL.center, label: "A", labelOffset: [0.25, -0.5, 0.4] },
     { id: "labelA2", kind: "group", center: GR.center, label: "A", labelOffset: [-0.25, -0.5, 0.4] },
   ],
+  powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   targets: ["gearL", "gearR"], // 輸出的曲柄齒輪
   view: { direction: [0.03, 0.05, 1] },

@@ -35,6 +35,7 @@ export default {
     { id: "linkDC", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "crosshead", kind: "group", pieces: [{ kind: "box", size: [0.4, 0.3, 0.3] }, { kind: "box", size: [0.1, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] }] },
   ],
+  powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.25 },
   target: "lever", // 被帶動的側槓桿
   view: { direction: [0.03, 0.05, 1] },

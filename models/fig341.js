@@ -65,6 +65,7 @@ export default {
     { id: "crank", kind: "group", center: K, spin: CR + 0.2, pieces: [{ kind: "box", size: [CR, 0.14, 0.08], at: [CR / 2, 0, 0.2] }, { kind: "cylinder", radius: 0.06, length: 0.3, at: [CR, 0, 0.25], accent: true }, { kind: "cylinder", radius: 0.6, length: 0.1, at: [0, 0, -0.35] }] },
     { id: "pistonRod", kind: "box", size: [0.08, PISTON_ROD, 0.08] },
   ],
+  powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "crank", // 輸出的曲柄
   view: { direction: [0.03, 0.05, 1] },

@@ -71,6 +71,7 @@ export default {
     { id: "leverN", kind: "link", width: 0.08, thickness: 0.05, stretch: true, label: "N", labelOffset: [0, 0.3, 0.2] }, // 右端以長槽套在閥桿上
     { id: "labelP", kind: "group", center: [-0.6, 3.0, 0], label: "P", labelOffset: [0, 0.2, 0.2] },
   ],
+  powered: ["shaftB"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "轉速", mode: "balance", range: RANGE, initial: 5 },
   target: "valveD", // 被拉動的閥桿
   view: { direction: [0.03, 0.05, 1] },

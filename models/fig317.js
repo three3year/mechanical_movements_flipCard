@@ -48,6 +48,7 @@ export default {
     { id: "weightL", kind: "box", size: [0.45, 0.35, 0.4], label: "W", labelOffset: [0, -0.4, 0.3] },
     { id: "weightR", kind: "box", size: [0.45, 0.35, 0.4], label: "W", labelOffset: [0, -0.4, 0.3] },
   ],
+  powered: ["rod"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "溫度", mode: "balance", range: RANGE, initial: 20, unit: "°C" },
   targets: ["weightL", "weightR"], // 被複合桿抬高、把重心補回去的兩個重物 W
   view: { direction: [0.05, 0.12, 1] },

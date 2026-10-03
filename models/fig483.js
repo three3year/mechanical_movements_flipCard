@@ -48,6 +48,7 @@ export default {
     { id: "valve", kind: "box", size: [0.5, 0.15, 0.35], label: "B", labelOffset: [0.3, 0.2, 0.3], arrow: false },
     { id: "dial", kind: "plate", shape: shape(thickLine([[0, 0], [0.32, 0]], 0.05)), thickness: 0.04, center: [1.8, H / 2 + 0.95, 0.15], spin: 0.4, accent: true },
   ],
+  powered: ["diaphragm0", "diaphragm1"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "次", speed: 0.15 },
   target: "dial", // 錶盤指針
   view: { direction: [0.08, 0.06, 1] },

@@ -53,6 +53,7 @@ export default {
       pieces: [{ kind: "plate", shape: shape(rect(0.24, 0.08, 0.22, -0.5)), thickness: 0.12 }] },
     { id: "plunger", kind: "group", pieces: [{ kind: "box", size: [0.12, 1.3, 0.12], at: [0, -0.65, 0] }, { kind: "box", size: [0.36, 0.12, 0.36], at: [0, -1.3, 0] }] },
   ],
+  powered: ["weight"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
   target: "weight", // 被釋放的測深錘
   view: { direction: [0.05, 0.08, 1] },

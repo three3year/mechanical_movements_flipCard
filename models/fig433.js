@@ -60,6 +60,7 @@ export default {
     },
     { id: "vanes", kind: "group", center: [0, WHEEL_Y, 0], arrow: false, pieces: vanes },
   ],
+  powered: ["wheel"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.15 },
   target: "wheel",
   view: { direction: [0.35, 0.45, 1] },

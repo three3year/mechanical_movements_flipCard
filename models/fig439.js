@@ -53,6 +53,7 @@ export default {
     { id: "valve", kind: "plate", shape: shape(circle(0.12)), thickness: 0.04, arrow: false },
     { id: "water", kind: "fill", fluid: "water", shape: "cylinder", size: [0.55, 0.66, 0], level: 0 },
   ],
+  powered: ["bucket", "weight"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "次", speed: 0.15 },
   target: "bucket",
   view: { direction: [0.06, 0.08, 1] },

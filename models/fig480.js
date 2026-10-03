@@ -25,6 +25,7 @@ export default {
     bellPart({ pieces: [{ kind: "cylinder", radius: 0.15, length: BELL.h + 0.3, at: [0, 0, (BELL.h + 0.3) / 2] }] }),
     { id: "labela", kind: "group", pieces: [], label: "a", labelOffset: [0.3, 0, 0.5] },
   ],
+  powered: ["bell"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "槽裡的氣量", mode: "balance", range: [0, 1], initial: 0.5, format: (g) => Math.round(g * 100) + "%" },
   target: "bell",
   view: { direction: [0.06, 0.08, 1] },

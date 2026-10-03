@@ -67,6 +67,7 @@ export default {
       ],
     },
   ],
+  powered: ["inputShaft"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "gateShaft",
   states: {

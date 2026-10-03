@@ -96,6 +96,7 @@ export default {
     { id: "arbor", kind: "cylinder", center: [0, 0, MECH_Z / 2 + 0.06], radius: 0.035, length: 0.5 },
     { id: "needle", kind: "plate", center: [0, 0, 0.16], shape: needle, thickness: 0.04, hub: 0.08, spin: 1.1 },
   ],
+  powered: ["rod"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "壓力", mode: "balance", range: [0, MAX] },
   target: "needle",
   view: { direction: [0.1, 0.08, 1] },

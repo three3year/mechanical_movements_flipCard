@@ -67,6 +67,7 @@ export default {
       ],
     },
   ],
+  powered: ["crosshead"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, MAX] },
   target: "lever",
   view: { direction: [0.02, 0.12, 1] },

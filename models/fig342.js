@@ -63,6 +63,7 @@ export default {
     { id: "beam", kind: "group", center: PIVOT, arrow: false, pieces: beam },
     { id: "chain", kind: "chain", style: "plate", pitch: 0.24, width: 0.16, offset: 0.06 },
   ],
+  powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.15 },
   target: "beam", // 帶動抽水桿的樑
   view: { direction: [0.03, 0.05, 1] },

@@ -55,6 +55,7 @@ export default {
     // 中空的閥門 D:上面是蓋,底下是撓性隔膜(畫成鼓起的碟)
     { id: "valve", kind: "lathe", axis: Y, profile: [[0, 0.12], [0.62, 0.12], [0.66, 0.0], [0.6, -0.12], [0.3, -0.2], [0, -0.22]], label: "D", labelOffset: [0, 0, 0.8], arrow: false },
   ],
+  powered: ["valve"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
   target: "valve",
   view: { direction: [0.08, 0.12, 1] },

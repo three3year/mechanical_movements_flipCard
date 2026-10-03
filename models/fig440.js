@@ -63,6 +63,7 @@ export default {
     { id: "waterLeft", kind: "fill", fluid: "water", size: [HALF - 0.4, 0.45, DEPTH - 0.08], level: 0 },
     { id: "waterRight", kind: "fill", fluid: "water", size: [HALF - 0.4, 0.45, DEPTH - 0.08], level: 0 },
   ],
+  powered: ["trough"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "來回", speed: 0.1 },
   target: "trough",
   view: { direction: [0.3, 0.35, 1] },

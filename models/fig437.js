@@ -62,6 +62,7 @@ export default {
     ...[0, 1, 2].map((k) => ({ id: `labelA${k}`, kind: "group", label: "a", labelOffset: [...polar(WHEEL - 0.3, START + deg(45) + (k * TAU) / 3).slice(0, 2), 0.4], pieces: [] })),
     ...[0, 1].map((k) => ({ id: `labelC${k}`, kind: "group", label: "c", labelOffset: [...polar(0.32, deg(-20) - k * deg(70)).slice(0, 2), 0.45], pieces: [] })),
   ],
+  powered: ["wheel"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.12 },
   target: "wheel",
   view: { direction: [0.03, 0.05, 1] },

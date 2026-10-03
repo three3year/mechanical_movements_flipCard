@@ -49,6 +49,7 @@ export default {
     { id: "plunger", kind: "cylinder", axis: [1, 0, 0], radius: 0.1, length: 1.2, arrow: false, label: "a", labelOffset: [-0.35, 0.25, 0.3] },
     { id: "lever", kind: "plate", shape: shape(thickLine([[0, 0], [0.2, 0.55]], 0.08)), thickness: 0.08, arrow: false, label: "D", labelOffset: [0.4, 0.75, 0.3], pieces: [{ kind: "sphere", radius: 0.3, at: [0.5, 0.75, 0] }] },
   ],
+  powered: ["pipe"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "管內溫度", mode: "balance", range: [0, 1], initial: 0.2, format: (t) => (t < 0.5 ? "水" : "蒸汽") },
   target: "plunger",
   view: { direction: [0.08, 0.1, 1] },

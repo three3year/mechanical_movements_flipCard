@@ -29,6 +29,7 @@ export default {
     { id: "ropeL", kind: "rope", radius: 0.015 },
     { id: "ropeR", kind: "rope", radius: 0.015 },
   ],
+  powered: ["bell"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "槽裡的氣量", mode: "balance", range: [0, 1], initial: 0.5, format: (g) => Math.round(g * 100) + "%" },
   target: "bell",
   view: { direction: [0.06, 0.08, 1] },

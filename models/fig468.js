@@ -95,6 +95,7 @@ export default {
     ...Array.from({ length: COUNT + 1 }, (_, k) => ({ id: `joint${k}`, kind: "group", arrow: false, pieces: [{ kind: "box", size: [0.3, 0.42, 0.6] }, { kind: "cylinder", radius: 0.05, length: 0.8 }] })),
     { id: "hawser", kind: "rope", radius: 0.025 },
   ],
+  powered: ["hawser"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "拖曳", mode: "balance", range: [0, 1], initial: 0.45, format: (u) => Math.round(u * 100) + "%" },
   target: "segment0", // 管頭(北端)那一節:被拖過河、順著河床起伏
   view: { direction: [0.1, 0.12, 1] },

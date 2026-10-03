@@ -40,6 +40,7 @@ export default {
     },
     { id: "bracket", kind: "box", center: [-1.0, -0.8, 0], size: [2.2, 0.12, 0.3] },
   ],
+  powered: ["ballL", "ballR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, 10], initial: 8.8 },
   target: "lever",
   view: { direction: [0.04, 0.06, 1] },

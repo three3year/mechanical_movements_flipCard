@@ -84,6 +84,7 @@ export default {
     { id: "rope", kind: "rope" },
     { id: "weight", kind: "box", size: [0.9, 0.6, 0.5] },
   ],
+  powered: ["weight"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.08 },
   target: "wheelG", // 上發條時照走的主輪
   view: { direction: [0.03, 0.04, 1] },

@@ -121,6 +121,7 @@ export default {
     { id: "hook", kind: "group", center: [0, 0, -0.1], pieces: hook() },
     { id: "rope", kind: "rope", radius: 0.02 },
   ],
+  powered: ["rope"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "拉繩", mode: "balance", range: [0, 1], initial: 0, format: (u) => Math.round(u * 100) + "%" },
   target: "tongue",
   view: { direction: [0.08, 0.06, 1] },

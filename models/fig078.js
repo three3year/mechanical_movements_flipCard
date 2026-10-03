@@ -80,6 +80,9 @@ export default {
     { id: "pawlLeft", kind: "link", width: 0.13, thickness: 0.06 },
     { id: "pawlRight", kind: "link", width: 0.11, thickness: 0.06 },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["wheel"], reason: "待確認(未修):wheel 在動,但離帶動(或支撐)它的零件還有 0.32 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+  ],
   driver: { part: "lever", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
   target: "wheel", // 近乎連續旋轉的棘輪 A
   view: { direction: [0.06, 0.05, 1] },

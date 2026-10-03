@@ -53,6 +53,7 @@ export default {
     { id: "rodH", kind: "link", width: 0.04, thickness: 0.03 },
     { id: "rodD", kind: "link", width: 0.04, thickness: 0.03 },
   ],
+  powered: ["cup"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "主管壓力", mode: "balance", range: RANGE, initial: 1.0 },
   target: "valve", // 節流的調節閥 D
   view: { direction: [0.06, 0.08, 1] },

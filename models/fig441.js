@@ -62,6 +62,7 @@ export default {
     ] })),
     ...Array.from({ length: FLOATS }, (_, i) => ({ id: `water${i}`, kind: "fill", fluid: "water", size: [0.24, 0.26, 0.24] })),
   ],
+  powered: ["wheel"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.1 },
   target: "wheel",
   view: { direction: [0.08, 0.06, 1] },

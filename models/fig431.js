@@ -57,6 +57,7 @@ export default {
     { id: "head", kind: "fill", fluid: "water", center: [-3.6, BED + 1.0, 0], size: [1.9, 2.0, DEPTH * 1.2], level: 0.62 },
     { id: "tail", kind: "fill", fluid: "water", center: [0.4, BED + 0.24, 0], size: [5.8, 0.48, DEPTH * 1.2], level: 1 },
   ],
+  powered: ["wheel"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.12 },
   target: "wheel",
   view: { direction: [0.06, 0.04, 1] },

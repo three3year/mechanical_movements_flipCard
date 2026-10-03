@@ -68,6 +68,7 @@ export default {
     { id: "pipe", ...steamPipe(CYL) },
     ...cylinderParts(CYL),
   ],
+  powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "flywheel", // 蒸汽最終帶動的軸(板 C 與飛輪);活塞桿 A 在輸入這一側,被導引得保持直立
   view: { direction: [0.03, 0.05, 1] },

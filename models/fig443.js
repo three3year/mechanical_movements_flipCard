@@ -80,6 +80,7 @@ export default {
     },
     { id: "river", kind: "fill", fluid: "water", center: [0.8, (RIVER - 2.25) / 2, 0], size: [5.4, RIVER + 2.25, 2.8], level: 1 },
   ],
+  powered: ["screw"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.15 },
   target: "screw",
   view: { direction: [0.35, 0.3, 1] },

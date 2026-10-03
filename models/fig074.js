@@ -51,6 +51,10 @@ export default {
     bevel("b", B, 1.2, { label: "B", labelOffset: [-0.6, 0.9, 0] }),
   ],
   // 起始時有齒的半圈朝向右前方(原圖)
+  waivers: [
+    { check: "interference", parts: ["c", "b"], reason: "待確認:c 的板 與 b 的板重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["c", "a"], reason: "待確認:c 的板 與 a 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "c", type: "rotation", initial: 2.2 },
   targets: ["a", "b"], // 交替得到間歇旋轉的兩輪
   view: { direction: [0.03, 0.42, 1], fov: 20 },

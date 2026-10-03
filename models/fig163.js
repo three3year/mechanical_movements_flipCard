@@ -69,6 +69,7 @@ export default {
     },
     { id: "belt", kind: "belt" },
   ],
+  powered: ["lowerPulley"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "shifter", // 調速器的輸出:把皮帶撥到不同輪上的撥叉(皮帶是路徑零件,不上目標色)
   states: {

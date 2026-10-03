@@ -41,6 +41,7 @@ export default {
     { id: "labelC", kind: "group", center: [-0.4, 0.4, 0], label: "c", labelOffset: [0.2, 0, 0.3] },
     { id: "labelD", kind: "group", center: [1.95, 0.3, 0], label: "d", labelOffset: [0.2, 0, 0.3] },
   ],
+  powered: ["weightW"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.08 },
   target: "pulleyP", // 一刻不失去動力的動力輪
   view: { direction: [0.03, 0.04, 1] },
