@@ -17,6 +17,14 @@ import fig497 from "../models/fig497.js";
 import * as m498 from "../models/fig498.js";
 import * as m499 from "../models/fig499.js";
 import * as m501 from "../models/fig501.js";
+import * as m495 from "../models/fig495.js";
+import * as m502 from "../models/fig502.js";
+import * as m503 from "../models/fig503.js";
+import * as m504 from "../models/fig504.js";
+import * as m505 from "../models/fig505.js";
+import * as m506 from "../models/fig506.js";
+import * as m507 from "../models/fig507.js";
+import { lastWheel, armOf } from "../models/epicyclic.js";
 
 const needle = (p) => fig500.pose(p).parts.needle.angle;
 
@@ -203,4 +211,61 @@ test("第 501 種:水銀氣壓計:長管腳的水銀柱由大氣壓力支撐,隨
   assert.ok(hi.long > lo.long, "氣壓高,長管腳的水銀柱升高");
   assert.ok(hi.short < lo.short, "短管腳的水銀面下降");
   close(hi.height - lo.height, 2 * m501.SCALE, "水銀柱高度差隨氣壓(英吋)成正比");
+});
+
+test("周轉輪系的 Willis 公式:臂不轉時就是定軸輪系;末輪與臂的關係可以互推", () => {
+  close(lastWheel(1, 0, -2), -2, "臂不動:末輪 = 輪系值 × 首輪");
+  close(armOf(1, lastWheel(1, 0.3, -2), -2), 0.3, "由兩端輪反推臂");
+  close(lastWheel(0.7, 0.7, 5), 0.7, "首輪與臂一起轉:整組像剛體");
+});
+
+test("第 495 種:Entwistle 齒輪:A 固定、三輪一樣大時,軸 D 每轉一圈,C 轉兩圈", () => {
+  close(m495.wheelC(2 * Math.PI), 4 * Math.PI, "D 一圈,C 兩圈");
+  close(m495.wheelC(-1), -2, "反轉亦然");
+});
+
+test("第 502 種:周轉輪系:A 固定時框架的轉動經 F、E 傳給 B;A 也轉時 B 的轉速不同;末輪也可以是與框架同心的 D", () => {
+  const fixed = m502.train(1, "bFixedA");
+  close(fixed.last, 1 + m502.E_AB * (0 - 1), "B = 框架 + e(A − 框架)");
+  const turning = m502.train(1, "bTurningA");
+  assert.notEqual(turning.last.toFixed(6), fixed.last.toFixed(6), "A 也轉時 B 的轉速不同");
+  const d = m502.train(1, "dFixedA");
+  assert.equal(d.which, "D");
+  close(m502.E_AB, (24 * 24) / (18 * 18), "輪系值 = (A/F)(E/B)");
+});
+
+test("第 503 種:簡單的傘齒輪周轉輪系:臂的轉動是兩個輪 C、D 的平均", () => {
+  close(m503.differential(1, "fixed").arm, 0.5, "D 固定:臂轉 C 的一半");
+  close(m503.differential(1, "opposite").arm, 0, "C、D 反向同速:臂不轉");
+  close(m503.differential(1, "same").arm, 1, "C、D 同向同速:臂跟著轉");
+});
+
+test("第 504 種:弗格森悖論:臂轉動時 F 不轉,E 朝一個方向慢慢轉,G 朝另一個方向慢慢轉", () => {
+  const turns = (x) => m504.trainToTurns(x);
+  close(turns("F"), 0, "F(20 齒,與 A 同)不轉,始終指向同一方向");
+  close(turns("E"), 1 / 21, "E(21 齒)與臂同向轉 1/21 圈");
+  close(turns("G"), -1 / 19, "G(19 齒)與臂反向轉 1/19 圈");
+  const p = m504.paradox(2 * Math.PI);
+  assert.ok(p.E > 0 && p.G < 0 && Math.abs(p.F) < 1e-9, "三個輪轉向各不相同");
+});
+
+test("第 505 種:臂帶著小齒輪 B 咬正齒輪 A 與內齒輪 C;固定其中一個,另一個就被帶動", () => {
+  const { A, C } = m505.TEETH;
+  close(m505.wheels(1, "C").A, 1 + C / A, "C 固定:A 轉 (1 + C/A) 倍");
+  close(m505.wheels(1, "A").C, 1 + A / C, "A 固定:C 轉 (1 + A/C) 倍");
+  assert.equal(m505.wheels(1, "C").C, 0);
+});
+
+test("第 506 種:兩端都不固定的周轉輪系:主動軸經 a、b 與 h、g 帶動兩端,臂得到合成的(很慢的)轉動;改接法時 f 得到合成轉動", () => {
+  const t = m506.train(1, "original");
+  close(t.arm, (t.c + t.f) / 2, "臂 = 兩端輪的平均(c、f 一樣大)");
+  assert.ok(Math.abs(t.arm) < 0.05, "兩端速度相近、方向相反,臂轉得很慢");
+  const m = m506.train(1, "modified");
+  close(m.arm, m.g, "改過的接法:臂跟著 g 轉");
+  close(m.f, 2 * m.g - m.c, "f 是合成的結果");
+});
+
+test("第 507 種:產生極慢運動的周轉輪系:照原文的齒數,C 每轉一圈,臂轉 25,000 圈", () => {
+  close(Math.abs(m507.slow(1).arm), 25000, "臂 / C = 25,000", 1e-6);
+  close(Math.abs(1 / m507.C_PER_ARM), 25000, "反過來,臂轉一圈 C 只轉 1/25,000 圈", 1e-6);
 });
