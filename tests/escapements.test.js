@@ -9,6 +9,13 @@ import * as m290 from "../models/fig290.js";
 import * as m292 from "../models/fig292.js";
 import * as m297 from "../models/fig297.js";
 import * as m299 from "../models/fig299.js";
+import * as m291 from "../models/fig291.js";
+import * as m293 from "../models/fig293.js";
+import fig294 from "../models/fig294.js";
+import fig295 from "../models/fig295.js";
+import * as cyl from "../models/cylinder-escapement.js";
+import * as m296 from "../models/fig296.js";
+import * as m298 from "../models/fig298.js";
 
 const half = (S) => 2 * S; // 擺一程的累計擺動量
 
@@ -50,4 +57,41 @@ test("第 297 種:燈籠輪擒縱:搖臂 A 上的叉瓦 B、C 輪流擋住銷", 
 test("第 299 種:老式時鐘擒縱(立軸):立軸每擺一次,冠狀輪轉過半個齒", () => {
   stepsPerSwing((v) => -m299.wheelAngle(v), m299.SWING, m299.PITCH / 2);
   assert.equal(m299.N % 2, 1, "齒數為奇數,前後兩側的齒錯開");
+});
+
+test("第 291 種:天文台計時器擒縱:擺輪往箭頭方向擺時凸柱壓過細彈簧,A 不動;擺回來時抬起 A 與擋止 d,放走一齒", () => {
+  const S = m291.SWING;
+  const fwd = sweep(2 * S, 100).map((v) => m291.chronometer(v));
+  assert.ok(fwd.every((c) => c.lift === 0 && c.wheel === 0), "往箭頭方向擺:A 不動、輪不動");
+  const back = sweep(4 * S, 100, 2 * S).map((v) => m291.chronometer(v));
+  assert.ok(back.some((c) => c.lift > 0), "擺回來時 A 被抬起");
+  close(m291.chronometer(4 * S).wheel, -m291.PITCH, "擺輪來回一次,擒縱輪轉過一齒", 1e-9);
+});
+
+test("第 293 種:雙合式擒縱:叉瓦 B 每次往一個方向擺時接收一個衝擊,輪每次放走一齒", () => {
+  const S = m293.SWING;
+  close(m293.duplex(2 * S).wheel, 0, "往一個方向擺時輪不動", 1e-12);
+  close(m293.duplex(4 * S).wheel, -m293.PITCH, "來回一次轉一齒", 1e-9);
+});
+
+test("第 294–295 種:圓筒式擒縱(同一機構的立體圖與放大圖):擺輪每擺一次,擒縱輪前進半個齒", () => {
+  for (const v of [0, 1.3, 5]) assert.deepEqual(fig294.pose(v).parts, fig295.pose(v).parts, "兩圖的姿勢一致");
+  assert.notDeepEqual(fig294.view.direction, fig295.view.direction, "初始視角不同");
+  stepsPerSwing((v) => -cyl.cylinder(v).wheel, cyl.SWING, cyl.PITCH / 2);
+});
+
+test("第 296 種:槓桿式擒縱:擺輪的銷在每次擺動的中途進入凹槽 E,撥動槓桿,叉瓦放走半個齒", () => {
+  const { WINDOW } = m296.geometry;
+  const S = m296.SWING;
+  const levers = sweep(2 * S, 200).map((v) => m296.lever(v));
+  const free = levers.filter((l) => Math.abs(l.balance) > WINDOW + 1e-9).map((l) => l.lever);
+  assert.ok(free.every((a) => Math.abs(Math.abs(a) - Math.abs(free[0])) < 1e-12), "銷不在凹槽時槓桿停在擋止上");
+  assert.ok(Math.sign(levers[0].lever) !== Math.sign(levers[levers.length - 1].lever), "擺過一次,槓桿換到另一邊");
+  stepsPerSwing((v) => -m296.lever(v).wheel, S, m296.PITCH / 2);
+});
+
+test("第 298 種:老式錶用擒縱(立軸):擺輪每擺一次,冠狀輪轉過半個齒,經小齒輪帶動左下的輪", () => {
+  stepsPerSwing((v) => m298.verge(v).crown, m298.SWING, m298.PITCH / 2);
+  const r = m298.verge(4 * m298.SWING);
+  close(r.contrate / r.crown, m298.PINION.teeth / m298.CONTRATE.teeth, "齒數比", 1e-12);
 });

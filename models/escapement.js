@@ -74,3 +74,13 @@ function ratchetWithHole(spec, hole) {
   const ring = Array.from({ length: n }, (_, i) => [hole * Math.cos((i / n) * 2 * Math.PI), hole * Math.sin((i / n) * 2 * Math.PI)]);
   return { outline: s.outline, holes: [ring.reverse()] };
 }
+
+/**
+ * 只在單一方向給衝擊的擒縱(天文台計時器、雙合式):擺輪每來回一次,擒縱輪轉過一齒;
+ * 轉動發生在回程(往 from 擺)的中段 [start, start + span](以一程的比例計)。回傳 { at, forward, f, turned }。
+ */
+export function singleBeat(v, from, to, step, start = 0.47, span = 0.2) {
+  const { at, cycle, forward, f } = swingPhase(v, from, to);
+  const turn = forward ? 0 : smooth((f - start) / span);
+  return { at, forward, f, turned: step * (cycle + turn) };
+}
