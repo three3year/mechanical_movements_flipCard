@@ -16,6 +16,13 @@ import fig295 from "../models/fig295.js";
 import * as cyl from "../models/cylinder-escapement.js";
 import * as m296 from "../models/fig296.js";
 import * as m298 from "../models/fig298.js";
+import fig300 from "../models/fig300.js";
+import fig301 from "../models/fig301.js";
+import * as twin from "../models/twin-wheel-escapement.js";
+import * as m302 from "../models/fig302.js";
+import * as m303 from "../models/fig303.js";
+import * as m304 from "../models/fig304.js";
+import * as m305 from "../models/fig305.js";
 
 const half = (S) => 2 * S; // 擺一程的累計擺動量
 
@@ -94,4 +101,28 @@ test("第 298 種:老式錶用擒縱(立軸):擺輪每擺一次,冠狀輪轉過�
   stepsPerSwing((v) => m298.verge(v).crown, m298.SWING, m298.PITCH / 2);
   const r = m298.verge(4 * m298.SWING);
   close(r.contrate / r.crown, m298.PINION.teeth / m298.CONTRATE.teeth, "齒數比", 1e-12);
+});
+
+test("第 300–301 種:同一機構的前視與側視圖;叉瓦交替地由兩個擒縱輪之一的齒作用,每擺一次輪轉過半個齒", () => {
+  for (const v of [0, 0.4, 2]) assert.deepEqual(fig300.pose(v).parts, fig301.pose(v).parts, "兩圖的姿勢一致");
+  assert.notDeepEqual(fig300.view.direction, fig301.view.direction, "初始視角不同");
+  stepsPerSwing((v) => twin.twin(v).wheel, twin.SWING, twin.PITCH / 2);
+});
+
+test("第 302 種:擺輪式擒縱:擺輪 C 來回擺,叉瓦 A、B 輪流放走擒縱輪 D 的齒", () => {
+  stepsPerSwing((v) => m302.balance(v).crown, m302.SWING, m302.PITCH / 2);
+});
+
+test("第 303 種:靜擊式擺鐘擒縱:叉瓦面與擺動軸同心,不會產生回退", () => {
+  const ws = sweep(4 * m303.SWING, 400).map((v) => m303.deadbeat(v).wheel);
+  assert.ok(ws.every((w, i) => i === 0 || w <= ws[i - 1] + 1e-12), "不回退");
+  stepsPerSwing((v) => -m303.deadbeat(v).wheel, m303.SWING, m303.PITCH / 2);
+});
+
+test("第 304 種:銷輪式擒縱:兩個叉瓦夾著銷,擺每擺一次輪轉過半個銷距", () => {
+  stepsPerSwing((v) => -m304.pinWheel(v).wheel, m304.SWING, m304.PITCH / 2);
+});
+
+test("第 305 種:單銷式擒縱:擺每擺動一次,擒縱輪(帶一根偏心銷的小圓盤)旋轉半圈", () => {
+  stepsPerSwing((v) => m305.singlePin(v).disc, m305.SWING, Math.PI);
 });
