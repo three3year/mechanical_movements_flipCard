@@ -8,6 +8,19 @@ import * as m194 from "../models/fig194.js";
 import * as m197 from "../models/fig197.js";
 import * as m198 from "../models/fig198.js";
 import * as m199 from "../models/fig199.js";
+import * as m191 from "../models/fig191.js";
+import * as m196 from "../models/fig196.js";
+import * as m201 from "../models/fig201.js";
+import * as m203 from "../models/fig203.js";
+import * as m221 from "../models/fig221.js";
+import * as m222 from "../models/fig222.js";
+import { dist } from "../models/kit.js";
+
+/** 等間隔取樣的序列:相鄰差的最大 / 最小(絕對值),量「速度變化多大」 */
+function spread(values) {
+  const d = values.slice(1).map((v, i) => Math.abs(v - values[i])).filter((x) => x > 1e-9);
+  return Math.max(...d) / Math.min(...d);
+}
 
 /** 小齒輪等速轉一個週期時,輪的轉速(|d輪 / d小齒輪|)序列,以及輪轉角的往返 */
 function wheelRates(m) {
@@ -93,4 +106,68 @@ test("第 199 種:燈籠式小齒輪連續旋轉,框架往復;與一側齒條嚙
     }
   }
   assert.ok(RL > 0);
+});
+
+test("第 191 種:渦形齒輪,從動輪逐漸加速", () => {
+  const { R0, R1, D, MAX } = m191.geometry;
+  const us = sweep(MAX, 300);
+  const ratios = us.map((u) => m191.scroll(u).ratio);
+  for (let i = 1; i < ratios.length; i++) assert.ok(ratios[i] > ratios[i - 1], "轉速比一直增加");
+  close(ratios[0], R0 / R1, "起初較慢", 0.02);
+  assert.ok(ratios[ratios.length - 1] > 1.3, "最後比主動輪快");
+  for (const u of us) close(m191.scroll(u).r1 + m191.scroll(u).r2, D, "兩接觸半徑之和 = 中心距", 1e-9);
+  // 純滾動:下輪轉角對上輪的導數 = r1 / r2
+  const u = 2;
+  close((m191.scroll(u + 1e-5).lower - m191.scroll(u - 1e-5).lower) / 2e-5, m191.scroll(u).ratio, "滾動", 1e-4);
+});
+
+test("第 196 種:小齒輪 B 等速轉,承載輪 A 的搖臂不規則地擺動,A 一直與 B 咬合", () => {
+  const states = sweep(40, 800).map((a) => m196.swing(a));
+  const arms = states.map((s) => s.arm);
+  assert.ok(Math.max(...arms) - Math.min(...arms) > 0.1, "搖臂擺動");
+  assert.ok(spread(arms) > 3, "擺動不規則(時快時慢)");
+  const { r, RB } = m196.radii;
+  for (const s of states.slice(0, 50)) assert.ok(dist(s.center, [0, 0, 0]) > RB + 0.6, "A 在 B 上方");
+});
+
+test("第 201 種:小齒輪(由不規則齒輪帶動)使水平臂變速擺動、桿 A 變速往復", () => {
+  const rods = sweep(-2 * Math.PI, 600).map((a) => m201.motion(a).rodA);
+  assert.ok(Math.max(...rods) - Math.min(...rods) > 0.3, "桿 A 往復");
+  close(rods[0], rods[rods.length - 1], "不規則齒輪轉一圈回到原處", 1e-3);
+  assert.ok(spread(rods) > 3, "變速");
+  const pinions = sweep(-2 * Math.PI, 600).map((a) => m201.motion(a).pinion);
+  for (let i = 1; i < pinions.length; i++) assert.ok(pinions[i] > pinions[i - 1], "小齒輪連續朝同一方向轉");
+});
+
+test("第 203 種:曲面開槽臂規則地擺動,直臂得到變速的擺動", () => {
+  const [from, to] = m203.range;
+  const straight = sweep(to, 200, from).map((a) => m203.arms(a).straight);
+  const unwrap = straight.map((v) => (v < 0 ? v + 2 * Math.PI : v));
+  assert.ok(spread(unwrap) > 2, "等速擺動的開槽臂,直臂時快時慢");
+  for (const a of sweep(to, 50, from)) {
+    const { s, length } = m203.arms(a);
+    assert.ok(s > 0.2 && s < length - 0.2, "銷一直在槽內");
+  }
+});
+
+test("第 221 種:橢圓輪 C 帶動小齒輪,框架上下起伏讓小齒輪保持咬合;輪 A 得到不規則的轉動", () => {
+  const { r, rb, LINK, A } = m221.geometry;
+  const thetas = sweep(-2 * Math.PI, 600);
+  const states = thetas.map((t) => m221.train(t));
+  for (const s of states) {
+    close(dist(s.center, A), LINK, "框架長度不變", 1e-4);
+    close(dist(s.center, [0, 0, 0]), s.contact, "小齒輪與 C 的中心距 = 接觸半徑 + 小齒輪半徑", 1e-3);
+  }
+  assert.ok(spread(states.map((s) => s.a)) > 3, "A 的轉動不規則");
+  assert.ok(r(0) !== r(Math.PI) && rb > 0);
+});
+
+test("第 222 種:偏心轉動的普通正齒輪,以連桿維持節距;輪 A 同樣得到不規則的轉動", () => {
+  const { A: rA, B: rB, C: rC } = m222.radii;
+  const states = sweep(2 * Math.PI, 600).map((t) => m222.train(t));
+  for (const s of states) {
+    close(dist(s.b, [-1.8, 2.2, 0]), rA + rB, "框架", 1e-6);
+    close(dist(s.b, s.cc), rB + rC, "連桿維持 B 與 C 的節距", 1e-6);
+  }
+  assert.ok(spread(states.map((s) => s.thetaA)) > 1.5, "A 的轉動不規則");
 });
