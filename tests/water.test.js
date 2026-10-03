@@ -39,6 +39,12 @@ import * as m459 from "../models/fig459.js";
 import * as m460 from "../models/fig460.js";
 import * as m461 from "../models/fig461.js";
 import * as m465 from "../models/fig465.js";
+import * as m463 from "../models/fig463.js";
+import * as m464 from "../models/fig464.js";
+import * as m466 from "../models/fig466.js";
+import * as m467 from "../models/fig467.js";
+import * as m468 from "../models/fig468.js";
+import * as m469 from "../models/fig469.js";
 
 test("第 430 種:上射式水車,進程增加時水車依原圖箭頭順時針轉", () => {
   const a = fig430.pose(0.1).parts.wheel.angle;
@@ -459,4 +465,62 @@ test("第 465 種:平衡泵:樑兩端交替往下,兩個泵的活塞一上一下
   assert.equal(def.pose(0.1).readouts[0].value, "右邊的泵", "樑往一邊轉時右邊的泵出水");
   const span = m465.SWING[1] - m465.SWING[0];
   assert.equal(def.pose(span + 0.1).readouts[0].value, "左邊的泵", "轉回來時換左邊");
+});
+
+test("第 463 種:自動堰:平常水位時直立關閉;水位升高時上閘葉朝下游翻、下閘葉被推往上游,河床處打開", () => {
+  const normal = m463.gates(m463.NORMAL);
+  close(normal.upper, 0, "平常水位:上閘葉直立");
+  close(normal.lower, 0, "平常水位:下閘葉直立");
+  assert.ok(!normal.open);
+  const flood = m463.gates(m463.NORMAL + 0.6);
+  assert.ok(flood.upper < 0, "上閘葉順時針(朝下游)翻");
+  assert.ok(flood.lower > 0, "下閘葉逆時針(朝上游)被推回");
+  assert.ok(flood.open, "河床處打開");
+  const pts = m463.default.pose(m463.NORMAL + 0.6).flows.flatMap((f) => f.points);
+  assert.ok(pts.some((p) => p[1] < 0.4 && Math.abs(p[0]) < 0.3), "水從河床的通道流過(沖走沉積物)");
+});
+
+test("第 464 種:希羅噴泉:水從上方降到下方容器,壓縮的空氣把中間容器的水從中央管噴出", () => {
+  const a = m464.fountain(0.1);
+  const b = m464.fountain(0.6);
+  assert.ok(b.low > a.low, "下方容器的水越來越多");
+  assert.ok(b.mid < a.mid, "中間容器的水被推出去");
+  assert.ok(a.jet > 0 && b.jet > 0, "中央管一直噴水");
+  assert.ok(b.jet < a.jet, "水位差變小,水柱稍降");
+});
+
+test("第 466 種:液壓機:力的倍數等於兩柱塞的直徑平方比;1 吋與 30 吋是 900 倍", () => {
+  close((30 / 1) ** 2, 900, "原文的例子");
+  const def = m466.default;
+  assert.match(def.pose(0).readouts[0].value, new RegExp(String(Math.round((m466.RAM_D / m466.PLUNGER_D) ** 2))));
+  // 泵每壓一次,柱塞升起一點;只有壓下的行程送水
+  const span = Math.abs(m466.SWING[1] - m466.SWING[0]);
+  const rises = [0, 2, 4, 6].map((k) => m466.press(k * span + 0.01).rise);
+  for (let i = 1; i < rises.length; i++) assert.ok(rises[i] > rises[i - 1], "每壓一下,柱塞升高");
+  assert.equal(m466.press(span * 0.5).rise, 0, "提起泵柱塞(吸水)時柱塞不動");
+});
+
+test("第 467 種:液壓千斤頂:壓手柄把圓筒沿固定的柱塞抬起;開閥時水流回、慢慢放下", () => {
+  const span = Math.abs(m467.SWING[1] - m467.SWING[0]);
+  const lifts = [0, 2, 4].map((k) => m467.jack(k * span + span * 0.9, "lift").rise);
+  assert.ok(lifts[2] > lifts[1] && lifts[1] > lifts[0], "壓越多下,升得越高");
+  const r = [0, 1, 3].map((v) => m467.jack(v, "release").rise);
+  assert.ok(r[0] > r[1] && r[1] > r[2], "開閥後慢慢降下");
+});
+
+test("第 468 種:撓性輸水管:各節以鉸鏈相連,拖過河時順著河床的起伏", () => {
+  for (const u of sweep(1, 10)) {
+    const pts = m468.joints(u);
+    for (let k = 1; k < pts.length; k++) close(Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]), m468.SEGMENT, "每節長度不變", 1e-6);
+    for (const p of pts) close(p[1] - m468.bed(p[0]), 0.19, "鉸點都貼著河床", 1e-6);
+  }
+  assert.ok(m468.joints(1)[0][0] > m468.joints(0)[0][0] + 6, "管頭從南岸被拖到北岸");
+});
+
+test("第 469 種:溫差引擎:水車經齒輪帶動螺旋;空氣經管子越過頂上,從輪下方冒出", () => {
+  close(m469.screwAngle(1), -3, "螺旋與水車以齒輪相連(反向,3 : 1)");
+  const pose = m469.default.pose(0.5);
+  assert.equal(pose.flows[0].fluid, "air", "以空氣示意");
+  assert.ok(pose.flows[0].points.some((p) => p[1] > 2.0), "空氣越過頂上的管子");
+  assert.equal(pose.readouts[0].value, "原文未說明");
 });
