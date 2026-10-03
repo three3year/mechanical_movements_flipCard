@@ -18,6 +18,14 @@ import * as m267 from "../models/fig267.js";
 import * as m270 from "../models/fig270.js";
 import { sweep } from "./helpers.js";
 import * as m247 from "../models/fig247.js";
+import * as m260 from "../models/fig260.js";
+import * as m261 from "../models/fig261.js";
+import fig262 from "../models/fig262.js";
+import fig263 from "../models/fig263.js";
+import * as cone from "../models/cone-roller.js";
+import * as m264 from "../models/fig264.js";
+import * as m266 from "../models/fig266.js";
+import { meshAngle } from "../models/gears.js";
 import * as m244 from "../models/fig244.js";
 import * as m246 from "../models/fig246.js";
 import * as m252 from "../models/fig252.js";
@@ -213,4 +221,65 @@ test("第 273 種:當桿 A 和 B 被拉近時,桿 C 和 D 會被進一步推開,
   const [lo, hi] = m273.RANGE;
   assert.ok(m273.spread(lo) > m273.spread(hi), "A、B 拉近時 C、D 推開");
   for (const w of sweep(hi, 10, lo)) close(Math.hypot(w, m273.spread(w)), m273.SIDE, "四根桿長度不變");
+});
+
+test("第 260 種:兩輪 D、E 轉速相同時螺桿不動;轉速不同時,螺桿依兩者的速度差移動", () => {
+  const { F, D, B, E, PITCH } = m260;
+  const turns = 3;
+  const a = turns * 2 * Math.PI;
+  const { d, e, shift } = m260.differential(a);
+  const diff = (d - meshAngle(F, D, 0) - (e - meshAngle(B, E, 0))) / (2 * Math.PI);
+  close(shift, PITCH * diff, "每差一圈移動一個螺距", 1e-9);
+  assert.ok(Math.abs(shift) > 0.05, "兩輪轉速不同,螺桿移動");
+  assert.notEqual(F.teeth / D.teeth, B.teeth / E.teeth, "兩組齒數比不同");
+});
+
+test("第 261 種:圓盤 B 轉動時重物 W 上下往復,下行程比上行程短(鼓輪持續把繩捲上來)", () => {
+  const ys = sweep(m261.RANGE[1], 800).map((t) => m261.weight(t).yW);
+  const strokes = [];
+  let dir = Math.sign(ys[1] - ys[0]);
+  let start = ys[0];
+  for (let i = 1; i < ys.length; i++) {
+    const d = Math.sign(ys[i] - ys[i - 1]);
+    if (d && d !== dir) {
+      strokes.push(ys[i - 1] - start);
+      start = ys[i - 1];
+      dir = d;
+    }
+  }
+  const downs = strokes.filter((s) => s < 0).map(Math.abs);
+  const ups = strokes.filter((s) => s > 0);
+  assert.ok(downs.length && ups.length, "上下往復");
+  assert.ok(Math.max(...downs) < Math.max(...ups), "下行程比上行程短");
+  assert.ok(m261.weight(m261.RANGE[1]).yW > m261.weight(0).yW, "每轉一圈淨上升");
+});
+
+test("第 262–263 種:同一機構的前視圖與側視圖;錐體偏心地轉,滾子 C 往復,朝某一方向的運動比另一方向短", () => {
+  for (const v of [0, 3, 9]) assert.deepEqual(fig262.pose(v).parts, fig263.pose(v).parts, "兩圖的零件姿勢一致");
+  assert.notDeepEqual(fig262.view.direction, fig263.view.direction, "初始視角不同");
+  const tops = sweep(cone.RANGE[1], 800).map((t) => cone.cone(t).top);
+  let up = 0;
+  let down = 0;
+  for (let i = 1; i < tops.length; i++) {
+    const d = tops[i] - tops[i - 1];
+    if (d > 0) up += d;
+    else down -= d;
+  }
+  assert.ok(up > 0.5 && down > 0.5, "滾子上下往復");
+  assert.ok(Math.abs(up - down) > 0.1, "兩個方向的行程不等");
+  close(cone.cone(2 * Math.PI).cx - cone.cone(0).cx, cone.PITCH, "螺桿每轉一圈前進一個螺距");
+});
+
+test("第 264 種:100 齒與 101 齒的蝸輪,在蝸桿 10,100 次旋轉期間,一個輪比另一個多轉一圈", () => {
+  const [a, b] = m264.wheels(10100 * 2 * Math.PI);
+  close(Math.abs(a - b), 2 * Math.PI, "多轉一圈", 1e-6);
+  const [a1, b1] = m264.wheels(2 * Math.PI);
+  close(Math.abs(a1) * 100, 2 * Math.PI, "蝸桿一圈,100 齒輪轉一齒");
+  close(Math.abs(b1) * 101, 2 * Math.PI, "蝸桿一圈,101 齒輪轉一齒");
+});
+
+test("第 266 種:軸的旋轉使可動軸承直線移動,每旋轉一圈移動的距離等於兩螺距之差", () => {
+  const one = m266.feed(2 * Math.PI);
+  close(one.bearing - m266.feed(0).bearing, m266.P1 - m266.P2, "每圈 = 兩螺距之差");
+  close(one.shaft, m266.P1, "軸每圈穿過固定軸承前進一個螺距");
 });
