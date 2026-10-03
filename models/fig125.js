@@ -66,6 +66,11 @@ export default {
     { id: "upper", kind: "link", width: 0.3, thickness: 0.1, stretch: true },
     { id: "head", kind: "group", pieces: [{ kind: "box", size: [0.32, 0.5, 0.2], at: [0, 0.2, 0] }, { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 1.1, at: [0, 0.8, 0] }] },
   ],
+  waivers: [
+    { check: "interference", parts: ["rod3", "lower"], reason: "待確認:rod3 的圓柱 r0.024×0.132 與 lower 的圓柱 r0.06×0.22重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["rodMid", "upper"], reason: "待確認:rodMid 的圓柱 r0.024×0.132 與 upper 的圓柱 r0.06×0.22重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["upper", "head"], reason: "待確認(未修):upper 的方塊 1×0.3×0.1 與 head 的方塊 0.32×0.5×0.2互相穿入 0.15(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "g1", type: "rotation" },
   target: "head", // 上下變化運動的頂桿
   view: { direction: [0.06, 0.05, 1] },

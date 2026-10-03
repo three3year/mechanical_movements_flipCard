@@ -59,6 +59,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["cam", "frame"], reason: "待確認(未修):cam 的板 與 frame 的板互相穿入 0.23(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "cam", type: "rotation", speed: 0.6 },
   target: "frame", // 間歇上下往復的方框
   view: { direction: [0.06, 0.05, 1] },

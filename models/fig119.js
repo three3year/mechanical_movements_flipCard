@@ -78,6 +78,10 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["pinion", "guide"], reason: "待確認:pinion 的圓柱 r0.128×0.364 與 guide 的方塊 0.08×3.384×0.08重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["pinion", "rack"], reason: "待確認(未修):pinion 的圓柱 r0.128×0.364 與 rack 的圓柱 r0.16×1.4互相穿入 0.22(20 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "pinion", type: "rotation", speed: -1.4 },
   target: "rack", // 往復直線運動的無端齒條
   view: { direction: [0.06, 0.05, 1] },

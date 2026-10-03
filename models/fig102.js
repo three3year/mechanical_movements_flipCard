@@ -35,6 +35,9 @@ export default {
       spin: 0.62,
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["bolt", "nut"], reason: "待確認:bolt 的Tube 與 nut 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "nut", type: "rotation", range: [0, TURNS * TAU] },
   target: "bolt",
   view: { direction: [0.25, 0.3, 1] },

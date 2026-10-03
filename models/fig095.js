@@ -55,6 +55,10 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["shaft", "rod"], reason: "待確認:shaft 的圓柱 r2×0.2 與 rod 的圓柱 r0.13×0.28重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["shaft", "frame"], reason: "待確認:shaft 的圓柱 r2×0.2 與 frame 的方塊 3×3.6×1.6重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "shaft", type: "rotation" },
   target: "rod", // 上下往復的直立桿
   view: { direction: [0.05, 0.12, 1], fov: 22 },

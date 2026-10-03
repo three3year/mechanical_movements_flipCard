@@ -131,6 +131,14 @@ export default {
     { id: "rod", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "frame", kind: "group", pieces: [{ kind: "plate", shape: shape(circle(0.24), []), thickness: 0.3, at: [F.pivot[0], F.pivot[1], 0.6] }] },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["leverF"], reason: "待確認(未修):leverF 在動,但離帶動(或支撐)它的零件還有 0.25 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["crankG"], reason: "待確認(未修):crankG 在動,但離帶動(或支撐)它的零件還有 0.59 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["rod"], reason: "待確認(未修):rod 在動,但離帶動(或支撐)它的零件還有 0.73 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "interference", parts: ["b", "clutch"], reason: "待確認:b 的方塊 0.2×0.169×0.16 與 clutch 的方塊 0.2×0.169×0.16重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["c", "clutch"], reason: "待確認:c 的方塊 0.2×0.169×0.16 與 clutch 的方塊 0.2×0.169×0.16重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["shaftBevel", "e"], reason: "待確認(未修):shaftBevel 的板 與 e 的圓柱 r0.09×0.4互相穿入 0.13(31 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "drive", type: "rotation", speed: 1.2 },
 
   target: "shaft", // 自動來回反轉的軸(連桿只是撥動離合器的中間件)

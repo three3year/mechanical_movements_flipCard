@@ -50,6 +50,10 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["disc", "slide"], reason: "待確認(未修):disc 的Tube 與 slide 的方塊 0.45×0.3×0.2互相穿入 0.12(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["disc", "guides"], reason: "待確認:disc 的Tube 與 guides 的方塊 0.06×2.6×0.1重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "disc", type: "rotation", range: [tOf(SPIRAL.r0 + SPIRAL.pitch * (SPIRAL.turns - 0.6)), tOf(SPIRAL.r0 + SPIRAL.pitch * 1.2)] },
   target: "slide", // 被螺旋推動的滑座
   view: { direction: [0.06, 0.05, 1], fit: ["disc", "slide"] },

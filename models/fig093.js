@@ -24,7 +24,7 @@ export default {
       spin: R + 0.3,
       pieces: [
         { kind: "plate", shape: shape(circle(R + 0.35), [circle(0.15).reverse()]), thickness: 0.1, circles: [0.32] },
-        { kind: "cylinder", radius: 0.2, length: 0.75, at: [R * Math.cos(START), R * Math.sin(START), 0.35], accent: true },
+        { kind: "cylinder", radius: 0.3, length: 0.75, at: [R * Math.cos(START), R * Math.sin(START), 0.35], accent: true },
         { kind: "cylinder", radius: 0.15, length: 0.6, at: [0, 0, -0.3] },
       ],
     },

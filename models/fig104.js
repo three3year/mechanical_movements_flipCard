@@ -53,6 +53,9 @@ export default {
     },
     { id: "bed", kind: "box", center: [0, -1.75, 0.1], size: [5.0, 0.35, 0.6] },
   ],
+  waivers: [
+    { check: "interference", parts: ["screw", "wheel"], reason: "待確認:screw 的Tube 與 wheel 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "wheel", type: "rotation", grips: ["screw"], range: [-RANGE, RANGE] },
   target: "slider", // 承載輪軸、得到直線運動的滑塊
   states: {

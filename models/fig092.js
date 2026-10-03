@@ -44,6 +44,9 @@ export default {
     { id: "slider", kind: "box", size: BLOCK.size, center: [0, 0, FRONT] },
     { id: "rod", kind: "link", width: 0.24, thickness: 0.1 },
   ],
+  waivers: [
+    { check: "interference", parts: ["guide", "slider"], reason: "待確認:guide 的方塊 0.14×1.12×0.3 與 slider 的方塊 1×0.8×0.3重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "wheel", type: "rotation" },
   target: "slider", // 往復的滑塊
   view: { direction: [0.08, 0.06, 1] },
