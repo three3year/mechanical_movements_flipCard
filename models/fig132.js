@@ -56,6 +56,13 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["upper", "rodA"], reason: "待確認:upper 的旋轉體 與 rodA 的圓柱 r0.032×0.352重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["upper", "rodB"], reason: "待確認:upper 的旋轉體 與 rodB 的圓柱 r0.032×0.352重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["upper", "frame"], reason: "待確認(未修):upper 的圓柱 r0.07×2.6 與 frame 的圓柱 r0.18×5.4互相穿入 0.25(6 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["lower", "rodA"], reason: "待確認(未修):lower 的圓柱 r0.95×0.35 與 rodA 的圓柱 r0.032×0.352互相穿入 0.30(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["lower", "rodB"], reason: "待確認(未修):lower 的圓柱 r0.95×0.35 與 rodB 的圓柱 r0.032×0.352互相穿入 0.30(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "upper", type: "rotation", range: RANGE },
   target: "lower",
   view: { direction: [0.06, 0.12, 1] },

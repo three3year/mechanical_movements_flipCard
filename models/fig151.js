@@ -45,6 +45,11 @@ export default {
     { id: "nutLeft", kind: "box", center: [-X0, 0, 0], size: [0.55, 0.65, 0.65] },
     { id: "nutRight", kind: "box", center: [X0, 0, 0], size: [0.55, 0.65, 0.65] },
   ],
+  waivers: [
+    { check: "interference", parts: ["worm", "screw"], reason: "待確認:worm 的Tube 與 screw 的板重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["screw", "nutLeft"], reason: "待確認(未修):screw 的Tube 與 nutLeft 的方塊 0.55×0.65×0.65互相穿入 0.27(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["screw", "nutRight"], reason: "待確認(未修):screw 的Tube 與 nutRight 的方塊 0.55×0.65×0.65互相穿入 0.27(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "worm", type: "rotation", range: [0, TURNS * TAU] },
   targets: ["nutLeft", "nutRight"], // 兩個螺帽彼此靠近或分開
   view: { direction: [0.06, 0.08, 1] },

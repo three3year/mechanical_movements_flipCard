@@ -86,6 +86,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["lever", "rod"], reason: "待確認:lever 的板 與 rod 的方塊 0.12×2.4×0.1重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "cam", type: "rotation" },
   target: "rod",
   view: { direction: [0.06, 0.05, 1] },

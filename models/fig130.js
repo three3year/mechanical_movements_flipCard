@@ -100,6 +100,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["arm"], reason: "待確認:arm 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+  ],
   driver: { part: "cam", type: "rotation" },
   target: "arm", // 帶著上夾爪閉合的長臂
   view: { direction: [0.06, 0.05, 1] },

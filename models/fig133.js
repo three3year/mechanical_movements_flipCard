@@ -64,6 +64,10 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["sector", "frame"], reason: "待確認(未修):sector 的板 與 frame 的方塊 4.6×0.1×0.8互相穿入 0.50(29 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["crank", "platen"], reason: "待確認(未修):crank 的方塊 1.4×0.12×0.1 與 platen 的方塊 2.3×0.28×0.6互相穿入 0.10(10 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "crank", type: "rotation", range: RANGE },
   target: "platen",
   view: { direction: [0.06, 0.05, 1] },

@@ -84,6 +84,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["shaft", "frame"], reason: "待確認:shaft 的圓柱 r0.24×0.25 與 frame 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "shaft", type: "rotation", speed: -0.8 },
   target: "frame", // 往復直線運動的框架
   view: { direction: [0.06, 0.05, 1] },

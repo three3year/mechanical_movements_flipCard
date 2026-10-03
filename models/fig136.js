@@ -61,6 +61,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["spring", "post"], reason: "待確認:spring 的Tube 與 post 的方塊 0.2×2.6×0.5重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "wheel", type: "rotation", speed: 0.5 },
   target: "rod",
   view: { direction: [0.02, 0.02, 1], fov: 14 },

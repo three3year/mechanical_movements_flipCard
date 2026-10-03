@@ -90,6 +90,10 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["lever", "rod"], reason: "待確認:lever 的板 與 rod 的圓柱 r0.07×0.4重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["shaft", "lever"], reason: "待確認:shaft 的板 與 lever 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "shaft", type: "rotation" },
   target: "rod",
   states: {

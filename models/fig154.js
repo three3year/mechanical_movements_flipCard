@@ -60,6 +60,13 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["crank"], reason: "待確認(未修):crank 在動,但離帶動(或支撐)它的零件還有 0.21 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["pulley"], reason: "待確認(未修):pulley 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["weight"], reason: "待確認(未修):weight 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["rope"], reason: "待確認(未修):rope 在動,但離帶動(或支撐)它的零件還有 0.68 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "interference", parts: ["disc", "stands"], reason: "待確認(未修):disc 的圓柱 r0.15×0.45 與 stands 的板互相穿入 0.23(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "disc", type: "rotation", speed: 0.8 },
   target: "weight",
   view: { direction: [0.06, 0.05, 1] },

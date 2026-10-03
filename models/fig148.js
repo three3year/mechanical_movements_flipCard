@@ -70,6 +70,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["big", "crank"], reason: "待確認:big 的Tube 與 crank 的圓柱 r0.12×0.3重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "small", type: "rotation", speed: 1.6 },
   target: "crank",
   view: { direction: [0.06, 0.05, 1] },

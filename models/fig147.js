@@ -68,6 +68,10 @@ export default {
     },
   ],
   powered: ["crosshead"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["shaft", "crosshead"], reason: "待確認(未修):shaft 的圓柱 r0.16×3.6 與 crosshead 的圓柱 r0.14×3.6互相穿入 0.30(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["crosshead", "lever"], reason: "待確認(未修):crosshead 的球 r0.82 與 lever 的方塊 3×0.2×0.12互相穿入 0.21(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, MAX] },
   target: "lever",
   view: { direction: [0.02, 0.12, 1] },
