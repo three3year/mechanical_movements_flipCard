@@ -18,6 +18,9 @@ import * as m235 from "../models/fig235.js";
 import * as m236 from "../models/fig236.js";
 import * as m237 from "../models/fig237.js";
 import * as m238 from "../models/fig238.js";
+import * as m239 from "../models/fig239.js";
+import * as m241 from "../models/fig241.js";
+import * as m242 from "../models/fig242.js";
 
 const PIN_PERIOD = (2 * Math.PI) / 16;
 
@@ -179,4 +182,25 @@ test("第 238 種:叉瓦架往復擺動,叉瓦 B、C 輪流放走擒縱輪 D:每
   const span = 2 * (10 * Math.PI) / 180;
   close(m238.wheelAngle(span) - m238.wheelAngle(0), PITCH / 2, "一程半齒", 1e-9);
   assert.ok(monotone(sweep(4 * span, 200).map(m238.wheelAngle), 1), "逆時針、只朝一個方向");
+});
+
+test("第 239 種:正齒輪的擋止爪:爪尖一直靠在齒面上,齒轉過時被頂起、再落進下一個齒間", () => {
+  const { PITCH, TIP, ROOT } = m239.geometry;
+  const rs = sweep(2 * PITCH, 200).map((t) => m239.pawlTip("left", t).r);
+  close(Math.max(...rs), TIP, "被齒頂起到齒頂", 1e-6);
+  close(Math.min(...rs), ROOT, "落進齒間", 1e-6);
+});
+
+test("第 241 種:單齒小輪每轉一圈,輪 A 轉一格,其餘時間不動", () => {
+  close(m241.wheelA(2 * Math.PI) - m241.wheelA(0), -m241.step, "一圈一格", 1e-12);
+  const still = sweep(2 * Math.PI, 360).map(m241.wheelA);
+  assert.ok(still.slice(1).filter((w, i) => w === still[i]).length > 200, "大半時間不動");
+});
+
+test("第 242 種:拉下槓桿,煞車帶的兩端被拉向彼此,帶收緊在煞車輪上", () => {
+  const [lo, hi] = m242.range;
+  assert.ok(m242.brake(hi).gap > 0.05, "放開時有間隙");
+  close(m242.brake(lo).gap, 0, "拉到底時收緊", 1e-3);
+  const gaps = sweep(lo, 40, hi).map((p) => m242.brake(p).gap);
+  for (let i = 1; i < gaps.length; i++) assert.ok(gaps[i] <= gaps[i - 1] + 1e-9, "越拉越緊");
 });
