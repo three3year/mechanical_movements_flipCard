@@ -41,6 +41,7 @@ export default {
     },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
+  target: "bob", // 被推著走圓的擺錘
   view: { direction: [0.05, 0.15, 1] },
   pose(p) {
     const { spindle, bob } = conical(p);

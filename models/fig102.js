@@ -36,6 +36,7 @@ export default {
     },
   ],
   driver: { part: "nut", type: "rotation", range: [0, TURNS * TAU] },
+  target: "bolt",
   view: { direction: [0.25, 0.3, 1] },
   pose(angle) {
     return { parts: { nut: { position: [0, nutHeight(angle), 0], angle } }, readouts: [] };

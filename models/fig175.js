@@ -61,6 +61,7 @@ export default {
     { id: "slider", kind: "cylinder", radius: 0.12, length: 0.4 },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "slider",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { pin, end, angle } = stroke(theta);

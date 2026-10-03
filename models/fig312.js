@@ -49,6 +49,7 @@ export default {
     { id: "labelF", kind: "group", center: [0.15, 0.7, 0], label: "F", labelOffset: [0.3, 0, 0.3] },
   ],
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const b = bloxam(v);

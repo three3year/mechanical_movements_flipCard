@@ -68,6 +68,7 @@ export default {
     },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
+  target: "gateShaft",
   states: {
     options: [
       { id: "slow", label: "過慢" },

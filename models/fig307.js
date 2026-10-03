@@ -63,6 +63,7 @@ export default {
     { id: "labelE", kind: "group", center: [1.75, 0.1, 0.3], label: "E", labelOffset: [0.15, 0.3, 0] },
   ],
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 三腳輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const t = threeLeg(v);

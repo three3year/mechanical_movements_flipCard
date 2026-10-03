@@ -6,10 +6,11 @@ import { shape, rect, thickLine } from "./shapes.js";
 
 const SLANT = deg(27); // 臂與鉛直線的夾角
 const T = Math.tan(SLANT);
-const ROLL = 0.4; // 滾子半徑
+export const ROLL = 0.4; // 滾子半徑
 const Y = 1.55; // 溝槽(滾子中心)的高度
 const X0 = 0.62; // D 在中間位置時滾子離中線的距離
-export const RANGE = [-0.6, 0.6];
+// D 往下的極限:兩滾子互相碰到(原圖畫的就是兩滾子相切的位置)就不能再往下,否則滾子互相穿透。
+export const RANGE = [-(X0 - ROLL - 0.01) / T, 0.6];
 const ARM_TOP = 1.85; // D 在中間位置時臂頂的高度
 const ARM_BOTTOM = -1.4;
 
@@ -77,6 +78,7 @@ export default {
     },
   ],
   driver: { part: "partD", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 0 },
+  targets: ["rollerA", "rollerB"], // 要被推開拉攏的兩個滾子
   view: { direction: [0.05, 0.05, 1] },
   pose(v) {
     const { a, b } = rollers(v);

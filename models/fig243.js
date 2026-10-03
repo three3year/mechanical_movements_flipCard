@@ -63,6 +63,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "main", type: "rotation" },
+  targets: ["left", "right"], // 兩根垂直軸的皮帶筒
   view: { direction: [0.05, 0.22, 1] },
   pose(angle) {
     const t = turns(angle);

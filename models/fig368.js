@@ -72,6 +72,7 @@ export default {
     { id: "helix", kind: "trace" },
   ],
   driver: { part: "spur", type: "rotation", range: RANGE, initial: 0, speed: -1.2 },
+  target: "cylinder", // 被畫上螺旋線的圓筒
   view: { direction: [0.25, 0.15, 1] },
   pose(a0) {
     const a = clamp(a0, ...RANGE);

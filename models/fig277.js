@@ -67,6 +67,7 @@ export default {
     { id: "frame", kind: "box", center: [BACK + 0.12, 0.3, -0.35], size: [0.2, 3.0, 0.2] },
   ],
   driver: { part: "hammer", type: "rotation", cycle: [0, COCK] },
+  target: "cylinder", // 每扳一次轉一格的轉輪
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const { hammer: h, cylinder, pin } = colt(v);

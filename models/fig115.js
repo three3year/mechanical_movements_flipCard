@@ -40,6 +40,7 @@ export default {
     },
   ],
   driver: { part: "upper", type: "rotation", range: [-1.8, 1.8] },
+  target: "frame", // 直線移動的雙齒條框架
   view: { direction: [0.06, 0.05, 1] },
   pose(angle) {
     const { x, lower } = drive(angle);

@@ -58,6 +58,7 @@ export default {
     { id: "tail", kind: "fill", fluid: "water", center: [0.4, BED + 0.24, 0], size: [5.8, 0.48, DEPTH * 1.2], level: 1 },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.12 },
+  target: "wheel",
   view: { direction: [0.06, 0.04, 1] },
   pose(progress) {
     return {

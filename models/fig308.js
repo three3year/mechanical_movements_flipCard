@@ -76,6 +76,7 @@ export default {
     { id: "labelP2", kind: "group", center: [2.7, -1.2, 0], label: "P", labelOffset: [0.4, 0, 0.3] },
   ],
   driver: { part: "pendulum", type: "translation", direction: [1, 0, 0], cycle: [-TRAVEL, TRAVEL] },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const d = detached(v);

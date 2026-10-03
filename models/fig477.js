@@ -56,6 +56,7 @@ export default {
     { id: "valve", kind: "lathe", axis: Y, profile: [[0, 0.12], [0.62, 0.12], [0.66, 0.0], [0.6, -0.12], [0.3, -0.2], [0, -0.22]], label: "D", labelOffset: [0, 0, 0.8], arrow: false },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
+  target: "valve",
   view: { direction: [0.08, 0.12, 1] },
   pose(v) {
     const t = trap(v);

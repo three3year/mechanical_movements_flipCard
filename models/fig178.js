@@ -71,6 +71,7 @@ export default {
     { id: "guide", kind: "box", center: [-5.8, SLIDE_Y - 0.25, 0.3], size: [6.2, 0.1, 0.3] },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "slide",
   view: { direction: [0.06, 0.05, 1], fit: ["disc", "crank"] },
   pose(theta) {
     const { block, slide } = slotting(theta);

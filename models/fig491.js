@@ -60,6 +60,7 @@ export default {
     { id: "rope", kind: "rope", radius: 0.04 },
   ],
   driver: { part: "capstan", type: "rotation", speed: 0.4 },
+  target: "rope", // 被收進的纜繩
   view: { direction: [0.25, 0.3, 1] },
   pose(theta) {
     const c = capstan(theta);

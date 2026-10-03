@@ -56,6 +56,7 @@ export default {
     { id: "rope", kind: "rope" },
   ],
   driver: { part: "drum", type: "rotation", range: RANGE, initial: 0 },
+  target: "weight", // 被吊起的重物
   view: { direction: [0.06, 0.06, 1] },
   pose(theta0) {
     const theta = clamp(theta0, ...RANGE);

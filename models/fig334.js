@@ -44,6 +44,7 @@ export default {
     { id: "labelD", kind: "group", center: [F[0] - 1.25, F[1] + 0.25, 0], label: "D", labelOffset: [0.25, 0.25, 0.3] },
   ],
   driver: { part: "beam", grips: ["sectorC"], type: "rotation", range: RANGE, initial: 0 },
+  target: "rackB", // 直上直下的活塞桿
   view: { direction: [0.03, 0.05, 1] },
   pose(psi0) {
     const { psi, offset } = rack(psi0);

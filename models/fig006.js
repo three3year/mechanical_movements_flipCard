@@ -23,6 +23,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "lever", type: "rotation", range: RANGE },
+  targets: ["left", "right"], // 得到往復旋轉的兩個皮帶輪
   pose(value) {
     const angle = clamp(value, ...RANGE);
     const travel = beltTravel(angle, SECTOR, 1);

@@ -57,6 +57,7 @@ export default {
     { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.2, 1.6, 0.16], at: [0, -0.8, 0] }] },
   ],
   driver: { part: "disc", type: "rotation", speed: 1.2 },
+  target: "guide",
   view: { direction: [0.06, 0.05, 1] },
   pose(phi) {
     const { center, spin, pin, y } = traverse(phi);

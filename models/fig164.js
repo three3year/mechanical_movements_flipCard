@@ -59,6 +59,7 @@ export default {
     },
   ],
   driver: { part: "lever", type: "rotation", range: RANGE },
+  target: "block",
   view: { direction: [0.06, 0.05, 1] },
   pose(psi) {
     const { k, y } = knee(psi);

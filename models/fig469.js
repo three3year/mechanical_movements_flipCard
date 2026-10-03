@@ -66,6 +66,7 @@ export default {
     },
   ],
   driver: { part: "wheel", type: "rotation", speed: 0.6 },
+  target: "screw",
   view: { direction: [0.08, 0.08, 1] },
   pose(theta) {
     const travel = theta * 0.8;

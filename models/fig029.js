@@ -49,6 +49,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation" },
+  target: "gear", // 每圈轉過一齒的正齒輪
   view: { direction: [0.08, 0.08, 1] },
   pose(angle) {
     return { parts: { disc: { angle }, gear: { angle: gearAngle(angle) } }, readouts: [] };

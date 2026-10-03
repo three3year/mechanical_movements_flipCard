@@ -80,6 +80,7 @@ export default {
     },
   ],
   driver: { part: "rock", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
+  target: "wheel", // 近乎連續旋轉的棘輪 D
   view: { direction: [0.05, 0.12, 1], fov: 22 },
   pose(v) {
     const psi = swingAt(v, -SWING / 2, SWING / 2);

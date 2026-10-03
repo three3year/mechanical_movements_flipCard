@@ -64,6 +64,7 @@ export default {
     },
   ],
   driver: { part: "lever", type: "rotation", range: RANGE },
+  target: "punch",
   view: { direction: [0.06, 0.05, 1] },
   pose(psi) {
     const { e, k, y } = toggle(psi);

@@ -38,6 +38,7 @@ export default {
     { id: "labelH", kind: "group", center: [-0.4, -0.62, 0], label: "H", labelOffset: [0, 0, 0.3] },
   ],
   driver: { part: "frame", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheelD", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     return { parts: { frame: { angle: swing(v, -SWING, SWING) }, wheelD: { angle: wheelAngle(v) } }, readouts: [] };

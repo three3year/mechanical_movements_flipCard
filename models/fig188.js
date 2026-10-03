@@ -65,6 +65,7 @@ export default {
     },
   ],
   driver: { part: "handle", type: "rotation", range: [-MAX, 0] },
+  target: "rod",
   view: { direction: [0.06, 0.05, 1] },
   pose(phi) {
     const { lift, released } = unhook(phi);

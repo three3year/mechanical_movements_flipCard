@@ -48,6 +48,7 @@ export default {
     { id: "labelC", kind: "group", center: [P[0] - 0.35, P[1] - 1.85, 0.5], label: "C", labelOffset: [-0.2, -0.35, 0] },
   ],
   driver: { part: "armA", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 燈籠輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     return { parts: { armA: { angle: swing(v, -SWING, SWING) }, wheel: { angle: wheelAngle(v) } }, readouts: [] };

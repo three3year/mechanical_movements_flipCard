@@ -5,8 +5,11 @@
 // 活塞下降時撥爪由上往下壓上方手柄(上軸逆時針轉)回到原處、再被卡住,下方手柄被放開、落回原處。
 // 兩根軸各帶一支閥臂:上軸管上蒸汽閥與下排氣閥,下軸管下蒸汽閥與上排氣閥(原文)。
 // 推斷:手柄以直線臂表示,撥爪頂在臂與活塞桿右緣(x = ROD.right)的交點上;
-// 臂的端點離開活塞桿的路徑時剛好被卡住,被放開的手柄在撥爪再走 SNAP 的行程內甩到位。
-import { deg, smooth, swingPhase } from "./kit.js";
+// 臂的端點離開活塞桿的路徑時剛好被卡住。被放開的手柄是靠配重(上方)、自重(下方)甩到位的,
+// 甩動的過程演出來(jumps.falling:起步慢、越來越快、到底停住),佔撥爪再走 SNAP 的行程;
+// 上方手柄在撥爪到頂時(第 182 種的位置)剛好甩到位,下方手柄甩到位時撥爪還在往下走、沒碰到它。
+import { deg, swingPhase } from "./kit.js";
+import { falling } from "./jumps.js";
 
 export const ROD = { left: -1.35, right: -0.9 };
 export const TAPPET = { half: 0.15 }; // 撥爪的半高
@@ -19,7 +22,7 @@ export const ANGLES = {
   lower: { A: deg(150), B: Math.PI - Math.acos(DX / HANDLE) },
   upper: { A: Math.PI + Math.acos(DX / HANDLE), B: deg(216.9) },
 };
-const SNAP = 0.12;
+const SNAP = 0.5; // 手柄甩到位所佔的撥爪行程:上方手柄放開時撥爪離頂端剛好 0.5,到頂時甩到位
 
 /** 手柄臂(從軸沿 angle)與活塞桿右緣的交點高度;臂搆不到(或端點剛好停在桿緣上)時為 null */
 export function crossing(shaft, angle) {
@@ -46,11 +49,11 @@ export function cornish(v) {
   let upper;
   if (rising) {
     lower = Math.min(ANGLES.lower.A, Math.max(ANGLES.lower.B, lowerAt(y + TAPPET.half)));
-    const s = smooth(Math.max(0, Math.min(1, (y - LATCH_UP) / SNAP)));
+    const s = falling((y - LATCH_UP) / SNAP);
     upper = ANGLES.upper.A + (ANGLES.upper.B - ANGLES.upper.A) * s;
   } else {
     upper = Math.max(ANGLES.upper.B, Math.min(ANGLES.upper.A, upperAt(y - TAPPET.half)));
-    const s = smooth(Math.max(0, Math.min(1, (LATCH_DOWN - y) / SNAP)));
+    const s = falling((LATCH_DOWN - y) / SNAP);
     lower = ANGLES.lower.B + (ANGLES.lower.A - ANGLES.lower.B) * s;
   }
   const latch = (ANGLES.upper.A - upper) / (ANGLES.upper.A - ANGLES.upper.B);

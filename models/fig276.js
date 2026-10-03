@@ -43,6 +43,7 @@ export default {
     roller("rollerL"),
   ],
   driver: { part: "cam", type: "rotation" },
+  target: "rod", // 往復的桿
   view: { direction: [0.04, 0.05, 1] },
   pose(theta) {
     const { right, left, x } = follower(theta);

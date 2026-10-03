@@ -1,13 +1,15 @@
 // 第 85 種:軸上有兩個凸輪(推板),連續旋轉時頂起桿 A 上的凸塊 B,把桿抬起;推板滑脫後桿憑自重落下。
 // 用於礦石搗碎機與錘子。軸每轉一圈,桿被抬起兩次。主動件是凸輪軸(順時針)。
+// 落下的過程演出來:推板滑脫後桿從靜止起步、越來越快地落下、到底停住(jumps.falling),佔半圈的 14%
+// (約 0.44 弧度;推斷:原文只說「憑其自身重量下落」,落下期間下一片推板尚未碰到凸塊)。
 import { TAU, deg, polar } from "./kit.js";
 import { shape, circle, arcPoints } from "./shapes.js";
-import { liftAndDrop, cycleOf } from "./jumps.js";
+import { liftAndDrop, cycleOf, falling } from "./jumps.js";
 
 const CAM = { center: [0.42, 0.55, 0], hub: 0.28, tip: 0.82 };
 const ROD = { x: -0.45, bottom: -2.6, top: 1.9, radius: 0.12 };
 const RISE = 0.5;
-const PHASE = { liftFrom: 0.05, liftTo: 0.7, dropTo: 0.76 };
+const PHASE = { liftFrom: 0.05, liftTo: 0.7, dropTo: 0.84, fall: falling };
 
 /** 凸輪軸順時針轉 c:桿 A 抬起的高度 */
 export function rodLift(c) {
@@ -56,7 +58,8 @@ export default {
       ],
     },
   ],
-  driver: { part: "cam", type: "rotation", speed: -1.0 },
+  driver: { part: "cam", type: "rotation", speed: -1.0 },
+  target: "rod",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const h = rodLift(-v);

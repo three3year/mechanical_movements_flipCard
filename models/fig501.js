@@ -55,6 +55,7 @@ export default {
     { id: "bendMercury", kind: "fill", fluid: "mercury", center: [0, BEND_Y - LONG_X / 2 - 0.02, 0], size: [2 * LONG_X + 2 * BORE - 0.04, LONG_X + BORE, 0.06], level: 1 },
   ],
   driver: { type: "virtual", label: "大氣壓力", mode: "balance", range: RANGE, initial: 29.9, format: (h) => `${h.toFixed(1)} 吋` },
+  target: "longMercury", // 標刻度的長管腳裡的水銀柱
   view: { direction: [0.03, 0.05, 1] },
   pose(h) {
     const c = columns(h);

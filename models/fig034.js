@@ -13,6 +13,7 @@ export default {
     { id: "ring", kind: "gear", internal: true, center: RING.center, teeth: RING.teeth, radius: RING.radius, rim: RING.radius * 1.12, width: 0.2 },
   ],
   driver: { part: "pinion", type: "rotation" },
+  target: "ring", // 同向被帶動的內齒輪
   view: { direction: [0.12, 0.1, 1] },
   pose(angle) {
     return {

@@ -78,6 +78,7 @@ export default {
     },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.15 },
+  target: "plug",
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const a = plugAngle(p);

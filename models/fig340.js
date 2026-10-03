@@ -38,6 +38,7 @@ export default {
     { id: "rodD", kind: "box", size: [0.08, 2.0, 0.08], label: "D", labelOffset: [-0.3, 0.9, 0.3] },
   ],
   driver: { part: "beam", grips: ["pillar"], type: "rotation", range: RANGE, initial: 0 },
+  target: "pistonRod", // 直上直下的活塞桿
   view: { direction: [0.03, 0.05, 1] },
   pose(phi0) {
     const b = beam(phi0);

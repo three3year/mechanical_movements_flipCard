@@ -30,6 +30,7 @@ export default {
     },
   ],
   driver: { part: "pinion", type: "rotation", range: [-2.6, 2.6] },
+  target: "rack", // 直線移動的齒條
   view: { direction: [0.06, 0.06, 1] },
   pose(angle) {
     return { parts: { pinion: { angle }, rack: { position: [rackX(angle), 0, 0] } }, readouts: [] };

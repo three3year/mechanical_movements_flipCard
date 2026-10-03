@@ -68,6 +68,7 @@ export default {
     { id: "treadle", kind: "link", width: 0.12, thickness: 0.06 },
   ],
   driver: { part: "bigGear", type: "rotation" },
+  target: "spindle", // 旋轉並被壓下的鑽桿
   states: {
     initial: "up",
     options: [

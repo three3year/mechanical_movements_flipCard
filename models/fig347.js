@@ -56,6 +56,7 @@ export default {
     { id: "rod", kind: "link", width: 0.14, thickness: 0.14 },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
+  target: "crank", // 輸出的曲柄
   view: { direction: [0.08, 0.1, 1] },
   pose(p) {
     const d = disk(p);

@@ -61,6 +61,7 @@ export default {
     },
   ],
   driver: { part: "shaft", type: "rotation", speed: 6 },
+  target: "carriage",
   view: { direction: [0.06, 0.07, 1] },
   pose(theta) {
     const { wheel, x, wrist } = traverse(theta);

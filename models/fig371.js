@@ -58,6 +58,7 @@ export default {
     { id: "bearing", kind: "box", size: [0.35, 0.35, 0.9], center: [-R - 1.0, 0, 0] },
   ],
   driver: { part: "pinion", type: "rotation" },
+  target: "wheel", // 交替換向的大輪
   view: { direction: [0.12, 0.08, 1] },
   pose(theta) {
     const m = mangle(theta);

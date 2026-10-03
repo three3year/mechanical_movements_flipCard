@@ -65,15 +65,28 @@ test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓�
 });
 
 test("第 351 種:衝壓機:缺齒小齒輪把桿抬起,直到齒脫離齒條,讓桿落下", () => {
-  const lifts = sweep(-4 * Math.PI, 400).map((t) => m351.stamp(t).lift);
+  const thetas = sweep(-4 * Math.PI, 1440);
+  const stamps = thetas.map((t) => m351.stamp(t));
   let drops = 0;
-  for (let i = 1; i < lifts.length; i++) {
-    const d = lifts[i] - lifts[i - 1];
-    if (d < -1) drops++;
-    else assert.ok(d >= -1e-9, "抬起時只往上");
+  let longest = 0;
+  let run = 0;
+  for (let i = 1; i < stamps.length; i++) {
+    const d = stamps[i].lift - stamps[i - 1].lift;
+    if (stamps[i].engaged) assert.ok(d >= -1e-9, "齒咬著齒條時桿只往上");
+    if (d < -1e-9) {
+      if (run === 0) drops++;
+      run++;
+      longest = Math.max(longest, run);
+    } else run = 0;
   }
   assert.equal(drops, 2, "每轉一圈落下一次");
-  close(Math.max(...lifts), m351.geometry.LEN * m351.geometry.R, "抬起的高度 = 有齒段的節圓弧長", 0.05);
+  assert.ok(longest >= 20, "落下是一段過程(佔小齒輪好幾度),不是瞬移");
+  close(Math.max(...stamps.map((s) => s.lift)), m351.TOP, "抬起的高度 = 齒托著齒條滾過的節圓弧長", 0.01);
+  assert.ok(m351.TOP > m351.geometry.LEN * m351.geometry.R, "最後一齒過了接觸點還托著桿往上,直到齒尖退出齒條");
+  // 齒尖退出齒條的齒頂線才放手:齒頂半徑 cos(EXIT) = 齒條齒頂線離軸心的距離
+  const { R } = m351.geometry;
+  const m = (2 * R) / 14;
+  close((R + m) * Math.cos(m351.EXIT), R - m, "放手時齒尖正好在齒條的齒頂線上");
 });
 
 test("第 352 種:中式絞盤的另一種配置:轉一圈,重物上升兩段圓周差的一半", () => {

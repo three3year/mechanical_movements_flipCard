@@ -62,6 +62,7 @@ export default {
     }),
   ],
   driver: { part: "beam", type: "rotation", cycle: SWING },
+  targets: ["rod0", "rod1"],
   view: { direction: [0.12, 0.1, 1] },
   pose(v) {
     const { at, forward } = stroke(v, ...SWING);

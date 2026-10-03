@@ -66,6 +66,7 @@ export default {
     },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.2 },
+  target: "shaft",
   view: { direction: [0.2, 0.35, 1] },
   pose(progress) {
     // 噴口朝 -z(右臂)噴水,反作用力把右臂推向 +z:繞 +y 為負

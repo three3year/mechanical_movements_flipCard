@@ -87,6 +87,7 @@ export default {
     ...Array.from({ length: BUCKETS }, (_, i) => ({ id: `water${i}`, kind: "fill", fluid: "water", size: [0.32, 0.3, DEPTH * 0.8] })),
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.12 },
+  target: "wheel",
   view: { direction: [0.06, 0.04, 1] },
   pose(progress) {
     const wheel = -TAU * progress; // 順時針

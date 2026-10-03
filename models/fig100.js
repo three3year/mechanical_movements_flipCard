@@ -46,6 +46,7 @@ export default {
     { id: "pivot", kind: "cylinder", center: PIVOT, radius: 0.2, length: 0.45 },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "lever", // 慢去快回的開槽桿
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { lever } = quickReturn(theta);

@@ -79,6 +79,28 @@ export function swingUntilContact({ pivot, outline, from, into, sweep = 1.2, ste
   return from + into * sweep;
 }
 
+/** 點到多邊形邊界的距離 */
+export function edgeDistance(p, poly) {
+  let best = Infinity;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+    best = Math.min(best, Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy));
+  }
+  return best;
+}
+
+/** 兩個多邊形互相穿入的深度:一個的頂點伸進另一個裡面多深(最大值;0 = 沒穿)。簡化的梯形齒咬合時齒頂會互相擦到約 0.001 */
+export function penetrationDepth(a, b) {
+  let depth = 0;
+  for (const p of a) if (pointInPolygon(p, b)) depth = Math.max(depth, edgeDistance(p, b));
+  for (const p of b) if (pointInPolygon(p, a)) depth = Math.max(depth, edgeDistance(p, a));
+  return depth;
+}
+
 /** 圓(銷、滾子)近似成多邊形 */
 export const circlePolygon = (center, r, n = 14) =>
   Array.from({ length: n }, (_, i) => [center[0] + r * Math.cos((i / n) * Math.PI * 2), center[1] + r * Math.sin((i / n) * Math.PI * 2)]);

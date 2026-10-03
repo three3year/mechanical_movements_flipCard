@@ -64,6 +64,7 @@ export default {
     { id: "labelB", kind: "group", center: [-0.45, STAFF_Y - 0.3, -R], label: "B", labelOffset: [-0.2, 0, 0.3] },
   ],
   driver: { part: "balanceC", type: "rotation", cycle: [-SWING, SWING] },
+  target: "crownD", // 冠狀輪(擒縱輪)
   view: { direction: [0.08, 0.15, 1] },
   pose(v) {
     const b = balance(v);

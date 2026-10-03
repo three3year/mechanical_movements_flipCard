@@ -73,6 +73,7 @@ export default {
     { id: "base", kind: "box", center: [-1.9, -1.15, 0], size: [1.6, 0.12, 0.8] },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "spindle",
   states: {
     options: [
       { id: "forward", label: "前進" },

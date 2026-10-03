@@ -39,6 +39,7 @@ export default {
     { id: "labelK", kind: "group", center: AXIS, label: "K", labelOffset: [1.35, -0.3, 0.3] },
   ],
   driver: { part: "anchor", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheelA", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const psi = swing(v, -SWING, SWING);

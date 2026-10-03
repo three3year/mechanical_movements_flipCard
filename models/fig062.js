@@ -44,6 +44,7 @@ export default {
     { id: "beltRight", kind: "belt" },
   ],
   driver: { part: "top", type: "rotation" },
+  target: "shaft", // 得到差動變速的軸
   states: {
     options: [
       { id: "open", label: "右皮帶開口(同向,相減)" },

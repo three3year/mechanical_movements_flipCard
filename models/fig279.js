@@ -63,6 +63,7 @@ export default {
     },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "crosshead", // 往復的十字頭
   view: { direction: [0.04, 0.05, 1] },
   pose(theta) {
     const { pin, x } = crosshead(theta);

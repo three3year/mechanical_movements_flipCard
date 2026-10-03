@@ -37,6 +37,7 @@ export default {
   figure: 45,
   parts: [roller("top", TOP.radius, TOP.radius, 0), roller("bottom", BOTTOM.radius, -BOTTOM.radius, 1)],
   driver: { part: "top", type: "rotation" },
+  target: "bottom", // 靠溝面摩擦被帶動的輪
   view: { direction: [0.04, 0.03, 1], fov: 14 },
   pose(angle) {
     return { parts: { top: { angle }, bottom: { angle: (-angle * TOP.radius) / BOTTOM.radius } }, readouts: [] };

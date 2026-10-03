@@ -53,6 +53,7 @@ export default {
     { id: "pawl", kind: "plate", shape: hook, thickness: 0.12, arrow: false },
   ],
   driver: { part: "arm", type: "rotation", cycle: [FROM, TO] },
+  target: "star",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const { arm, star, yieldAngle } = motion(v);

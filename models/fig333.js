@@ -42,6 +42,7 @@ export default {
     { id: "pointP", kind: "sphere", radius: 0.1 },
   ],
   driver: { part: "beam", type: "rotation", range: RANGE, initial: 0 },
+  target: "pointP", // 走近似直線的點
   view: { direction: [0.03, 0.05, 1] },
   pose(psi0) {
     const psi = clamp(psi0, ...RANGE);

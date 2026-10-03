@@ -47,6 +47,7 @@ export default {
     { id: "rack", kind: "rack", teeth: 15, pitch: RACK.pitch, width: 0.22, depth: 0.18 },
   ],
   driver: { part: "pinion", type: "rotation", range: RANGE, initial: 0 },
+  target: "rack", // 帶動活塞的齒條
   view: { direction: [0.04, 0.06, 1] },
   pose(a) {
     const s = rack(a);

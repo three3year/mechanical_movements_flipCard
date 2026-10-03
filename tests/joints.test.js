@@ -167,7 +167,12 @@ test("第 251 種:重物被抬到夠高時,鉤 A 的上端被框架 B 的槽兩�
   close(low.weight, 0.5, "重物跟著鉤上升");
   const top = m251.hook(H);
   assert.ok(top.open > 0.2, "到頂時鉤爪張開");
-  close(top.weight, 0, "重物落回樁頭", 1e-9);
+  assert.ok(!top.hold && top.weight < m251.RELEASE, "到頂時重物已被突然釋放、正在落下");
+  // 以累積的力量落到樁頭上:落下越來越快,落到底停住
+  const heights = sweep(m251.DROP, 20).map((s) => m251.hook(m251.RELEASE + s).weight);
+  for (let i = 1; i < heights.length; i++) assert.ok(heights[i] < heights[i - 1], "落下途中一路往下");
+  assert.ok(heights[0] - heights[10] < heights[10] - heights[20], "後半段落得比前半段多(加速)");
+  close(m251.hook(m251.RELEASE + m251.DROP).weight, 0, "重物落到樁頭", 1e-9);
   close(m251.hook(1.5 * H).weight, 0, "鉤往下放時重物留在樁頭上");
 });
 
@@ -227,11 +232,13 @@ test("第 246 種:縮放圖器:以描摹點 B 描畫平面圖,鉛筆 A 畫出兩
 
 test("第 252 種:把部件 D 上下移動,滾子 A 和 B 在溝槽 C 內以相同幅度、相反方向來回移動", () => {
   const rest = m252.rollers(0);
-  for (const v of sweep(0.6, 6, -0.6)) {
+  for (const v of sweep(m252.RANGE[1], 6, m252.RANGE[0])) {
     const { a, b } = m252.rollers(v);
     close(a - rest.a, -(b - rest.b), "相同幅度、相反方向");
+    assert.ok(b - a >= 2 * m252.ROLL - 1e-9, "兩滾子不互相穿透");
   }
   assert.ok(m252.rollers(0.5).b > rest.b, "D 往上時兩滾子分開");
+  assert.ok(m252.rollers(m252.RANGE[0]).b - m252.rollers(m252.RANGE[0]).a < 2 * m252.ROLL + 0.05, "D 到最下面時兩滾子互相靠到");
 });
 
 test("第 273 種:當桿 A 和 B 被拉近時,桿 C 和 D 會被進一步推開,反之亦然", () => {

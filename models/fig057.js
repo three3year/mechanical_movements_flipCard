@@ -1,7 +1,9 @@
 // 第 57 種:頂部的小皮帶輪為驅動端。開口皮帶帶動內側有齒的大齒輪(繞在它的外緣),
 // 交叉皮帶帶動同心的小齒輪(繞在它的輪轂),兩者因而反向轉;底部的中間小齒輪同時與兩者咬合,
 // 既繞自己的中心轉,也繞兩個同心齒輪的共同中心公轉。
-import { Z, routeBelt, beltTravel, wheelAngle } from "./kit.js";
+// 行星的自轉角在「行星架座標」裡算:架上看,小齒輪與行星是定軸外咬合(meshAngle),再加上架的轉角;
+// 若直接拿行星當下的位置去 meshAngle,咬合相位的整數齒距會隨公轉跳動(每轉幾度就跳一齒,看起來像瞬移)。
+import { Z, polar, routeBelt, beltTravel, wheelAngle } from "./kit.js";
 import { meshAngle } from "./gears.js";
 
 const M = 0.075;
@@ -26,6 +28,7 @@ const crossBelt = routeBelt([
 ]);
 
 const START = -Math.PI / 2; // 原圖:中間小齒輪在下方
+const PLANET_HOME = { center: polar(ORBIT, START), teeth: NP, radius: RP }; // 行星在行星架座標裡的位置(固定)
 
 /** 頂輪轉 angle 時:大齒輪、小齒輪(同心)、行星的公轉角與自轉角 */
 export function train(angle) {
@@ -35,13 +38,11 @@ export function train(angle) {
   // 周轉輪系:行星架轉速 = (N環·ω環 + N日·ω日) ÷ (N環 + N日)
   const carrier = START + (RING.teeth * ring + SUN.teeth * sun) / (RING.teeth + SUN.teeth);
   const center = [ORBIT * Math.cos(carrier), ORBIT * Math.sin(carrier), 0];
-  const planet = meshAngle(SUN, { center, teeth: NP, radius: RP }, sun);
-  // meshAngle 只在 2π 內正確:以周轉輪系的關係取連續的值
-  const smooth = (carrier - START) - ((SUN.teeth / NP) * (sun - (carrier - START)));
-  const planetAngle = planet + 2 * Math.PI * Math.round((smooth + PLANET0 - planet) / (2 * Math.PI));
-  return { ring, sun, carrier, center, planet: planetAngle };
+  // 行星架座標裡小齒輪轉了 sun − 架角,行星依定軸咬合跟著轉;回到世界座標再加上架角(連續,相位不跳)
+  const swung = carrier - START;
+  const planet = swung + meshAngle(SUN, PLANET_HOME, sun - swung);
+  return { ring, sun, carrier, center, planet };
 }
-const PLANET0 = meshAngle(SUN, { center: [ORBIT * Math.cos(START), ORBIT * Math.sin(START), 0], teeth: NP, radius: RP }, 0);
 
 export const teeth = { ring: RING.teeth, sun: SUN.teeth, planet: NP };
 
@@ -82,7 +83,8 @@ export default {
     { id: "openBelt", kind: "belt" },
     { id: "crossBelt", kind: "belt" },
   ],
-  driver: { part: "top", type: "rotation" },
+  driver: { part: "top", type: "rotation" },
+  target: "planet",
   view: { direction: [0.1, 0.06, 1] },
   pose(angle) {
     const { ring, sun, center, planet } = train(angle);

@@ -30,15 +30,15 @@ const aRaw = (s) => {
   return g - (BIG.radius / A.radius) * (s.pinion - g);
 };
 
-/** C 轉 theta(逆時針為正;原文中 C 以固定方向轉):小齒輪軸心、小齒輪與 A 的轉角(相對原圖) */
+/** C 轉 theta(逆時針為正;原文中 C 以固定方向轉):小齒輪軸心、小齒輪與 A 的轉角(相對原圖)、與 C 的接觸點 */
 export function train(theta) {
   const s = mesh.byGear(theta);
-  return { center: s.center, pinion: s.pinion - S0.pinion, a: aRaw(s) - aRaw(S0), contact: r(s.phi) + b.radius };
+  return { center: s.center, pinion: s.pinion - S0.pinion, a: aRaw(s) - aRaw(S0), contact: s.contact, phi: s.phi };
 }
 export const geometry = { r, rb: b.radius, rBig: BIG.radius, rA: A.radius, LINK, A: A.center };
 
 // 原圖的齒相位:C 在接觸點是一齒的中心,小齒輪 b 以齒槽對著它;大齒輪 B 與 A 依咬合排好
-const B_PHASE = S0.beta + Math.PI + Math.PI / b.teeth;
+const B_PHASE = S0.gamma + Math.PI / b.teeth;
 const A_PHASE = meshAngle({ ...BIG, center: S0.center, axis: Z }, { ...A, axis: Z }, B_PHASE);
 const outline = noncircularOutline(r, { teeth: NC, addendum: PITCH / Math.PI, dedendum: (1.2 * PITCH) / Math.PI, start: arcAt(r, S0.phi) });
 // 溝槽 g、h:小齒輪軸心相對 C 的路線(節曲線往外偏 rb)
@@ -77,6 +77,7 @@ export default {
     { id: "pivotD", kind: "group", label: "D", labelOffset: [-0.3, 0, 0.3], pieces: [{ kind: "cylinder", radius: 0.1, length: 0.7 }] },
   ],
   driver: { part: "gearC", type: "rotation" },
+  target: "gearA",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const t = train(theta);

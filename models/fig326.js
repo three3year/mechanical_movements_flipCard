@@ -40,6 +40,7 @@ export default {
     { id: "sliderA", kind: "box", size: [0.3, 0.5, 0.36], label: "A", labelOffset: [-0.45, 0, 0.3], pieces: [{ kind: "box", size: [0.08, 3.0, 0.08], at: [0, -1.7, 0] }] },
   ],
   driver: { part: "flywheel", type: "rotation" },
+  target: "sliderA", // 被導引走直線的滑塊
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const { pin, y } = slider(theta);

@@ -34,6 +34,7 @@ export default {
     { id: "board", kind: "box", size: [BOARD_L, 0.18, 0.7] },
   ],
   driver: { part: "top", type: "rotation", range: RANGE, initial: 0 },
+  target: "board", // 被送進的木板
   view: { direction: [0.03, 0.05, 1] },
   pose(a) {
     const f = feed(a);

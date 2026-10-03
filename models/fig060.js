@@ -42,6 +42,7 @@ export default {
     { id: "beltRight", kind: "belt" },
   ],
   driver: { part: "top", type: "rotation" },
+  target: "shaft", // 得到快慢兩種速度的下方軸
   states: {
     options: [
       { id: "slow", label: "慢(左鬆、右固定)" },

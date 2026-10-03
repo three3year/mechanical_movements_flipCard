@@ -73,6 +73,7 @@ export default {
     },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "arm",
   states: {
     options: [
       { id: "forward", label: "前進" },

@@ -56,6 +56,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "wheel", type: "rotation" },
+  target: "needle", // 顯示摩擦力的指針
   states: {
     initial: "light",
     options: [

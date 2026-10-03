@@ -60,6 +60,7 @@ export default {
     { id: "stem", kind: "group", pieces: [{ kind: "cylinder", axis: X, radius: 0.12, length: 1.6, at: [0.8, 0, 0] }, { kind: "cylinder", radius: 0.2, inner: 0.1, length: 0.3 }] },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "stem", // 往復直線運動的閥桿
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { c, end, strap } = eccentric(theta);

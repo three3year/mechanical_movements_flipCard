@@ -59,6 +59,7 @@ export default {
     { id: "rope", kind: "rope", radius: 0.02 },
   ],
   driver: { part: "lever", type: "rotation", cycle: SWING },
+  target: "bell",
   view: { direction: [0.1, 0.1, 1] },
   pose(v) {
     const b = bell(v);

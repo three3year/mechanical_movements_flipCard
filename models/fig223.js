@@ -51,6 +51,7 @@ export default {
   figure: 223,
   parts: [shaft("upper", UPPER, upperSectors), shaft("lower", LOWER, lowerSectors)],
   driver: { part: "upper", type: "rotation", initial: START },
+  target: "lower",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { lower } = sectors(theta);

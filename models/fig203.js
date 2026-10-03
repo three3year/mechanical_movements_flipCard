@@ -72,6 +72,7 @@ export default {
     },
   ],
   driver: { part: "slotted", type: "rotation", cycle: [FROM, TO], initial: -FROM },
+  target: "straight",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const alpha = swing(v, FROM, TO);

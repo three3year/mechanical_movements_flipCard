@@ -32,6 +32,7 @@ export default {
     { id: "chain", kind: "chain", style: "ladder", pitch: (TAU * PINS) / LUGS, width: 0.3, span: WIDTH + 0.25 },
   ],
   driver: { part: "wheel", type: "rotation" },
+  target: "chain",
   view: { direction: [-0.55, 0.3, 1] },
   pose(angle) {
     return {

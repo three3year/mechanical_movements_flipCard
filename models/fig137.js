@@ -57,6 +57,7 @@ export default {
     { id: "pivotPost", kind: "group", pieces: [{ kind: "box", size: [0.3, 1.4, 0.2], at: [PIVOT[0], -0.9, 0.15] }] },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "valveRod",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { angle } = arm(theta);

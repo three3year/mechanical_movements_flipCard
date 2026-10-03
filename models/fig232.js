@@ -60,6 +60,7 @@ export default {
     { id: "link", kind: "link", width: 0.16, thickness: 0.06, stretch: true },
   ],
   driver: { part: "leverB", type: "rotation", cycle: [LOW, HIGH] },
+  target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const { b, a, lift, wheel } = motion(v);

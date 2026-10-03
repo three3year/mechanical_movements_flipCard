@@ -88,6 +88,7 @@ export default {
     gear("right", [D, 0, 0], outline(r2, toothed2, arcAt(r2, Math.PI) + PITCH / 2), [{ kind: "plate", shape: horn, thickness: 0.1, at: [0, 0, 0.16] }]),
   ],
   driver: { part: "left", type: "rotation", initial: START },
+  target: "right",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { right } = pair(theta);

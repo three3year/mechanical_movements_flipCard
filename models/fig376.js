@@ -54,6 +54,7 @@ export default {
     ...["legFF", "legFB", "legHF", "legHB"].map((id) => ({ id, kind: "link", width: 0.09, thickness: 0.08 })),
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.08 },
+  target: "wheel", // 被馬踩著轉的輪
   view: { direction: [0.04, 0.05, 1] },
   pose(p) {
     const t = treadWheel(p);

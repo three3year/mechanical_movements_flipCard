@@ -80,6 +80,7 @@ export default {
     },
   ],
   driver: { part: "spindle", type: "rotation" },
+  target: "gear", // 可嚙合或脫離的大齒輪(背齒輪)
   states: {
     options: [
       { id: "engaged", label: "嚙合(扳起槓桿)" },

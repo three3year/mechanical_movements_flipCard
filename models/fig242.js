@@ -60,6 +60,7 @@ export default {
     },
   ],
   driver: { part: "lever", type: "rotation", range: [-MAX, 0], initial: 0 },
+  target: "strap", // 收緊在煞車輪上的帶
   view: { direction: [0.06, 0.05, 1] },
   pose(psi) {
     const { gap, strap } = brake(psi);

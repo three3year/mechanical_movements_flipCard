@@ -59,6 +59,7 @@ export default {
     ],
   },
   driver: { part: "wheelC", type: "rotation", speed: 0.5 },
+  target: "shaftA", // 得到合成運動的臂(軸 A)
   view: { direction: [0.3, 0.35, 1] },
   pose(c, state = "fixed") {
     const t = differential(c, state);

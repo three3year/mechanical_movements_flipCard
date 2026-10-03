@@ -46,6 +46,7 @@ export default {
     { id: "nutRight", kind: "box", center: [X0, 0, 0], size: [0.55, 0.65, 0.65] },
   ],
   driver: { part: "worm", type: "rotation", range: [0, TURNS * TAU] },
+  targets: ["nutLeft", "nutRight"], // 兩個螺帽彼此靠近或分開
   view: { direction: [0.06, 0.08, 1] },
   pose(theta) {
     const { screw, left, right } = nuts(theta);

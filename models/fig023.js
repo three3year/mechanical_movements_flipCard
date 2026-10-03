@@ -110,6 +110,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "driver", type: "rotation" },
+  target: "movable", // 可動的底部皮帶輪(運動要傳到這裡)
   states: {
     options: [
       { id: "raised", label: "抬升底部皮帶輪" },

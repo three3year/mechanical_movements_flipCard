@@ -54,6 +54,7 @@ export default {
     },
   ],
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
+  target: "disc", // 帶單銷的擒縱盤
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const s = singlePin(v);

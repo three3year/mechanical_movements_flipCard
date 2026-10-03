@@ -43,6 +43,7 @@ export default {
     },
   ],
   driver: { part: "screw", type: "rotation", range: [0, TURNS * TAU] },
+  target: "slider", // 直線移動的滑塊
   view: { direction: [0.08, 0.15, 1] },
   pose(angle) {
     return { parts: { screw: { angle }, slider: { position: [sliderX(angle), 0, 0] } }, readouts: [] };

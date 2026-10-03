@@ -53,6 +53,7 @@ export default {
     { id: "sliderB", kind: "box", size: [0.3, 0.14, 0.18], label: "B", labelOffset: [0, 0.3, 0.3] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
+  target: "crank", // 輸出的曲柄
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const r = russell(p);

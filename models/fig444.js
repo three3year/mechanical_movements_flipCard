@@ -74,6 +74,7 @@ export default {
     { id: "chamberWater", kind: "fill", fluid: "water", shape: "cylinder", center: [CHAMBER.center[0], CHAMBER.center[1] - 0.2, 0], size: [1.2, 1.0, 0], level: 0.4 },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "次", speed: 0.25 },
+  targets: ["waste", "delivery"], // 交替開閉的兩個閥門
   view: { direction: [0.05, 0.08, 1] },
   pose(v) {
     const r = ram(v);

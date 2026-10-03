@@ -48,6 +48,7 @@ export default {
     { id: "labelQ", kind: "group", center: [-0.42, 2.45 - ARM, 0], label: "Q", labelOffset: [-0.3, -0.1, 0.3] },
   ],
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const m = mudge(v);

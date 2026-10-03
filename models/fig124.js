@@ -47,6 +47,7 @@ export default {
     { id: "string", kind: "rope" },
   ],
   driver: { part: "bow", type: "translation", direction: DIR, range: RANGE },
+  target: "spindle", // 交替正反旋轉的鑽軸
   view: { direction: [0.06, 0.05, 1] },
   pose(s) {
     const a = add(A, scale(DIR, s));

@@ -66,6 +66,7 @@ export default {
     { id: "ropeBottom", kind: "rope", radius: 0.02 },
   ],
   driver: { part: "wheel", type: "rotation", range: RANGE, initial: 0 },
+  target: "tiller",
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const psi = tiller(theta);

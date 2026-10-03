@@ -77,6 +77,7 @@ export default {
     { id: "valve", kind: "box", size: [0.95, 0.32, 0.8], label: "A", labelOffset: [0, -0.02, 0.5] },
   ],
   driver: { part: "rod", grips: ["valve"], type: "rotation", cycle: [-SWING, SWING], initial: SWING },
+  target: "valve",
   view: { direction: [0.03, 0.05, 1] },
   pose(v) {
     const phi = swing(v, -SWING, SWING);

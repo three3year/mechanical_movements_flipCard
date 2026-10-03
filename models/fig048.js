@@ -44,6 +44,7 @@ export default {
     bellCrank(LEVER),
   ],
   driver: { part: "pinion", type: "rotation" },
+  target: "shaft", // 離合器接合時才被帶動的軸
   states: CLUTCH_STATES,
   view: { direction: [0.12, 0.18, 1], fov: 14 },
   pose(angle, state = "engaged") {

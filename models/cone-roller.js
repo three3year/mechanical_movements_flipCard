@@ -97,6 +97,7 @@ export function coneRoller(figure, view) {
       { id: "stemC", kind: "group", pieces: [{ kind: "box", size: [0.1, 1.4, 0.1], at: [0, 0.7, 0] }, { kind: "box", size: [0.9, 0.1, 0.1], at: [0, 1.0, 0] }] },
     ],
     driver: { part: "screwD", type: "rotation", range: RANGE, initial: 0 },
+    target: "rollerC", // 被頂起落下又被摩擦帶轉的滾子
     view: { direction: view },
     pose(theta0) {
       const { theta, cx, ey, ez, top } = cone(theta0);

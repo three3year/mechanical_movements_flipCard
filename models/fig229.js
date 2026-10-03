@@ -27,6 +27,7 @@ export default {
     { id: "chain", kind: "chain", style: "toothed", pitch: (TAU * PINS) / TEETH, width: 0.36, offset: 0.12 },
   ],
   driver: { part: "wheel", type: "rotation" },
+  target: "chain",
   view: { direction: [0.08, 0.06, 1] },
   pose(angle) {
     return {

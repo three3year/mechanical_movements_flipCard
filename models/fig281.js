@@ -75,6 +75,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation" },
+  target: "lever", // 來回振動的槓桿
   view: { direction: [0.04, 0.05, 1] },
   pose(theta) {
     return { parts: { disc: { angle: theta }, lever: { angle: lever(theta) } }, readouts: [] };

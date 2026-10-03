@@ -75,6 +75,7 @@ export default {
     { id: "labelE", kind: "group", center: [1.15, -0.85, 0], label: "E", labelOffset: [0.3, 0.2, 0.3] },
   ],
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const g = gravity(v);

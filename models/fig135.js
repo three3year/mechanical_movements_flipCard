@@ -56,6 +56,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation", speed: 0.6 },
+  target: "frame",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { disc: { angle: theta }, frame: { position: [0, frameY(theta), 0] } }, readouts: [] };

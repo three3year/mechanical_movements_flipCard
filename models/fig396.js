@@ -63,6 +63,7 @@ export default {
     },
   ],
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel",
   view: { direction: [0.03, 0.05, 1] },
   pose(v) {
     const r = reed(v);

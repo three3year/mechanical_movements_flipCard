@@ -26,6 +26,7 @@ export default {
     { id: "labela", kind: "group", pieces: [], label: "a", labelOffset: [0.3, 0, 0.5] },
   ],
   driver: { type: "virtual", label: "槽裡的氣量", mode: "balance", range: [0, 1], initial: 0.5, format: (g) => Math.round(g * 100) + "%" },
+  target: "bell",
   view: { direction: [0.06, 0.08, 1] },
   pose(g) {
     const bottom = bellBottom(g);

@@ -65,6 +65,7 @@ export default {
     },
   ],
   driver: { part: "crank", type: "rotation", range: RANGE },
+  target: "platen",
   view: { direction: [0.06, 0.05, 1] },
   pose(c) {
     const { sector, pin, y } = press(c);

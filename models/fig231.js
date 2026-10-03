@@ -36,6 +36,7 @@ export default {
   figure: 231,
   parts: [crank("driver", O1, A, START, 0.3, -1.3), crank("follower", O2, B, Q0, 0, 1.3), { id: "link", kind: "link", width: 0.3, thickness: 0.1 }],
   driver: { part: "driver", type: "rotation" },
+  target: "follower",
   view: { direction: [0.3, 0.7, 1] },
   pose(theta) {
     const { p, q, angle } = dragLink(theta);

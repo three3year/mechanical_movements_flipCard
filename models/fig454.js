@@ -55,6 +55,7 @@ export default {
     flap("deliveryValve", 0.36),
   ],
   driver: { part: "handle", grips: ["rod"], type: "rotation", cycle: SWING },
+  target: "membrane",
   view: { direction: [0.08, 0.08, 1] },
   pose(v) {
     const { at, forward } = stroke(v, ...SWING);

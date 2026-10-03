@@ -54,6 +54,7 @@ export default {
     { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.5, 0.25, 0.5], at: [ROD_X, -1.6, -0.1] }, { kind: "box", size: [0.5, 0.25, 0.5], at: [ROD_X, 1.35, -0.1] }] },
   ],
   driver: { part: "toe", type: "rotation", range: RANGE, initial: 0 },
+  target: "lifter", // 被頂起的升降器
   view: { direction: [0.06, 0.06, 1] },
   pose(psi) {
     const h = lift(psi);

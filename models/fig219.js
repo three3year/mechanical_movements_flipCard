@@ -63,6 +63,7 @@ export default {
     },
   ],
   driver: { part: "crown", type: "rotation" },
+  target: "pinion",
   view: { direction: [0.3, 0.8, 1] },
   pose(theta) {
     return { parts: { crown: { angle: theta }, pinion: { angle: pinionAngle(theta) } }, readouts: [] };

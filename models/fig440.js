@@ -64,6 +64,7 @@ export default {
     { id: "waterRight", kind: "fill", fluid: "water", size: [HALF - 0.4, 0.45, DEPTH - 0.08], level: 0 },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "來回", speed: 0.1 },
+  target: "trough",
   view: { direction: [0.3, 0.35, 1] },
   pose(v) {
     const t = trough(v);

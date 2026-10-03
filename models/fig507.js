@@ -54,6 +54,7 @@ export default {
     { id: "labelG", kind: "group", pieces: [], label: "G", labelOffset: [0, 0, 0.3] },
   ],
   driver: { part: "arm", type: "rotation", speed: 0.8, initial: Math.PI }, // 起始時 F、G 在左邊(依原圖)
+  target: "wheelC", // 轉得極慢的輪 C
   view: { direction: [0.3, 0.35, 1] },
   pose(arm) {
     // 轉動臂:C 轉 arm × C_PER_ARM(極慢),E、H 也很慢

@@ -52,6 +52,7 @@ export default {
     { id: "bendMercury", kind: "fill", fluid: "mercury", center: [0, BOTTOM + RIGHT / 2 - 0.02, 0], size: [2 * RIGHT + 2 * BORE - 0.04, RIGHT + BORE, 0.08], level: 1 },
   ],
   driver: { type: "virtual", label: "壓力", mode: "balance", range: RANGE, initial: 2 },
+  target: "rightMercury", // 標刻度那一腳的水銀柱
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const l = levels(p);

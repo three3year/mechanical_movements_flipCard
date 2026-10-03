@@ -59,6 +59,7 @@ export default {
     { id: "ground", kind: "box", center: [0, -2.0, 0], size: [6.6, 0.08, 1.4] },
   ],
   driver: { part: "treadle", type: "rotation", range: RANGE, initial: REST },
+  target: "pulley",
   view: { direction: [0.06, 0.05, 1] },
   pose(psi) {
     const { j, pull, pulley } = lathe(psi);

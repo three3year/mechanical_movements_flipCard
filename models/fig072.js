@@ -69,6 +69,7 @@ export default {
     },
   ],
   driver: { part: "wiper", type: "rotation", speed: -1.0 },
+  target: "hammer", // 被抬起又落下的錘子 A
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     return { parts: { wiper: { angle: v }, hammer: { angle: -hammerLift(-v) } }, readouts: [] };

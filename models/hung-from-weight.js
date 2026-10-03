@@ -64,6 +64,7 @@ export function hungFromWeight({ figure, radii, ys, top, range }) {
       { id: "ropeEnd", kind: "ropeEnd", center: rest.ropeEnd },
     ],
     driver: { part: "ropeEnd", type: "translation", range, direction: [0, -1, 0] },
+    target: "weight", // 被吊起的重物
     pose(value) {
       const pull = clamp(value, ...range);
       const { rise, weightY, circles, ropeEnd, ropes } = layout(pull);

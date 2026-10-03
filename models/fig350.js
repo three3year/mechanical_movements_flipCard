@@ -49,6 +49,7 @@ export default {
     { id: "pinLow", kind: "cylinder", radius: 0.09, length: 0.6 },
   ],
   driver: { part: "pinLow", grips: ["lever"], type: "translation", direction: [1, 0, 0], range: RANGE, initial: 0 },
+  target: "rod", // 左右往復的桿
   view: { direction: [0.03, 0.05, 1] },
   pose(x0) {
     const t = traverse(x0);

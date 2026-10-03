@@ -43,6 +43,7 @@ export default {
     { id: "cordR", kind: "rope", radius: 0.03 },
   ],
   driver: { part: "bar", type: "translation", direction: [0, -1, 0], cycle: [0, STROKE] },
+  target: "spindle", // 交替轉向的鑽頭心軸
   view: { direction: [0.08, 0.12, 1] },
   pose(v) {
     const p = pump(v);

@@ -53,6 +53,7 @@ export default {
     },
   ],
   driver: { part: "handle", type: "rotation", range: [0, TURNS * TAU] },
+  target: "ram", // 被推下的壓頭
   view: { direction: [0.15, 0.3, 1] },
   pose(angle) {
     const d = descent(angle);

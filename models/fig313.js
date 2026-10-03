@@ -73,6 +73,7 @@ export default {
     { id: "labelP", kind: "group", center: [D[0] + 0.25, D[1] + 0.5, 0], label: "P", labelOffset: [0.3, 0, 0.3] },
   ],
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const c = chronometer(v);

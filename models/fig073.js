@@ -76,6 +76,7 @@ export default {
     { id: "labelC", kind: "group", center: [-1.85, 0.75, 0.2], label: "C" },
   ],
   driver: { part: "d", type: "rotation", speed: -0.9 },
+  target: "a", // 每圈被推一齒的棘輪 A
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const { a, press } = motion(-v);

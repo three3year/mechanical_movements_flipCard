@@ -95,7 +95,9 @@ export function cornishModel({ figure, lock, initial }) {
   return {
     figure,
     parts,
-    driver: { part: "rod", type: "translation", direction: [0, 1, 0], cycle: [0, SPAN], initial },
+    // 大型引擎的活塞走得慢(一程約 2.4 秒),手柄甩到位的過程(約 0.4 秒)才看得清楚
+    driver: { part: "rod", type: "translation", direction: [0, 1, 0], cycle: [0, SPAN], initial, speed: 1.2 },
+    targets: ["upper", "lower"],
     view: { direction: [0.06, 0.05, 1] },
     pose(v) {
       const state = cornish(v);

@@ -81,6 +81,7 @@ export default {
     ],
   },
   driver: { part: "lever", type: "rotation", cycle: [-SWING, SWING], initial: SWING },
+  target: "wheel",
   view: { direction: [0.05, 0.06, 1] },
   pose(v, state = "C") {
     const m = motion(v, state);

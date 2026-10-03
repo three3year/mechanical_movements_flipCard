@@ -61,6 +61,7 @@ export default {
     { id: "vanes", kind: "group", center: [0, WHEEL_Y, 0], arrow: false, pieces: vanes },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.15 },
+  target: "wheel",
   view: { direction: [0.35, 0.45, 1] },
   pose(progress) {
     const a = TAU * progress; // 繞 +y 轉(從上往下看逆時針)

@@ -42,6 +42,7 @@ export default {
     rack("right", GEAR.radius, Math.PI / 2),
   ],
   driver: { part: "gear", type: "rotation", range: RANGE },
+  targets: ["left", "right"], // 往復直線運動的兩根齒條(泵的活塞)
   view: { direction: [0.06, 0.05, 1] },
   pose(angle) {
     const { left, right } = racks(angle);

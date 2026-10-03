@@ -3,7 +3,8 @@
 // 擺回來時換下方那根拉,所以桿一直往右走。左端的滾輪托著棘齒桿,被它帶著轉。
 // 主動件是槓桿(累計行程,見 kit.swing)。
 // 推斷:左端的圓輪當作托住棘齒桿的滾輪;棘爪靠自重落在齒上;桿很長,畫面只看到中段
-// (每走過整數個齒的一大段就接回起點,看不出跳動)。
+// (每走過整數個齒的一大段就接回起點;桿畫得夠長、起點夠靠左,接回前後兩端都在畫面外,看不出跳動——
+// 掃描工具仍會把接回那一格列為「移 8.8」,那不是零件在動)。
 import { deg, swing } from "./kit.js";
 import { doubleAction } from "./ratchets.js";
 import { shape, thickLine, circle } from "./shapes.js";
@@ -15,6 +16,9 @@ const S = deg(16); // 擺幅(單邊)
 const BAR_Y = -0.15; // 棘齒桿齒面高度
 const PITCH = 0.22;
 const WRAP = 40 * PITCH; // 走過這麼長就接回起點
+// 桿的齒數、左端(局部)與位置範圍(offset 到 offset + WRAP):桿長 22,畫面(x 約 −3.2 到 3.3)永遠在桿的中段;
+// offset 取整數個齒距,齒相對棘爪的相位與原來(−1.0)相同
+const BAR = { teeth: 100, left: -10, offset: -1.0 - 18 * PITCH };
 const ROLL = 0.32;
 const PAWL = { up: 3.3, down: 1.9 }; // 兩根棘爪的長度
 
@@ -29,11 +33,11 @@ export const lever = (v) => swing(v, S, -S);
 export const SWING = S;
 
 const teeth = [];
-for (let i = 0; i < 80; i++) {
-  const x0 = -8 + i * PITCH;
+for (let i = 0; i < BAR.teeth; i++) {
+  const x0 = BAR.left + i * PITCH;
   teeth.push([x0, BAR_Y - 0.08], [x0 + PITCH * 0.85, BAR_Y + 0.1], [x0 + PITCH * 0.85, BAR_Y - 0.08]);
 }
-const bar = shape([[-8, BAR_Y - 0.4], [-8 + 80 * PITCH, BAR_Y - 0.4], ...teeth.reverse()].reverse());
+const bar = shape([[BAR.left, BAR_Y - 0.4], [BAR.left + BAR.teeth * PITCH, BAR_Y - 0.4], ...teeth.reverse()].reverse());
 
 const pawl = (len) => shape(thickLine([[0, 0], [-len + 0.12, 0], [-len, -0.1]], 0.09), [circle(0.035).reverse()]);
 
@@ -65,7 +69,8 @@ export default {
     { id: "pawlUp", kind: "plate", shape: pawl(PAWL.up), thickness: 0.08, arrow: false },
     { id: "pawlDown", kind: "plate", shape: pawl(PAWL.down), thickness: 0.08, arrow: false },
   ],
-  driver: { part: "lever", type: "rotation", cycle: [S, -S] },
+  driver: { part: "lever", type: "rotation", cycle: [S, -S] },
+  target: "bar",
   view: { direction: [0.05, 0.12, 1], fit: ["base", "lever", "roller"] },
   pose(v) {
     const psi = lever(v);
@@ -80,7 +85,7 @@ export default {
     return {
       parts: {
         lever: { angle: psi },
-        bar: { position: [shown - 1.0, 0, 0] },
+        bar: { position: [shown + BAR.offset, 0, 0] },
         roller: { angle: -x / ROLL },
         pawlUp: pose("up", PAWL.up),
         pawlDown: pose("down", PAWL.down),

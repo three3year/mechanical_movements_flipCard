@@ -46,6 +46,7 @@ export default {
     wheel("lower", -Y, -Z),
   ],
   driver: { part: "worm", type: "rotation", speed: 3 },
+  targets: ["upper", "lower"], // 一對進料滾軸
   view: { direction: [0.12, 0.08, 1] },
   pose(theta) {
     const { upper, lower } = rolls(theta);

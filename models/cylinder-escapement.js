@@ -71,6 +71,7 @@ export function cylinderEscapement(figure, view) {
       { id: "labelB", kind: "group", center: AT, label: "B", labelOffset: [0.45, 0.2, 0.5] },
     ],
     driver: { part: "cylinder", type: "rotation", cycle: [-SWING, SWING] },
+    target: "wheel", // 擒縱輪
     view,
     pose(v) {
       const c = cylinder(v);

@@ -28,6 +28,7 @@ export function slicedPair({ figure, teeth, radius, width, slices, twist, twistM
     figure,
     parts: [gear("top", top, twist), gear("bottom", bottom, -twist)],
     driver: { part: "top", type: "rotation" },
+    target: "bottom", // 被帶動的下輪
     view: { direction: view ?? [0.04, 0.03, 1], fov: 14 },
     pose(angle) {
       return { parts: { top: { angle }, bottom: { angle: meshAngle(top, bottom, angle) } }, readouts: [] };

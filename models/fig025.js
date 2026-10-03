@@ -26,6 +26,7 @@ export default {
   figure: 25,
   parts: [bevel("top", TOP, 1.6), bevel("left", LEFT, 1.4)],
   driver: { part: "top", type: "rotation" },
+  target: "left", // 被帶動的斜齒輪
   view: { direction: [0.25, 0.12, 1], fov: 14 },
   pose(angle) {
     return { parts: { top: { angle }, left: { angle: meshAngle(TOP, LEFT, angle, CONTACT) } }, readouts: [] };

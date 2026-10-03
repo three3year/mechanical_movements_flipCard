@@ -39,6 +39,7 @@ export default {
     { id: "spiral", kind: "trace" },
   ],
   driver: { part: "arm", type: "rotation", range: RANGE, initial: 0 },
+  target: "wheel", // 在紙上滾出渦線的小輪
   view: { direction: [0.1, 0.45, 1], fit: ["arm", "wheel"] },
   pose(psi0) {
     const h = helicograph(psi0);

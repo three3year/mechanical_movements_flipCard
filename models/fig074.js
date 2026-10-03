@@ -52,6 +52,7 @@ export default {
   ],
   // 起始時有齒的半圈朝向右前方(原圖)
   driver: { part: "c", type: "rotation", initial: 2.2 },
+  targets: ["a", "b"], // 交替得到間歇旋轉的兩輪
   view: { direction: [0.03, 0.42, 1], fov: 20 },
   pose(theta) {
     const { a, b } = angles(theta);

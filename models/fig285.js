@@ -61,6 +61,7 @@ export default {
     },
   ],
   driver: { part: "handwheel", type: "rotation", range: RANGE, initial: 0 },
+  target: "spindle", // 直線伸縮的心軸
   view: { direction: [0.05, 0.12, 1] },
   pose(theta) {
     const a = clamp(theta, ...RANGE);

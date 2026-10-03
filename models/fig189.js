@@ -69,6 +69,7 @@ export default {
     { id: "hanger", kind: "link", width: 0.12, thickness: 0.08 },
   ],
   driver: { part: "bell", type: "rotation", range: [0, MAX] },
+  target: "rod",
   view: { direction: [0.06, 0.05, 1] },
   pose(phi) {
     const { end, lift, released } = unhook(phi);

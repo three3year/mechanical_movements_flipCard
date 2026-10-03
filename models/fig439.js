@@ -54,6 +54,7 @@ export default {
     { id: "water", kind: "fill", fluid: "water", shape: "cylinder", size: [0.55, 0.66, 0], level: 0 },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "次", speed: 0.15 },
+  target: "bucket",
   view: { direction: [0.06, 0.08, 1] },
   pose(v) {
     const c = cycle(v);

@@ -23,13 +23,13 @@ const PULLEY = 0.58;
 const WHEEL = 1.55;
 const SLOT_X = -2.25; // 桿 A 的位置
 
-/** 不規則齒輪轉 angle(順時針為負):小齒輪軸心、曲柄的擺角(從直立量起)、小齒輪與大輪的轉角、桿 A 的高度 */
+/** 不規則齒輪轉 angle(順時針為負):小齒輪軸心、不規則齒輪的轉角(START.gear + angle)、曲柄的擺角(從直立量起)、小齒輪與大輪的轉角、桿 A 的高度 */
 export function motion(angle) {
   const s = mesh.byGear(START.gear + angle);
   const swing = s.arm - Math.PI / 2;
   const pinion = s.pinion - START.pinion;
   const wheel = swing + (pinion - swing) * (PULLEY / WHEEL);
-  return { center: s.center, swing, pinion, wheel, rodA: SLOT_X * Math.tan(swing) };
+  return { center: s.center, gear: s.gear, swing, pinion, wheel, rodA: SLOT_X * Math.tan(swing) };
 }
 
 const outline = noncircularOutline(r, { teeth: TEETH, addendum: PITCH / Math.PI, dedendum: (1.2 * PITCH) / Math.PI, start: arcAt(r, 0) });
@@ -56,6 +56,7 @@ export default {
     { id: "rodA", kind: "group", label: "A", labelOffset: [-0.3, -1.5, 0], pieces: [{ kind: "box", size: [0.14, 1.8, 0.14], at: [0, -1.0, 0.35] }, { kind: "box", size: [0.3, 0.3, 0.3], at: [0, 0, 0.35] }, { kind: "cylinder", radius: 0.15, length: 0.5, at: [0, 0, 0.4] }] },
   ],
   driver: { part: "gear", type: "rotation", speed: 1.2 },
+  target: "rodA",
   view: { direction: [0.06, 0.05, 1] },
   pose(angle) {
     const m = motion(angle);
@@ -65,8 +66,8 @@ export default {
     ]);
     return {
       parts: {
-        gear: { angle },
-        pinion: { position: m.center, angle: Math.PI + Math.PI / NP + m.pinion },
+        gear: { angle: m.gear }, // = START.gear + angle:原圖位置時接觸點在不規則齒輪的局部角 0,那裡是一齒的中心
+        pinion: { position: m.center, angle: START.gamma + Math.PI / NP + m.pinion }, // 原圖位置時接觸方向上是齒槽
         wheel: { angle: m.wheel },
         crank: { angle: m.swing },
         rodA: { position: [SLOT_X, m.rodA, 0] },

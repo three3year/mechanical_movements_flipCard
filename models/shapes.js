@@ -78,10 +78,12 @@ export function gearProfile({ teeth, radius, internal = false, has = () => true,
   const root = internal ? radius + dedendum : radius - dedendum;
   const blankR = blank === "tip" ? tip : root;
   const pts = [];
+  const next = (i) => has((i + 1) % teeth);
   for (let i = 0; i < teeth; i++) {
     const a = i * pitch;
     if (!has(i)) {
-      pts.push(...arcPoints(blankR, a - pitch / 2, a + pitch / 2).slice(0, -1));
+      // 缺齒段的弧;下一個齒在的話,弧的末點留著,交界才是徑向的階(否則階會斜一個取樣步,實體多出一小片)
+      pts.push(...arcPoints(blankR, a - pitch / 2, a + pitch / 2).slice(0, next(i) ? undefined : -1));
       continue;
     }
     const wr = halfWidth(radius, m, root, internal);
@@ -91,7 +93,8 @@ export function gearProfile({ teeth, radius, internal = false, has = () => true,
     pts.push([root * Math.cos(a - wr), root * Math.sin(a - wr)]);
     pts.push(...arcPoints(tip, a - wt, a + wt));
     pts.push([root * Math.cos(a + wr), root * Math.sin(a + wr)]);
-    pts.push(...arcPoints(root, a + wr, a + pitch / 2).slice(1, -1));
+    // 下一個齒缺的話,齒根弧的末點留著,交界同樣是徑向的階
+    pts.push(...arcPoints(root, a + wr, a + pitch / 2).slice(1, next(i) ? -1 : undefined));
   }
   return pts;
 }

@@ -75,6 +75,7 @@ export default {
     },
   ],
   driver: { part: "shaftE", type: "rotation" },
+  target: "piston",
   view: { direction: [0.08, 0.08, 1] },
   pose(theta) {
     const h = hammer(theta);

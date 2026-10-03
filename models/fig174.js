@@ -58,6 +58,7 @@ export default {
     })),
   ],
   driver: { part: "board", type: "translation", direction: [-1, 0, 0], range: [0, PUSH], initial: PUSH },
+  targets: ["upper", "lower"], // 兩個夾爪
   view: { direction: [0.06, 0.05, 1] },
   pose(d) {
     const { end, angle } = clamp(d);

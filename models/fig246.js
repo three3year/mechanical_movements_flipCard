@@ -56,6 +56,7 @@ export default {
     ] },
   ],
   driver: { part: "tracerB", type: "translation", grips: ["pencilA"], speed: 0.08 },
+  target: "pencilA",
   view: { direction: [0.03, 0.06, 1] },
   pose(s) {
     const B = planPoint(s);

@@ -54,6 +54,7 @@ export default {
     { id: "rodD", kind: "link", width: 0.04, thickness: 0.03 },
   ],
   driver: { type: "virtual", label: "主管壓力", mode: "balance", range: RANGE, initial: 1.0 },
+  target: "valve", // 節流的調節閥 D
   view: { direction: [0.06, 0.08, 1] },
   pose(p) {
     const r = regulate(p);

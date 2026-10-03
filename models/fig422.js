@@ -95,6 +95,7 @@ export default {
     { id: "coupler", kind: "link", width: 0.1, thickness: 0.05 },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "piston",
   view: { direction: [0.15, 0.1, 1] },
   pose(phi) {
     const psi = vane(phi);

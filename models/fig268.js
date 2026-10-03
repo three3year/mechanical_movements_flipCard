@@ -26,6 +26,7 @@ export default {
     { id: "rod", kind: "link", width: 0.1, thickness: 0.06 },
   ],
   driver: { part: "disc", type: "rotation" },
+  target: "rod", // 左端往復的桿
   view: { direction: [0.04, 0.05, 1] },
   pose(theta) {
     const { pin, end, reach } = rod(theta);

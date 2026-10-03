@@ -3,6 +3,8 @@
 // 一根接到 C 的中心——比用溝槽更簡單地維持齒間的適當節距。C 等速轉動時它的中心繞偏心點走圓,
 // B 被連桿帶著來回擺,A 因此得到不規則的轉動。主動件是 C。
 // 推斷:齒數;偏心距依原圖量得。
+// A 與 C 不咬合(原圖兩輪之間留有空隙):A 的軸心離偏心點要大於 偏心距 + 兩輪齒頂圓半徑和,
+// 否則 C 的中心繞到最靠近 A 時兩輪的齒會互相穿透(原本 [-1.8, 2.2] 離 E 只有 2.84,不夠)。
 import { TAU, Z } from "./kit.js";
 import { circleCircle } from "./linkage.js";
 import { meshAngle } from "./gears.js";
@@ -10,7 +12,7 @@ import { circle } from "./shapes.js";
 
 const PITCH = 0.27;
 const gearOf = (teeth) => ({ teeth, radius: (teeth * PITCH) / TAU });
-const A = { ...gearOf(28), center: [-1.8, 2.2, 0] };
+const A = { ...gearOf(28), center: [-2.0, 2.45, 0] };
 const B = gearOf(20);
 const C = gearOf(27);
 const E = [0, 0, 0]; // C 轉動的偏心點
@@ -35,6 +37,7 @@ const C0 = T0.beta;
 const B0 = meshAngle({ ...C, center: T0.cc, axis: Z }, { ...B, center: T0.b, axis: Z }, C0);
 const A0 = meshAngle({ ...B, center: T0.b, axis: Z }, { ...A, axis: Z }, B0);
 export const radii = { A: A.radius, B: B.radius, C: C.radius, ECC };
+export const centerA = A.center;
 
 const gear = (id, g, extra = {}) => ({ id, kind: "gear", teeth: g.teeth, radius: g.radius, width: 0.22, ...extra });
 
@@ -51,6 +54,7 @@ export default {
     { id: "pivot", kind: "cylinder", center: [...E.slice(0, 2), 0.2], radius: 0.12, length: 0.3 },
   ],
   driver: { part: "gearC", type: "rotation" },
+  target: "gearA", // 得到不規則轉動的那一輪
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const t = train(theta);

@@ -48,6 +48,7 @@ export default {
     { id: "spring", kind: "spring", coils: 9, radius: 0.1, wire: 0.02 },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "blade",
   view: { direction: [0.08, 0.05, 1] },
   pose(theta) {
     const g = gigSaw(theta);

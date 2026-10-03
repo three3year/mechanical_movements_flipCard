@@ -62,6 +62,7 @@ export default {
     ...Array.from({ length: DISCS }, (_, i) => ({ id: `disc${i}`, kind: "cylinder", radius: TUBE.r - 0.02, length: 0.05, arrow: false })),
   ],
   driver: { part: "upper", type: "rotation", speed: -0.6 },
+  target: "chain", // 帶著碟片抬水的無端鏈
   view: { direction: [0.15, 0.12, 1] },
   pose(theta) {
     const s = -theta * R; // 上輪順時針轉,左邊的鏈條往上

@@ -3,6 +3,7 @@
 // 其中一支鉤住凸柱 D,制止鼓輪,掛在繩上的東西也就停止下降。
 // 主動件是虛擬的「進程」:機械故障後鼓輪越轉越快 → 鉤子甩出 → 鉤住凸柱、鼓輪停住。
 // 推斷:鼓輪加速的過程與鉤子甩出的轉速;鉤子的形狀(依原圖)。原文另說鼓輪應加裝彈簧緩衝,原圖沒有畫,模型也不畫。
+// 進程走滿一輪(p = 1)就從頭再演一次:鼓輪與鉤子瞬間回到起始位置,那是劇情重演,不是零件瞬移。
 import { Z, TAU, deg, smooth, routeRope, rot2 } from "./kit.js";
 import { shape, circle, thickLine } from "./shapes.js";
 
@@ -104,7 +105,8 @@ export default {
     ...HOOKS.map((_, i) => ({ id: `hook${i}`, kind: "plate", shape: hookShape, thickness: 0.08, arrow: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.22 }] })),
     { id: "rope", kind: "rope" },
   ],
-  driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
+  driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
+  target: "flangeB",
   view: { direction: [0.04, 0.04, 1] },
   pose(p) {
     const { drum, beta } = check(p);

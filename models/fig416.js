@@ -90,6 +90,7 @@ export default {
     { id: "treadle", kind: "plate", shape: shape(thickLine([[-FOOT, 0], [TREADLE_ARM, 0]], 0.07), [circle(0.04).reverse()]), thickness: 0.05, arrow: false },
   ],
   driver: { part: "crank", type: "rotation", initial: Math.PI },
+  target: "treadle", // 模型反過來由曲柄帶動;彈簧 A 是越過死點的手段
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const B = pin(theta);

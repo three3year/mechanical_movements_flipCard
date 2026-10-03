@@ -33,6 +33,7 @@ export default {
     ...["AC", "CB", "BD", "DA"].map((id) => ({ id: `bar${id}`, kind: "link", width: 0.12, thickness: 0.07 })),
   ],
   driver: { part: "rodA", grips: ["rodB"], type: "translation", direction: [-1, 0, 0], range: RANGE, initial: 1.15 },
+  targets: ["rodC", "rodD"], // 被推開拉攏的另一對桿
   view: { direction: [0.05, 0.05, 1] },
   pose(w0) {
     const w = clamp(w0, ...RANGE);

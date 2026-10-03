@@ -63,6 +63,7 @@ export default {
     })),
   ],
   driver: { part: "drive", type: "rotation" },
+  targets: ["runnerL", "runnerR"], // 在盆裡繞著滾的追輪
   view: { direction: [0.08, 0.2, 1] },
   pose(a) {
     const r = runners(a);

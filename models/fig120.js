@@ -80,6 +80,7 @@ export default {
     { id: "hinge", kind: "plate", center: PIVOT, shape: shape(circle(0.3), [circle(0.12).reverse()]), thickness: 0.6 },
   ],
   driver: { part: "pinions", type: "rotation", range: [-1.4, 0.4], initial: 0 },
+  targets: ["jawA", "jawB"], // 反向擺動併攏的兩支夾爪
   view: { direction: [0.06, 0.05, 1] },
   pose(beta) {
     const { s1, s2 } = jaws(beta);

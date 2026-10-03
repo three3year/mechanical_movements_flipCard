@@ -61,6 +61,7 @@ export default {
     { id: "labelB", kind: "group", center: [1.65, 0.05, -0.3], label: "B", labelOffset: [0.3, 0, 0.6] },
   ],
   driver: { part: "anchor", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.25, 0.12, 1], fit: ["anchor"] },
   pose(v) {
     return { parts: { anchor: { angle: swing(v, -SWING, SWING) }, wheel: { angle: wheelAngle(v) } }, readouts: [] };

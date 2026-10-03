@@ -46,6 +46,7 @@ export default {
     { id: "sliderC2", kind: "box", size: [0.3, 0.2, 0.14], label: "c", labelOffset: [0.3, 0.1, 0.3] },
   ],
   driver: { part: "diskA", type: "rotation" },
+  target: "barB", // 每圈往復兩次的桿
   view: { direction: [0.03, 0.04, 1] },
   pose(theta) {
     const s = snyder(theta + deg(30));

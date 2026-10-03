@@ -51,6 +51,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation", range: [tOf(SPIRAL.r0 + SPIRAL.pitch * (SPIRAL.turns - 0.6)), tOf(SPIRAL.r0 + SPIRAL.pitch * 1.2)] },
+  target: "slide", // 被螺旋推動的滑座
   view: { direction: [0.06, 0.05, 1], fit: ["disc", "slide"] },
   pose(t) {
     return { parts: { disc: { angle: t }, slide: { position: [0, -feed(t), 0] } }, readouts: [] };

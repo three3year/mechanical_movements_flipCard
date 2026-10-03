@@ -48,6 +48,7 @@ export default {
     { id: "labelF", kind: "group", center: [C[0], C[1] - 4.6, 0], label: "F", labelOffset: [0.3, 0, 0.3] },
   ],
   driver: { part: "anchor", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const d = deadbeat(v);

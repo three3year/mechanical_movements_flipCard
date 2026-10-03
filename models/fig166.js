@@ -64,6 +64,7 @@ export default {
     { id: "mold", kind: "box", size: [0.7, 0.5, 0.4] },
   ],
   driver: { part: "disc", type: "rotation" },
+  target: "mold",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const x = moldX(theta);

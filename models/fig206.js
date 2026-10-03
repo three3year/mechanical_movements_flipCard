@@ -61,6 +61,7 @@ export default {
     pawl("pawlRight", "right", 1),
   ],
   driver: { part: "lever", type: "rotation", cycle: [SWING / 2, -SWING / 2] },
+  target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const psi = swingAt(v, SWING / 2, -SWING / 2);

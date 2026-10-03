@@ -99,6 +99,7 @@ export default {
     { id: "chain", kind: "chain", style: "plate", pitch: 0.1, width: 0.07, offset: 0.012, normal: [0, 1, 0] },
   ],
   driver: { type: "virtual", label: "發條放鬆", mode: "balance", range: [0, 1], format: (u) => Math.round(u * 100) + "%" },
+  target: "fusee", // 鏈索輪(把發條力量傳出去)
   view: { direction: [0.05, 0.45, 1] },
   pose(u) {
     const v = Math.min(1, Math.max(0, u));

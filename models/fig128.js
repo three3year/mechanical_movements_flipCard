@@ -85,6 +85,7 @@ export default {
     },
   ],
   driver: { part: "shaft", type: "rotation", speed: -0.8 },
+  target: "frame", // 往復直線運動的框架
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     return { parts: { shaft: { angle: v }, frame: { position: [frameX(-v), 0, 0] } }, readouts: [] };

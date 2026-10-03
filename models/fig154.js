@@ -61,6 +61,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation", speed: 0.8 },
+  target: "weight",
   view: { direction: [0.06, 0.05, 1] },
   pose(c) {
     const { swing, top, y } = lift(c);

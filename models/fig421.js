@@ -67,6 +67,7 @@ export default {
     { id: "rod", kind: "link", width: 0.14, thickness: 0.08 },
   ],
   driver: { part: "flywheel", type: "rotation" },
+  target: "piston",
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const { pin, y } = piston(theta);

@@ -2,7 +2,9 @@
 // 鼓輪鬆套在飛輪軸上,鼓輪上的棘爪推著固定在軸上的棘輪。樑往一邊擺時繩拉著鼓輪轉,棘爪帶動棘輪與飛輪;
 // 往回擺時鼓輪反轉,棘爪滑過棘輪,飛輪不受影響(繼續往前)。左端弧形頭的繩吊著一個球形配重,讓繩保持拉緊。
 // 主動件是樑(累計擺動)。
-// 推斷:鼓輪反轉時由繩把它帶回(繩在鼓輪上纏繞);棘輪齒數。
+// 推斷:鼓輪反轉時由繩把它帶回(繩在鼓輪上纏繞);棘輪齒數。棘輪固定在軸上、裝在鼓輪前面,
+// 棘爪的銷立在鼓輪的前面上(右上方),棘爪靠自重垂下、爪尖落在齒根:鼓輪往前轉時爪尖頂著齒的直面推棘輪,
+// 往回轉時爪尖沿齒背滑上去、過了齒尖落進下一格(棘爪的轉角由接觸算,ratchets.pawlRest)。
 import { deg, swingPhase, rot2 } from "./kit.js";
 import { ratchetShape, shape, circle, arcPoints, thickLine } from "./shapes.js";
 import { pawlRest } from "./ratchets.js";
@@ -11,8 +13,10 @@ const PIVOT = [-0.6, 2.3, 0];
 const ARC = 1.9; // 樑端弧形頭的半徑(以樞軸為圓心)
 export const SWING = deg(14);
 const DRUM = { center: [1.3, -0.35, 0], r: 0.62 };
-const RATCHET = { teeth: 20, outer: 0.55, inner: 0.44, dir: -1 };
-const PAWL = { pivot: [0.95, 0.12], length: 0.42 }; // 棘爪在鼓輪上(相對鼓輪中心)
+const RATCHET = { teeth: 20, outer: 0.5, inner: 0.42, dir: -1 };
+const Z = { ratchet: 0.45, pawl: 0.45 }; // 棘輪與棘爪在鼓輪前面
+// 棘爪的銷在鼓輪前面上(相對鼓輪中心,右上方);爪長到爪尖伸得進齒根,垂下時與鼓輪的半徑約成 50°
+export const PAWL = { pivot: [0.57 * Math.cos(deg(55)), 0.57 * Math.sin(deg(55))], length: 0.42, hang: deg(-50) };
 
 /** 累計擺動 v → 樑角、鼓輪轉角、飛輪(棘輪)轉角 */
 export function beam(v) {
@@ -59,17 +63,28 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(circle(2.0), [circle(1.85).reverse()]), thickness: 0.15 },
         ...[0, 1, 2, 3].map((i) => ({ kind: "box", size: [3.8, 0.1, 0.08], angle: (i * Math.PI) / 4 })),
-        { kind: "plate", shape: ratchetShape(RATCHET), thickness: 0.1, at: [0, 0, 0.45] },
-        { kind: "cylinder", radius: 0.1, length: 1.0, at: [0, 0, 0.3] },
+        { kind: "plate", shape: ratchetShape({ ...RATCHET, bore: 0.1 }), thickness: 0.1, at: [0, 0, Z.ratchet + 0.3] },
+        { kind: "cylinder", radius: 0.1, length: 1.3, at: [0, 0, 0.45] },
       ],
     },
-    { id: "drum", kind: "group", center: [DRUM.center[0], DRUM.center[1], 0.25], spin: DRUM.r, pieces: [{ kind: "cylinder", radius: DRUM.r, length: 0.25, mark: true }, { kind: "cylinder", radius: DRUM.r + 0.12, length: 0.05, at: [0, 0, -0.13] }] },
+    {
+      id: "drum",
+      kind: "group",
+      center: [DRUM.center[0], DRUM.center[1], 0.25],
+      spin: DRUM.r,
+      pieces: [
+        { kind: "cylinder", radius: DRUM.r, length: 0.25, mark: true },
+        { kind: "cylinder", radius: DRUM.r + 0.12, length: 0.05, at: [0, 0, -0.13] },
+        { kind: "cylinder", radius: 0.03, length: 0.3, at: [PAWL.pivot[0], PAWL.pivot[1], Z.pawl - 0.25] }, // 棘爪的銷
+      ],
+    },
     { id: "pawl", kind: "plate", shape: shape(thickLine([[0, 0], [PAWL.length, 0]], 0.08), [circle(0.03).reverse()]), thickness: 0.06, arrow: false },
     { id: "ropeR", kind: "rope" },
     { id: "ropeL", kind: "rope" },
     { id: "ball", kind: "sphere", radius: 0.22 },
   ],
   driver: { part: "beam", type: "rotation", cycle: [-SWING, SWING] },
+  target: "flywheel",
   view: { direction: [0.03, 0.05, 1] },
   pose(v) {
     const b = beam(v);
@@ -77,10 +92,10 @@ export default {
     const rightTop = [PIVOT[0] + ARC + 0.12, PIVOT[1] + (ARC + 0.12) * b.psi, 0.25];
     const leftTop = [PIVOT[0] - ARC - 0.12, PIVOT[1] - (ARC + 0.12) * b.psi, 0.1];
     const rope = [rightTop, [DRUM.center[0] - DRUM.r, DRUM.center[1] + 0.1, 0.25], [DRUM.center[0] - DRUM.r * 0.7, DRUM.center[1] - DRUM.r * 0.7, 0.25]];
-    // 棘爪:樞軸在鼓輪上,靠在棘輪的齒上
+    // 棘爪:銷在鼓輪上,從抬起的位置順時針垂下、停在碰到棘輪的齒面處
     const [px, py] = rot2(PAWL.pivot, b.drum);
-    const pivot = [DRUM.center[0] + px, DRUM.center[1] + py, 0.2];
-    const pawl = pawlRest({ pivot, length: PAWL.length, from: b.drum + deg(200), into: -1 }, { center: DRUM.center, angle: b.fly, ...RATCHET });
+    const pivot = [DRUM.center[0] + px, DRUM.center[1] + py, Z.pawl];
+    const pawl = pawlRest({ pivot, length: PAWL.length, from: b.drum + PAWL.hang, into: -1 }, { center: DRUM.center, angle: b.fly, ...RATCHET });
     const ballY = leftTop[1] - 1.9;
     return {
       parts: {

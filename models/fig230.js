@@ -36,6 +36,7 @@ export default {
   figure: 230,
   parts: [shaft("upper", UPPER), shaft("lower", LOWER), { id: "rodDisc", kind: "link", width: 0.1, thickness: 0.06 }, { id: "rodCrank", kind: "link", width: 0.1, thickness: 0.06 }],
   driver: { part: "upper", type: "rotation" },
+  target: "lower",
   view: { direction: [-0.7, 0.25, 1] },
   pose(theta) {
     const pin = (center, which, dz) => {

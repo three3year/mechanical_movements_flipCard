@@ -80,6 +80,7 @@ export default {
     { id: "weightW", kind: "box", size: [0.55, 0.85, 0.5], label: "W", labelOffset: [0, 0, 0.4] },
   ],
   driver: { part: "discB", type: "rotation", range: RANGE, initial: 0 },
+  target: "weightW", // 被吊起又放下的重物
   view: { direction: [0.05, 0.05, 1] },
   pose(theta0) {
     const theta = clamp(theta0, ...RANGE);

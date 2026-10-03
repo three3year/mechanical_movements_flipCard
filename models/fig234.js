@@ -47,6 +47,7 @@ export default {
     { id: "tagA2", kind: "group", center: [R, ROD_Y - 0.1, 0.35], pieces: [], arrow: false, label: "A" },
   ],
   driver: { part: "verge", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel",
   view: { direction: [0.35, 0.55, 1] },
   pose(v) {
     return { parts: { verge: { angle: swing(v, -SWING, SWING) }, wheel: { angle: wheelAngle(v) } }, readouts: [] };

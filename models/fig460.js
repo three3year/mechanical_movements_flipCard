@@ -69,6 +69,7 @@ export default {
     ],
   },
   driver: { part: "lever", grips: ["scoop"], type: "rotation", cycle: SWING },
+  target: "scoop",
   view: { direction: [0.15, 0.12, 1] },
   pose(v, state = "middle") {
     const { at, forward } = stroke(v, ...SWING);

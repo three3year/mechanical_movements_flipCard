@@ -108,6 +108,7 @@ export default {
     { id: "link2", kind: "link", width: 0.1, thickness: 0.05 },
   ],
   driver: { part: "crank", type: "rotation", speed: -0.6 },
+  targets: ["piston1", "piston2"],
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const pin = crankPin(theta);

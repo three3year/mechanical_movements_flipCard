@@ -64,6 +64,7 @@ export default {
     },
   ],
   driver: { part: "roller", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheelA", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const l = lever(v);

@@ -52,6 +52,7 @@ export default {
     },
   ],
   driver: { part: "wheel", type: "rotation", speed: -0.8 }, // 原圖箭頭:順時針
+  target: "hammer", // 被抬起落下的錘
   view: { direction: [0.03, 0.05, 1] },
   pose(b) {
     return { parts: { wheel: { angle: b }, hammer: { angle: -hammer(-b) } }, readouts: [] };

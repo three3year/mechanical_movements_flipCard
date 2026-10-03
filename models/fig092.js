@@ -45,6 +45,7 @@ export default {
     { id: "rod", kind: "link", width: 0.24, thickness: 0.1 },
   ],
   driver: { part: "wheel", type: "rotation" },
+  target: "slider", // 往復的滑塊
   view: { direction: [0.08, 0.06, 1] },
   pose(angle) {
     const { pin, slider } = crankSlider(angle);

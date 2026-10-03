@@ -49,6 +49,7 @@ export default {
     { id: "wedgeDown", kind: "plate", shape: shape([[-WEDGE_L, 0], [-WEDGE_L, -(WEDGE_W - WEDGE_L * T)], [0, -WEDGE_W], [0, 0]]), thickness: 0.22, arrow: false },
   ],
   driver: { part: "wedgeUp", grips: ["wedgeDown"], type: "translation", direction: [-1, 0, 0], range: RANGE, initial: 0.2 },
+  target: "board", // 被夾緊的木料
   view: { direction: [0.02, 0.04, 1] },
   pose(d0) {
     const c = clampGap(d0);

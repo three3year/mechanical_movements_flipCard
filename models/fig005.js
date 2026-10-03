@@ -36,6 +36,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "driver", type: "rotation" },
+  target: "driven", // 靠張緊輪才被帶動的從動輪
   states: {
     options: [
       { id: "pressed", label: "壓下 B" },

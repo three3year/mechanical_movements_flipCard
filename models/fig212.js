@@ -65,6 +65,7 @@ export default {
     { id: "tagB", kind: "group", pieces: [], arrow: false, label: "b" },
   ],
   driver: { part: "wheelA", type: "rotation", range, initial: 2 * TAU }, // 原圖:第三格推到一半,凸弧 a–b 在右上
+  target: "wheelB",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { b } = stop(theta);

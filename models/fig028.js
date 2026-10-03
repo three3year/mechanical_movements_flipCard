@@ -39,6 +39,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation" },
+  target: "small", // 靠摩擦被帶動的小輪
   states: {
     options: [
       { id: "near", label: "小輪靠近中心" },

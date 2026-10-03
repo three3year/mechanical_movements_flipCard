@@ -43,6 +43,7 @@ export default {
     { id: "tagC", kind: "group", center: [0.05, 1.65, 0.2], pieces: [], arrow: false, label: "C" },
   ],
   driver: { part: "frame", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheelD",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     return { parts: { frame: { angle: swingAt(v, -SWING, SWING) }, wheelD: { angle: wheelAngle(v) } }, readouts: [] };

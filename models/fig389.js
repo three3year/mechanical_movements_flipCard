@@ -63,6 +63,7 @@ export default {
     { id: "pawl", kind: "plate", shape: shape(thickLine([[0, 0], [-0.5, 0.25]], 0.08), [circle(0.03).reverse()]), thickness: 0.1, arrow: false },
   ],
   driver: { part: "eccentric", type: "rotation", range: RANGE, initial: 0 },
+  target: "rack", // 一齒一齒被頂上去的棘齒桿
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const h = rack(theta);

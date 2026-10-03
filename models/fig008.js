@@ -32,6 +32,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "driver", type: "rotation" },
+  target: "driven", // 變速的從動階梯輪
   states: { options: STATES, initial: "step2" },
   view: { direction: [0.35, 0.25, 1] },
   pose(angle, state = "step2") {

@@ -50,6 +50,7 @@ export function grooveCam({ figure, waves, amp, length, view }) {
         },
       ],
       driver: { part: "drum", type: "rotation", speed: 0.7 },
+      target: "rod", // 均勻往復直線運動的桿
       view: view ?? { direction: [0.05, 0.12, 1], fov: 22 },
       pose(theta) {
         return { parts: { drum: { angle: theta }, rod: { position: [rodX(theta), 0, 0] } }, readouts: [] };

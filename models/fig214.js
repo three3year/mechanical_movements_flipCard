@@ -65,6 +65,7 @@ export default {
   figure: 214,
   parts: [gearPart("left", LEFT, FINGER.left, 0), gearPart("right", RIGHT, FINGER.right, R0)],
   driver: { part: "left", type: "rotation", range },
+  target: "right",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { left: { angle: theta }, right: { angle: rightAngle(theta) } }, readouts: [] };

@@ -15,13 +15,24 @@ export const SHACKLE0 = 1.9; // 鉤環的起始高度
 // 左鉗臂(局部,鉸點在原點):上臂端在左上,彎下來的尖端在右下(與右鉗臂交叉)
 const U_LOCAL = [-0.52, 0.15];
 const TIP_LOCAL = [1.35, -1.7];
+const ARM_W = 0.1;
 const rot = ([x, y], a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
+const ARM_PATH = [[-0.52, 0.15], [0, 0], [1.15, -0.6], [1.5, -1.2], TIP_LOCAL];
+// 真正碰到石塊的是鉗臂末端內側的角(臂有寬度,末端一段斜著往內),不是中心線的端點
+const TIP_INNER = (() => {
+  const [p, q] = ARM_PATH.slice(-2);
+  const t = Math.atan2(q[1] - p[1], q[0] - p[0]);
+  const n = [-Math.sin(t), Math.cos(t)];
+  const a = [q[0] + (n[0] * ARM_W) / 2, q[1] + (n[1] * ARM_W) / 2];
+  const b = [q[0] - (n[0] * ARM_W) / 2, q[1] - (n[1] * ARM_W) / 2];
+  return a[0] < b[0] ? a : b;
+})();
 
-/** 鉤環高 y → 左鉗臂的轉角、上臂端、尖端(右鉗臂對稱) */
+/** 鉤環高 y → 左鉗臂的轉角、上臂端、尖端內側角(右鉗臂對稱) */
 function arms(y) {
   const U = circleCircle(PIVOT, Math.hypot(...U_LOCAL), [0, y, 0], LINK, 1).point;
   const open = Math.atan2(U[1] - PIVOT[1], U[0] - PIVOT[0]) - Math.atan2(U_LOCAL[1], U_LOCAL[0]);
-  const t = rot(TIP_LOCAL, open);
+  const t = rot(TIP_INNER, open);
   return { U, open, tip: [PIVOT[0] + t[0], PIVOT[1] + t[1], 0] };
 }
 
@@ -44,7 +55,7 @@ export function tongs(u0) {
   return { shackle: SHACKLE0 + close + lift, lift, ...g, gripped: travel >= grip - SHACKLE0 };
 }
 
-const arm = (s) => shape(thickLine([[s * U_LOCAL[0], U_LOCAL[1]], [0, 0], [s * 1.15, -0.6], [s * 1.5, -1.2], [s * TIP_LOCAL[0], TIP_LOCAL[1]]], 0.1));
+const arm = (s) => shape(thickLine(ARM_PATH.map(([x, y]) => [s * x, y]), ARM_W));
 
 export default {
   figure: 494,
@@ -58,6 +69,7 @@ export default {
     { id: "rope", kind: "rope", radius: 0.03 },
   ],
   driver: { type: "virtual", label: "拉起", mode: "balance", range: [0, 1], initial: 0, format: (u) => Math.round(u * 100) + "%" },
+  target: "stone", // 要被夾住吊起的石塊
   view: { direction: [0.06, 0.06, 1] },
   pose(u) {
     const t = tongs(u);

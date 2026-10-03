@@ -64,6 +64,7 @@ export default {
     },
   ],
   driver: { part: "left", type: "rotation" },
+  target: "right", // 得到變速旋轉的錐形輪
   view: { direction: [0.03, 0.08, 1] },
   pose(alpha) {
     return { parts: { left: { angle: alpha }, right: { angle: rightAngle(alpha) } }, readouts: [] };

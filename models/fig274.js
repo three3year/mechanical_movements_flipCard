@@ -60,6 +60,7 @@ export default {
     { id: "sleeve", kind: "cylinder", axis: Y, radius: 0.18, length: 0.3 },
   ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: RANGE, initial: 6 },
+  target: "sleeve", // 沿心軸升降的套筒
   view: { direction: [0.04, 0.05, 1] },
   pose(s) {
     const { x, y, sleeve } = governor(s);

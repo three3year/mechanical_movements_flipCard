@@ -59,6 +59,7 @@ export default {
     { id: "crosshead", kind: "group", pieces: [{ kind: "plate", shape: shape(rect(0.5, 0.25)), thickness: 2 * SIDE + 0.2 }, { kind: "box", size: [0.09, PISTON_ROD + 0.9, 0.09], at: [0, -(PISTON_ROD + 0.9) / 2, 0] }] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
+  target: "crank", // 輸出的曲柄
   view: { direction: [0.08, 0.06, 1] },
   pose(p) {
     const t = table(p);

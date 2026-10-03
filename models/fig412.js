@@ -67,6 +67,7 @@ export default {
     ],
   },
   driver: { part: "sun", type: "rotation" },
+  target: "barrel",
   view: { direction: [0.05, 0.06, 1] },
   pose(theta, state = "free") {
     const a = angles(theta, state);

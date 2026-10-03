@@ -4,6 +4,11 @@
 // 右上方固定的銷一次、被撥轉一齒,螺桿跟著轉一點,螺帽在螺桿上移一小段——手腕銷離圓盤中心的距離改變,
 // 導桿的行程就跟著改變。原文說螺桿裝在圓盤背面,原圖畫在看得到的一面,這裡照原圖。
 // 推斷:撥爪輪 8 齒、每次撥一齒;螺紋的旋向取讓螺帽往中心走(行程逐圈縮短);小齒輪齒數。主動件是圓盤。
+// 結構推斷(分層):原本螺桿、夾螺桿的框、螺帽、T 形桿擠在同一層看不清。照原圖由後往前分成:圓盤(背面是冠狀齒輪)
+// → 盤面上的長條底板與兩端的軸承塊(螺桿架在兩塊之間、離盤面有空隙)→ 螺桿與螺帽 → 螺帽上的手腕銷往前伸
+// → T 形桿(在撥爪輪掃過的範圍之外,銷穿進它的直槽)。固定銷照原文是機架上的一支銷,碰撥爪輪的上半齒:
+// 這裡在圓盤右側立一片機架板(有小齒輪軸的軸承孔,下方開一道槽讓 T 形桿的橫臂穿過、兼作導座),
+// 固定銷由機架板伸出的托架上沿徑向伸到撥爪輪上方。不改齒數、螺距、行程。
 import { deg, polar, add, X, Z, TAU, quatAxisAngle, quatMul, quatFromZ, screwAdvance } from "./kit.js";
 import { indexStep } from "./jumps.js";
 import { meshAngle } from "./gears.js";
@@ -42,7 +47,18 @@ const T_BAR = shape(
   ],
   [[[-0.07, -1.38], [0.07, -1.38], [0.07, 1.38], [-0.07, 1.38]].reverse()],
 );
-const FRAME = shape(rect(3.95, 0.5), [rect(3.2, 0.24).reverse()]);
+// z 分層(由後往前):圓盤面 −0.06 → 底板 −0.06–0.04、軸承塊到 0.335 → 螺桿軸心 0.2 → 撥爪輪齒尖到 0.6 → T 形桿 0.65–0.75
+const SCREW_Z = 0.2;
+const LEVER_Z = 0.7;
+const STRIP = shape(rect(3.95, 0.5), []); // 盤面上承載螺桿的長條底板
+const BLOCK_AT = 1.75; // 兩端軸承塊離盤心的距離(螺帽行程 −1.2–−0.2 碰不到)
+const PIN_Z = SCREW_Z + 0.27; // 固定銷的高度:在撥爪輪齒根(0.22)與齒尖(0.40)之間
+const WALL_X = 3.3; // 機架板的位置(圓盤右側,yz 平面)
+// 機架板的輪廓(局部 x = 世界 −z、局部 y = 世界 y):小齒輪軸的軸承孔,下方一道槽讓 T 形桿的橫臂穿過(兼作導座)
+const WALL = shape(
+  [[1.5, -1.75], [1.5, 0.5], [0.3, 1.3], [-0.95, 1.3], [-0.95, -1.75]],
+  [circle(0.14, -PINION.center[2], 0).reverse(), rect(0.24, 0.8, -LEVER_Z, -1.05).reverse()],
+);
 
 export default {
   figure: 173,
@@ -55,8 +71,10 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(circle(RADIUS), [circle(0.12).reverse()]), thickness: 0.12, at: [0, 0, -0.12] },
         { kind: "gear", crown: true, teeth: CROWN.teeth, radius: CROWN.radius, width: 0.16, toothDepth: 0.16, faceWidth: 0.35, axis: CROWN.axis, at: [0, 0, -0.12] },
-        // 盤面上夾住螺桿的框
-        { kind: "plate", shape: FRAME, thickness: 0.18, angle: SCREW_DIR, accent: true },
+        // 盤面上承載螺桿的底板與兩端的軸承塊(螺桿穿過兩塊)
+        { kind: "plate", shape: STRIP, thickness: 0.1, angle: SCREW_DIR, at: [0, 0, -0.01], accent: true },
+        { kind: "box", size: [0.3, 0.5, 0.45], angle: SCREW_DIR, at: polar(BLOCK_AT, SCREW_DIR, 0.11), accent: true },
+        { kind: "box", size: [0.3, 0.5, 0.45], angle: SCREW_DIR, at: polar(-BLOCK_AT, SCREW_DIR, 0.11), accent: true },
       ],
     },
     {
@@ -70,10 +88,20 @@ export default {
         { kind: "box", size: [0.08, 0.36, 0.09], at: [0, 0.2, TAPPET.at], accent: true },
       ],
     },
-    { id: "nut", kind: "group", arrow: false, pieces: [{ kind: "box", size: [0.4, 0.26, 0.24] }, { kind: "cylinder", radius: 0.07, length: 0.5, at: [0, 0, 0.25] }] },
+    // 螺帽與它的手腕銷(往前伸進 T 形桿的直槽)
+    { id: "nut", kind: "group", arrow: false, pieces: [{ kind: "box", size: [0.4, 0.26, 0.24] }, { kind: "cylinder", radius: 0.07, length: 0.7, at: [0, 0, 0.35] }] },
     { id: "lever", kind: "plate", shape: T_BAR, thickness: 0.1 },
-    // 右上方固定的銷:撥爪輪經過時碰到它的上半齒
-    { id: "pin", kind: "group", pieces: [{ kind: "box", size: [1.0, 0.5, 0.5], at: [3.05, 0.84, 0.35] }, { kind: "cylinder", axis: X, radius: 0.05, length: 0.5, at: [2.3, 0.84, 0.35] }] },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "plate", shape: WALL, axis: X, thickness: 0.25, at: [WALL_X, 0, 0] }, // 機架板
+        { kind: "box", size: [0.8, 0.12, 2.6], at: [WALL_X, -1.81, -0.3] }, // 機架板的腳
+        // 固定銷:由機架板伸出的托架,沿徑向伸到撥爪輪上方;撥爪輪經過時碰到它的上半齒
+        { kind: "box", size: [WALL_X - 2.4, 0.3, 0.3], at: [(WALL_X + 2.4) / 2, polar(2.6, PIN)[1], PIN_Z] },
+        { kind: "cylinder", axis: polar(1, PIN), radius: 0.05, length: 0.6, at: polar(2.3, PIN, PIN_Z) },
+      ],
+    },
     {
       id: "pinion",
       kind: "gear",
@@ -82,10 +110,11 @@ export default {
       teeth: PINION.teeth,
       radius: PINION.radius,
       width: 0.2,
-      pieces: [{ kind: "cylinder", radius: 0.1, length: 2.2, at: [0, 0, 1.1] }],
+      pieces: [{ kind: "cylinder", radius: 0.1, length: 2.2, at: [0, 0, 1.1] }], // 軸:往右穿過機架板的軸承孔
     },
   ],
   driver: { part: "disc", type: "rotation", range: [-REVS.back * TAU, REVS.ahead * TAU] },
+  target: "lever",
   view: { direction: [0.3, 0.2, 1] },
   pose(theta) {
     const { screw, wrist } = traverse(theta);
@@ -93,9 +122,9 @@ export default {
     return {
       parts: {
         disc: { angle: theta },
-        screw: { position: [0, 0, 0.1], rotation: quatMul(along, quatAxisAngle(Z, screw)) },
-        nut: { position: [wrist[0], wrist[1], 0.1], angle: SCREW_DIR + theta },
-        lever: { position: [SLOT_X + wrist[0], 0, 0.42] },
+        screw: { position: [0, 0, SCREW_Z], rotation: quatMul(along, quatAxisAngle(Z, screw)) },
+        nut: { position: [wrist[0], wrist[1], SCREW_Z], angle: SCREW_DIR + theta },
+        lever: { position: [SLOT_X + wrist[0], 0, LEVER_Z] },
         pinion: { angle: meshAngle(CROWN, PINION, theta, CONTACT) },
       },
       readouts: [],

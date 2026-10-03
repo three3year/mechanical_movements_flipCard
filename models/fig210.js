@@ -63,6 +63,7 @@ export default {
     },
   ],
   driver: { part: "arm", type: "rotation", cycle: [FROM, TO], initial: -FROM },
+  target: "rod",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const alpha = swing(v, FROM, TO);

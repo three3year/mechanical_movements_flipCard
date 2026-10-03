@@ -36,6 +36,7 @@ export default {
     { id: "rod", kind: "cylinder", axis: [0, 1, 0], radius: ROD, length: 5.0, mark: true, spin: ROD, spinOffset: 2.2 },
   ],
   driver: { part: "front", type: "rotation", range: RANGE, initial: 0 },
+  target: "rod", // 同時移動與旋轉的圓桿
   view: { direction: [0.45, 0.25, 1] },
   pose(theta0) {
     const m = rodMotion(theta0);

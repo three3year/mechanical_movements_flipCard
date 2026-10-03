@@ -68,7 +68,8 @@ export default {
     { id: "pawlLeft", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "pawlRight", kind: "link", width: 0.08, thickness: 0.05 },
   ],
-  driver: { part: "lever", type: "rotation", cycle: [SWING / 2, -SWING / 2] },
+  driver: { part: "lever", type: "rotation", cycle: [SWING / 2, -SWING / 2] },
+  target: "bar",
   view: { direction: [0.06, 0.05, 1], fit: ["lever", "guide", "pawlLeft", "pawlRight"] },
   pose(v) {
     const psi = swingAt(v, SWING / 2, -SWING / 2);

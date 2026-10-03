@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>模型對照表</title>
+  <!-- 維護用:一次把一串模型的初始畫面(插圖 + 模型)排成一張表,供肉眼抽查結構。
+       用法:tools/contact-sheet.html?from=1&to=12[&cols=4][&v=主動量] ;畫好後 document.title 變成 ready -->
+  <link rel="stylesheet" href="../style.css">
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+  </script>
+  <style>
+    body { margin: 0; background: #fff; }
+    #work { position: absolute; left: -2000px; top: 0; width: 520px; }
+    #work .stage .stage-view { height: 300px; }
+    #sheet { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="sheet"></canvas>
+  <div id="work"><div class="card"><div class="stage" id="stage"></div></div></div>
+  <script type="module">
+    import { loadModel, hasModel } from "../models/registry.js";
+    import { prepare } from "../viewer/viewer.js";
+    const q = new URLSearchParams(location.search);
+    const from = Number(q.get("from") ?? 1), to = Number(q.get("to") ?? from + 11), cols = Number(q.get("cols") ?? 4);
+    const W = 330, H = 300, PAD = 4;
+    const figs = []; for (let n = from; n <= to; n++) if (hasModel(n)) figs.push(n);
+    const rows = Math.ceil(figs.length / cols);
+    const sheet = document.getElementById("sheet");
+    sheet.width = cols * (W * 2 + PAD) ; sheet.height = rows * (H + 24);
+    const ctx = sheet.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, sheet.width, sheet.height);
+    const stage = document.getElementById("stage");
+    const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+    let i = 0;
+    for (const fig of figs) {
+      const x = (i % cols) * (W * 2 + PAD), y = Math.floor(i / cols) * (H + 24); i++;
+      ctx.fillStyle = "#000"; ctx.font = "16px sans-serif"; ctx.fillText("圖 " + fig, x + 4, y + 18);
+      const im = await loadImg(`../images/${fig}.png`);
+      if (im) { const s = Math.min(W / im.width, (H - 24) / im.height); ctx.drawImage(im, x, y + 24, im.width * s, im.height * s); }
+      try {
+        const def = await loadModel(fig);
+        const session = prepare(def, stage);
+        if (q.has("v")) session.value = Number(q.get("v"));
+        session.setPlaying(false);
+        session.transition = null;
+        session.activate();
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        session.frame(performance.now());
+        const canvas = stage.querySelector("canvas");
+        ctx.drawImage(canvas, x + W, y + 24, W, H - 24);
+        // 把 HTML 標籤也畫上去
+        for (const span of stage.querySelectorAll(".stage-label")) {
+          const r = span.getBoundingClientRect(), v = stage.querySelector(".stage-view").getBoundingClientRect();
+          ctx.fillStyle = "#333"; ctx.font = "italic 14px serif";
+          ctx.fillText(span.textContent, x + W + ((r.left - v.left) / v.width) * W, y + 24 + ((r.top - v.top) / v.height) * (H - 24) + 12);
+        }
+        session.dispose();
+      } catch (err) {
+        ctx.fillStyle = "#a00"; ctx.fillText("載入失敗 " + String(err.message).slice(0, 40), x + W + 4, y + 40);
+      }
+    }
+    document.title = "ready";
+  </script>
+</body>
+</html>

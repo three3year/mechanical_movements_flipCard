@@ -80,6 +80,7 @@ export default {
     flap("delivery", 0.14),
   ],
   driver: { part: "handle", grips: ["plunger"], type: "rotation", cycle: SWING },
+  target: "ram",
   view: { direction: [0.08, 0.08, 1] },
   pose(v) {
     const p = press(v);

@@ -35,6 +35,7 @@ export default {
     bevel("lower", lower, { pieces: [{ kind: "cylinder", radius: 0.14, length: 5.0, at: [0, 0, 1.6] }] }),
   ],
   driver: { part: "drive", type: "rotation" },
+  targets: ["upper", "lower"], // 同軸上得到兩種速度的兩個輪
   view: { direction: [0.3, 0.25, 1] },
   pose(angle) {
     const u = meshAngle(drive, upper, angle, PU);

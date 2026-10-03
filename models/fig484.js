@@ -44,6 +44,7 @@ export default {
     },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.12 },
+  target: "drum",
   view: { direction: [0.15, 0.25, 1] },
   pose(progress) {
     const travel = progress * SPEED;

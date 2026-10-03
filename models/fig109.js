@@ -73,6 +73,7 @@ export default {
     ),
   ],
   driver: { part: "lead", type: "rotation", range: [0, TURNS * TAU] },
+  target: "cutter", // 均勻直線進給的刀具
   states: {
     options: [
       { id: "equal", label: "兩輪等大(螺距相同)" },

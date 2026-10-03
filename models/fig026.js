@@ -39,6 +39,7 @@ export default {
     },
   ],
   driver: { part: "spur", type: "rotation" },
+  target: "crown", // 被帶動的冠狀齒輪
   view: { direction: [0.12, 0.12, 1], fov: 14 },
   pose(angle) {
     return { parts: { spur: { angle }, crown: { angle: meshAngle(SPUR, CROWN, angle, CONTACT) } }, readouts: [] };

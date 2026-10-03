@@ -99,6 +99,7 @@ export default {
     { id: "chain", kind: "rope" },
   ],
   driver: { part: "front", type: "rotation", cycle: [SWING / 2, -SWING / 2] },
+  target: "wheel", // 近乎連續旋轉的棘輪 A
   view: { direction: [0.25, 0.12, 1] },
   pose(v) {
     const t = swingAt(v, SWING / 2, -SWING / 2);

@@ -64,6 +64,7 @@ export default {
     },
   ],
   driver: { part: "roller", type: "rotation", range: [0, TURNS * TAU] },
+  target: "spindle", // 來回橫移的心軸(導引線)
   states: {
     options: [
       { id: "right", label: "槓桿扳向右(上方半螺帽嚙合)" },

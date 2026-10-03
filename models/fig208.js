@@ -53,6 +53,7 @@ export default {
     { id: "shaft", kind: "cylinder", center: [0, 0, Z], axis: X, radius: 0.1, length: 4.8 },
   ],
   driver: { part: "wheel", type: "rotation" },
+  target: "pinion",
   states: {
     options: [
       { id: "outer", label: "外圈(最快)" },

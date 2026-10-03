@@ -3,8 +3,11 @@
 // E 上的凸柱轉到一端時撞上曲柄搖臂 G,經連桿把加重槓桿 F 推過垂直位置,F 便突然倒向另一側,
 // 把 D 撥去與另一個齒輪嚙合,軸反轉;E 轉回另一端時再撞 G,再反轉一次。
 // 主動件是驅動斜齒輪,連續轉動;軸因此來回往復。主動量 v 決定一切:軸角是 v 的三角波,
-// F 在每一程的最後一段被推向垂直,過了就倒向另一側(推斷:倒下的動畫以很短的轉角表示)。
+// F 在每一程的最後一段被推向垂直,過了就倒向另一側。倒下是加重槓桿憑自重落下的過程,演出來:
+// 過垂直後從靜止起步、越來越快、倒到底停住(jumps.falling),佔下一程開頭驅動輪轉角的 10%(30°;推斷:
+// 原文只說「突然向左倒下」)。
 import { X, deg, smooth } from "./kit.js";
+import { falling } from "./jumps.js";
 import { meshAngle, bevelGear, pitchCones, bevelContact } from "./gears.js";
 import { shape, circle, stadium } from "./shapes.js";
 import { circleCircle } from "./linkage.js";
@@ -27,7 +30,7 @@ const RATE_C = -(meshAngle(DRIVE, C, 0.01, CC) - meshAngle(DRIVE, C, 0, CC)) / 0
 const JAW = { z: B.radius / Math.tan(B.cone) - B.width / 2 - 0.35, shift: 0.12 };
 const SPAN = deg(300); // 每一程驅動輪轉的角度
 const PUSH = 0.22; // 每一程最後這一段,凸柱推著 G、把 F 推向垂直
-const FALL = 0.04; // F 倒下所佔的比例(下一程的開頭)
+const FALL = 0.1; // F 倒下所佔的比例(下一程的開頭)
 const F_REST = deg(28);
 const F = { pivot: [-0.95, -2.05, 0.75], up: 1.55, arm: 1.0 };
 const G = { pivot: [2.05, -1.35, 0.75], up: 1.0, down: 0.75 };
@@ -52,7 +55,7 @@ export function leverF(v) {
   const { f, sigma } = reverser(v);
   const rest = -sigma * F_REST; // σ = +1 時 F 倒向右方(D 被推到 C)
   if (f > 1 - PUSH) return rest * (1 - smooth((f - (1 - PUSH)) / PUSH));
-  if (f < FALL) return rest * smooth(f / FALL);
+  if (f < FALL) return rest * falling(f / FALL);
   return rest;
 }
 
@@ -128,7 +131,8 @@ export default {
     { id: "rod", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "frame", kind: "group", pieces: [{ kind: "plate", shape: shape(circle(0.24), []), thickness: 0.3, at: [F.pivot[0], F.pivot[1], 0.6] }] },
   ],
-  driver: { part: "drive", type: "rotation", speed: 1.2 },
+  driver: { part: "drive", type: "rotation", speed: 1.2 },
+  target: "rod",
   view: { direction: [0.04, 0.12, 1], fov: 22 },
   pose(v) {
     const { shaft, sigma, f } = reverser(v);

@@ -65,6 +65,7 @@ export default {
     },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.04 },
+  target: "saw",
   view: { direction: [0.05, 0.08, 1] },
   pose(p) {
     const s = sawing(((p % 1) + 1) % 1);

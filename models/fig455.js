@@ -25,14 +25,20 @@ export function opening(phi) {
   }
   return 1;
 }
-/** 閥門的世界角:張開時外端剛好碰到圓筒(落後鉸點 delta),闔上時貼著轉鼓 */
-export function valveAngle(phi, open) {
+// 張開的閥門相對鉸點方向的角度:外端剛好碰到圓筒(落後鉸點 delta)。只與幾何有關,先算好,
+// 閥門的世界角才能寫成 phi 加一個固定的偏角——不能用 atan2 繞回的角度去跟 phi + 130° 內插,
+// 轉鼓多轉幾圈後兩者差了好幾個 2π,閥門闔上、張開時會像螺旋槳一樣多轉好幾圈。
+const OPEN_REL = (() => {
   const delta = Math.acos((BORE * BORE + DRUM * DRUM - VALVE * VALVE) / (2 * BORE * DRUM));
-  const hinge = polar(DRUM, phi);
-  const tip = polar(BORE, phi + delta);
-  const openA = Math.atan2(tip[1] - hinge[1], tip[0] - hinge[0]);
-  const closedA = phi + deg(130); // 往後收進轉鼓上的凹槽
-  return closedA + (openA - closedA) * open;
+  const hinge = polar(DRUM, 0);
+  const tip = polar(BORE, delta);
+  return Math.atan2(tip[1] - hinge[1], tip[0] - hinge[0]);
+})();
+const CLOSED_REL = deg(130); // 闔上時往後收進轉鼓上的凹槽
+
+/** 閥門的世界角:張開時外端剛好碰到圓筒,闔上時貼著轉鼓;open 介於其間時閥門繞鉸點擺過去 */
+export function valveAngle(phi, open) {
+  return phi + CLOSED_REL + (OPEN_REL - CLOSED_REL) * open;
 }
 
 const abutment = shape([...arcPoints(BORE + 0.01, ABUT[0], ABUT[1]), ...arcPoints(DRUM + 0.03, ABUT[1] - deg(6), ABUT[0] + deg(6))]);
@@ -67,6 +73,7 @@ export default {
     ...[0, 1].map((k) => ({ id: `valve${k}`, kind: "plate", shape: shape(rect(VALVE, 0.06, VALVE / 2, 0)), thickness: 0.54, arrow: false, pieces: [{ kind: "cylinder", radius: 0.05, length: 0.6 }] })),
   ],
   driver: { part: "drum", type: "rotation", speed: -0.5, initial: deg(10) },
+  targets: ["valve0", "valve1"],
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const parts = { drum: { angle: theta } };

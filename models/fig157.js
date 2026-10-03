@@ -52,6 +52,7 @@ export default {
     { id: "rod", kind: "group", pieces: [{ kind: "box", size: [0.18, 2.4, 0.1], at: [0, -1.4, 0] }] },
   ],
   driver: { part: "disc", type: "rotation" },
+  target: "rod",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { pin, top, turn, end } = bellCrank(theta);

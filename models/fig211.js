@@ -80,6 +80,7 @@ export default {
     },
   ],
   driver: { part: "wheel", type: "rotation" },
+  target: "pinion",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { wheel: { angle: theta }, pinion: { angle: intermittent(theta).pinion } }, readouts: [] };

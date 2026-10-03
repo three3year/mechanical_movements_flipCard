@@ -31,6 +31,7 @@ export default {
     },
   ],
   driver: { part: "bottom", type: "rotation" },
+  target: "band",
   view: { direction: [0.06, 0.05, 1] },
   pose(angle) {
     const travel = bandTravel(angle);

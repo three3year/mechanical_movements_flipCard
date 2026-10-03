@@ -72,6 +72,7 @@ export default {
     { id: "labelP", kind: "group", center: [-0.6, 3.0, 0], label: "P", labelOffset: [0, 0.2, 0.2] },
   ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: RANGE, initial: 5 },
+  target: "valveD", // 被拉動的閥桿
   view: { direction: [0.03, 0.05, 1] },
   pose(s) {
     const g = governor(s);

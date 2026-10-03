@@ -64,6 +64,7 @@ export default {
     { id: "bolt", kind: "cylinder", radius: 0.12, length: 0.6, center: [0, 0, 0] },
   ],
   driver: { part: "spiralPlate", type: "rotation", range: [tOf(RANGE.max), tOf(RANGE.min)], initial: tOf(1.6) },
+  target: "bolt", // 曲柄銷(長度可變的曲柄)
   view: { direction: [0.06, 0.05, 1] },
   pose(t) {
     const r = crankLength(t);

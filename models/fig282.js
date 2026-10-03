@@ -75,6 +75,7 @@ export default {
     { id: "weight", kind: "box", size: [0.4, 0.8, 0.4] },
   ],
   driver: { part: "disc", type: "rotation" },
+  targets: ["rack", "weight"], // 下端的齒條與上端的重物
   view: { direction: [0.04, 0.05, 1] },
   pose(theta) {
     const { rack, angle } = motion(theta);

@@ -49,6 +49,7 @@ export default {
     },
   ],
   driver: { part: "rod", type: "translation", direction: [1, 0, 0], range: RANGE },
+  target: "upper", // 行程加倍的上齒條
   view: { direction: [0.06, 0.05, 1] },
   pose(x) {
     const { angle, upper } = doubler(x);

@@ -68,6 +68,7 @@ export default {
     { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.25, bore: 0.06, pieces: [{ kind: "cylinder", radius: RP * 0.55, length: 0.36 }, { kind: "cylinder", radius: 0.06, length: 0.9 }] },
   ],
   driver: { part: "pinion", type: "rotation", speed: -0.8 },
+  target: "frame", // 原機構的輸出是小齒輪,模型反過來轉小齒輪、看框往復
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const p = parsons(theta);

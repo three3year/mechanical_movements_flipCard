@@ -52,6 +52,7 @@ export default {
     { id: "pinion", kind: "gear", center: [0, -D, 0], teeth: NP, radius: RP, width: 0.2, bore: 0.2 },
   ],
   driver: { part: "wheel", type: "rotation" },
+  target: "pinion",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { angle } = pinion(theta);

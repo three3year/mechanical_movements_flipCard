@@ -57,6 +57,7 @@ export default {
     { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.22, web: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.8 }] },
   ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
+  target: "frame",
   view: { direction: [0.06, 0.05, 1] },
   pose(alpha) {
     const { frame, y, pinion } = rack(alpha);

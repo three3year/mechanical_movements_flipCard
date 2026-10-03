@@ -45,6 +45,7 @@ export default {
     { id: "cloth", kind: "belt" },
   ],
   driver: { part: "lowRoller", type: "rotation", speed: -0.8 },
+  target: "cylinder", // 整理布料的中間圓筒
   view: { direction: [0.06, 0.05, 1] },
   pose(a) {
     const c = cloth(a);

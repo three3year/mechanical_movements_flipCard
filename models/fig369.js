@@ -49,6 +49,7 @@ export default {
     { id: "bob", kind: "sphere", radius: 0.16 },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "次", speed: 0.25 },
+  target: "bob", // 沿擺線走的擺錘
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const m = pendulum(p);

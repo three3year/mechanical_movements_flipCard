@@ -178,7 +178,8 @@ test("第 221 種:橢圓輪 C 帶動小齒輪,框架上下起伏讓小齒輪保�
   const states = thetas.map((t) => m221.train(t));
   for (const s of states) {
     close(dist(s.center, A), LINK, "框架長度不變", 1e-4);
-    close(dist(s.center, [0, 0, 0]), s.contact, "小齒輪與 C 的中心距 = 接觸半徑 + 小齒輪半徑", 1e-3);
+    close(dist(s.center, s.contact), rb, "小齒輪的節圓與 C 的節曲線相切:軸心離接觸點一個節圓半徑", 1e-3);
+    close(dist(s.contact, [0, 0, 0]), r(s.phi), "接觸點在 C 的節曲線上", 1e-3);
   }
   assert.ok(spread(states.map((s) => s.a)) > 3, "A 的轉動不規則");
   assert.ok(r(0) !== r(Math.PI) && rb > 0);
@@ -188,8 +189,9 @@ test("第 222 種:偏心轉動的普通正齒輪,以連桿維持節距;輪 A 同
   const { A: rA, B: rB, C: rC } = m222.radii;
   const states = sweep(2 * Math.PI, 600).map((t) => m222.train(t));
   for (const s of states) {
-    close(dist(s.b, [-1.8, 2.2, 0]), rA + rB, "框架", 1e-6);
+    close(dist(s.b, m222.centerA), rA + rB, "框架", 1e-6);
     close(dist(s.b, s.cc), rB + rC, "連桿維持 B 與 C 的節距", 1e-6);
+    assert.ok(dist(s.cc, m222.centerA) > rA + rC + 0.2, "A 與 C 不咬合,齒頂之間留有空隙");
   }
   assert.ok(spread(states.map((s) => s.thetaA)) > 1.5, "A 的轉動不規則");
 });
@@ -290,9 +292,13 @@ test("第 212 種:日內瓦式擋止:A 每轉一圈 B 走一格,其餘時間不�
   assert.ok(hi - lo > 4 * 2 * Math.PI && hi - lo < 5 * 2 * Math.PI, "A 約可轉四圈多");
 });
 
-test("第 213 種:擋輪只有一段齒,下輪轉到那段齒的盡頭就被擋住", () => {
+test("第 213 種:擋輪只有一段齒,下輪轉到那段齒的盡頭、齒頂到齒頂高度的輪緣就被擋住", () => {
   const { NL, TOOTHED, LIMIT } = m213.geometry;
-  close(2 * LIMIT, (TOOTHED - 1) * ((2 * Math.PI) / NL), "可轉範圍 = 那段齒", 1e-12);
+  const pitch = (2 * Math.PI) / NL;
+  // 那段齒有 TOOTHED − 1 個齒槽;下輪的齒走到盡頭的齒槽就頂到輪緣:可轉範圍比「整段齒」少、比「少兩個齒槽」多
+  assert.ok(2 * LIMIT > (TOOTHED - 3) * pitch && 2 * LIMIT < (TOOTHED - 1) * pitch, `可轉範圍 ${(2 * LIMIT / pitch).toFixed(2)} 齒`);
+  assert.ok(m213.touching(LIMIT + 0.01) && m213.touching(-LIMIT - 0.01), "兩端都是下輪的齒頂到擋輪的輪緣");
+  for (const t of sweep(LIMIT, 40, -LIMIT)) assert.ok(!m213.touching(t), "範圍內沒頂到");
   const du = m213.upperAngle(0.1) - m213.upperAngle(0);
   assert.ok(du < 0, "咬合反向");
 });

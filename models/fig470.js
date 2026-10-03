@@ -58,6 +58,7 @@ export default {
     },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "下", speed: 0.25 },
+  target: "hammer",
   view: { direction: [0.12, 0.1, 1] },
   pose(v) {
     const h = hammer(v);

@@ -89,6 +89,7 @@ export default {
     ],
   },
   driver: { part: "shaftA", type: "rotation", speed: 1.0 },
+  target: "shaftMN", // 得到合成運動的臂 k、l 與軸 m、n
   view: { direction: [0.35, 0.3, 1] },
   pose(A, state = "original") {
     const t = train(A, state);

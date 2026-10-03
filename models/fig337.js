@@ -27,6 +27,7 @@ export default {
     { id: "pistonRod", kind: "box", size: [0.08, PISTON_ROD, 0.08] },
   ],
   driver: { part: "beam", type: "rotation", range: RANGE, initial: 0 },
+  target: "pistonRod", // 直上直下的活塞桿
   view: { direction: [0.03, 0.05, 1] },
   pose(psi0) {
     const psi = clamp(psi0, ...RANGE);

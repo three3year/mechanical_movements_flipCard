@@ -44,6 +44,7 @@ export default {
     },
   ],
   driver: { part: "worm", type: "rotation", speed: 4 },
+  target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { worm: { angle: theta }, wheel: { angle: Math.PI / N / 2 + wheelAngle(theta) } }, readouts: [] };

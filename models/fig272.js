@@ -52,6 +52,7 @@ export default {
     { id: "rod", kind: "box", size: [3.2, 0.16, 0.16] },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "rod", // 往復的桿
   view: { direction: [0.1, 0.12, 1] },
   pose(theta) {
     const t = rodTravel(theta);

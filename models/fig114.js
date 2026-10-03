@@ -72,6 +72,7 @@ export default {
     },
   ],
   driver: { part: "pinion", type: "rotation", speed: 1.2 },
+  target: "frame", // 往復直線運動的框架
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { pinion: { angle: theta }, frame: { position: [frameX(theta), 0, 0] } }, readouts: [] };

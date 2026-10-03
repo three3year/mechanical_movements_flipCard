@@ -85,6 +85,7 @@ export default {
     { id: "weight", kind: "box", size: [0.9, 0.6, 0.5] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.08 },
+  target: "wheelG", // 上發條時照走的主輪
   view: { direction: [0.03, 0.04, 1] },
   pose(p) {
     const h = harrison(p);

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep, turned } from "./helpers.js";
 import fig75, { motion, wheelSpec } from "../models/fig075.js";
-import { ratchetRadius } from "../models/ratchets.js";
+import { pointInPolygon } from "../models/contact.js";
 
 const PITCH = (2 * Math.PI) / wheelSpec.teeth;
 const STROKE = fig75.driver.cycle[1];
@@ -25,18 +25,37 @@ test("第 75 種:C 來回多次,A 的轉角只往前、不倒退(間歇、單向
   close(angles[0] - angles[angles.length - 1], 2 * PITCH * 5, "九個單程中有五次推程");
 });
 
-test("第 75 種:棘爪 B 與止回爪的爪尖始終靠在輪面上,不穿進輪裡", () => {
+test("第 75 種:棘爪 B 與止回爪的爪尖始終靠在輪面上,不穿進輪裡;推程中 B 的爪尖在齒根、靠著齒的直面", () => {
+  // 輪面以畫出來的棘輪折線為準(齒背是直線段,比 ratchetRadius 的極座標內插略凹進去一點)
+  const outline = fig75.parts.find((q) => q.id === "wheelA").shape.outline;
+  const edgeDist = (p, poly) => {
+    let best = Infinity;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i];
+      const b = poly[(i + 1) % poly.length];
+      const dx = b[0] - a[0];
+      const dy = b[1] - a[1];
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)));
+      best = Math.min(best, Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy));
+    }
+    return best;
+  };
   for (const v of sweep(STROKE * 4, 120)) {
-    const { a } = motion(v);
+    const { a, forward } = motion(v);
     const pose = fig75.pose(v).parts;
+    const wheel = outline.map(([x, y]) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)]);
     for (const id of ["pawlB", "click"]) {
       const p = pose[id];
       const pivot = p.position ?? fig75.parts.find((q) => q.id === id).center;
       const length = id === "pawlB" ? 0.97 : 0.8;
       const tip = [pivot[0] + length * Math.cos(p.angle), pivot[1] + length * Math.sin(p.angle)];
-      const surface = ratchetRadius(wheelSpec, Math.atan2(tip[1], tip[0]) - a);
-      const gap = Math.hypot(...tip) - surface;
-      assert.ok(gap > -1e-6 && gap < 0.02, `${id} 在主動量 ${v.toFixed(3)} 時離輪面 ${gap}`);
+      const gap = (pointInPolygon(tip, wheel) ? -1 : 1) * edgeDist(tip, wheel);
+      assert.ok(gap > -1e-3 && gap < 0.02, `${id} 在主動量 ${v.toFixed(3)} 時離輪面 ${gap}`);
+      if (id === "pawlB" && forward) {
+        const f = (((Math.atan2(tip[1], tip[0]) - a) / PITCH) % 1 + 1) % 1; // 在一個齒距裡的位置(齒根在 0.98–1)
+        close(Math.hypot(...tip), wheelSpec.inner, "推程中爪尖在齒根", 0.01);
+        assert.ok(f > 0.9 || f < 0.1, `爪尖靠在齒的直面旁(${f.toFixed(2)})`);
+      }
     }
   }
 });

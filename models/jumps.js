@@ -32,12 +32,13 @@ export const pushing = (v, { push, fall }) => {
 /**
  * 頂起—落下的一個週期(u 在 [0, 1)):lift 期間緩緩升到 1,drop 期間快速落回 0,其餘時間為 0。
  * 回傳 { height, dropped }:dropped 是這個週期裡「落下」已完成的比例(0–1),用來推動星形輪、棘輪。
+ * fall 是落下的曲線(預設 smooth;憑自重落下的零件用 falling,起步慢、越來越快)。
  */
-export function liftAndDrop(u, { liftFrom, liftTo, dropTo }) {
+export function liftAndDrop(u, { liftFrom, liftTo, dropTo, fall = smooth }) {
   if (u < liftFrom) return { height: 0, dropped: 0 };
   if (u < liftTo) return { height: smooth((u - liftFrom) / (liftTo - liftFrom)), dropped: 0 };
   if (u < dropTo) {
-    const f = smooth((u - liftTo) / (dropTo - liftTo));
+    const f = fall((u - liftTo) / (dropTo - liftTo));
     return { height: 1 - f, dropped: f };
   }
   return { height: 0, dropped: 1 };

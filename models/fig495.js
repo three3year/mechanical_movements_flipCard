@@ -63,6 +63,7 @@ export default {
     { id: "labelC2", kind: "group", pieces: [], label: "C'", labelOffset: [-1.3, 0.45, 0.3] },
   ],
   driver: { part: "shaftD", type: "rotation", speed: 0.4 },
+  target: "wheelC",
   view: { direction: [0.25, 0.3, 1] },
   pose(d) {
     const c = wheelC(d);

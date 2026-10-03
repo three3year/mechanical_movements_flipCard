@@ -52,6 +52,7 @@ export default {
     { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.2, 0.9, 0.5], at: [RIGHT + 2.25, 0, 0] }] },
   ],
   driver: { part: "frame", type: "translation", direction: [1, 0, 0], range: RANGE, initial: 0.3 },
+  target: "gear", // 交替換向的齒輪
   view: { direction: [0.04, 0.05, 1] },
   pose(s0) {
     const s = clamp(s0, ...RANGE);

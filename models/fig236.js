@@ -44,6 +44,7 @@ export default {
     { id: "pawlC", kind: "link", width: 0.2, thickness: 0.08, label: "c", labelOffset: [0.1, -0.3, 0] },
   ],
   driver: { part: "lever", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
+  target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const psi = swingAt(v, -SWING / 2, SWING / 2);

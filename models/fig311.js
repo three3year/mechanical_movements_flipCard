@@ -76,6 +76,7 @@ export default {
     { id: "labelE", kind: "group", center: [1.6, 2.1, 0], label: "D", labelOffset: [0.4, -0.1, 0.3] },
   ],
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const d = doubleThree(v);

@@ -66,6 +66,7 @@ export default {
     { id: "pawlLower", kind: "link", width: 0.12, thickness: 0.06 },
   ],
   driver: { part: "lever", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
+  target: "wheel", // 近乎連續旋轉的輪 B
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const psi = swingAt(v, -SWING / 2, SWING / 2);

@@ -57,6 +57,7 @@ export default {
     },
   ],
   driver: { part: "upper", type: "rotation", range: RANGE },
+  target: "lower",
   view: { direction: [0.06, 0.12, 1] },
   pose(phi) {
     const { y } = press(phi);

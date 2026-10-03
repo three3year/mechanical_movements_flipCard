@@ -59,6 +59,7 @@ export default {
     { id: "rod", kind: "group", pieces: [{ kind: "cylinder", axis: Y, radius: 0.06, length: 1.6, at: [0, -0.8, 0] }, { kind: "cylinder", radius: 0.16, inner: 0.07, length: 0.2 }] },
   ],
   driver: { part: "wheel", type: "rotation", speed: 0.5 },
+  target: "rod",
   view: { direction: [0.08, 0.15, 1] },
   pose(theta) {
     const { angle, rod } = rocker(theta);

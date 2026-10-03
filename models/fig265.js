@@ -65,6 +65,7 @@ export default {
     { id: "rail", kind: "box", center: [0.3, R.big + 0.95, -0.5], size: [5.2, 0.06, 0.06] },
   ],
   driver: { part: "drum", type: "rotation", speed: 2.4 },
+  target: "roller", // 得到變速旋轉的滾子
   view: { direction: [0.12, 0.3, 1] },
   pose(theta) {
     const { x, spin } = roller(theta);

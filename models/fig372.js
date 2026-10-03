@@ -54,6 +54,7 @@ export default {
     { id: "planetBottom", kind: "group", arrow: false, pieces: [gear(P0), { kind: "cylinder", radius: 0.06, length: 0.6, at: [0, 0, -0.3] }] },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "sun2", // 動力傳過去的那一個斜齒輪
   states: {
     initial: "held",
     options: [

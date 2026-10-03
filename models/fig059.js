@@ -47,6 +47,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "drum", type: "rotation" },
+  targets: ["slowDown", "fastDown"], // 下方軸上的兩個齒輪(快慢兩種速度都傳到這根軸)
   states: {
     options: [
       { id: "loose", label: "鬆動輪(停)" },

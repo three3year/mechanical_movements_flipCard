@@ -87,6 +87,7 @@ export default {
     },
   ],
   driver: { part: "long", type: "rotation", cycle: [FROM, TO] },
+  target: "wheel", // 被夾著一步步轉的絞盤輪
   view: { direction: [0.04, 0.05, 1] },
   pose(v) {
     const c = capstan(v);

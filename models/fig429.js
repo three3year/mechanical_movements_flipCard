@@ -105,6 +105,7 @@ export default {
     },
   ],
   driver: { part: "left", type: "rotation", speed: 0.5 },
+  target: "right",
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const q = partner(theta);

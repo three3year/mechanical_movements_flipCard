@@ -54,6 +54,7 @@ export default {
     bellCrank({ ...LEVER, z: 0.5 }),
   ],
   driver: { part: "top", type: "rotation" },
+  target: "shaft", // 可正反轉的水平軸
   states: {
     options: [
       { id: "left", label: "接合左輪" },

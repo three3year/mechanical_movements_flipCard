@@ -41,6 +41,7 @@ export default {
     { id: "bracket", kind: "box", center: [-1.0, -0.8, 0], size: [2.2, 0.12, 0.3] },
   ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, 10], initial: 8.8 },
+  target: "lever",
   view: { direction: [0.04, 0.06, 1] },
   pose(s) {
     const { alpha, sleeve } = governor(s);

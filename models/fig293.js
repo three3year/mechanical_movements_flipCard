@@ -67,6 +67,7 @@ export default {
     { id: "labelD", kind: "group", center: [-1.3, -0.75, 0.5], label: "D", labelOffset: [-0.2, 0.3, 0] },
   ],
   driver: { part: "staffA", type: "rotation", cycle: [-SWING, SWING], initial: SWING },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.05, 0.35, 1] },
   pose(v) {
     const d = duplex(v);

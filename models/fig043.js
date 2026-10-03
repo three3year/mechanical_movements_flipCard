@@ -28,6 +28,7 @@ export default {
   figure: 43,
   parts: [bevel("big", BIG, 4.2), bevel("small", SMALL, 4.2)],
   driver: { part: "big", type: "rotation" },
+  target: "small", // 被帶動的傘齒輪
   view: { direction: [0.05, 0.1, 1] },
   pose(angle) {
     return { parts: { big: { angle }, small: { angle: meshAngle(BIG, SMALL, angle, CONTACT) } }, readouts: [] };

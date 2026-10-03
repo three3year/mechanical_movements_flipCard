@@ -49,6 +49,7 @@ export function twinWheels(figure, direction) {
       },
     ],
     driver: { part: "staff", type: "rotation", cycle: [-SWING, SWING] },
+    target: "wheels", // 雙擒縱輪
     view: { direction },
     pose(v) {
       const t = twin(v);

@@ -42,6 +42,7 @@ export default {
     },
   ],
   driver: { part: "nut", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 0 },
+  target: "stock", // 交替正反旋轉的鑽柄
   view: { direction: [0.2, 0.25, 1] },
   pose(y) {
     return { parts: { nut: { position: [0, y, 0] }, stock: { angle: drillAngle(y) } }, readouts: [] };

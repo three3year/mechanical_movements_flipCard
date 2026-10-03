@@ -4,6 +4,8 @@
 // 主動件是虛擬的「壓力」。
 // 推斷:彎管在頂端 C 固定,兩半各沿錶殼內側彎下來;伸直以「彎曲半徑隨壓力變大、管長不變」表示;兩端經短桿推動扇形段,
 // 扇形段轉角與兩端的平均位移成正比。
+// 物理:扇形段與小齒輪的模數相同、中心距 = 兩節圓半徑和(原本扇形段的中心距只有 0.6,齒伸到小齒輪的軸心裡);
+// 扇形段在小齒輪那一層(指針後面),有齒的一段朝上對著小齒輪;短桿接在扇形段上的銷上。
 import { deg, polar, clamp } from "./kit.js";
 import { meshAngle } from "./gears.js";
 import { shape, circle, thickLine } from "./shapes.js";
@@ -13,8 +15,13 @@ const SPAN = deg(140); // 每一半從 C 量起轉過的角度
 export const RANGE = [0, 10];
 const K = 0.035; // 每單位壓力半徑變大的比例
 const PINION = { center: [0, -0.35, 0], teeth: 10, radius: 0.12 };
-const SECTOR = { center: [0, -0.95, 0], teeth: 60, radius: 0.6 };
-const GAIN = 0.41; // 管端位移 → 扇形段轉角(滿刻度時指針轉 120°)
+const SECTOR_TEETH = 45; // 與小齒輪同模數
+const SECTOR_R = (PINION.radius / PINION.teeth) * SECTOR_TEETH;
+const SECTOR = { center: [0, PINION.center[1] - (PINION.radius + SECTOR_R), 0], teeth: SECTOR_TEETH, radius: SECTOR_R };
+const SECTOR_SPAN = [deg(40), deg(140)]; // 有齒的一段(朝上對著小齒輪;轉動 20° 內一直咬著)
+const GEAR_Z = -0.06; // 小齒輪與扇形段所在的層(指針後面)
+const PIN_AT = (s) => polar(0.42, deg(90) + s * deg(42)); // 扇形段上接短桿的銷(局部)
+const GAIN = 0.41 * (60 / SECTOR_TEETH); // 管端位移 → 扇形段轉角(滿刻度時指針轉 120°)
 const C = [0, R0, 0];
 
 /** 壓力 p → 彎曲半徑、右半管端的位置(左半對稱)、扇形段與指針的轉角 */
@@ -57,16 +64,30 @@ export default {
     { id: "tubeR", kind: "rod", radius: 0.07 },
     { id: "rodL", kind: "rod", radius: 0.025 },
     { id: "rodR", kind: "rod", radius: 0.025 },
-    { id: "sector", kind: "gear", center: SECTOR.center, teeth: SECTOR.teeth, radius: SECTOR.radius, width: 0.06, arrow: false, has: (i) => i < 9 || i > SECTOR.teeth - 9 },
-    { id: "pointer", kind: "plate", center: PINION.center, shape: shape([[-0.12, -0.03], [1.55, 0], [-0.12, 0.03]]), thickness: 0.03, accent: true, spin: 0.3, pieces: [{ kind: "gear", teeth: PINION.teeth, radius: PINION.radius, width: 0.06, at: [0, 0, -0.06] }] },
+    {
+      id: "sector",
+      kind: "gear",
+      center: [SECTOR.center[0], SECTOR.center[1], GEAR_Z],
+      teeth: SECTOR.teeth,
+      radius: SECTOR.radius,
+      width: 0.06,
+      arrow: false,
+      span: SECTOR_SPAN, // 繪圖:扇形齒輪
+      // 掃描工具(不認得 span)用:與 sectorShape 同一段齒
+      mask: (i) => i >= Math.ceil(SECTOR_SPAN[0] / ((2 * Math.PI) / SECTOR.teeth) + 0.5 - 1e-9) && i <= Math.floor(SECTOR_SPAN[1] / ((2 * Math.PI) / SECTOR.teeth) - 0.5 + 1e-9),
+      // 接短桿的兩根銷,從扇形段伸到短桿那一層
+      pieces: [1, -1].map((s) => ({ kind: "cylinder", radius: 0.03, length: 0.2, at: [PIN_AT(s)[0], PIN_AT(s)[1], 0.08] })),
+    },
+    { id: "pointer", kind: "plate", center: PINION.center, shape: shape([[-0.12, -0.03], [1.55, 0], [-0.12, 0.03]]), thickness: 0.03, accent: true, spin: 0.3, pieces: [{ kind: "gear", teeth: PINION.teeth, radius: PINION.radius, width: 0.06, at: [0, 0, GEAR_Z] }] },
   ],
   driver: { type: "virtual", label: "壓力", mode: "balance", range: RANGE, initial: 4 },
+  target: "pointer", // 在錶盤上指示壓力的指針
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const b = bourdon(p);
     const endL = [-b.end[0], b.end[1], 0.05];
     const endR = [b.end[0], b.end[1], 0.05];
-    const arm = (s) => polar(0.45, deg(90) + s * deg(60) + b.sector, 0.05).map((c, i) => c + SECTOR.center[i]);
+    const arm = (s) => polar(0.42, deg(90) + s * deg(42) + b.sector, 0.05).map((c, i) => c + SECTOR.center[i]);
     return {
       parts: {
         sector: { angle: b.sector },

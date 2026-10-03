@@ -41,6 +41,7 @@ export default {
     },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "yoke", // 上下直線往復的軛
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { y } = yoke(theta);

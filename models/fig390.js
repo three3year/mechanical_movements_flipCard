@@ -59,6 +59,7 @@ export default {
     { id: "strapD", kind: "belt" },
   ],
   driver: { part: "partA", type: "rotation", cycle: [-SWING, SWING] },
+  target: "flywheel", // 連續同向轉的飛輪
   view: { direction: [0.15, 0.08, 1] },
   pose(v) {
     const o = oscillation(v);

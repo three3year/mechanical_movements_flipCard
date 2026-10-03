@@ -40,6 +40,7 @@ export default {
     },
   ],
   driver: { part: "cam", type: "rotation" },
+  target: "rod", // 均勻橫移的水平桿
   view: { direction: [0.1, 0.08, 1] },
   pose(angle) {
     // 桿在 +X 方向的徑向直線上;凸輪轉 angle 時,接觸點在凸輪局部角 −angle

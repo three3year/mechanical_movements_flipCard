@@ -67,6 +67,7 @@ export default {
     ],
   },
   driver: { part: "handle", type: "rotation", cycle: SWING },
+  target: "cylinder",
   view: { direction: [0.15, 0.1, 1] },
   pose(v, state = "lift") {
     const j = jack(v, state);

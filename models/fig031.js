@@ -31,6 +31,7 @@ export default {
     { id: "wheel", kind: "gear", center: [0, 0, 0], teeth: WHEEL.teeth, radius: WHEEL.radius, width: 0.3, bore: 0.12 },
   ],
   driver: { part: "worm", type: "rotation" },
+  target: "wheel", // 每圈轉過一齒的蝸輪
   view: { direction: [0.08, 0.06, 1] },
   pose(theta) {
     return { parts: { worm: { angle: theta }, wheel: { angle: wheelAngle(theta) } }, readouts: [] };

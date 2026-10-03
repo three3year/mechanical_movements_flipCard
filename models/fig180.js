@@ -50,6 +50,7 @@ export default {
     { id: "screw", kind: "group", arrow: false, pieces: [{ kind: "cylinder", radius: 0.34, length: 0.3, at: [0, 0, 0.15] }, ...head([0, 0, 0.34]).map((p) => ({ ...p, at: [p.at[0], p.at[1], p.at[2] + 0.25] }))] },
   ],
   driver: { part: "board", type: "translation", direction: [0, 1, 0], range: [0, PUSH], initial: PUSH },
+  target: "jaw",
   view: { direction: [0.06, 0.05, 1] },
   pose(d) {
     const { top, angle } = clamp(d);

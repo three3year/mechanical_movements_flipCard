@@ -73,6 +73,7 @@ export default {
     { id: "belt", kind: "rope" },
   ],
   driver: { part: "fusee", type: "rotation", range: RANGE, initial: 0 },
+  target: "carriage", // 被拉著橫移的托架
   view: { direction: [0.08, 0.25, 1] },
   pose(theta0) {
     const f = fusee(theta0);

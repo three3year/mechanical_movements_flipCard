@@ -60,6 +60,7 @@ export default {
     { id: "labelA2", kind: "group", center: GR.center, label: "A", labelOffset: [-0.25, -0.5, 0.4] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
+  targets: ["gearL", "gearR"], // 輸出的曲柄齒輪
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const c = cartwright(p);

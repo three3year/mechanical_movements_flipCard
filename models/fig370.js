@@ -60,11 +60,16 @@ export default {
       spin: 0.72,
       mark: [0.4, 0],
       markSize: 0.06,
-      // 鏡面:棘輪上的一塊方板
-      pieces: [{ kind: "box", size: [0.85, 0.85, 0.06], at: [0, 0, 0.1], angle: deg(15) }],
+      pieces: [
+        // 鏡面:棘輪上的一塊方板
+        { kind: "box", size: [0.85, 0.85, 0.06], at: [0, 0, 0.1], angle: deg(15) },
+        // 棘輪的軸:穿過長桿的下端(棘輪在長桿前面一層,靠這根軸相連)
+        { kind: "cylinder", radius: 0.07, length: 0.34, at: [0, 0, -0.14] },
+      ],
     },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "ratchet", // 鏡面固定在棘輪上,得到複合運動
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const p = polish(theta);
@@ -72,7 +77,8 @@ export default {
       parts: {
         crank: { angle: theta },
         rod: { position: [p.pin[0], p.pin[1], 0.2], angle: p.angle },
-        ratchet: { position: [p.center[0], p.center[1], 0.3], angle: p.ratchet + p.angle },
+        // 棘輪裝在長桿的下端、在長桿前面一層(原圖長桿畫在棘輪上面):z 範圍不能與長桿(0.15–0.25)重疊
+        ratchet: { position: [p.center[0], p.center[1], 0.36], angle: p.ratchet + p.angle },
       },
       readouts: [],
     };

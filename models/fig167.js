@@ -44,6 +44,7 @@ export default {
     },
   ],
   driver: { part: "drum", type: "rotation", speed: 0.7 },
+  target: "rod",
   view: { direction: [0.3, 0.1, 1] },
   pose(theta) {
     return { parts: { drum: { angle: theta }, rod: { position: [0, rodY(theta), 0] } }, readouts: [] };

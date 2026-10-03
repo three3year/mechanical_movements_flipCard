@@ -52,6 +52,7 @@ export default {
     { id: "wheel", kind: "group", center: WHEEL, spin: 0.7, pieces: [{ kind: "plate", shape: { ...ratchetShape({ teeth: N, outer: 0.7, inner: 0.55, dir: -1 }), holes: [circle(0.08).reverse()] }, thickness: 0.1 }, { kind: "box", size: [0.12, 0.12, 0.12], at: [0.45, 0, 0.06], accent: true }] },
   ],
   driver: { part: "lever", type: "rotation", cycle: [-SWING, SWING] },
+  targets: ["bal1", "bal2"], // 一正一反的兩個擺輪
   view: { direction: [0.03, 0.05, 1] },
   pose(v) {
     const g = guernsey(v);

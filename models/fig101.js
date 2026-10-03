@@ -59,6 +59,7 @@ export default {
     },
   ],
   driver: { part: "lever", type: "rotation", range: RANGE, initial: REST },
+  target: "bar", // 直線往復的水平桿
   view: { direction: [0.06, 0.05, 1], fit: ["lever", "fixed"] },
   pose(psi) {
     // 水平桿的中心比銷偏左,讓銷大致落在桿的中段

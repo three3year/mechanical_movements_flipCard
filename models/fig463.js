@@ -40,6 +40,7 @@ export default {
     { id: "lower", kind: "plate", center: LOWER.pivot, shape: leaf(LOWER), thickness: 1.0, arrow: false, pieces: [{ kind: "cylinder", radius: 0.06, length: 1.2 }] },
   ],
   driver: { type: "virtual", label: "上游水位", mode: "balance", range: [NORMAL - 0.25, FLOOD + 0.2], initial: NORMAL },
+  target: "upper", // 翻轉的上閘葉
   view: { direction: [0.12, 0.08, 1] },
   pose(h) {
     const g = gates(h);

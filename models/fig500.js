@@ -97,6 +97,7 @@ export default {
     { id: "needle", kind: "plate", center: [0, 0, 0.16], shape: needle, thickness: 0.04, hub: 0.08, spin: 1.1 },
   ],
   driver: { type: "virtual", label: "壓力", mode: "balance", range: [0, MAX] },
+  target: "needle",
   view: { direction: [0.1, 0.08, 1] },
   pose(p) {
     const { lift, discTop, pin, sector, pinion } = gauge(Math.min(MAX, Math.max(0, p)));

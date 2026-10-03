@@ -54,6 +54,7 @@ export default {
     { id: "plunger", kind: "group", pieces: [{ kind: "box", size: [0.12, 1.3, 0.12], at: [0, -0.65, 0] }, { kind: "box", size: [0.36, 0.12, 0.36], at: [0, -1.3, 0] }] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
+  target: "weight", // 被釋放的測深錘
   view: { direction: [0.05, 0.08, 1] },
   pose(p) {
     const s = sounding(p);

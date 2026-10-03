@@ -97,6 +97,7 @@ export default {
     { id: "rail", kind: "box", center: [0, -FRAME.h / 2 - 2 * WHEEL - 0.05, -0.25], size: [FRAME.w + 5, 0.1, 0.6] },
   ],
   driver: { part: "pinion", type: "rotation", speed: 1.3 },
+  target: "frame",
   view: { direction: [0.06, 0.05, 1], fit: ["frame", "rack", "pinion"] },
   pose(alpha) {
     const { x, y } = rackPosition(alpha);

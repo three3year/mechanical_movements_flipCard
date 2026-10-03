@@ -74,6 +74,7 @@ export default {
   ],
   // 凸輪順時針轉(轉角為負),在四圈的範圍內往返
   driver: { part: "cam", type: "rotation", range: [-4 * TAU, 0], initial: 0 },
+  target: "frame", // 被一齒一齒推動的雙齒條框架 B
   states: {
     options: [
       { id: "raised", label: "抬起 A(推向左)" },

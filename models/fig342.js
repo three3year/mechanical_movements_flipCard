@@ -64,6 +64,7 @@ export default {
     { id: "chain", kind: "chain", style: "plate", pitch: 0.24, width: 0.16, offset: 0.06 },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.15 },
+  target: "beam", // 帶動抽水桿的樑
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const a = atmospheric(p);

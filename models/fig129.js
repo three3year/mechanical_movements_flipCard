@@ -59,6 +59,7 @@ export default {
     { id: "rope", kind: "rope" },
   ],
   driver: { part: "drum", type: "rotation", range: [0, TURNS * TAU] },
+  target: "pulley", // 被吊起的滑輪(下接吊鉤)
   view: { direction: [0.06, 0.08, 1] },
   pose(theta) {
     const y = pulleyY(theta);

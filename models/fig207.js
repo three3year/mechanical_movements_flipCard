@@ -45,6 +45,7 @@ export default {
     })),
   ],
   driver: { part: "shaft", type: "rotation", speed: 3 },
+  targets: ["left", "right"], // 一對進料滾軸
   view: { direction: [0.08, 0.06, 1] },
   pose(theta) {
     const [left, right] = wheels(theta);

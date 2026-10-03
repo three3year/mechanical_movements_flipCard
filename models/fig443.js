@@ -81,6 +81,7 @@ export default {
     { id: "river", kind: "fill", fluid: "water", center: [0.8, (RIVER - 2.25) / 2, 0], size: [5.4, RIVER + 2.25, 2.8], level: 1 },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.15 },
+  target: "screw",
   view: { direction: [0.35, 0.3, 1] },
   pose(progress) {
     const a = -TAU * progress; // 水流推下端的輪,螺旋這個方向轉時水往上走

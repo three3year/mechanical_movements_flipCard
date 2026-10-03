@@ -65,6 +65,7 @@ export default {
     { id: "springD", kind: "spring", coils: 6, radius: 0.06, wire: 0.015, label: "d", labelOffset: [0.2, 0.2, 0.2] },
   ],
   driver: { part: "piston", type: "translation", direction: [0, 1, 0], cycle: [0, STROKE] },
+  target: "gear",
   view: { direction: [0.03, 0.05, 1] },
   pose(v) {
     const r = racks(v);

@@ -42,6 +42,7 @@ export default {
     },
   ],
   driver: { part: "cam", type: "rotation", speed: 0.7 },
+  target: "rod",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { cam: { angle: theta }, rod: { position: [0, rodY(theta), 0.05] } }, readouts: [] };

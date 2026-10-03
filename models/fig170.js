@@ -43,6 +43,7 @@ export default {
     { id: "rod", kind: "group", pieces: [{ kind: "cylinder", axis: Y, radius: 0.06, length: 1.3, at: [0, 0.6, 0] }, { kind: "cylinder", radius: 0.12, inner: 0.05, length: 0.15 }] },
   ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, MAX], initial: 8.8 },
+  target: "rod",
   view: { direction: [0.04, 0.06, 1] },
   pose(s) {
     const { alpha, tip, rod } = governor(s);

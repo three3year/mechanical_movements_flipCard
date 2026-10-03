@@ -137,6 +137,7 @@ export function woolCombModel(figure) {
     driver: cam
       ? { part: "cam", type: "rotation", speed: 0.8 }
       : { type: "virtual", label: "凸輪轉了", mode: "progress", range: [0, 1], unit: "圈", speed: 0.15 },
+    target: cam ? "lever" : "wheelF", // 第 217 種:凸輪帶動的槓桿;第 218 種:槓桿經卡榫帶動的凹槽輪 F(連著滾軸)
     view: { direction: [0.06, 0.05, 1] },
     pose(v) {
       const u = cam ? v / TAU : v;

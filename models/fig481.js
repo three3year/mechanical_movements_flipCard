@@ -67,6 +67,7 @@ export default {
     ...Array.from({ length: CHAMBERS }, (_, k) => ({ id: `labelB${k}`, kind: "group", pieces: [], label: "B", labelOffset: [0, 0, 0.5] })),
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "轉", speed: 0.1 },
+  target: "drum",
   view: { direction: [0.03, 0.05, 1] },
   pose(progress) {
     const a = -TAU * progress; // 順時針

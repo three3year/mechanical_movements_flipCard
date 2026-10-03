@@ -59,6 +59,7 @@ export default {
     { id: "rod", kind: "link", width: 0.24, thickness: 0.1 },
   ],
   driver: { part: "disc", type: "rotation", cycle: [0, SWING] },
+  target: "cog", // 間歇旋轉的棘輪
   states: {
     options: [
       { id: "cw", label: "制動爪朝右(順時針進給)" },

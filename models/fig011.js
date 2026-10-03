@@ -14,6 +14,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "driver", type: "rotation" },
+  target: "driven", // 軸朝前後的從動輪
   view: { direction: [0.8, 0.35, 1] },
   pose(angle) {
     const travel = beltTravel(angle, DRUM.radius, DRUM.sense);

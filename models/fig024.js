@@ -16,6 +16,7 @@ export default {
     { id: "right", kind: "gear", center: RIGHT.center, teeth: RIGHT.teeth, radius: RIGHT.radius, width: 0.22, bore: 0.12 },
   ],
   driver: { part: "left", type: "rotation" },
+  target: "right", // 被帶動的齒輪
   view: { direction: [0.12, 0.1, 1] },
   pose(angle) {
     return {

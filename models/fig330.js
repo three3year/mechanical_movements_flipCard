@@ -64,6 +64,7 @@ export default {
     { id: "pistonRod", kind: "group", pieces: [{ kind: "box", size: [0.08, PISTON_ROD + 1.95, 0.08], at: [0, (1.95 - PISTON_ROD) / 2, 0] }, { kind: "box", size: [0.5, 0.12, 0.14], at: [0, 0, 0.12] }] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
+  target: "crank", // 輸出的曲柄
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const e = engine(p);

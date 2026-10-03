@@ -1,6 +1,9 @@
 // 第 81 種:缺齒式正齒輪 A 連續旋轉,使齒條桿 B 做交替方向的直線運動:A 的齒咬住齒條時把桿往上推、
 // 壓縮螺旋彈簧 C;齒一離開齒條,彈簧便把桿推回原位。主動件是 A(順時針,原圖箭頭)。
-import { TAU, deg, smooth } from "./kit.js";
+// 彈回的過程演出來:齒脫離後桿從靜止起步、越來越快地被彈簧推回、到底停住(jumps.falling),佔 A 轉角約 52°
+// (推斷:原文只說「推回原位」;A 的缺齒段有 235°,彈回在其中完成,之後桿停著等下一次咬合)。
+import { TAU, deg } from "./kit.js";
+import { falling } from "./jumps.js";
 
 const N = 23;
 const R = 0.75;
@@ -10,7 +13,7 @@ const T = 8; // 有齒的齒數
 const J0 = 12; // 第一個齒的編號:咬合從順時針轉角 0 開始
 const C_START = J0 * P_ANGLE - P_ANGLE / 2 - Math.PI;
 const SPAN = T * P_ANGLE;
-const RETURN = deg(30); // 彈簧把桿推回去所需的轉角
+const RETURN = deg(52); // 彈簧把桿推回去所需的轉角
 const RACK_X = -R;
 const SPRING_TOP = 3.1;
 
@@ -19,7 +22,7 @@ export function rackRise(c) {
   const t = c - C_START;
   const u = t - Math.floor(t / TAU) * TAU;
   if (u <= SPAN) return R * u;
-  return R * SPAN * (1 - smooth((u - SPAN) / RETURN));
+  return R * SPAN * (1 - falling((u - SPAN) / RETURN));
 }
 export const stroke = R * SPAN;
 export const engagedSpan = SPAN;
@@ -61,7 +64,8 @@ export default {
     { id: "stop", kind: "box", center: [RACK_X - 0.36, SPRING_TOP, 0], size: [0.6, 0.1, 0.4] },
     { id: "labelC", kind: "group", center: [RACK_X + 0.15, 2.35, 0.2], label: "C" },
   ],
-  driver: { part: "gear", type: "rotation", speed: -1.0, initial: -SPAN / 2 },
+  driver: { part: "gear", type: "rotation", speed: -1.0, initial: -SPAN / 2 },
+  target: "rack",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const rise = rackRise(-v);

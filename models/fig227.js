@@ -28,6 +28,7 @@ export default {
     { id: "chain", kind: "chain", style: "plate", pitch: 0.94, width: 0.36, offset: 0.2 },
   ],
   driver: { part: "wheel", type: "rotation" },
+  target: "chain",
   view: { direction: [0.1, 0.06, 1] },
   pose(angle) {
     return {

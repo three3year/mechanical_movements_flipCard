@@ -49,6 +49,7 @@ export default {
     { id: "dial", kind: "plate", shape: shape(thickLine([[0, 0], [0.32, 0]], 0.05)), thickness: 0.04, center: [1.8, H / 2 + 0.95, 0.15], spin: 0.4, accent: true },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "次", speed: 0.15 },
+  target: "dial", // 錶盤指針
   view: { direction: [0.08, 0.06, 1] },
   pose(v) {
     const m = meter(v);

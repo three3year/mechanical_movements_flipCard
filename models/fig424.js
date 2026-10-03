@@ -73,6 +73,7 @@ export default {
     { id: "wrist", kind: "group", label: "a", labelOffset: [0.2, -0.15, 0.6], pieces: [] },
   ],
   driver: { part: "shaft", type: "rotation" },
+  targets: ["pistonB", "pistonC"],
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const { b, c } = pistons(theta);

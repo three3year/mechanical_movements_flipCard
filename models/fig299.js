@@ -50,6 +50,7 @@ export default {
     },
   ],
   driver: { part: "verge", type: "rotation", cycle: [-SWING, SWING] },
+  target: "crown", // 冠狀輪(擒縱輪)
   view: { direction: [0.08, 0.18, 1] },
   pose(v) {
     return { parts: { verge: { angle: swing(v, -SWING, SWING) }, crown: { angle: wheelAngle(v) } }, readouts: [] };

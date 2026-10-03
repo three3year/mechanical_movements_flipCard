@@ -64,6 +64,7 @@ export default {
     { id: "link", kind: "link", width: 0.08, thickness: 0.05 },
   ],
   driver: { part: "handle", grips: ["piston"], type: "rotation", cycle: SWING },
+  target: "piston",
   view: { direction: [0.08, 0.06, 1] },
   pose(v) {
     const p = pump(v);

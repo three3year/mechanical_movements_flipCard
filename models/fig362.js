@@ -58,6 +58,7 @@ export default {
     },
   ],
   driver: { part: "cylinder", type: "rotation" },
+  target: "upper", // 來回橫移的上方軸
   view: { direction: [0.1, 0.25, 1] },
   pose(theta) {
     return { parts: { cylinder: { angle: theta }, upper: { position: [traverse(theta), 0, 0] } }, readouts: [] };

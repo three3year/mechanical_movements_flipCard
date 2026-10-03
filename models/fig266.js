@@ -48,6 +48,7 @@ export default {
     { id: "bearing", kind: "group", pieces: [{ kind: "box", size: [0.45, 1.05, 0.6], at: [0, -0.05, 0] }, { kind: "box", size: [1.1, 0.12, 0.9], at: [0, -0.5, 0] }] },
   ],
   driver: { part: "shaft", type: "rotation", range: RANGE, initial: 0 },
+  target: "bearing", // 每圈只移動兩螺距之差的可動軸承
   view: { direction: [0.25, 0.35, 1] },
   pose(theta0) {
     const { theta, shaft, bearing } = feed(theta0);

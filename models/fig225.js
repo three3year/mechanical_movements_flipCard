@@ -60,6 +60,7 @@ export default {
     { id: "stand", kind: "group", pieces: [{ kind: "plate", shape: shape([[-0.5, -0.35], [0.5, -0.35], [0.3, 0.05], [-0.3, 0.05]]), thickness: 0.3, at: [PIVOT[0], PIVOT[1] - 0.05, 0] }, { kind: "plate", shape: shape(rect(2.2, 0.12, PIVOT[0], PIVOT[1] - 0.46)), thickness: 0.5 }] },
   ],
   driver: { part: "lever", type: "rotation", cycle: [FROM, -FROM] },
+  target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const { psi, wheel, tip } = ratchet(v);

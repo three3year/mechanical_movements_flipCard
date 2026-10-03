@@ -75,6 +75,7 @@ export default {
     { id: "ropeEnd", kind: "rope" },
   ],
   driver: { part: "platform", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 1.4 },
+  targets: ["pawlL", "pawlR"], // 繩斷時撐進棘齒的棘爪
   states: {
     initial: "intact",
     options: [

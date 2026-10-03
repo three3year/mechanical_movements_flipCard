@@ -56,6 +56,7 @@ export default {
     },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.3 },
+  target: "sphere",
   view: { direction: [0.55, 0.35, 1] },
   pose(progress) {
     const a = TAU * progress;

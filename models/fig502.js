@@ -5,6 +5,8 @@
 // 就得到兩端的輪都與框架同心的周轉輪系:可以把運動給臂與一個端輪,產生另一個端輪的合成轉動。
 // 主動件是框架 C;狀態按鈕選擇末輪是 B(在臂端)或 D(與框架同心),以及 A 是否也在轉。
 // 推斷:齒數 A 24、F 18、E 24、B 18、D 18(依原圖比例);「A 也轉」時 A 以臂轉速的一半反向轉。
+// 各輪的齒相位在「框架的座標系」裡算(框架轉 0 時的幾何,接觸點固定),再加上框架的轉角:
+// 若直接用公轉中的接觸點算 gears.meshAngle,它對齊齒相位的整數取整會在某個框架角突然換一齒,輪會跳一個齒距。
 import { meshAngle } from "./gears.js";
 import { lastWheel, trainValue } from "./epicyclic.js";
 import { shape, thickLine, circle } from "./shapes.js";
@@ -17,6 +19,12 @@ const P_AT = r(TEETH.A) + r(TEETH.F); // F、E 的軸離支點
 const B_AT = P_AT + r(TEETH.E) + r(TEETH.B); // B 的軸離支點
 const A = { center: O, teeth: TEETH.A, radius: r(TEETH.A) };
 const D = { center: O, teeth: TEETH.D, radius: r(TEETH.D) };
+// 框架轉 0 時 F/E 與 B 的位置:咬合用這組固定的幾何算
+const F0 = { center: [O[0], O[1] + P_AT, 0], teeth: TEETH.F, radius: r(TEETH.F) };
+const E0 = { center: F0.center, teeth: TEETH.E, radius: r(TEETH.E) };
+const B0 = { center: [O[0], O[1] + B_AT, 0], teeth: TEETH.B, radius: r(TEETH.B) };
+/** 在框架上看:a 相對框架轉 angleA 時,與它咬合的 b 相對框架的轉角(a、b 用框架轉 0 時的位置) */
+const meshOnArm = (a, b, angleA, arm) => arm + meshAngle(a, b, angleA - arm);
 /** A → B、A → D 的輪系值(以臂為參考) */
 export const E_AB = trainValue([[TEETH.A, TEETH.F, -1], [TEETH.E, TEETH.B, -1]]);
 export const E_AD = trainValue([[TEETH.A, TEETH.F, -1], [TEETH.E, TEETH.D, -1]]);
@@ -56,15 +64,13 @@ export default {
     ],
   },
   driver: { part: "frameC", type: "rotation", speed: 0.4 },
+  targets: ["wheelB", "wheelD"],
   view: { direction: [0.06, 0.06, 1] },
   pose(arm, state = "bFixedA") {
     const t = train(arm, state);
     const P = at(arm, P_AT);
-    const F = { center: P, teeth: TEETH.F, radius: r(TEETH.F) };
-    const E = { center: P, teeth: TEETH.E, radius: r(TEETH.E) };
     const Bc = at(arm, B_AT);
-    const B = { center: Bc, teeth: TEETH.B, radius: r(TEETH.B) };
-    const f = meshAngle({ ...A }, F, t.A);
+    const f = meshOnArm(A, F0, t.A, arm);
     const e = f; // F 與 E 固定在同一根軸上
     const isB = t.which === "B";
     return {
@@ -73,8 +79,8 @@ export default {
         wheelA: { position: [O[0], O[1], -0.15], angle: t.A },
         wheelF: { position: [P[0], P[1], -0.15], angle: f },
         wheelE: { position: [P[0], P[1], 0.02], angle: e },
-        wheelB: { position: [Bc[0], Bc[1], 0.02], angle: meshAngle(E, B, e), visible: isB },
-        wheelD: { position: [O[0], O[1], 0.02], angle: meshAngle(E, D, e), visible: !isB },
+        wheelB: { position: [Bc[0], Bc[1], 0.02], angle: meshOnArm(E0, B0, e, arm), visible: isB },
+        wheelD: { position: [O[0], O[1], 0.02], angle: meshOnArm(E0, D, e, arm), visible: !isB },
       },
       readouts: [{ label: `${t.which} 的轉速 / 框架`, value: t.ratio.toFixed(3) }],
     };

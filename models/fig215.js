@@ -47,6 +47,7 @@ export default {
     { id: "star", kind: "group", spin: RB, pieces: [{ kind: "plate", shape: shape(star, [circle(0.1).reverse()]), thickness: 0.2, mark: [0.55, 0.5], markSize: 0.07 }] },
   ],
   driver: { part: "wheelA", type: "rotation" },
+  target: "star",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { b } = step(theta);

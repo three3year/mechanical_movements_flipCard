@@ -35,6 +35,7 @@ export default {
     ...Array.from({ length: ARMS }, (_, i) => ({ id: `sail${i}`, kind: "box", size: [SAIL, 0.12, 0.3], arrow: false })),
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.12 },
+  target: "wheel",
   view: { direction: [0.03, 0.05, 1] },
   pose(progress) {
     const w = TAU * progress; // 逆時針

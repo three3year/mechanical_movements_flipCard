@@ -24,6 +24,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "driver", type: "rotation" },
+  target: "driven", // 直立軸上的皮帶輪
   view: { direction: [0.3, 0.75, 1] },
   pose(angle) {
     const travel = beltTravel(angle, TOP.radius, TOP.sense);

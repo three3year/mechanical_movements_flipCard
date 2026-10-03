@@ -39,6 +39,7 @@ export function conjugatePair({ figure, r1, teeth, module: m, center = [0, 0, 0]
       figure,
       parts: [gear("driver", left, outline1, r1), gear("driven", right, outline2, r2)],
       driver: { part: "driver", type: "rotation" },
+      target: "driven", // 做變速旋轉的從動輪
       view: { direction: view ?? [0.1, 0.08, 1] },
       pose(angle) {
         return { parts: { driver: { angle }, driven: { angle: driven(angle) } }, readouts: [] };

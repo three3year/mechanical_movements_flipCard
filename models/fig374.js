@@ -49,6 +49,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "treadle", // 跟著上下的踏板
   view: { direction: [0.03, 0.04, 1] },
   pose(theta) {
     const t = treadle(theta);

@@ -42,6 +42,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation" },
+  target: "rod", // 均勻橫移的水平桿
   view: { direction: [0.06, 0.05, 1] },
   pose(angle) {
     return { parts: { disc: { angle }, rod: { position: [pitchAt(-angle), 0, 0.12] } }, readouts: [] };

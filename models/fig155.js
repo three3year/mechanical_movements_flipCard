@@ -49,6 +49,7 @@ export default {
     { id: "rod", kind: "group", pieces: [{ kind: "box", size: [0.3, 2.6, 0.12], at: [0, 1.4, 0] }, { kind: "cylinder", radius: 0.26, inner: 0.12, length: 0.18 }] },
   ],
   driver: { part: "rod", type: "translation", direction: [0, -1, 0], cycle: [0, STROKE] },
+  target: "gear",
   states: {
     options: [
       { id: "cw", label: "棘爪在右側(順時針)" },

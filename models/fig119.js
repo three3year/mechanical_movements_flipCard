@@ -79,6 +79,7 @@ export default {
     },
   ],
   driver: { part: "pinion", type: "rotation", speed: -1.4 },
+  target: "rack", // 往復直線運動的無端齒條
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     // 主動量 v 是小齒輪的轉角(逆時針為正);順時針轉 alpha = −v

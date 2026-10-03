@@ -21,15 +21,22 @@ export function screwClamp(angle) {
   return { rise, lever, foot, lift: foot[1] - FULCRUM[1] };
 }
 
-// 拱形槓桿(以支點為原點;原圖量得,單位為 100 px)
+// 拱形槓桿(以支點為原點;原圖量得,單位為 100 px)。左端圓頭包住壓腳的銷孔,底邊在銷附近是平的
 const LEVER = shape(
   [
-    [-1.6, -0.2], [-1.2, 0.2], [-0.9, 0.42], [-0.3, 0.55], [0.3, 0.5], [0.75, 0.3], [1.15, 0.05], [1.7, 0.02], [1.7, -0.25],
-    [0.75, -0.25], [0.3, -0.12], [-0.3, -0.12], [-0.9, -0.05], [-1.25, -0.2],
+    [-1.62, 0.06], [-1.5, 0.2], [-1.2, 0.3], [-0.9, 0.42], [-0.3, 0.55], [0.3, 0.5], [0.75, 0.3], [1.15, 0.05], [1.7, 0.02], [1.7, -0.25],
+    [0.75, -0.25], [0.3, -0.12], [-0.3, -0.12], [-0.9, -0.05], [-1.1, -0.22], [-1.62, -0.22],
   ],
   [circle(0.1).reverse(), circle(0.1, -LEFT, 0).reverse(), circle(0.09, SCREW_X, -0.12).reverse()],
 );
-const FOOT = shape([[-0.6, -0.45], [0.6, -0.45], [0.35, -0.05], ...arcPoints(0.2, 0, Math.PI), [-0.35, -0.05]], [circle(0.1).reverse()]);
+// 壓腳:主體是槓桿底下的塊(頂面低於槓桿底邊,放鬆時槓桿左端往上翹、底邊往支點那側下沉也不碰到),
+// 吊在銷上的是左右兩片叉耳(在槓桿兩側,不同的 z 層),銷穿過叉耳與槓桿——槓桿和壓腳在同一平面裡不重疊。
+const FOOT_TOP = -0.3;
+const FOOT = shape([[-0.6, -0.45], [0.6, -0.45], [0.28, FOOT_TOP], [-0.28, FOOT_TOP]], [circle(0.1).reverse()]);
+const LUG = shape([[-0.28, FOOT_TOP - 0.01], [0.28, FOOT_TOP - 0.01], [0.22, -0.05], ...arcPoints(0.22, 0, Math.PI), [-0.22, -0.05]], [circle(0.1).reverse()]);
+const LEVER_THICK = 0.25;
+const LUG_THICK = 0.07;
+const LUG_Z = LEVER_THICK / 2 + 0.01 + LUG_THICK / 2;
 const POST = shape(
   [[-0.35, -0.87], [-0.35, 0.0], ...arcPoints(0.37, Math.PI, 0, 0.02, 0), [0.4, -0.5], [1.65, -0.5], [1.65, -0.85], [0.4, -0.85], [0.4, -0.87]],
   [circle(0.1).reverse()],
@@ -50,8 +57,19 @@ export default {
       ],
     },
     { id: "work", kind: "box", center: [(WORK.x[0] + WORK.x[1]) / 2, (WORK.y[0] + WORK.y[1]) / 2, 0], size: [WORK.x[1] - WORK.x[0], WORK.y[1] - WORK.y[0], 0.8] },
-    { id: "lever", kind: "plate", center: FULCRUM, shape: LEVER, thickness: 0.25, arrow: false, posed: true },
-    { id: "foot", kind: "plate", shape: FOOT, thickness: 0.4, arrow: false },
+    { id: "lever", kind: "plate", center: FULCRUM, shape: LEVER, thickness: LEVER_THICK, arrow: false, posed: true },
+    {
+      id: "foot",
+      kind: "plate",
+      shape: FOOT,
+      thickness: 0.4,
+      arrow: false,
+      pieces: [
+        { kind: "plate", shape: LUG, thickness: LUG_THICK, at: [0, 0, LUG_Z] },
+        { kind: "plate", shape: LUG, thickness: LUG_THICK, at: [0, 0, -LUG_Z] },
+        { kind: "cylinder", radius: 0.09, length: 2 * LUG_Z + LUG_THICK + 0.04 }, // 銷
+      ],
+    },
     {
       id: "screw",
       kind: "group",
@@ -67,6 +85,7 @@ export default {
     },
   ],
   driver: { part: "screw", type: "rotation", range: [-TURNS * TAU, 0] },
+  target: "foot",
   view: { direction: [0.08, 0.12, 1] },
   pose(angle) {
     const { rise, lever, foot } = screwClamp(angle);

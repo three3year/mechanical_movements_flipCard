@@ -57,6 +57,7 @@ export default {
     ...Array.from({ length: ARMS }, (_, i) => ({ id: `spring${i}`, kind: "spring", coils: 5, radius: 0.05, wire: 0.015 })),
   ],
   driver: { part: "rim", type: "rotation", cycle: [0, SWING] },
+  target: "shaft", // 只在一個轉向被帶動的軸
   view: { direction: [0.05, 0.05, 1] },
   pose(v) {
     const { rim, shaft, yieldAngle } = friction(v);

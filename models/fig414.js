@@ -69,6 +69,7 @@ export default {
     { id: "pinion", kind: "gear", axis: Y, teeth: 10, radius: RB, width: 0.16, bore: 0.05, label: "B", labelOffset: [0.3, -0.15, 0.1], spin: 0.25 },
   ],
   driver: { part: "pinion", grips: ["shaft"], type: "rotation", range: RANGE, initial: RANGE[1] * 0.78 },
+  target: "volute",
   view: { direction: [0.25, -0.2, 1] },
   pose(v0) {
     const v = clamp(v0, ...RANGE);

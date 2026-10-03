@@ -26,6 +26,7 @@ export default {
   figure: 32,
   parts: [wheel("left", LEFT), wheel("right", RIGHT)],
   driver: { part: "left", type: "rotation" },
+  target: "right", // 靠摩擦被帶動的輪
   view: { direction: [0.1, 0.08, 1] },
   pose(angle) {
     return { parts: { left: { angle }, right: { angle: (-angle * LEFT.radius) / RIGHT.radius } }, readouts: [] };

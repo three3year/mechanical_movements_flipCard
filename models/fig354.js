@@ -51,6 +51,7 @@ export default {
     { id: "guides", kind: "group", pieces: [{ kind: "box", size: [0.9, 0.3, 0.5], at: [0, 2.0, -0.1] }, { kind: "box", size: [0.9, 0.3, 0.5], at: [0, -2.3, -0.1] }] },
   ],
   driver: { part: "crank", type: "rotation", initial: Math.PI / 2 },
+  target: "crosshead", // 等速往復的十字頭
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     return { parts: { crank: { angle: theta }, crosshead: { position: [0, crosshead(theta), 0] } }, readouts: [] };

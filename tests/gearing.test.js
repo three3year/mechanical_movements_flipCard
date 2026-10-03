@@ -113,7 +113,7 @@ test("第 42、43 種:兩軸斜向配置的齒輪,轉角比為齒數反比", () 
 
 import fig30 from "../models/fig030.js";
 import fig33, { D as D33, axes as axes33 } from "../models/fig033.js";
-import fig35, { contactRadius, pinionRadius } from "../models/fig035.js";
+import fig35, { rollingRadius, pinionRadius, axes as axes35 } from "../models/fig035.js";
 import fig37, { heightAt, radii as radii37 } from "../models/fig037.js";
 import fig38, { sectors as sectors38, pitchRadius as pitchRadius38 } from "../models/fig038.js";
 
@@ -138,8 +138,15 @@ test("第 33 種:橢圓形正齒輪的速度變化取決於長短軸的比例", 
   close(Math.min(...rates), b / (D33 - b), "短軸對著從動輪時最慢", 2e-3);
 });
 
-test("第 35 種:小齒輪等速轉,橢圓齒輪的轉速與接觸處半徑成反比(變速)", () => {
-  for (const v of sweep(6, 12, 0.3)) close(-rate(fig35, "wheel", v), pinionRadius / contactRadius(v), `主動量 ${v}`, 1e-3);
+test("第 35 種:小齒輪等速轉,橢圓齒輪的轉速隨接觸處半徑而變:長軸端最慢、短軸端最快(變速)", () => {
+  const [a, b] = axes35;
+  const rates = sweep(24, 600).map((v) => -rate(fig35, "wheel", v));
+  close(Math.min(...rates), pinionRadius / a, "長軸端最慢", 1e-3);
+  close(Math.max(...rates), pinionRadius / b, "短軸端最快", 1e-3);
+  // 純滾動:轉速 ≈ 小齒輪半徑 ÷ 接觸處節曲線的滾動半徑(軸心沿固定方向的桿滑動,接觸點略偏離桿,所以是近似)
+  for (const v of sweep(24, 600)) close(-rate(fig35, "wheel", v), pinionRadius / rollingRadius(v), `主動量 ${v}`, 0.02);
+  // 橢圓 36 齒、小齒輪 10 齒:小齒輪轉 3.6 圈橢圓齒輪轉一圈(齒一直對得上)
+  close(turned(fig35, "wheel", 0, 3.6 * 2 * Math.PI), -2 * Math.PI, "一圈", 1e-4);
 });
 
 test("第 37 種:錐形齒輪等速轉,右輪轉速隨螺旋齒栓的高度(兩輪接觸半徑)而變", () => {

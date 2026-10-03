@@ -62,6 +62,7 @@ export default {
     },
   ],
   driver: { part: "wheel", type: "rotation", speed: 0.5 },
+  target: "rod",
   view: { direction: [0.02, 0.02, 1], fov: 14 },
   pose(theta) {
     const x = rodX(theta);

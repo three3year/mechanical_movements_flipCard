@@ -61,6 +61,7 @@ export default {
     { id: "labelD", kind: "group", label: "D", labelOffset: [0, 0.38, 0.3] },
   ],
   driver: { part: "cam", type: "rotation", speed: 0.9 },
+  target: "wheel", // 間歇旋轉的碟形輪 B
   view: { direction: [0.06, 0.05, 1] },
   pose(c) {
     const b = wheelB(c);

@@ -78,6 +78,7 @@ export default {
     },
   ],
   driver: { part: "rack", type: "translation", direction: [0, 1, 0], cycle: [-STROKE / 2, STROKE / 2] },
+  target: "central", // 連續旋轉的中央齒輪
   view: { direction: [0.08, 0.05, 1], fit: ["left", "right", "central"] },
   pose(v) {
     const { y, sector: s, central } = substitute(v);

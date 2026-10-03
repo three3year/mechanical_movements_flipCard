@@ -114,6 +114,7 @@ export default {
     },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "carriage", // 一步一步前進的平台
   states: {
     initial: "slow",
     options: [

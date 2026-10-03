@@ -71,6 +71,7 @@ export default {
     },
   ],
   driver: { part: "small", type: "rotation", speed: 1.6 },
+  target: "crank",
   view: { direction: [0.06, 0.05, 1] },
   pose(a) {
     const { big, psi } = crank(a);

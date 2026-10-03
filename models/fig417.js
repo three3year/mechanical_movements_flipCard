@@ -77,6 +77,7 @@ export default {
     { id: "slider", kind: "box", size: [0.7, 0.22, 0.52], label: "C", labelOffset: [-0.5, 0, 0.3] },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "slider",
   view: { direction: [0.25, 0.25, 1] },
   pose(theta) {
     const s = solve(theta);

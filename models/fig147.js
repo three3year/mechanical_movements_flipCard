@@ -68,6 +68,7 @@ export default {
     },
   ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, MAX] },
+  target: "lever",
   view: { direction: [0.02, 0.12, 1] },
   pose(s) {
     const { lag, rise } = governor(s);

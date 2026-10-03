@@ -50,6 +50,7 @@ export default {
     { id: "river", kind: "fill", fluid: "water", center: [0, (WATER - 2.4) / 2, 0], size: [5.0, WATER + 2.4, 1.2], level: 1 },
   ],
   driver: { part: "arms", type: "rotation", speed: 0.5 },
+  targets: ["paddle0", "paddle1", "paddle2", "paddle3"], // 保持直立的槳板
   view: { direction: [0.06, 0.06, 1] },
   pose(theta) {
     const js = joints(theta);

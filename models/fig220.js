@@ -51,6 +51,7 @@ export default {
     },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "slotted",
   view: { direction: [0.55, 0.3, 1] },
   pose(theta) {
     const { angle } = cranks(theta);

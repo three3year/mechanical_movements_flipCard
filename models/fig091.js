@@ -60,6 +60,7 @@ export default {
     },
   ],
   driver: { part: "cam", type: "rotation", speed: 0.6 },
+  target: "frame", // 間歇上下往復的方框
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { bottom } = frame(theta);

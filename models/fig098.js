@@ -2,7 +2,10 @@
 // 圓盤旋轉時使振動臂繞右側的樞軸做不規則的擺動。溝槽是長圓形(兩端半圓、中間直線),
 // 銷走到直線段與半圓段時,臂的擺動快慢不同。主動件是圓盤。
 // 臂的轉角由「銷在溝槽中心線上」這個條件以數值解出(推斷:原文只說溝槽是環形)。
-import { deg, polar, rot2 } from "./kit.js";
+// 這個條件在每個圓盤轉角都有兩個解——銷貼在溝槽的上側或下側,各自都是連續的一圈;原圖的銷在上側,
+// 所以沿著「圓盤轉角 0 時最接近 0° 的那個解」連續追蹤一整圈(預先算好查表,再在表值附近精算),
+// 不能每次都取離 0° 最近的解——兩個解在圓盤轉半圈附近交會,那樣臂會在兩側之間跳 30°。
+import { TAU, deg, polar, rot2, wrap } from "./kit.js";
 import { shape, circle, arcPoints } from "./shapes.js";
 
 const DISC = { center: [0, 0, 0], radius: 2.0, pin: 0.62 };
@@ -17,33 +20,46 @@ function loopDistance([x, y]) {
   return Math.hypot(dx, y - LOOP.cy) - LOOP.r;
 }
 
-/** 圓盤轉 theta:銷的位置與臂的轉角(使銷落在溝槽中心線上,取最接近上一個解的那一個) */
-export function arm(theta) {
-  const pin = polar(DISC.pin, theta + START);
-  const residual = (psi) => {
-    const local = rot2([pin[0] - PIVOT[0], pin[1] - PIVOT[1]], -psi);
-    return loopDistance(local);
-  };
-  // 臂的轉角落在小範圍內:取殘差為零、離 0 最近的根
-  let best = 0;
-  let bestErr = Infinity;
-  for (let i = -60; i <= 60; i++) {
-    const psi = deg(i * 0.5);
-    const err = Math.abs(residual(psi));
-    if (err < bestErr) {
-      bestErr = err;
-      best = psi;
-    }
+const pinAt = (theta) => polar(DISC.pin, theta + START);
+// 銷到溝槽中心線的帶符號距離,臂轉角 psi 時
+const residualAt = (pin, psi) => loopDistance(rot2([pin[0] - PIVOT[0], pin[1] - PIVOT[1]], -psi));
+
+/** 在 seed ± span 內找殘差變號、離 seed 最近的根(二分法精算) */
+function rootNear(pin, seed, span) {
+  const step = deg(0.25);
+  let best = null;
+  let prev = residualAt(pin, seed - span);
+  for (let psi = seed - span + step; psi <= seed + span + 1e-12; psi += step) {
+    const cur = residualAt(pin, psi);
+    if (prev * cur <= 0 && (best === null || Math.abs(psi - seed) < Math.abs(best[1] - seed))) best = [psi - step, psi];
+    prev = cur;
   }
-  let lo = best - deg(0.5);
-  let hi = best + deg(0.5);
+  if (!best) return seed;
+  let [lo, hi] = best;
+  let flo = residualAt(pin, lo);
   for (let k = 0; k < 40; k++) {
-    const m1 = lo + (hi - lo) / 3;
-    const m2 = hi - (hi - lo) / 3;
-    if (Math.abs(residual(m1)) < Math.abs(residual(m2))) hi = m2;
-    else lo = m1;
+    const mid = (lo + hi) / 2;
+    const fm = residualAt(pin, mid);
+    if (flo * fm <= 0) hi = mid;
+    else [lo, flo] = [mid, fm];
   }
-  return { pin, psi: (lo + hi) / 2, err: Math.abs(residual((lo + hi) / 2)) };
+  return (lo + hi) / 2;
+}
+
+// 沿圓盤轉一圈連續追蹤的解(查表);起點取 theta = 0 時離 0° 最近的根(銷在溝槽上側)
+const STEPS = 720;
+const BRANCH = (() => {
+  const table = [rootNear(pinAt(0), 0, deg(30))];
+  for (let i = 1; i <= STEPS; i++) table.push(rootNear(pinAt((i * TAU) / STEPS), table[i - 1], deg(4)));
+  return table;
+})();
+
+/** 圓盤轉 theta:銷的位置與臂的轉角(使銷落在溝槽中心線上,沿同一側連續) */
+export function arm(theta) {
+  const pin = pinAt(theta);
+  const seed = BRANCH[Math.round((wrap(theta) / TAU) * STEPS)];
+  const psi = rootNear(pin, seed, deg(3));
+  return { pin, psi, err: Math.abs(residualAt(pin, psi)) };
 }
 
 const loopPath = (r) => [
@@ -77,7 +93,8 @@ export default {
       ],
     },
   ],
-  driver: { part: "disc", type: "rotation" },
+  driver: { part: "disc", type: "rotation" },
+  target: "arm",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { psi } = arm(theta);

@@ -54,6 +54,7 @@ export default {
     { id: "bed", kind: "box", center: [0, -1.75, 0.1], size: [5.0, 0.35, 0.6] },
   ],
   driver: { part: "wheel", type: "rotation", grips: ["screw"], range: [-RANGE, RANGE] },
+  target: "slider", // 承載輪軸、得到直線運動的滑塊
   states: {
     options: [
       { id: "screw", label: "螺桿轉 → 輪轉" },

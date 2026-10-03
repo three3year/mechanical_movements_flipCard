@@ -44,6 +44,7 @@ export default {
     { id: "ropeEnd", kind: "ropeEnd", center: rest.ropeEnd },
   ],
   driver: { part: "ropeEnd", type: "translation", range: RANGE, direction: PULL },
+  target: "weight", // 被吊起的重物
   pose(value) {
     const pull = clamp(value, ...RANGE);
     const { rise, movable, ropeEnd, weight, rope } = layout(pull);

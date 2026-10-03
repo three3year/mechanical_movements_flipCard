@@ -13,6 +13,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "driver", type: "rotation" },
+  target: "driven", // 被帶動的那一輪
   pose(angle) {
     const travel = beltTravel(angle, top.radius, top.sense);
     return {

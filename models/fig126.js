@@ -49,6 +49,7 @@ export default {
     { id: "rope2", kind: "rope" },
   ],
   driver: { part: "handle", type: "translation", direction: [0, -1, 0], range: RANGE },
+  target: "crank", // 改變力的方向的搖臂
   view: { direction: [0.06, 0.05, 1] },
   pose(d) {
     const { angle, across, down } = crank(d);

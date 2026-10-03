@@ -76,6 +76,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "upper", type: "rotation" },
+  target: "lowerShaft", // 接合時才跟著轉的下方軸
   states: {
     initial: "on",
     options: [

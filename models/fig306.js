@@ -53,6 +53,7 @@ export default {
     },
   ],
   driver: { part: "plate", type: "translation", direction: [1, 0, 0], cycle: [-TRAVEL, TRAVEL] },
+  target: "wheel", // 三腳輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const t = threeLeg(v);

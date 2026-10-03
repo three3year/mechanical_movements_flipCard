@@ -41,7 +41,10 @@ for (const def of models) {
   test(`圖 ${def.figure}:主動件、狀態與範圍的定義有效`, () => {
     const ids = def.parts.map((p) => p.id);
     assert.equal(new Set(ids).size, ids.length, "零件 id 不重複");
-    for (const p of def.parts) assert.ok(PART_KINDS.has(p.kind) || PATH_KINDS.has(p.kind), `未知的零件種類 ${p.kind}`);
+    for (const p of def.parts) {
+      assert.ok(PART_KINDS.has(p.kind) || PATH_KINDS.has(p.kind), `未知的零件種類 ${p.kind}`);
+      assert.ok(!("at" in p), `頂層零件 ${p.id} 的位置要用 center,不是 at(at 只用在 pieces 裡,頂層會被忽略)`);
+    }
     const d = def.driver;
     assert.ok(["rotation", "translation", "virtual"].includes(d.type));
     if (d.range) assert.ok(d.range[0] < d.range[1], "範圍 min < max");

@@ -61,6 +61,7 @@ export default {
     },
   ],
   driver: { part: "drum", type: "rotation", speed: 1.2 },
+  target: "slide", // 均勻來回橫移的滑座
   view: { direction: [0.08, 0.1, 1] },
   pose(theta) {
     return { parts: { drum: { angle: theta }, slide: { position: [0, slideY(theta), 0] } }, readouts: [] };

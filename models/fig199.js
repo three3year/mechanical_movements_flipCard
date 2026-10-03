@@ -80,6 +80,7 @@ export default {
     ...ROLLERS.map(([x, y], i) => ({ id: `roller${i}`, kind: "group", center: [x, y, 0], spin: ROLLER, arrow: i === 0 || i === 2, pieces: [{ kind: "cylinder", radius: ROLLER, inner: 0.07, length: 0.25, mark: true }] })),
   ],
   driver: { part: "pinion", type: "rotation" },
+  target: "frame",
   view: { direction: [0.06, 0.05, 1] },
   pose(a) {
     const { x } = frame(-a); // 主動量是小齒輪的轉角(逆時針為正);小齒輪順時針轉時框架照原文往返

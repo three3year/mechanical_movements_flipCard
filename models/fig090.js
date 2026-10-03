@@ -42,6 +42,7 @@ export default {
     },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "yoke", // 直線往復的軛
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { x } = scotch(theta);

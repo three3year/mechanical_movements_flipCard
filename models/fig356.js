@@ -55,6 +55,7 @@ export default {
     },
   ],
   driver: { part: "ringA", type: "rotation" },
+  target: "ballB", // 軸向保持不變的球
   view: { direction: [0.25, 0.2, 1] },
   pose(alpha) {
     const g = gimbal(alpha);

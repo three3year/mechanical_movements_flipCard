@@ -50,6 +50,7 @@ export default {
     { id: "lever", kind: "plate", shape: shape(thickLine([[0, 0], [0.2, 0.55]], 0.08)), thickness: 0.08, arrow: false, label: "D", labelOffset: [0.4, 0.75, 0.3], pieces: [{ kind: "sphere", radius: 0.3, at: [0.5, 0.75, 0] }] },
   ],
   driver: { type: "virtual", label: "管內溫度", mode: "balance", range: [0, 1], initial: 0.2, format: (t) => (t < 0.5 ? "水" : "蒸汽") },
+  target: "plunger",
   view: { direction: [0.08, 0.1, 1] },
   pose(t) {
     const s = trap(t);

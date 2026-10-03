@@ -103,6 +103,7 @@ export default {
   ],
   // C 順時針轉(轉角為負)
   driver: { part: "c", type: "rotation", speed: -1.0, initial: deg(-6) },
+  target: "d", // 每圈被撥動一格的輪 D
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const { d, swing } = indexing(-v);

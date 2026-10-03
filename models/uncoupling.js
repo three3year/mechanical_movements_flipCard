@@ -56,6 +56,7 @@ export function uncouplingModel({ figure, initial }) {
       },
     ],
     driver: { part: "wristArm", type: "rotation" },
+    target: "crank", // 被手腕銷帶著轉(或脫開不動)的曲柄
     states: {
       options: [
         { id: "coupled", label: "接上(第 176 種)" },

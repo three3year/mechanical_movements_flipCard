@@ -71,6 +71,7 @@ export default {
     ...ROLLERS.map(([x, y], i) => ({ id: `roller${i}`, kind: "group", center: [x, y, -0.35], spin: ROLLER, pieces: [{ kind: "cylinder", radius: ROLLER, inner: 0.06, length: 0.2, mark: true }], arrow: i === 0 || i === 2 })),
   ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
+  target: "frame",
   view: { direction: [0.06, 0.05, 1] },
   pose(alpha) {
     const { frame, lift, pinion } = rack(alpha);

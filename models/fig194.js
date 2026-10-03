@@ -49,6 +49,7 @@ export default {
     { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.25, web: false, center: [0, 0, 0.2], pieces: [{ kind: "cylinder", radius: 0.08, length: 0.9 }] },
   ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
+  target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(alpha) {
     const { wheel, y, pinion } = mangle(alpha * path.sense);

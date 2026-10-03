@@ -72,6 +72,7 @@ export default {
     },
   ],
   driver: { part: "gearB", type: "rotation" },
+  target: "gearE",
   states: {
     options: [
       { id: "installed", label: "裝上 C 的齒輪" },

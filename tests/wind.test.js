@@ -95,8 +95,14 @@ test("第 492 種:小艇脫鉤器:拉繩使槓桿上的環孔從舌片滑脫,舌
   assert.ok(held.held && held.fall === 0, "拉到一半之前,小艇還鉤著");
   const free = m492.release(1);
   assert.ok(!free.held && free.fall > 0.5, "環孔滑脫後小艇掉下");
-  assert.ok(free.tongue > held.tongue, "舌片翻開");
+  assert.ok(Math.abs(free.tongue - held.tongue) > 1, "舌片翻開");
   assert.ok(free.lever > held.lever, "槓桿被繩拉轉");
+  const { EYE_R, TONGUE_W, TONGUE } = m492.geometry;
+  const slide = sweep(m492.SLIP, 12).map(m492.eyeDistance);
+  assert.ok(slide.every((d, i) => i === 0 || d > slide[i - 1]), "拉繩時環孔沿舌片往尖端滑");
+  assert.ok(slide[0] < TONGUE && slide[6] < TONGUE, "拉到一半環孔還套在舌片上");
+  assert.ok(slide[12] > TONGUE, "拉到 SLIP 時環孔已滑過舌片尖端");
+  assert.ok(EYE_R > TONGUE_W / 2, "舌片穿得過環孔");
 });
 
 test("第 493 種:路易斯吊楔:吊起中央的楔子把兩邊的填塊擠緊在孔壁上,石塊隨之吊起", () => {

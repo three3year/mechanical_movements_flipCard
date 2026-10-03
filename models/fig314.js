@@ -69,6 +69,7 @@ export default {
     { id: "labelC", kind: "group", center: [BAL[0] - 0.62, BAL[1] + 0.15, 0], label: "C", labelOffset: [-0.25, 0.25, 0.3] },
   ],
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const l = leverChrono(v);

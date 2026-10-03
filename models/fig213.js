@@ -4,7 +4,8 @@
 // 推斷:兩輪的齒數(下輪原圖是鋸齒形,這裡用一般的齒形以便咬合);可轉的範圍由擋輪那段齒的齒數決定。
 import { TAU, Z } from "./kit.js";
 import { meshAngle } from "./gears.js";
-import { shape, rect } from "./shapes.js";
+import { shape, rect, gearShape } from "./shapes.js";
+import { penetrationDepth } from "./contact.js";
 
 const NL = 18;
 const NU = 19;
@@ -18,11 +19,27 @@ const U0 = meshAngle(LOWER, UPPER, 0);
 const bottom = (-Math.PI / 2 - U0) / ((TAU / NU));
 const FIRST = Math.round(bottom) - Math.floor(TOOTHED / 2);
 const TEETH = Array.from({ length: TOOTHED }, (_, i) => (((FIRST + i) % NU) + NU) % NU);
-// 下輪可轉的範圍:擋輪那段齒的兩端(各留半齒)
-const LIMIT = ((TOOTHED - 1) / 2) * (TAU / NL);
-
 /** 下輪轉 theta:擋輪的轉角 */
 export const upperAngle = (theta) => meshAngle(LOWER, UPPER, theta);
+
+// 下輪可轉的範圍:由幾何算——下輪的齒走到擋輪那段齒的盡頭,碰到齒頂高度的輪緣(階)就停住。
+// 擋輪 5 齒之間只有 4 個齒槽,下輪在原圖位置時兩齒各在中間兩個齒槽裡,所以兩邊各只能再走一個多齒槽
+// (不是「那段齒的兩端各留半齒」——那樣末端的齒會整個嵌進輪緣裡)。
+const lowerShape = gearShape({ teeth: NL, radius: LOWER.radius });
+const upperShape = gearShape({ teeth: NU, radius: UPPER.radius, mask: (i) => TEETH.includes(i), blank: "tip" });
+const place = (outline, center, angle) => outline.map(([x, y]) => [center[0] + x * Math.cos(angle) - y * Math.sin(angle), center[1] + x * Math.sin(angle) + y * Math.cos(angle)]);
+/** 下輪轉 theta 時,下輪的齒是否頂到擋輪的輪緣(正常咬合時齒頂只互相擦到 0.001 左右,頂到輪緣就深得多) */
+export const touching = (theta) => penetrationDepth(place(lowerShape.outline, LOWER.center, theta), place(upperShape.outline, UPPER.center, upperAngle(theta))) > 0.004;
+const LIMIT = (() => {
+  let lo = 0;
+  let hi = (TOOTHED * TAU) / NL;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (touching(mid)) hi = mid;
+    else lo = mid;
+  }
+  return lo;
+})();
 export const geometry = { NL, NU, TOOTHED, LIMIT };
 
 export default {
@@ -54,6 +71,7 @@ export default {
     },
   ],
   driver: { part: "lower", type: "rotation", range: [-LIMIT, LIMIT] },
+  target: "upper",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { lower: { angle: theta }, upper: { angle: upperAngle(theta) } }, readouts: [] };

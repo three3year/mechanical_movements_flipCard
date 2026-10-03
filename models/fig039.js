@@ -53,6 +53,7 @@ export default {
     { id: "rod", kind: "link", width: 0.48, thickness: 0.12, axis: [0, 0, 1] },
   ],
   driver: { part: "arm", type: "rotation", initial: START },
+  target: "sun", // 飛輪軸上的太陽齒輪
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { planet, top, rod, sun } = sunAndPlanet(theta);

@@ -77,6 +77,7 @@ export default {
     },
   ],
   driver: { part: "top", type: "rotation" },
+  target: "slide", // 變速交替橫移的水平桿
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { bottom, w1, w2, a, b, x } = linkage(theta);

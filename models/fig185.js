@@ -88,6 +88,7 @@ export default {
     },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "valveRod",
   states: {
     options: [
       { id: "forward", label: "前進(全程)" },

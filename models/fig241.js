@@ -42,6 +42,7 @@ export default {
     },
   ],
   driver: { part: "small", type: "rotation" },
+  target: "wheelA",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { small: { angle: theta }, wheelA: { angle: wheelA(theta) } }, readouts: [] };

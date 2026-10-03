@@ -54,6 +54,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation" },
+  target: "yoke",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { disc: { angle: theta }, yoke: { position: [0, yokeY(theta), 0] } }, readouts: [] };

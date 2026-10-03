@@ -67,6 +67,7 @@ export default {
     ],
   },
   driver: { part: "lower", type: "rotation" },
+  targets: ["rubberLoose", "rubberTight"], // 兩個狀態各顯示其一的輪 A
   view: { direction: [0.3, 0.15, 1] },
   pose(theta, state = "tight") {
     const a = turnA(theta, state);

@@ -50,6 +50,7 @@ export default {
     },
   ],
   driver: { part: "pinion", type: "rotation", speed: 2 },
+  target: "wheel",
   view: { direction: [0.15, 0.1, 1] },
   pose(alpha) {
     return { parts: { pinion: { angle: alpha }, wheel: { angle: wheelAngle(alpha) } }, readouts: [] };

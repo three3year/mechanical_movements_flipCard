@@ -65,6 +65,7 @@ export default {
     ...[0, 1].map((k) => flap(`delivery${k}`, 0.22)),
   ],
   driver: { part: "beam", type: "rotation", cycle: SWING },
+  targets: ["top0", "top1"], // 兩個風箱的頂板
   view: { direction: [0.05, 0.08, 1] },
   pose(v) {
     const { at, forward } = stroke(v, ...SWING);

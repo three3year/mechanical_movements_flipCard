@@ -66,6 +66,7 @@ export default {
     { id: "pistonRod", kind: "box", size: [0.08, PISTON_ROD, 0.08] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
+  target: "crank", // 輸出的曲柄
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const g = grasshopper(p);

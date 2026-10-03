@@ -29,8 +29,13 @@ export function scroll(u) {
 }
 export const geometry = { R0, R1, D, MAX };
 
-/** 渦形齒輪的輪廓:沿螺線排齒(齒中心在弧長 start + j·PITCH),台階處直接接回 */
-function outline(offset, start) {
+/**
+ * 渦形齒輪的輪廓:沿螺線排齒(齒中心在弧長 start + j·PITCH),台階處直接接回。
+ * relief(j):第 j 齒的齒冠高(以 m 為 1)。上輪台階前的末齒修短:範圍起點時兩輪都在台階旁,
+ * 上輪台階前的大半徑末齒正對著下輪台階後的小半徑首齒——齒距在兩側的半徑不同,
+ * 齒的相位按弧長算雖然交錯,換成角度就對不上,末齒的齒頂會嵌進對方首齒的齒腹;修短到三成仍咬得到對方齒根。
+ */
+function outline(offset, start, relief = () => 1) {
   const n = 900;
   const m = PITCH / Math.PI;
   const pts = [];
@@ -45,20 +50,23 @@ function outline(offset, start) {
     const nrm = [tan[1] / l, -tan[0] / l];
     const u = (arcLen(a) - start) / PITCH;
     const c = Math.abs(u - Math.round(u));
-    const h = c < 0.14 ? m : c < 0.27 ? m - (2.2 * m * (c - 0.14)) / 0.13 : -1.2 * m;
-    // 兩端(台階處)不排齒,保持節曲線
-    const edge = Math.min(arcLen(a), S - arcLen(a)) < PITCH * 0.4;
-    pts.push([p[0] + nrm[0] * (edge ? 0 : h), p[1] + nrm[1] * (edge ? 0 : h)]);
+    // 台階處放不下整個齒(含兩側齒腹)的那個齒不留,那一段走齒根:兩輪同時到台階時,一輪台階前的末齒
+    // 齒頂正對另一輪台階後的這一段,這一段若停在節曲線上(沒有齒根深度),對方的齒頂會嵌進來
+    const center = start + Math.round(u) * PITCH;
+    const whole = center >= 0.27 * PITCH && center <= S - 0.27 * PITCH;
+    const tip = relief(Math.round(u)) * m;
+    const h = !whole ? -1.2 * m : c < 0.14 ? tip : c < 0.27 ? tip - ((tip + 1.2 * m) * (c - 0.14)) / 0.13 : -1.2 * m;
+    pts.push([p[0] + nrm[0] * h, p[1] + nrm[1] * h]);
   }
   return pts;
 }
 const UPPER_OFFSET = -Math.PI / 2 - EPS;
 const LOWER_OFFSET = Math.PI / 2 - lowerAt(radius(EPS));
-const plate = (id, center, offset, start, extra) => ({
+const plate = (id, center, offset, start, relief, extra) => ({
   id,
   kind: "plate",
   center,
-  shape: { outline: outline(offset, start), holes: [circle(0.13).reverse()] },
+  shape: { outline: outline(offset, start, relief), holes: [circle(0.13).reverse()] },
   thickness: 0.22,
   hub: 0.3,
   circles: [0.48],
@@ -75,8 +83,9 @@ const plate = (id, center, offset, start, extra) => ({
 
 export default {
   figure: 191,
-  parts: [plate("upper", UPPER, UPPER_OFFSET, PITCH / 2), plate("lower", LOWER, LOWER_OFFSET, 0)],
+  parts: [plate("upper", UPPER, UPPER_OFFSET, PITCH / 2, (j) => (j === TEETH - 1 ? 0.3 : 1)), plate("lower", LOWER, LOWER_OFFSET, 0)],
   driver: { part: "upper", type: "rotation", range: [-MAX, 0] },
+  target: "lower",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { lower, ratio } = scroll(-theta);

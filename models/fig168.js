@@ -45,6 +45,7 @@ export default {
     { id: "rod", kind: "link", width: 0.35, thickness: 0.1 },
   ],
   driver: { part: "second", type: "rotation" },
+  target: "main", // 引擎主軸的曲柄(往復動力經抽送桿傳給它)
   view: { direction: [0.06, 0.05, 1] },
   pose(phi) {
     const { r, p } = pitman(phi);

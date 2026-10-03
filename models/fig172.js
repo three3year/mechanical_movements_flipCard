@@ -44,6 +44,7 @@ export default {
     { id: "egg", kind: "trace" },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "point", // 畫出蛋形橢圓的點
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { pin, end, point } = oval(theta);

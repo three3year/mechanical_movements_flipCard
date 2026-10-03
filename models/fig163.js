@@ -70,6 +70,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
+  target: "belt", // 被撥到不同輪上的皮帶
   states: {
     options: [
       { id: "slow", label: "過慢(皮帶在上輪)" },

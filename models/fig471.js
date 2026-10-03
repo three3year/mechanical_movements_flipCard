@@ -84,6 +84,7 @@ export default {
     },
   ],
   driver: { part: "crank", type: "rotation" },
+  target: "hammer",
   view: { direction: [0.1, 0.08, 1] },
   pose(theta) {
     const h = hammer(theta);

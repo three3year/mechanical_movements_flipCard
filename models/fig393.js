@@ -56,6 +56,7 @@ export default {
     },
   ],
   driver: { part: "spindle", type: "rotation" },
+  target: "cup",
   view: { direction: [0.12, 0.25, 1] },
   pose(a) {
     const p = polisher(a);

@@ -62,6 +62,7 @@ export default {
     ...[0, 1].map((k) => ({ id: `piston${k}`, kind: "plate", shape: shape(rect(PISTON, 0.2, -PISTON / 2, 0)), thickness: 0.22, label: "c", labelOffset: [0, 0, 0.4], arrow: false })),
   ],
   driver: { part: "drum", type: "rotation", speed: -0.5, initial: deg(-60) },
+  targets: ["piston0", "piston1"],
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const parts = { drum: { angle: theta } };

@@ -70,6 +70,7 @@ export default {
     },
   ],
   driver: { part: "spider", type: "rotation" },
+  target: "wheel", // 以半速被帶動的大輪
   view: { direction: [-0.32, 0.22, 1] },
   pose(phi) {
     return { parts: { spider: { angle: phi }, wheel: { angle: wheelAngle(phi) } }, readouts: [] };

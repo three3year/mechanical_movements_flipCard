@@ -53,6 +53,7 @@ export default {
     },
   ],
   driver: { part: "outer", type: "rotation", range: [0, TURNS * TAU] },
+  target: "inner", // 內側螺桿(連著模具,淨移動為螺距差)
   view: { direction: [0.15, 0.22, 1] },
   pose(angle) {
     const { outer, inner } = differential(angle);

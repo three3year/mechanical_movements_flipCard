@@ -70,6 +70,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation" },
+  target: "rack",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { arm, x } = swingRack(theta);

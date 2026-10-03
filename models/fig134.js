@@ -40,6 +40,7 @@ export default {
     { id: "rope", kind: "rope" },
   ],
   driver: { part: "drum", type: "rotation" },
+  target: "rope",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     // 繩從右端走向左端(逆時針轉時往左)

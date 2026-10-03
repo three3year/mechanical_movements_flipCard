@@ -71,6 +71,7 @@ export default {
     { id: "ballR", kind: "sphere", radius: 0.26 },
   ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: RANGE, initial: 5 },
+  target: "sleeve", // 升降的套筒
   view: { direction: [0.04, 0.05, 1] },
   pose(s) {
     const { bow, sleeve, chord } = governor(s);

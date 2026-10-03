@@ -79,6 +79,7 @@ export default {
     },
   ],
   driver: { part: "frame", type: "translation", direction: [1, 0, 0], cycle: [-STROKE / 2, STROKE / 2] },
+  target: "shaft", // 單向均勻旋轉的小齒輪軸
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const { x, front, back, shaft } = motion(v);

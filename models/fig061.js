@@ -52,6 +52,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "drum", type: "rotation" },
+  target: "shaft", // 得到單純或雙倍速度的軸
   states: {
     options: [
       { id: "loose", label: "鬆動輪(停)" },

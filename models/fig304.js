@@ -61,6 +61,7 @@ export default {
     { id: "labelB", kind: "group", center: [W[0] - R, W[1] - 0.35, 0.3], label: "B", labelOffset: [0.3, 0, 0] },
   ],
   driver: { part: "anchor", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 擒縱輪
   view: { direction: [0.04, 0.05, 1] },
   pose(v) {
     const p = pinWheel(v);

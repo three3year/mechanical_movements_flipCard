@@ -16,6 +16,7 @@ export default {
     { id: "c", kind: "gear", internal: true, center: C.center, teeth: C.teeth, radius: C.radius, rim: C.radius + 0.22, width: 0.24, label: "C", labelOffset: [0, -1.05, 0.3] },
   ],
   driver: { part: "a", type: "rotation" },
+  target: "c", // 得到不同轉速的內齒輪 C
   view: { direction: [0.08, 0.06, 1] },
   pose(angle) {
     const b = meshAngle(A, B, angle);

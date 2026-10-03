@@ -51,6 +51,7 @@ export default {
     },
   ],
   driver: { part: "cam", type: "rotation" },
+  target: "yoke", // 上下往復的軛(閥桿)
   view: { direction: [0.06, 0.05, 1], fit: ["cam", "yoke"] },
   pose(theta) {
     return { parts: { cam: { angle: START + theta }, yoke: { position: [0, yokeY(theta), 0] } }, readouts: [] };

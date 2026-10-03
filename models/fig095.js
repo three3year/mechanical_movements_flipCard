@@ -56,6 +56,7 @@ export default {
     },
   ],
   driver: { part: "shaft", type: "rotation" },
+  target: "rod", // 上下往復的直立桿
   view: { direction: [0.05, 0.12, 1], fov: 22 },
   pose(theta) {
     return {

@@ -46,6 +46,7 @@ export default {
     { id: "wheel", kind: "group", center: WHEEL.center, spin: WHEEL.r, pieces: [{ kind: "plate", shape: { ...ratchetShape({ teeth: 30, outer: WHEEL.r, inner: WHEEL.r - 0.15, dir: 1 }), holes: [circle(0.1).reverse()] }, thickness: 0.15, circles: [0.8] }, { kind: "box", size: [0.15, 0.15, 0.2], at: [WHEEL.r - 0.4, 0, 0], accent: true }] },
   ],
   driver: { part: "cam", type: "rotation", speed: -0.8 },
+  target: "wheel",
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const i = intermittent(-theta);

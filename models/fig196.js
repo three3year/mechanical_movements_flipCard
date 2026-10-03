@@ -46,13 +46,14 @@ export default {
     },
   ],
   driver: { part: "pinionB", type: "rotation" },
+  target: "wheelA",
   view: { direction: [0.06, 0.05, 1] },
   pose(angle) {
     const { center, a, pinion } = swing(angle);
     return {
       parts: {
         wheelA: { position: center, angle: a },
-        pinionB: { angle: Math.PI / 2 + Math.PI / NB + pinion },
+        pinionB: { angle: START.gamma + Math.PI / NB + pinion }, // 原圖位置時接觸方向上是齒槽
         arm: { from: [center[0], center[1], 0.3], to: [PIVOT[0], PIVOT[1], 0.3] },
       },
       readouts: [],

@@ -52,6 +52,7 @@ export default {
     { id: "tagB", kind: "group", pieces: [], arrow: false, label: "b" },
   ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
+  target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(alpha) {
     const { wheel, y, pinion } = mangle(alpha * path.sense);

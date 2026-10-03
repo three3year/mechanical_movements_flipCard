@@ -40,6 +40,7 @@ export default {
     { id: "labelF", kind: "group", center: [X, 0.85, 0], label: "F", labelOffset: [0.4, 0, 0.3] },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.25 },
+  target: "lever", // 被帶動的側槓桿
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const m = motion(p);

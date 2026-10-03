@@ -35,6 +35,7 @@ export function conePair({ figure, driverRadius, sum }) {
       { id: "belt", kind: "belt" },
     ],
     driver: { part: "driver", type: "rotation" },
+    target: "driven", // 變速的從動錐形輪
     states: { options: states.map(({ id, label }) => ({ id, label })), initial: "pos3" },
     view: { direction: [0.35, 0.25, 1] },
     pose(angle, state = "pos3") {

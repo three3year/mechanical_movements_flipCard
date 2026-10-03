@@ -27,6 +27,7 @@ export default {
     { id: "post", kind: "box", center: [FIX[0], -0.65, -0.2], size: [0.6, 1.2, 0.2] },
   ],
   driver: { part: "rightRod", type: "translation", direction: [1, 0, 0], range: RANGE.map((s) => FIX[0] + s), initial: FIX[0] + 0.9 },
+  target: "leftRod",
   view: { direction: [0.06, 0.05, 1], fit: ["post", "up0", "down0", "up4", "down4"] },
   pose(x) {
     const s = x - FIX[0];

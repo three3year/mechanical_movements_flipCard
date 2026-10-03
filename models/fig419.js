@@ -88,6 +88,7 @@ export default {
     { id: "beltD", kind: "belt", label: "D", labelOffset: [POST_X, ROCKER + 0.3, 0] },
   ],
   driver: { part: "wheelA", type: "rotation", speed: 0.8 },
+  target: "cradle",
   view: { direction: [0.06, 0.06, 1] },
   pose(alpha) {
     const r = rock(alpha);

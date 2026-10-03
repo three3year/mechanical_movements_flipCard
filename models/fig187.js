@@ -45,6 +45,7 @@ export default {
     { id: "handle", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: HANDLE, thickness: 0.15 }, { kind: "cylinder", radius: 0.07, length: 0.3 }] },
   ],
   driver: { part: "handle", type: "rotation", range: [0, MAX] },
+  target: "rod",
   view: { direction: [0.06, 0.05, 1] },
   pose(phi) {
     const { lift, released } = unhook(phi);

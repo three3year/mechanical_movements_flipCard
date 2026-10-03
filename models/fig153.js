@@ -63,6 +63,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation", speed: -0.9 },
+  target: "bar",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const { x, crank } = shuttle(-v);

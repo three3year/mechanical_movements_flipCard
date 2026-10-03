@@ -23,6 +23,7 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "driver", type: "rotation" },
+  target: "driven", // 直角軸上的皮帶筒
   view: { direction: [0.75, 0.35, 1] },
   pose(angle) {
     const travel = beltTravel(angle, WHEEL.radius, WHEEL.sense);

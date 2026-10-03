@@ -46,6 +46,7 @@ export default {
     },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.15 },
+  target: "sails",
   view: { direction: [0.1, 0.12, 1] },
   pose(progress) {
     const travel = progress * SPEED;

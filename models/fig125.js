@@ -67,6 +67,7 @@ export default {
     { id: "head", kind: "group", pieces: [{ kind: "box", size: [0.32, 0.5, 0.2], at: [0, 0.2, 0] }, { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 1.1, at: [0, 0.8, 0] }] },
   ],
   driver: { part: "g1", type: "rotation" },
+  target: "head", // 上下變化運動的頂桿
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { angles, pins, l1, l2, lowerMid, u1, u2, top } = compound(theta);

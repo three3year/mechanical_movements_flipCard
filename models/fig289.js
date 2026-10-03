@@ -48,6 +48,7 @@ export default {
     { id: "labelA", kind: "group", center: AXIS, label: "a", labelOffset: [0.4, 0.1, 0.4] },
   ],
   driver: { part: "anchor", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheelA", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     return { parts: { anchor: { angle: swing(v, -SWING, SWING) }, wheelA: { angle: wheelAngle(v) } }, readouts: [] };

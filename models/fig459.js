@@ -80,6 +80,7 @@ export default {
     { id: "well", kind: "fill", fluid: "water", center: [0.47, -2.5, 0], size: [1.3, 0.5, 0.9], level: 1 },
   ],
   driver: { part: "windmill", type: "rotation", speed: 1.2 },
+  targets: ["bucketL", "bucketR"],
   view: { direction: [0.12, 0.15, 1] },
   pose(w) {
     const l = lift(w);

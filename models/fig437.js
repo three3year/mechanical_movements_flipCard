@@ -63,6 +63,7 @@ export default {
     ...[0, 1].map((k) => ({ id: `labelC${k}`, kind: "group", label: "c", labelOffset: [...polar(0.32, deg(-20) - k * deg(70)).slice(0, 2), 0.45], pieces: [] })),
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.12 },
+  target: "wheel",
   view: { direction: [0.03, 0.05, 1] },
   pose(progress) {
     const travel = progress * SPEED;

@@ -73,6 +73,7 @@ export default {
     ...[0, 1, 2, 3].map((i) => ({ id: `string${i}`, kind: "rod", radius: 0.012 })),
   ],
   driver: { part: "drumA", type: "rotation" },
+  target: "leverD",
   states: {
     initial: "right",
     options: [

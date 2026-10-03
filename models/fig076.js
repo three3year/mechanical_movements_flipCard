@@ -99,6 +99,7 @@ export default {
   ],
   // 大輪順時針轉(轉角為負)
   driver: { part: "wheel", type: "rotation", speed: -0.6 },
+  target: "ratchet", // 記錄轉數的棘輪 A
   view: { direction: [0.06, 0.05, 1], fit: ["ratchet", "lever", "bracket"] },
   pose(v) {
     const { height, a } = register(-v);

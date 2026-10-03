@@ -46,6 +46,7 @@ export default {
     { id: "crossBelt", kind: "belt" },
   ],
   driver: { part: "drum", type: "rotation" },
+  target: "shaft", // 要正轉、反轉或停住的從動軸
   states: {
     options: [
       { id: "crossed-on-fixed", label: "交叉皮帶在固定輪上" },

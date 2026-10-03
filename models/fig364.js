@@ -55,6 +55,7 @@ export default {
     },
   ],
   driver: { part: "small", type: "rotation", speed: -0.8 },
+  target: "big", // 間歇轉動的大輪
   view: { direction: [0.03, 0.12, 1] },
   pose(theta) {
     return { parts: { small: { angle: theta }, big: { angle: bigAngle(theta) } }, readouts: [] };

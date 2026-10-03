@@ -70,6 +70,7 @@ export default {
     },
   ],
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
+  target: "crown", // 冠狀輪(擒縱輪)
   view: { direction: [0.15, 0.3, 1] },
   pose(v) {
     const r = verge(v);

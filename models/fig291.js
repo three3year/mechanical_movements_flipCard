@@ -81,6 +81,7 @@ export default {
     { id: "labelA2", kind: "group", center: BAL, label: "a", labelOffset: [-0.25, 0.65, 0.3] },
   ],
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheelB", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const c = chronometer(v);

@@ -45,6 +45,7 @@ export default {
   figure: 204,
   parts: [roller("upper", 1), roller("lower", -1)],
   driver: { part: "upper", type: "rotation" },
+  target: "lower",
   view: { direction: [-0.35, 0.25, 1] },
   pose(theta) {
     return { parts: { upper: { angle: theta }, lower: { angle: -theta } }, readouts: [] };

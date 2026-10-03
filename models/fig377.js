@@ -67,6 +67,7 @@ export default {
     { id: "legB", kind: "link", width: 0.12, thickness: 0.12 },
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.06 },
+  target: "drum", // 被人踩著轉的圓筒
   view: { direction: [0.55, 0.35, 1] },
   pose(p) {
     const t = treadmill(p);

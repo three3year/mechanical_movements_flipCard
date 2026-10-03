@@ -19,6 +19,7 @@ export default {
     { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.15, 0.6, 0.5], at: [-0.55, -2.0, 0] }, { kind: "box", size: [0.15, 0.6, 0.5], at: [-0.55, 1.4, 0] }] },
   ],
   driver: { part: "worm", type: "rotation", range: RANGE, initial: 0 },
+  target: "rack", // 直線移動的齒條
   view: { direction: [0.25, 0.1, 1] },
   pose(theta) {
     // 齒條零件的局部 x 沿齒條,齒朝局部 +y:轉 −90° 讓齒條沿世界 y、齒朝 +x

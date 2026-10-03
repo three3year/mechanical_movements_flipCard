@@ -71,6 +71,7 @@ export default {
     { id: "wire", kind: "rod", radius: 0.015 },
   ],
   driver: { type: "virtual", label: "敲一下", mode: "progress", range: [0, 1], speed: 0.25 },
+  target: "hammer",
   view: { direction: [0.03, 0.05, 1] },
   pose(v) {
     const h = hammer(v);

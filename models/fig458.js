@@ -48,6 +48,7 @@ export default {
     { id: "waterR", kind: "fill", fluid: "water", shape: "cylinder", size: [0.38, 0.4, 0], level: 0 },
   ],
   driver: { part: "bucketL", grips: ["bucketR"], type: "translation", direction: [0, -1, 0], cycle: [TOP, BOTTOM] },
+  target: "bucketR", // 被抬起的滿桶
   view: { direction: [0.1, 0.06, 1] },
   pose(v) {
     const b = buckets(v);

@@ -56,6 +56,7 @@ export default {
     { id: "water", kind: "fill", fluid: "water", shape: "cylinder", size: [0.42, 0.4, 0], level: 0 },
   ],
   driver: { part: "pole", grips: ["bucket"], type: "rotation", cycle: SWING },
+  target: "bucket",
   view: { direction: [0.15, 0.1, 1] },
   pose(v) {
     const s = sweep(v);

@@ -51,6 +51,7 @@ export default {
     { id: "screwC", kind: "worm", axis: X, center: [XD + 1.9, AXIS_C, 0], radius: 0.2, length: 3.8, pitch: PITCH, thread: 0.05, label: "C", labelOffset: [0, 0.4, 0.3], pieces: [{ kind: "cylinder", radius: 0.12, length: 1.6, at: [0, 0, -2.6] }] },
   ],
   driver: { part: "shaftA", grips: ["pinionB"], type: "rotation", range: RANGE, initial: 0 },
+  target: "screwC",
   view: { direction: [0.2, 0.15, 1] },
   pose(a0) {
     const { a, d, e, shift } = differential(a0);

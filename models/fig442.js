@@ -51,6 +51,7 @@ export default {
     ...Array.from({ length: POTS }, (_, i) => ({ id: `water${i}`, kind: "fill", fluid: "water", shape: "cylinder", size: [0.28, 0.32, 0] })),
   ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.1 },
+  target: "wheel",
   view: { direction: [0.3, 0.15, 1] },
   pose(progress) {
     const wheel = TAU * progress; // 逆時針
