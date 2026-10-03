@@ -4,6 +4,12 @@ __pycache__/
 .venv/
 venv/
 
+# Node(開發用依賴:只有實體驗證用到)
+node_modules/
+
+# 維護時截圖用(Playwright)
+.playwright-mcp/
+
 # OS
 .DS_Store
 Thumbs.db

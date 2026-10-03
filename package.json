@@ -2,8 +2,14 @@
   "name": "claude-flipcard",
   "private": true,
   "type": "module",
-  "description": "機構圖鑑卡片;零依賴,測試用 Node 內建測試執行器",
+  "description": "機構圖鑑卡片;網站與 npm test 零依賴(Node 內建測試執行器);實體驗證(npm run verify)另用開發用依賴",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "verify": "node tools/verify.mjs",
+    "test:verify": "node --test \"verify/*.spec.js\""
+  },
+  "devDependencies": {
+    "@dimforge/rapier3d-compat": "^0.21.0",
+    "three": "^0.170.0"
   }
 }

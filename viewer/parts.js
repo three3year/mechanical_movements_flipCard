@@ -233,7 +233,13 @@ function markDot(g, at, size, thickness, mark) {
 
 // 板面上的刻線圓:細圓環在法線上的落差描出一圈線,正面看也看得到(原圖的同心圓)
 function faceCircle(g, r, z, material, tube) {
-  g.add(mesh(new THREE.TorusGeometry(r, tube, 6, Math.max(24, Math.round(r * 60))), material, [0, 0, z]));
+  g.add(engraving(mesh(new THREE.TorusGeometry(r, tube, 6, Math.max(24, Math.round(r * 60))), material, [0, 0, z])));
+}
+
+// 刻線只是板面上的線條,不是零件的實體(實體驗證依這個標記略過)
+function engraving(m) {
+  m.userData.engraving = true;
+  return m;
 }
 
 function plate(part, material, mark) {
@@ -247,7 +253,7 @@ function plate(part, material, mark) {
   for (const line of part.engrave ?? []) {
     const curve = new THREE.CatmullRomCurve3(line.map(([x, y]) => new THREE.Vector3(x, y, 0)), true);
     const geometry = new THREE.TubeGeometry(curve, line.length * 2, 0.012, 5, true);
-    for (const z of [t / 2, -t / 2]) g.add(mesh(geometry, material, [0, 0, z]));
+    for (const z of [t / 2, -t / 2]) g.add(engraving(mesh(geometry, material, [0, 0, z])));
   }
   return g;
 }

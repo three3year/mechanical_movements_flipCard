@@ -78,6 +78,29 @@ for (const def of models) {
     }
   });
 
+  test(`圖 ${def.figure}:實體驗證的宣告(豁免、外力來源、動力重演)指向存在的零件,豁免有原因`, () => {
+    const ids = new Set(def.parts.map((p) => p.id));
+    for (const w of def.waivers ?? []) {
+      assert.ok(["interference", "unsupported", "replay"].includes(w.check), `豁免的檢查種類 ${w.check}`);
+      assert.ok(typeof w.reason === "string" && w.reason.trim().length > 0, `豁免(${(w.parts ?? []).join("、")})必須寫原因`);
+      assert.ok(Array.isArray(w.parts) && w.parts.length > 0, "豁免指明涉及的零件");
+      for (const id of w.parts) assert.ok(ids.has(id), `豁免指向不存在的零件 ${id}`);
+    }
+    for (const id of def.powered ?? []) assert.ok(ids.has(id), `外力來源指向不存在的零件 ${id}`);
+    if (def.replay) {
+      for (const [id, free] of Object.entries(def.replay.free ?? {})) {
+        assert.ok(ids.has(id), `動力重演的自由零件 ${id} 不存在`);
+        if (free.on) assert.ok(ids.has(free.on), `動力重演:${id} 裝在不存在的零件 ${free.on} 上`);
+      }
+      assert.ok(def.replay.expect?.length, "動力重演要有預期事件");
+      for (const e of def.replay.expect) {
+        assert.ok(ids.has(e.part), `動力重演的預期事件指向不存在的零件 ${e.part}`);
+        assert.ok(Number.isFinite(e.at), "預期事件有主動量");
+      }
+      for (const pair of def.replay.ignore ?? []) for (const id of pair) assert.ok(ids.has(id), `動力重演的 ignore 指向不存在的零件 ${id}`);
+    }
+  });
+
   test(`圖 ${def.figure}:平板的記號(mark)是一個位置 [x, y]`, () => {
     const all = (parts) => parts.flatMap((p) => [p, ...all(p.pieces ?? [])]);
     for (const p of all(def.parts).filter((q) => q.kind === "plate" && q.mark != null)) {

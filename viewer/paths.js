@@ -10,6 +10,8 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 const RADIUS = { belt: 0.05, rope: 0.045, rod: 0.03, chain: 0.06, trace: 0.035 };
 const MARK_SPACING = { belt: 0.42, rope: 0.24, chain: 0.36 }; // 相鄰兩個記號的距離,也就是一個色段的長度
+/** 線狀零件的粗細(半徑):鍊條取鏈節寬的一半。繪圖與實體驗證共用 */
+export const pathRadius = (part) => (part.kind === "chain" ? (part.width ?? 0.2) / 2 : (part.radius ?? RADIUS[part.kind]));
 const TRACE_COLOR = "#b3261e";
 const SEGMENT_COLORS = ["#f0b429", "#3aa676", "#7b4bb7"];
 const MARK_COLOR = "#2a2a2a";
@@ -57,7 +59,7 @@ class PolylineCurve extends THREE.Curve {
 export class PathPart {
   constructor(part, material) {
     this.kind = part.kind;
-    this.radius = part.radius ?? RADIUS[part.kind];
+    this.radius = pathRadius(part);
     this.material = material.clone();
     if (part.kind === "trace") this.material = new THREE.MeshBasicMaterial({ color: TRACE_COLOR });
     if (MOVING_KINDS.has(part.kind)) {
