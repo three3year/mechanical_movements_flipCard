@@ -312,6 +312,10 @@ export const sources = {
   308: "./fig308.js",
   309: "./fig309.js",
   310: "./fig310.js",
+  311: "./fig311.js",
+  312: "./fig312.js",
+  313: "./fig313.js",
+  314: "./fig314.js",
   430: "./fig430.js",
   500: "./fig500.js",
 };

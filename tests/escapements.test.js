@@ -28,6 +28,10 @@ import * as m307 from "../models/fig307.js";
 import * as m308 from "../models/fig308.js";
 import * as m309 from "../models/fig309.js";
 import * as m310 from "../models/fig310.js";
+import * as m311 from "../models/fig311.js";
+import * as m312 from "../models/fig312.js";
+import * as m313 from "../models/fig313.js";
+import * as m314 from "../models/fig314.js";
 
 const half = (S) => 2 * S; // 擺一程的累計擺動量
 
@@ -167,4 +171,33 @@ test("第 310 種:三腳式重力擒縱:叉瓦 A、B 交替被抬起,擒縱輪�
   const S = m310.SWING;
   assert.ok(m310.gravity(2 * S).right > 0 && m310.gravity(4 * S).left > 0, "兩叉瓦交替被抬起");
   stepsPerSwing((v) => m310.gravity(v).wheel, S, m310.STEP);
+});
+
+test("第 311 種:雙三腳式重力擒縱:兩個叉瓦交替被抬起,鎖定輪每擺一次轉六分之一圈", () => {
+  const S = m311.SWING;
+  assert.ok(m311.doubleThree(2 * S).right > 0 && m311.doubleThree(4 * S).left > 0, "兩叉瓦交替被抬起");
+  stepsPerSwing((v) => m311.doubleThree(v).wheel, S, m311.STEP);
+});
+
+test("第 312 種:布洛克桑重力擒縱:擺推開一個叉瓦、放開擋止,輪每擺一次轉半個齒距", () => {
+  const S = m312.SWING;
+  assert.ok(m312.bloxam(2 * S).right > 0 && m312.bloxam(4 * S).left > 0, "兩叉瓦交替被抬起");
+  stepsPerSwing((v) => -m312.bloxam(v).wheel, S, m312.PITCH / 2);
+});
+
+test("第 313 種:天文台計時器擒縱:擺輪朝箭頭方向轉時推開止動器、放走一齒;返回時不動止動器", () => {
+  const S = m313.SWING;
+  const back = sweep(2 * S, 100).map((v) => m313.chronometer(v));
+  assert.ok(back.every((c) => c.detent === 0 && c.wheel === 0), "返回時止動器不動、輪不動");
+  const go = sweep(4 * S, 100, 2 * S).map((v) => m313.chronometer(v));
+  assert.ok(go.some((c) => c.detent > 0), "朝箭頭方向時推開止動器");
+  close(m313.chronometer(4 * S).wheel, -m313.PITCH, "來回一次轉一齒", 1e-9);
+});
+
+test("第 314 種:槓桿式天文台計時器擒縱:叉瓦只鎖輪,衝量直接給擺輪上的叉瓦 C,來回一次轉一齒", () => {
+  const S = m314.SWING;
+  const levers = sweep(2 * S, 100).map((v) => m314.leverChrono(v).lever);
+  assert.ok(Math.sign(levers[0]) !== Math.sign(levers[levers.length - 1]), "每擺一次槓桿換邊");
+  close(m314.leverChrono(2 * S).wheel, 0, "一個方向不給衝量", 1e-12);
+  close(m314.leverChrono(4 * S).wheel, -m314.PITCH, "來回一次轉一齒", 1e-9);
 });
