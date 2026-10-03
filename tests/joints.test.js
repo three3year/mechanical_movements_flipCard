@@ -18,6 +18,12 @@ import * as m267 from "../models/fig267.js";
 import * as m270 from "../models/fig270.js";
 import { sweep } from "./helpers.js";
 import * as m247 from "../models/fig247.js";
+import * as m271 from "../models/fig271.js";
+import * as m274 from "../models/fig274.js";
+import * as m275 from "../models/fig275.js";
+import * as m285 from "../models/fig285.js";
+import * as m286 from "../models/fig286.js";
+import * as m287 from "../models/fig287.js";
 import * as m279 from "../models/fig279.js";
 import * as m280 from "../models/fig280.js";
 import * as m281 from "../models/fig281.js";
@@ -384,4 +390,49 @@ test("第 284 種:曲柄每轉一圈,卡榫推棘輪前進一段,小齒輪帶平
   assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-9), "棘輪只往前");
   assert.ok(ws.slice(1).some((w, i) => w === ws[i]), "回程時棘輪不動");
   close(m284.feed(4 * Math.PI, "slow").carriage - m284.feed(0, "slow").carriage, -2 * slow.step * 0.42, "平台位移 = 小齒輪轉角 × 節圓半徑", 1e-9);
+});
+
+test("第 271 種:裝有兩根棘爪的槓桿振動時,棘齒桿得到近乎連續的直線運動", () => {
+  const S = m271.SWING;
+  const xs = sweep(8 * S, 400).map((v) => m271.motion(v).x);
+  assert.ok(xs.every((x, i) => i === 0 || x >= xs[i - 1] - 1e-12), "只朝一個方向");
+  const one = m271.motion(2 * S).x - m271.motion(0).x;
+  const two = m271.motion(4 * S).x - m271.motion(2 * S).x;
+  assert.ok(one > 0.1 && two > 0.1, "槓桿往兩個方向擺時都在推");
+});
+
+test("第 274 種:轉速越快,球 K 沿拋物線臂 B 升得越高,桿 F 把套筒沿心軸往上帶", () => {
+  const lo = m274.governor(2);
+  const hi = m274.governor(9);
+  assert.ok(hi.y > lo.y && hi.x > lo.x, "球(輪 L)往外往上");
+  assert.ok(hi.sleeve > lo.sleeve, "套筒上升");
+  for (const s of sweep(10, 10)) {
+    const g = m274.governor(s);
+    close(g.y, m274.parabola(g.x), "輪 L 始終在拋物線上");
+  }
+});
+
+test("第 275 種:蝸桿的旋轉運動使齒條直線運動,每圈一個螺距", () => {
+  close(m275.rack(2 * Math.PI) - m275.rack(0), m275.PITCH, "每圈一個螺距");
+});
+
+test("第 285 種:車床可動頭:轉動手輪,螺桿使心軸直線移動", () => {
+  close(m285.extend(2 * Math.PI) - m285.extend(0), m285.PITCH, "手輪一圈,心軸移動一個螺距");
+  assert.ok(m285.extend(m285.RANGE[1]) > 1, "心軸伸出");
+});
+
+test("第 286 種:搖臂軸上的曲面推頂子作用於升降器,把升降桿抬起", () => {
+  const [lo, hi] = m286.RANGE;
+  close(m286.lift(hi), 0, "推頂子沒轉時升降器停在原位", 1e-9);
+  assert.ok(m286.lift(lo) > 0.4, "推頂子轉上來時升降桿被抬起");
+  const lifts = sweep(lo, 40, hi).map(m286.lift);
+  assert.ok(lifts.every((l, i) => i === 0 || l >= lifts[i - 1] - 1e-9), "轉得越多抬得越高");
+});
+
+test("第 287 種:彈簧屈服於球的離心力而抬起套筒;離心力減小時把球拉回心軸,套筒下降", () => {
+  const slow = m287.governor(2);
+  const fast = m287.governor(9);
+  assert.ok(fast.bow > slow.bow, "高速時球離心軸較遠");
+  assert.ok(fast.sleeve > slow.sleeve, "高速時套筒較高");
+  for (const s of [0, 4, 10]) close(m287.springLength(s), m287.springLength(0), "彈簧長度不變", 1e-6);
 });
