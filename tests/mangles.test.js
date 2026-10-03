@@ -22,6 +22,13 @@ import * as m207 from "../models/fig207.js";
 import * as m209 from "../models/fig209.js";
 import * as m210 from "../models/fig210.js";
 import fig200 from "../models/fig200.js";
+import * as m205 from "../models/fig205.js";
+import * as m206 from "../models/fig206.js";
+import * as m211 from "../models/fig211.js";
+import * as m212 from "../models/fig212.js";
+import * as m213 from "../models/fig213.js";
+import * as m214 from "../models/fig214.js";
+import * as m215 from "../models/fig215.js";
 
 /** 等間隔取樣的序列:相鄰差的最大 / 最小(絕對值),量「速度變化多大」 */
 function spread(values) {
@@ -241,4 +248,55 @@ test("第 210 種:轉動開槽臂的軸,垂直桿得到變速的直線運動", (
     const { s, length } = m210.pin(a);
     assert.ok(s > 0.3 && s < length - 0.25, "銷一直在槽內");
   }
+});
+
+test("第 205 種:兩個凸輪組成的「兩齒小齒輪」,交替推動輪兩面交錯的齒;小齒輪每轉一圈,輪走兩格", () => {
+  const { STEP } = m205.geometry;
+  close(m205.wheelAngle(2 * Math.PI) - m205.wheelAngle(0), -2 * STEP, "一圈兩格", 1e-12);
+  close(m205.wheelAngle(Math.PI) - m205.wheelAngle(0), -STEP, "半圈一格(另一個凸輪接手)", 1e-12);
+});
+
+test("第 206 種:承載兩個棘爪的槓桿振動,一個上升時推、一個下降時推,棘輪連續朝同一方向轉", () => {
+  const S = m206.swing;
+  const angles = sweep(4 * S, 400).map((v) => m206.wheelAngle(v));
+  for (let i = 1; i < angles.length; i++) assert.ok(angles[i] <= angles[i - 1] + 1e-12, "只朝一個方向");
+  // 上升的半程與下降的半程都有推進
+  assert.ok(m206.wheelAngle(S) < m206.wheelAngle(0) - 0.05, "上升時推");
+  assert.ok(m206.wheelAngle(2 * S) < m206.wheelAngle(S) - 0.05, "下降時推");
+});
+
+test("第 211 種:大輪連續旋轉,小齒輪間歇轉動:轉過有齒部分時轉一圈,其餘時間被鎖住", () => {
+  const thetas = sweep(2 * Math.PI, 720);
+  const pinions = thetas.map((t) => m211.intermittent(t).pinion);
+  close(pinions[pinions.length - 1] - pinions[0], -2 * Math.PI, "大輪一圈,小齒輪一圈", 1e-6);
+  const still = pinions.slice(1).filter((p, i) => Math.abs(p - pinions[i]) < 1e-12).length;
+  assert.ok(still > 300, "大半時間鎖住不動");
+});
+
+test("第 212 種:日內瓦式擋止:A 每轉一圈 B 走一格,其餘時間不動;B 走完四格後 A 被擋住", () => {
+  const { N, STEPS } = m212.geometry;
+  close(m212.stop(2 * Math.PI).b - m212.stop(0).b, -(2 * Math.PI) / N, "每圈一格", 1e-9);
+  close(m212.stop(Math.PI).b, m212.stop(Math.PI + 0.5).b, "鎖住時不動", 1e-12);
+  const [lo, hi] = m212.range;
+  close(m212.stop(hi).b - m212.stop(lo).b, -STEPS * ((2 * Math.PI) / N), "可轉範圍內 B 走完四格", 1e-9);
+  assert.ok(hi - lo > 4 * 2 * Math.PI && hi - lo < 5 * 2 * Math.PI, "A 約可轉四圈多");
+});
+
+test("第 213 種:擋輪只有一段齒,下輪轉到那段齒的盡頭就被擋住", () => {
+  const { NL, TOOTHED, LIMIT } = m213.geometry;
+  close(2 * LIMIT, (TOOTHED - 1) * ((2 * Math.PI) / NL), "可轉範圍 = 那段齒", 1e-12);
+  const du = m213.upperAngle(0.1) - m213.upperAngle(0);
+  assert.ok(du < 0, "咬合反向");
+});
+
+test("第 214 種:兩個齒數不同的齒輪,轉了幾圈後面上的指片相碰而擋住", () => {
+  const [lo, hi] = m214.range;
+  assert.ok(lo < -2 * Math.PI && hi > 2 * Math.PI, "可轉一圈以上");
+  assert.ok(m214.touching(hi + 0.02) && m214.touching(lo - 0.02), "兩端指片相碰");
+  for (const t of sweep(hi, 200, lo)) assert.ok(!m214.touching(t), "範圍內不相碰");
+});
+
+test("第 215 種:環上的銷每轉一圈把星形輪推過一格(六分之一圈)", () => {
+  close(m215.step(2 * Math.PI).b - m215.step(0).b, -(2 * Math.PI) / 6, "每圈一格", 1e-9);
+  close(m215.step(2.5).b, m215.step(3.5).b, "鎖住時不動", 1e-12);
 });
