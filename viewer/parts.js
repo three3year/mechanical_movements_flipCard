@@ -367,13 +367,39 @@ function sphere(part, material) {
   return mesh(new THREE.SphereGeometry(part.radius, 28, 18), material);
 }
 
+// 剖面在角度 phi 的切面上的封面(局部 x → 該角度的徑向,局部 y → 軸)
+function latheCap(profile, phi, material) {
+  const shape = new THREE.Shape(profile.map(([r, z]) => new THREE.Vector2(r, z)));
+  const geometry = new THREE.ShapeGeometry(shape);
+  const radial = new THREE.Vector3(Math.sin(phi), -Math.cos(phi), 0);
+  const along = new THREE.Vector3(0, 0, 1);
+  geometry.applyMatrix4(new THREE.Matrix4().makeBasis(radial, along, new THREE.Vector3().crossVectors(radial, along)));
+  return mesh(geometry, withDoubleSide(material));
+}
+
+// 剖開的殼看得到內面,要雙面繪製;同一材質只複製一次
+const doubleSided = new WeakMap();
+function withDoubleSide(material) {
+  if (!doubleSided.has(material)) {
+    const m = material.clone();
+    m.side = THREE.DoubleSide;
+    doubleSided.set(material, m);
+  }
+  return doubleSided.get(material);
+}
+
 function lathe(part, material, mark) {
-  // profile:[[r, z], …],沿局部 Z 由下而上
+  // profile:[[r, z], …],沿局部 Z 由下而上。sweep < 2π 時是剖開的(剖面圖):
+  // 從局部角 cut 起轉 sweep,兩個切面封上剖面形狀,看得到裡面
   const points = part.profile.map(([r, z]) => new THREE.Vector2(r, z));
-  const geometry = new THREE.LatheGeometry(points, SEGMENTS);
+  const sweep = part.sweep ?? Math.PI * 2;
+  // LatheGeometry 的角度從局部 −Y 量起(轉軸後),換成從局部 +X 量起
+  const start = (part.cut ?? 0) + Math.PI / 2;
+  const geometry = new THREE.LatheGeometry(points, SEGMENTS, start, sweep);
   geometry.rotateX(Math.PI / 2);
   const g = new THREE.Group();
-  g.add(mesh(geometry, material));
+  g.add(mesh(geometry, part.sweep ? withDoubleSide(material) : material));
+  if (part.sweep) for (const phi of [start, start + sweep]) g.add(latheCap(part.profile, phi, material));
   if (part.mark) {
     const [r, z] = part.profile.reduce((m, pt) => (pt[0] > m[0] ? pt : m));
     g.add(mesh(new THREE.SphereGeometry(Math.max(0.04, r * 0.1), 12, 8), mark, [r, 0, z]));

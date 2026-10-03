@@ -63,7 +63,8 @@ export class LineArtRenderer {
     this.normalTarget = new THREE.WebGLRenderTarget(1, 1, {
       depthTexture: new THREE.DepthTexture(1, 1),
     });
-    this.normalMaterial = new THREE.MeshNormalMaterial();
+    // 雙面:剖開的殼(剖面圖)從外面看得到內面,內面也要有法線與深度才描得出輪廓
+    this.normalMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
     this.quadMaterial = new THREE.ShaderMaterial({
       vertexShader,
       fragmentShader,

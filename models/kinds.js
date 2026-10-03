@@ -19,7 +19,7 @@ export const PART_KINDS = new Set([
   "plate", // 依 2D 輪廓擠出的板件:凸輪、棘輪、棘爪、槓桿、擒縱輪……
   "cylinder",
   "sphere",
-  "lathe", // 依剖面繞軸旋轉成形
+  "lathe", // 依剖面繞軸旋轉成形;sweep < 2π 時剖開(剖面圖),切面封上剖面形狀
   "link", // 兩端有銷孔的連桿,姿勢以 from/to 指定
   "spring", // 螺旋彈簧,姿勢以 from/to 指定,長度隨之伸縮
   "worm", // 蝸桿、螺桿:圓柱外繞螺旋齒
