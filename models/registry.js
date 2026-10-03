@@ -485,6 +485,12 @@ export const sources = {
   481: "./fig481.js",
   482: "./fig482.js",
   483: "./fig483.js",
+  484: "./fig484.js",
+  485: "./fig485.js",
+  486: "./fig486.js",
+  487: "./fig487.js",
+  488: "./fig488.js",
+  489: "./fig489.js",
   500: "./fig500.js",
 };
 
