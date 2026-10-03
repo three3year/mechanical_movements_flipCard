@@ -7,6 +7,11 @@ import * as m412 from "../models/fig412.js";
 import * as m413 from "../models/fig413.js";
 import * as m414 from "../models/fig414.js";
 import * as m415 from "../models/fig415.js";
+import * as m416 from "../models/fig416.js";
+import * as m417 from "../models/fig417.js";
+import * as m418 from "../models/fig418.js";
+import * as m419 from "../models/fig419.js";
+import * as m420 from "../models/fig420.js";
 
 test("第 412 種:絞盤解鎖時鼓頭與鼓輪反向轉,速度比三比一;鎖定時一起轉(單倍)", () => {
   const def = m412.default;
@@ -65,4 +70,87 @@ test("第 415 種:C 嚙合時槓桿往一邊擺就帶著輪 D 轉、擺回時 D 
   const pose = m415.default.pose(0.1, "C").parts;
   close(pose.pawlC.angle, pose.lever.angle, "C 隨槓桿貼著輪緣");
   assert.notEqual(pose.pawlB.angle, pose.lever.angle, "B 被抬起");
+});
+
+test("第 416 種:螺旋彈簧 A 把曲柄 B 推向與死點成直角的位置", () => {
+  assert.equal(m416.DEAD.length, 2, "曲柄轉一圈有兩個死點");
+  const off = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+  for (const d of m416.DEAD) close(off(m416.REST, d), Math.PI / 2, "彈簧放鬆的位置與死點成直角", 0.05);
+  // 在死點上彈簧推著曲柄離開死點,推向放鬆的位置
+  for (const d of m416.DEAD) {
+    const tq = m416.springTorque(d);
+    assert.ok(Math.abs(tq) > 0.9, "在死點上彈簧的力矩最大");
+    const toward = Math.atan2(Math.sin(m416.REST - d), Math.cos(m416.REST - d));
+    assert.ok(Math.sign(tq) === Math.sign(toward), "力矩朝放鬆的位置");
+  }
+  // 連桿接著踏板,曲柄轉整圈
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const pose = m416.default.pose(t).parts;
+    close(Math.hypot(pose.rod.to[0] - pose.rod.from[0], pose.rod.to[1] - pose.rod.from[1]), m416.ROD, "連桿長不變", 1e-6);
+  }
+});
+
+test("第 417 種:彎軸轉動,滑塊 C 沿直線往復;軸轉半圈後滑塊到另一端(原圖虛線)", () => {
+  const xs = sweep(2 * Math.PI, 48).map((t) => {
+    const s = m417.solve(t);
+    close(s.C[1], m417.SLIDE_Y, "滑塊不離開底座");
+    close(s.C[2], 0, "滑塊走直線");
+    // 桿 B 與插座(彎端)成直角
+    close(s.d[0] * s.u[0] + s.d[1] * s.u[1] + s.d[2] * s.u[2], 0, "桿 B 垂直於彎端");
+    return s.C[0];
+  });
+  const [start, half] = [m417.solve(0).C[0], m417.solve(Math.PI).C[0]];
+  close(Math.max(...xs), start, "實線位置在一端", 1e-6);
+  close(Math.min(...xs), half, "轉半圈後在另一端", 1e-6);
+  assert.ok(start - half > 1, "往復行程明顯");
+  close(m417.solve(2 * Math.PI).C[0], start, "轉一圈回到原處");
+});
+
+test("第 418 種:閥 A 在閥座上水平滑動,桿 B 上端的銷在垂直溝槽裡,滾子 C 沿弧形件 D 走", () => {
+  for (const v of sweep(4 * m418.SWING, 24)) {
+    const phi = m418.default.pose(v).parts.rod.angle;
+    const { C, Q, P } = m418.linkage(phi);
+    close(Math.hypot(C[0] - m418.TOP[0], C[1] - m418.TOP[1]), m418.ROLLER_AT, "滾子在弧上(弧以銷為圓心)");
+    close(P[1], m418.SEAT_Y, "閥貼著閥座、水平滑動");
+    close(Math.hypot(P[0] - Q[0], P[1] - Q[1]), m418.LINK, "短連桿長不變");
+  }
+  const xs = sweep(4 * m418.SWING, 24).map((v) => m418.linkage(m418.default.pose(v).parts.rod.angle).P[0]);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.8, "閥來回滑動");
+});
+
+test("第 419 種:輪 A 轉動,輪 B 來回擺動;皮帶 C、D 拉著立柱,搖籃在搖桿 E 上來回搖", () => {
+  const rs = sweep(2 * Math.PI, 72).map((a) => m419.rock(a));
+  const betas = rs.map((r) => r.beta);
+  assert.ok(Math.max(...betas) - Math.min(...betas) < Math.PI, "B 不轉整圈,只是擺動");
+  const gammas = rs.map((r) => r.gamma);
+  assert.ok(Math.max(...gammas) > 0.1 && Math.min(...gammas) < -0.1, "搖籃往兩邊搖");
+  const left = rs[0].left.length;
+  const right = rs[0].right.length;
+  for (const r of rs) {
+    close(r.left.length, left, "皮帶 C 不伸縮", 1e-6);
+    close(r.right.length, right, "皮帶 D 不伸縮(兩條皮帶都繃著)", right * 0.003);
+  }
+  // B 朝一邊擺時搖籃跟著朝同一邊轉(皮帶在 B 頂端)
+  for (let i = 1; i < rs.length; i++) {
+    const db = rs[i].beta - rs[i - 1].beta;
+    const dg = rs[i].gamma - rs[i - 1].gamma;
+    if (Math.abs(db) > 0.01) assert.ok(Math.sign(db) === Math.sign(dg), "搖籃隨 B 擺動");
+  }
+});
+
+test("第 420 種:錘子敲到鐘之後,下方的彈簧把它抬離鐘面,不貼著鐘", () => {
+  const phases = sweep(1, 200).map((v) => ({ v, ...m420.hammer(v) }));
+  const strikes = phases.filter((p) => p.phase === "敲擊鐘面");
+  assert.ok(strikes.length > 0, "有敲擊的時刻");
+  for (const p of strikes) close(m420.gap(p.angle), 0, "敲擊時錘頭碰到鐘面", 1e-9);
+  for (const p of phases) assert.ok(m420.gap(p.angle) > -1e-9, "錘頭不會撞進鐘裡");
+  const after = m420.hammer(0.9);
+  assert.ok(m420.gap(after.angle) > 0.05, "敲擊之後錘頭離開鐘面");
+  close(after.angle, m420.REST, "停在彈簧撐住的位置");
+  // 敲擊時彈簧被壓得最短
+  const len = (v) => {
+    const sp = m420.default.pose(v).parts.spring;
+    return Math.hypot(sp.to[0] - sp.from[0], sp.to[1] - sp.from[1]);
+  };
+  assert.ok(len(strikes[0].v) < len(0.9), "敲擊時壓縮彈簧,彈簧再把錘子推回");
 });

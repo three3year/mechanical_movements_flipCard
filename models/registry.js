@@ -417,6 +417,11 @@ export const sources = {
   413: "./fig413.js",
   414: "./fig414.js",
   415: "./fig415.js",
+  416: "./fig416.js",
+  417: "./fig417.js",
+  418: "./fig418.js",
+  419: "./fig419.js",
+  420: "./fig420.js",
   430: "./fig430.js",
   500: "./fig500.js",
 };
