@@ -18,6 +18,11 @@ import * as m267 from "../models/fig267.js";
 import * as m270 from "../models/fig270.js";
 import { sweep } from "./helpers.js";
 import * as m247 from "../models/fig247.js";
+import * as m265 from "../models/fig265.js";
+import * as m268 from "../models/fig268.js";
+import * as m269 from "../models/fig269.js";
+import * as m272 from "../models/fig272.js";
+import * as m276 from "../models/fig276.js";
 import * as m260 from "../models/fig260.js";
 import * as m261 from "../models/fig261.js";
 import fig262 from "../models/fig262.js";
@@ -282,4 +287,43 @@ test("第 266 種:軸的旋轉使可動軸承直線移動,每旋轉一圈移動�
   const one = m266.feed(2 * Math.PI);
   close(one.bearing - m266.feed(0).bearing, m266.P1 - m266.P2, "每圈 = 兩螺距之差");
   close(one.shaft, m266.P1, "軸每圈穿過固定軸承前進一個螺距");
+});
+
+test("第 265 種:圓錐形鼓輪規則轉動,摩擦滾子沿長度方向橫移,得到變速的旋轉運動", () => {
+  const rates = sweep(12 * 2 * Math.PI, 60).map((t) => m265.roller(t).rate);
+  assert.ok(Math.max(...rates) / Math.min(...rates) > 1.8, "滾子轉速隨位置改變");
+  const { x, spin } = m265.roller(0.001);
+  close(-spin / 0.001, m265.drumRadius(x) / m265.geometry.ROLLER, "滾子線速度 = 鼓輪在接觸處的線速度", 1e-3);
+});
+
+test("第 268 種:曲柄轉動時,擺動桿的端點往復運動", () => {
+  const xs = sweep(2 * Math.PI, 72).map((t) => m268.rod(t).end[0]);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.6, "桿端往復");
+  close(m268.rod(2 * Math.PI).end[0], m268.rod(0).end[0], "曲柄一圈回到原處", 1e-9);
+});
+
+test("第 269 種:框架持續往同一方向直線移動,正齒輪得到交替方向的旋轉", () => {
+  const [lo, hi] = m269.RANGE;
+  const angles = sweep(lo, 400, hi).map(m269.gear); // 框架從右往左持續移動
+  const steps = angles.slice(1).map((a, i) => Math.sign(a - angles[i])).filter(Boolean);
+  const changes = steps.slice(1).filter((s, i) => s !== steps[i]).length;
+  assert.ok(steps.includes(1) && steps.includes(-1), "齒輪兩個方向都轉");
+  assert.equal(changes, 1, "先一個方向、再反方向");
+  const { TOP, P, R } = m269.geometry;
+  close(m269.gear(TOP.from - P) - m269.gear(TOP.from), P / R, "咬合時齒輪轉角 = 框架位移 / 節圓半徑");
+});
+
+test("第 272 種:斜面圓盤凸輪旋轉,靠在盤上的桿得到往復直線運動", () => {
+  const ts = sweep(2 * Math.PI, 72).map(m272.rodTravel);
+  assert.ok(Math.max(...ts) - Math.min(...ts) > 0.3, "桿往復");
+  close(m272.rodTravel(2 * Math.PI), m272.rodTravel(0), "軸一圈回到原處", 1e-9);
+});
+
+test("第 276 種:凸輪橫跨中心所測的每個方向直徑皆相等,兩滾子始終貼著凸輪,桿往復直線運動", () => {
+  for (const t of sweep(2 * Math.PI, 90)) {
+    const f = m276.follower(t);
+    close(f.right + f.left, m276.SPAN, "兩滾子的距離不變");
+  }
+  const xs = sweep(2 * Math.PI, 90).map((t) => m276.follower(t).x);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.4, "桿往復");
 });

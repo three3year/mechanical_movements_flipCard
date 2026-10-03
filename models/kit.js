@@ -295,3 +295,21 @@ export const rotateAbout = (v, axis, angle) => quatRotate(quatAxisAngle(axis, an
 
 /** 螺帽(或螺桿)轉 angle 時沿軸的移動量;hand = +1 右旋、−1 左旋 */
 export const screwAdvance = (angle, pitch, hand = 1) => (hand * pitch * angle) / TAU;
+
+// ── 積分 ─────────────────────────────────
+// 摩擦傳動的從動件轉角 = 接觸處線速度對主動量的積分;被積函數隨主動量週期變化時,
+// 先算好一個週期的積分,任意大的主動量也只需積分不滿一週期的部分(結果仍是主動量的純函式)。
+
+/** f 從 0 積分到 x(中點法,步長約 step);f 以 period 為週期 */
+export function periodicIntegral(f, period, x, step = 0.01) {
+  const span = (a, b) => {
+    const n = Math.max(1, Math.ceil(Math.abs(b - a) / step));
+    const h = (b - a) / n;
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += f(a + (i + 0.5) * h);
+    return sum * h;
+  };
+  const whole = span(0, period);
+  const k = Math.floor(x / period);
+  return k * whole + span(k * period, x);
+}
