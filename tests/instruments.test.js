@@ -12,6 +12,11 @@ import * as m408 from "../models/fig408.js";
 import * as m409 from "../models/fig409.js";
 import * as m410 from "../models/fig410.js";
 import * as m411 from "../models/fig411.js";
+import * as m496 from "../models/fig496.js";
+import fig497 from "../models/fig497.js";
+import * as m498 from "../models/fig498.js";
+import * as m499 from "../models/fig499.js";
+import * as m501 from "../models/fig501.js";
 
 const needle = (p) => fig500.pose(p).parts.needle.angle;
 
@@ -153,4 +158,49 @@ test("第 411 種:自動記錄水平儀:輪子的圓周等於底邊;平地上擺
   const b = m411.carriage(m411.RANGE[0] + m411.BASE * 0.1);
   near(a.wheel - b.wheel, (2 * Math.PI) * 0.1, 1e-6, "走過底邊的十分之一,輪子轉十分之一圈");
   near((a.drum - b.drum) / (a.wheel - b.wheel), m411.RATIO, 1e-12, "鼓輪由托架輪帶動");
+});
+
+test("第 496 種:牽伸與加撚:前羅拉 B 比後羅拉 A 轉得快,把粗紗拉長;錠翼繞紗管轉,加撚並捲上", () => {
+  const a = m496.spin(0.1);
+  assert.ok(a.b > a.a, "B 比 A 轉得快");
+  close(a.out / a.feed, m496.DRAFT, "前羅拉送出的長度是後羅拉送進的 DRAFT 倍(牽伸)");
+  assert.ok(a.flyer > a.bobbin && a.bobbin > 0, "錠翼比紗管轉得快,差的轉數把紗捲上");
+  const def = m496.default;
+  const r = (id) => def.parts.find((p) => p.id === id).radius;
+  assert.ok(r("roving") > r("drafted") && r("drafted") > r("yarn"), "通過羅拉後越來越細");
+});
+
+test("第 497 種:風扇鼓風機:扇葉轉動,空氣從中心吸進,經噴口送出", () => {
+  const pose = fig497.pose(1.0);
+  const pts = pose.flows[0].points;
+  assert.ok(pts.some((p) => Math.hypot(p[0], p[1]) < 0.5), "空氣從中心進來");
+  assert.ok(pts.some((p) => p[0] > 1.9), "從噴口送出");
+});
+
+test("第 498 種:虹吸式壓力計:受壓的一側水銀下降、另一側上升,高度差與壓力成正比", () => {
+  const zero = m498.levels(0);
+  close(zero.left, zero.right, "壓力為零時兩邊一樣高");
+  for (const p of [1, 3, 6]) {
+    const l = m498.levels(p);
+    assert.ok(l.left < zero.left && l.right > zero.right, "接鍋爐那側下降、開口那側上升");
+    close(l.right - l.left, p * m498.UNIT, "高度差與壓力成正比");
+    close(zero.left - l.left, l.right - zero.right, "兩管腳粗細相同:一邊降多少、另一邊升多少");
+  }
+});
+
+test("第 499 種:布爾登壓力計:壓力使彎管伸直,兩端經扇形段與小齒輪帶動指針", () => {
+  const a = m499.bourdon(2);
+  const b = m499.bourdon(8);
+  assert.ok(b.r > a.r, "壓力越大,彎管越直(彎曲半徑越大)");
+  close(b.r * b.span, m499.R0 * m499.bourdon(0).span, "管長不變", 1e-9);
+  assert.ok(b.sector > a.sector, "管端移動推轉扇形段");
+  assert.ok(b.pinion < a.pinion, "指針(小齒輪)隨之轉動");
+});
+
+test("第 501 種:水銀氣壓計:長管腳的水銀柱由大氣壓力支撐,隨氣壓升降", () => {
+  const lo = m501.columns(28.5);
+  const hi = m501.columns(30.5);
+  assert.ok(hi.long > lo.long, "氣壓高,長管腳的水銀柱升高");
+  assert.ok(hi.short < lo.short, "短管腳的水銀面下降");
+  close(hi.height - lo.height, 2 * m501.SCALE, "水銀柱高度差隨氣壓(英吋)成正比");
 });
