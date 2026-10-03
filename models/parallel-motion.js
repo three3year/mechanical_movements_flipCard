@@ -31,3 +31,40 @@ export function verticalDeviation(points) {
   const xs = points.map((p) => p[0]);
   return Math.max(...xs) - Math.min(...xs);
 }
+
+/**
+ * 兩臂伸向同一側的直線連桿(樑與半徑桿都從接頭往左伸,第 338 種):樑 O1–B 長 a、短桿 B–R 長 c,
+ * 擺動範圍中點時 R 在 B 的 up 方向(單位向量);半徑桿 O2–R 的長度由此決定。直線點 P 在 B–R 的延長線上
+ * (P = B + t·(B − R)),t 取讓 P 在擺動範圍內最接近鉛直線的值。
+ */
+export function sameSideLinkage({ O1, O2, a, c, up, range, side = 1 }) {
+  const mid = (range[0] + range[1]) / 2;
+  const Bm = [O1[0] + a * Math.cos(mid), O1[1] + a * Math.sin(mid), 0];
+  const u = Math.hypot(up[0], up[1]);
+  const Rm = [Bm[0] + (c * up[0]) / u, Bm[1] + (c * up[1]) / u, 0];
+  const b = Math.hypot(Rm[0] - O2[0], Rm[1] - O2[1]);
+  // 選擇讓中點位置剛好落在 Rm 的那一個交點
+  const pick = [1, -1].find((s) => {
+    const q = circleCircle(Bm, c, O2, b, s).point;
+    return Math.hypot(q[0] - Rm[0], q[1] - Rm[1]) < 1e-6;
+  }) ?? side;
+  const joints = (psi) => {
+    const B = [O1[0] + a * Math.cos(psi), O1[1] + a * Math.sin(psi), 0];
+    const R = circleCircle(B, c, O2, b, pick).point;
+    return { B, R };
+  };
+  const pointAt = (psi, t) => {
+    const { B, R } = joints(psi);
+    return [B[0] + t * (B[0] - R[0]), B[1] + t * (B[1] - R[1]), 0];
+  };
+  // 偏差以行程為比例:取最直的那一點(只在接頭下方不遠處找,活塞桿接在那裡)
+  let best = { t: 0, dev: Infinity };
+  for (let t = 0; t <= 1.2; t += 0.01) {
+    const ps = Array.from({ length: 13 }, (_, i) => pointAt(range[0] + ((range[1] - range[0]) * i) / 12, t));
+    const span = Math.max(...ps.map((p) => p[1])) - Math.min(...ps.map((p) => p[1]));
+    const dev = verticalDeviation(ps) / span;
+    if (dev < best.dev) best = { t, dev };
+  }
+  const at = (psi) => ({ ...joints(psi), P: pointAt(psi, best.t) });
+  return Object.assign(at, { t: best.t, b, O1, O2 });
+}

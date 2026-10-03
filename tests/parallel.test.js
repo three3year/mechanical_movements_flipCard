@@ -23,6 +23,12 @@ import * as m335 from "../models/fig335.js";
 import * as m336 from "../models/fig336.js";
 import * as m337 from "../models/fig337.js";
 import { verticalDeviation } from "../models/parallel-motion.js";
+import * as m338 from "../models/fig338.js";
+import * as m339 from "../models/fig339.js";
+import * as m340 from "../models/fig340.js";
+import * as m341 from "../models/fig341.js";
+import * as m342 from "../models/fig342.js";
+import * as m343 from "../models/fig343.js";
 
 /** 平行尺:起始與目前的兩條線平行,且確實移開了 */
 function parallelLines(def, values) {
@@ -156,4 +162,55 @@ test("第 337 種:半徑桿接在短振動桿的下端,振動桿中點(活塞桿
   const ps = sweep(m337.RANGE[1], 30, m337.RANGE[0]).map((v) => m337.watt(v).P);
   const ys = ps.map((p) => p[1]);
   assert.ok(verticalDeviation(ps) / (Math.max(...ys) - Math.min(...ys)) < 0.03, "偏離鉛直線不到行程的 3%");
+});
+
+/** 近似直線:偏離鉛直線不到行程的 tol */
+function straightish(points, tol) {
+  const ys = points.map((p) => p[1]);
+  const span = Math.max(...ys) - Math.min(...ys);
+  assert.ok(span > 0.3, "有行程");
+  assert.ok(verticalDeviation(points) / span < tol, `偏離鉛直線 ${(verticalDeviation(points) / span).toFixed(4)},超過行程的 ${tol}`);
+}
+
+test("第 338 種:半徑桿置於樑的上方,活塞桿接點的軌跡近似直線", () => {
+  straightish(sweep(m338.RANGE[1], 30, m338.RANGE[0]).map((v) => m338.watt(v).P), 0.03);
+});
+
+test("第 339 種:B 端在固定溝槽 D 中滑動、C 端接活塞桿,半徑桿 F–A 接在 B–C 的中點:C 走直線", () => {
+  for (const p of sweep(1, 30)) {
+    const r = m339.russell(p);
+    close(dist(r.A, [0.55, 0.65, 0]), 1.0, "FA 長度不變", 1e-9);
+    close(r.B[1], 0.65, "B 在水平溝槽裡", 1e-12);
+    close(r.C[0], 0.55, "C 走鉛直線", 1e-12);
+  }
+  steamPushes(m339.default, sweep(1, 8));
+});
+
+test("第 340 種:樑繞搖動立柱 B–F 的中心 F 擺動,半徑桿 E–A 產生平行運動:C 近似直線", () => {
+  straightish(sweep(m340.RANGE[1], 30, m340.RANGE[0]).map((v) => m340.beam(v).C), 0.01);
+});
+
+test("第 341 種:蚱蜢式樑式引擎:樑的一端在搖動立柱 A 上,半徑桿 B 讓活塞桿端走近似直線", () => {
+  straightish(sweep(1, 40).map((p) => m341.grasshopper(p).C), 0.01);
+  steamPushes(m341.default, sweep(1, 8));
+});
+
+test("第 342 種:大氣壓力引擎:蒸汽進入時配重抬起活塞;冷凝後大氣壓力把活塞推下", () => {
+  const steam = m342.atmospheric(0.3);
+  const condense = m342.atmospheric(0.6);
+  const down = m342.atmospheric(0.8);
+  assert.equal(steam.phase, "steam");
+  assert.ok(m342.atmospheric(0.5).piston > m342.atmospheric(0.1).piston, "蒸汽進入時活塞上升");
+  assert.equal(condense.phase, "condense");
+  assert.ok(m342.atmospheric(0.95).piston < down.piston, "冷凝後活塞被推下");
+  close(m342.atmospheric(1).piston, m342.atmospheric(0).piston, "一輪回到原處", 1e-9);
+  const def = m342.default;
+  assert.equal(def.pose(0.8).parts.steam.level, 0, "推下時活塞下方沒有蒸汽(真空)");
+  assert.ok(def.pose(0.3).parts.steam.level > 0, "蒸汽在活塞下方");
+  assert.ok(def.pose(0.6).flows.some((f) => f.fluid === "water"), "噴水冷凝");
+});
+
+test("第 343 種:直立式引擎:半徑桿 A、A 接在活塞桿頂的振動件上,活塞桿頂走近似直線", () => {
+  straightish(sweep(1, 40).map((p) => m343.upright(p).P), 0.03);
+  steamPushes(m343.default, sweep(1, 8));
 });
