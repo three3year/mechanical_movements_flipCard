@@ -7,8 +7,8 @@ import { PART_KINDS, PATH_KINDS, FLUIDS } from "../models/kinds.js";
 const figures = Object.keys(sources).map(Number);
 const models = await Promise.all(figures.map((n) => loadModel(n)));
 
-test("第一章圖 1–23 都有登記的模型", () => {
-  for (let figure = 1; figure <= 23; figure++) assert.ok(hasModel(figure), `圖 ${figure} 沒有模型`);
+test("全書圖 1–507 都有登記的模型", () => {
+  for (let figure = 1; figure <= 507; figure++) assert.ok(hasModel(figure), `圖 ${figure} 沒有模型`);
 });
 
 test("登記表的圖號與定義的圖號一致", () => {
