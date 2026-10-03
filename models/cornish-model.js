@@ -3,7 +3,7 @@
 // 象限器:各是一個以自己軸心為圓心的扇形。A 位置時下方象限器的圓弧擋住上方象限器的一角(上方手柄被鎖住,下方可轉);
 // 下方手柄被頂到 B 時,它的圓弧剛好轉離那一角,上方被放開;B 位置時上方的圓弧反過來擋住下方的一角。
 import { deg, polar, add, rot2 } from "./kit.js";
-import { shape, arcPoints } from "./shapes.js";
+import { shape, arcPoints, thickLine as thick } from "./shapes.js";
 import { ROD, TAPPET, SHAFTS, HANDLE, ANGLES, SPAN, cornish, valves } from "./cornish-gear.js";
 
 const QUADRANT = 1.6; // 象限器半徑
@@ -42,18 +42,6 @@ export function quadrantOutlines(state) {
   return out;
 }
 export const contactPoint = P;
-
-/** 粗線:沿中心線 points 兩側各偏 w/2 的封閉輪廓 */
-function thick(points, w) {
-  const side = (s) =>
-    points.map((p, i) => {
-      const a = points[Math.max(0, i - 1)];
-      const b = points[Math.min(points.length - 1, i + 1)];
-      const t = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      return [p[0] - (s * w * Math.sin(t)) / 2, p[1] + (s * w * Math.cos(t)) / 2];
-    });
-  return [...side(1), ...side(-1).reverse()];
-}
 
 const CATCH = thick([[-0.75, 1.15], [-0.5, 0.95], [-0.32, 0.6], [-0.18, 0.25], [0, 0], [0.3, -0.3], [0.62, -0.52], [0.85, -0.85], [0.92, -1.2]], 0.22);
 const CATCH_SWING = deg(-14);

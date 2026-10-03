@@ -230,6 +230,18 @@ export function offsetLoop(points, d) {
   });
 }
 
+/** 粗線:沿中心線 points(不封閉)兩側各偏 w/2 的封閉輪廓 */
+export function thickLine(points, w) {
+  const side = (s) =>
+    points.map((p, i) => {
+      const a = points[Math.max(0, i - 1)];
+      const b = points[Math.min(points.length - 1, i + 1)];
+      const t = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      return [p[0] - (s * w * Math.sin(t)) / 2, p[1] + (s * w * Math.cos(t)) / 2];
+    });
+  return [...side(1), ...side(-1).reverse()];
+}
+
 /** 正多邊形(n 邊,外接圓半徑 r;第一個頂點在角度 start) */
 export const polygon = (n, r, start = 0) =>
   Array.from({ length: n }, (_, i) => [r * Math.cos(start + (i * TAU) / n), r * Math.sin(start + (i * TAU) / n)]);

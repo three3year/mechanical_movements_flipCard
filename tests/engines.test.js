@@ -21,6 +21,11 @@ import { cornish, crossing, valves, ANGLES as CORNISH, TAPPET, SPAN as SPAN181 }
 import { quadrantOutlines } from "../models/cornish-model.js";
 import { polygonsOverlap } from "../models/contact.js";
 import fig181 from "../models/fig181.js";
+import * as gab186 from "../models/fig186.js";
+import * as gab187 from "../models/fig187.js";
+import * as gab188 from "../models/fig188.js";
+import * as gab189 from "../models/fig189.js";
+import { onRod } from "../models/gab.js";
 import fig182 from "../models/fig182.js";
 
 const TAU = 2 * Math.PI;
@@ -352,4 +357,19 @@ test("第 183、184 種:兩個象限器輪流以圓弧擋住對方的一角,彼�
   const b = cornish(SPAN181);
   const held = quadrantOutlines({ ...b, lower: b.lower + 0.08 });
   assert.ok(polygonsOverlap(held.upper, held.lower), "B:下方被擋住");
+});
+
+test("第 186–189 種:扳動手柄(或槓桿)把偏心桿端抬起,銷從鉤口中脫出", () => {
+  for (const [fig, m, sign] of [[186, gab186, 1], [187, gab187, 1], [188, gab188, -1], [189, gab189, 1]]) {
+    assert.equal(m.unhook(0).released, false, `第 ${fig} 種:原圖位置銷在鉤口中`);
+    close(m.unhook(0).lift, 0, `第 ${fig} 種`, 1e-9);
+    const lifts = sweep(sign * m.max, 60).map((p) => m.unhook(p).lift);
+    for (let i = 1; i < lifts.length; i++) assert.ok(lifts[i] > lifts[i - 1], `第 ${fig} 種:扳得越多桿端抬得越高`);
+    assert.equal(m.unhook(sign * m.max).released, true, `第 ${fig} 種:扳到頭(卡進凹槽)時銷已脫出`);
+  }
+  // 第 189 種:吊住桿尾的連桿長度不變
+  for (const p of sweep(gab189.max, 20)) {
+    const { end, lift } = gab189.unhook(p);
+    close(dist(end, onRod(gab189.link.HANGER, lift)), gab189.link.LINK, "連桿長度", 1e-9);
+  }
 });
