@@ -17,6 +17,10 @@ import * as m422 from "../models/fig422.js";
 import * as m423 from "../models/fig423.js";
 import * as m424 from "../models/fig424.js";
 import * as m425 from "../models/fig425.js";
+import * as m426 from "../models/fig426.js";
+import * as m427 from "../models/fig427.js";
+import * as m428 from "../models/fig428.js";
+import * as m429 from "../models/fig429.js";
 
 test("第 412 種:絞盤解鎖時鼓頭與鼓輪反向轉,速度比三比一;鎖定時一起轉(單倍)", () => {
   const def = m412.default;
@@ -217,4 +221,66 @@ test("第 425 種:旋轉引擎:偏心活塞 C 在一點碰汽缸;擋板 D 退出
   }
   close(m425.abutment(Math.PI / 2), m425.BORE, "活塞的接觸點經過時,擋板完全退出");
   assert.ok(m425.abutment(-Math.PI / 2) < m425.BORE - 0.5, "活塞在對面時,擋板伸進汽缸隔開進汽與排汽");
+});
+
+test("第 426 種:兩個活塞 A 在輪轂 C 的溝槽裡徑向滑動,經過擋板 D 時縮進輪轂,其餘時候貼著汽缸壁", () => {
+  for (const a of m426.ABUTMENTS) close(m426.wall(a), m426.HUB, "擋板處的內壁就是輪轂的半徑(活塞完全縮進)");
+  close(m426.wall(Math.PI / 2), m426.BORE, "離擋板遠處活塞伸到汽缸壁");
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const pose = m426.default.pose(t).parts;
+    for (const id of ["piston1", "piston2"]) {
+      const p = pose[id];
+      close(Math.hypot(p.position[0], p.position[1]), m426.wall(p.angle), "活塞外端貼著內壁");
+    }
+    close(pose.piston2.angle - pose.piston1.angle, Math.PI, "兩個活塞相對");
+  }
+});
+
+test("第 427 種:軸 B 偏心;活塞 A 穿過輪轂上的填料 a 滑進滑出,但始終對汽缸保持徑向", () => {
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const pose = m427.default.pose(t).parts;
+    for (const k of [1, 2]) {
+      const p = pose[`piston${k}`];
+      const a = pose[`packing${k}`].position;
+      // 活塞沿汽缸半徑:外端在內壁上,方向通過汽缸中心
+      close(Math.hypot(p.position[0], p.position[1]), m427.BORE, "活塞外端貼著汽缸");
+      close(Math.atan2(p.position[1], p.position[0]), p.angle, "活塞沿汽缸半徑");
+      // 填料 a 在輪轂上、在活塞上
+      close(Math.hypot(a[0] - m427.SHAFT[0], a[1] - m427.SHAFT[1]), m427.HUB, "填料在輪轂邊上");
+      const r = Math.hypot(a[0], a[1]);
+      assert.ok(r >= m427.RING - 1e-9 && r <= m427.BORE + 1e-9, "填料落在活塞的長度範圍內");
+      close(Math.atan2(a[1], a[0]), p.angle, "活塞穿過填料");
+    }
+  }
+  // 活塞穿過填料的位置一直在變:滑進滑出
+  const rs = sweep(2 * Math.PI, 36).map((t) => Math.hypot(...m427.pistons(t)[0].packing.slice(0, 2)));
+  assert.ok(Math.max(...rs) - Math.min(...rs) > 0.6, "活塞在輪轂裡滑進滑出");
+});
+
+test("第 428 種:蒸汽把橡膠內襯 E 壓向滾子,滾子繞汽缸轉、帶動主軸", () => {
+  for (const t of sweep(2 * Math.PI, 24)) {
+    const pose = m428.default.pose(t).parts;
+    for (const k of [1, 2, 3]) close(Math.hypot(...pose[`roller${k}`].position.slice(0, 2)) + m428.ROLLER, m428.BORE, "滾子壓著內襯貼到汽缸壁");
+    const span = m428.aheadOfInlet(t);
+    if (span > 0.6) {
+      const mid = Math.PI - span / 2;
+      assert.ok(m428.lining(t, mid) < m428.BORE - 0.2, "進汽口到前面的滾子之間,橡膠被蒸汽往內壓");
+    }
+    assert.ok(Math.abs(m428.lining(t, -Math.PI / 2 + 0.01) - m428.BORE) < 1e-9 || span > Math.PI, "其餘部分的橡膠貼著汽缸");
+  }
+});
+
+test("第 429 種:兩個咬合的橢圓活塞朝相反方向轉,節曲線在兩軸連線上相切", () => {
+  let prev = m429.partner(0).angle;
+  for (const t of sweep(2 * Math.PI, 120).slice(1)) {
+    const q = m429.partner(t);
+    // 接觸點離左軸 r1、離右軸 2a − r1:右輪在接觸方向上的半徑正好是 2a − r1
+    const local = Math.PI - q.angle; // 接觸方向(朝左)在右輪局部的角
+    close(m429.radius(local), m429.DIST - q.r1, "節曲線相切(半徑和 = 兩軸距離)", 1e-6);
+    const d = Math.atan2(Math.sin(q.angle - prev), Math.cos(q.angle - prev));
+    assert.ok(d < 0, "左輪逆時針時右輪順時針(反向)");
+    prev = q.angle;
+  }
+  // 轉一圈後回到原位
+  close(Math.cos(m429.partner(2 * Math.PI).angle), Math.cos(m429.partner(0).angle), "兩輪同步轉一圈", 1e-9);
 });
