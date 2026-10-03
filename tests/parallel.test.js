@@ -16,6 +16,13 @@ import * as m329 from "../models/fig329.js";
 import * as m330 from "../models/fig330.js";
 import * as m331 from "../models/fig331.js";
 import { dist } from "../models/kit.js";
+import * as m332 from "../models/fig332.js";
+import * as m333 from "../models/fig333.js";
+import * as m334 from "../models/fig334.js";
+import * as m335 from "../models/fig335.js";
+import * as m336 from "../models/fig336.js";
+import * as m337 from "../models/fig337.js";
+import { verticalDeviation } from "../models/parallel-motion.js";
 
 /** 平行尺:起始與目前的兩條線平行,且確實移開了 */
 function parallelLines(def, values) {
@@ -109,4 +116,44 @@ test("第 331 種:曲柄手腕 B 在開槽十字頭 A 內作動,十字頭在導�
     close(y.head, y.wrist[1], "十字頭高度等於手腕高度(開槽十字頭)", 1e-12);
   }
   steamPushes(m331.default, sweep(1, 12));
+});
+
+/** 一串點離它們的最佳直線(首尾連線)的最大偏差 */
+function lineDeviation(points) {
+  const [a, b] = [points[0], points[points.length - 1]];
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  return Math.max(...points.map((p) => Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / len));
+}
+
+for (const [n, m] of [[332, m332], [336, m336]]) {
+  test(`第 ${n} 種:船舶側槓桿引擎:平行運動導引十字頭,活塞桿沿直線往復`, () => {
+    const es = sweep(1, 60).map((p) => m.motion(p).E);
+    assert.ok(verticalDeviation(es) < 1e-12, "十字頭沿汽缸中心線");
+    const ys = es.map((e) => e[1]);
+    assert.ok(Math.max(...ys) - Math.min(...ys) > 0.8, "活塞往復");
+    steamPushes(m.default, sweep(1, 8));
+  });
+}
+
+test("第 333 種:特殊的平行運動:短連桿上的一點走近似直線", () => {
+  const ps = sweep(m333.RANGE[1], 30, m333.RANGE[0]).map((v) => m333.linkage(v).P);
+  const span = dist(ps[0], ps[ps.length - 1]);
+  assert.ok(lineDeviation(ps) / span < 0.03, "偏離直線不到行程的 3%");
+});
+
+test("第 334 種:活塞桿是一根直齒條,與樑上的扇形段咬合、背面抵著滾子 A,活塞桿走直線,位移 = 扇形段節圓弧長", () => {
+  const a = m334.rack(0.1).offset - m334.rack(0).offset;
+  close(Math.abs(a), 2.85 * 0.1, "齒條位移 = 節圓半徑 × 轉角", 1e-9);
+});
+
+test("第 335 種:固定式樑式引擎的平行運動:活塞桿頭的軌跡近似直線", () => {
+  const ps = sweep(m335.RANGE[1], 30, m335.RANGE[0]).map((v) => m335.parallel(v).P);
+  const ys = ps.map((p) => p[1]);
+  assert.ok(verticalDeviation(ps) / (Math.max(...ys) - Math.min(...ys)) < 0.01, "偏離鉛直線不到行程的 1%");
+});
+
+test("第 337 種:半徑桿接在短振動桿的下端,振動桿中點(活塞桿)的軌跡近似直線", () => {
+  const ps = sweep(m337.RANGE[1], 30, m337.RANGE[0]).map((v) => m337.watt(v).P);
+  const ys = ps.map((p) => p[1]);
+  assert.ok(verticalDeviation(ps) / (Math.max(...ys) - Math.min(...ys)) < 0.03, "偏離鉛直線不到行程的 3%");
 });
