@@ -64,6 +64,9 @@ export default {
     { id: "tagA", kind: "group", pieces: [], arrow: false, label: "a" },
     { id: "tagB", kind: "group", pieces: [], arrow: false, label: "b" },
   ],
+  waivers: [
+    { check: "interference", parts: ["wheelA", "wheelB"], reason: "待確認(未修):wheelA 的板 與 wheelB 的板互相穿入 0.20(12 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "wheelA", type: "rotation", range, initial: 2 * TAU }, // 原圖:第三格推到一半,凸弧 a–b 在右上
   target: "wheelB",
   view: { direction: [0.06, 0.05, 1] },

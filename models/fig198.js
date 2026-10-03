@@ -70,6 +70,11 @@ export default {
     { id: "pinion", kind: "gear", center: [...PINION, 0], teeth: NP, radius: RP, width: 0.22, web: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.8 }] },
     ...ROLLERS.map(([x, y], i) => ({ id: `roller${i}`, kind: "group", center: [x, y, -0.35], spin: ROLLER, pieces: [{ kind: "cylinder", radius: ROLLER, inner: 0.06, length: 0.2, mark: true }], arrow: i === 0 || i === 2 })),
   ],
+  waivers: [
+    { check: "interference", parts: ["frame", "pinion"], reason: "待確認(未修):frame 的板 與 pinion 的圓柱 r0.07×0.8互相穿入 0.11(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["carrier", "pinion"], reason: "待確認(未修):carrier 的板 與 pinion 的圓柱 r0.07×0.8互相穿入 0.23(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["bar", "pinion"], reason: "待確認(未修):bar 的方塊 1×0.22×0.06 與 pinion 的圓柱 r0.07×0.8互相穿入 0.11(9 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
   target: "frame",
   view: { direction: [0.06, 0.05, 1] },

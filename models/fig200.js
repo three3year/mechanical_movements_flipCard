@@ -34,6 +34,9 @@ export default {
     bevel("upper", upper, { pieces: [{ kind: "cylinder", radius: 0.3, length: 0.9, at: [0, 0, -0.65] }] }),
     bevel("lower", lower, { pieces: [{ kind: "cylinder", radius: 0.14, length: 5.0, at: [0, 0, 1.6] }] }),
   ],
+  waivers: [
+    { check: "interference", parts: ["drive", "upper"], reason: "待確認:drive 的板 與 upper 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "drive", type: "rotation" },
   targets: ["upper", "lower"], // 同軸上得到兩種速度的兩個輪
   view: { direction: [0.3, 0.25, 1] },

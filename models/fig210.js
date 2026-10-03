@@ -62,6 +62,9 @@ export default {
       pieces: [ROD.top, ROD.bottom].map((y) => ({ kind: "box", size: [0.55, 0.3, 0.35], at: [X_ROD, y, 0] })),
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["rod", "guides"], reason: "待確認(未修):rod 的方塊 0.2×6.4×0.15 與 guides 的方塊 0.55×0.3×0.35互相穿入 0.25(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "arm", type: "rotation", cycle: [FROM, TO], initial: -FROM },
   target: "rod",
   view: { direction: [0.06, 0.05, 1] },

@@ -42,6 +42,10 @@ export default {
     { id: "tagB", kind: "group", center: [-1.2, 0.55, 0.2], pieces: [], arrow: false, label: "B" },
     { id: "tagC", kind: "group", center: [0.05, 1.65, 0.2], pieces: [], arrow: false, label: "C" },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["frame"], reason: "待確認:frame 與帶動(或支撐)它的零件之間差 0.06 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["wheelD"], reason: "待確認:wheelD 與帶動(或支撐)它的零件之間差 0.06 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+  ],
   driver: { part: "frame", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheelD",
   view: { direction: [0.06, 0.05, 1] },

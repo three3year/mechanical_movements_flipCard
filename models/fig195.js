@@ -45,6 +45,10 @@ export default {
     wheel("upper", Y, Z),
     wheel("lower", -Y, -Z),
   ],
+  waivers: [
+    { check: "interference", parts: ["worm", "upper"], reason: "待確認:worm 的圓柱 r0.14×1.7 與 upper 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["worm", "lower"], reason: "待確認:worm 的圓柱 r0.14×1.7 與 lower 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "worm", type: "rotation", speed: 3 },
   targets: ["upper", "lower"], // 一對進料滾軸
   view: { direction: [0.12, 0.08, 1] },

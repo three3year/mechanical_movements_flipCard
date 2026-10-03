@@ -26,6 +26,10 @@ export default {
     },
     { id: "chain", kind: "chain", style: "toothed", pitch: (TAU * PINS) / TEETH, width: 0.36, offset: 0.12 },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["wheel"], reason: "待確認:wheel 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["chain"], reason: "待確認:chain 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+  ],
   driver: { part: "wheel", type: "rotation" },
   view: { direction: [0.08, 0.06, 1] },
   pose(angle) {

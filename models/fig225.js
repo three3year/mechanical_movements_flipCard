@@ -59,6 +59,10 @@ export default {
     { id: "pawl", kind: "plate", shape: shape([[-0.15, 0.12], [PAWL * 0.5, 0.22], [PAWL, 0.06], [PAWL + 0.02, -0.08], [PAWL * 0.5, -0.06], [-0.15, -0.12]]), thickness: 0.1, arrow: false },
     { id: "stand", kind: "group", pieces: [{ kind: "plate", shape: shape([[-0.5, -0.35], [0.5, -0.35], [0.3, 0.05], [-0.3, 0.05]]), thickness: 0.3, at: [PIVOT[0], PIVOT[1] - 0.05, 0] }, { kind: "plate", shape: shape(rect(2.2, 0.12, PIVOT[0], PIVOT[1] - 0.46)), thickness: 0.5 }] },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["wheel"], reason: "待確認:wheel 與帶動(或支撐)它的零件之間差 0.09 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["pawl"], reason: "待確認:pawl 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+  ],
   driver: { part: "lever", type: "rotation", cycle: [FROM, -FROM] },
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },

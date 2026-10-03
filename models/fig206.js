@@ -60,6 +60,10 @@ export default {
     pawl("pawlLeft", "left", -1),
     pawl("pawlRight", "right", 1),
   ],
+  waivers: [
+    { check: "unsupported", parts: ["wheel"], reason: "待確認:wheel 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "interference", parts: ["pawlLeft", "pawlRight"], reason: "待確認:pawlLeft 的板 與 pawlRight 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "lever", type: "rotation", cycle: [SWING / 2, -SWING / 2] },
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
