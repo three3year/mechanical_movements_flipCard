@@ -60,7 +60,7 @@ export default {
         tongue: { position: top, angle: r.tongue },
         lever: { position: fulcrum, angle: r.lever },
       },
-      paths: { rope: { points: [low, [low[0] + 1.0, low[1] - 0.3, 0.15], [2.2, -0.9 + dy * 0, 0.15]], closed: false, phase: 0 } },
+      paths: { rope: { points: [low, [low[0] + 1.0, low[1] - 0.3, 0.15], [2.2, -0.9, 0.15] /* 拉繩的另一端在船外固定處 */], closed: false, phase: 0 } },
       readouts: [{ label: "小艇", value: r.held ? "鉤住(環孔扣著舌片)" : r.free ? "脫離" : "環孔滑脫,舌片翻開" }],
     };
   },

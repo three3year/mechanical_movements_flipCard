@@ -89,7 +89,7 @@ export default {
         shaft: { angle: theta },
         pistonB: { position: [b, 0, 0] },
         pistonC: { position: [b, c, 0.02] },
-        wrist: { position: [b + 0, c, 0.02] },
+        wrist: { position: [b, c, 0.02] },
         // 水平的兩室:填色沿 +x 長(轉 -90°)
         steamLeft: { position: [-A_IN.w / 2 + max / 2, 0, 0], angle: -Math.PI / 2, level: vb > 0 ? leftW / max : 0 },
         steamRight: { position: [A_IN.w / 2 - max / 2, 0, 0], angle: Math.PI / 2, level: vb < 0 ? rightW / max : 0 },

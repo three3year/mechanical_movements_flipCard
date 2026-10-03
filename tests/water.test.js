@@ -214,7 +214,7 @@ test("第 440 種:分成兩半的水槽:一邊裝滿就翻過去倒出,另一邊
   assert.ok(a.tilt > 0 && a.right > 0 && a.left === 0, "左邊低時水落進抬高的右邊");
   const b = m440.trough(0.7);
   assert.ok(b.tilt < 0 && b.left > 0 && b.right === 0, "翻過去後水落進左邊");
-  assert.equal(m440.trough(0.99).count + 0, 2, "一個來回倒兩次");
+  assert.equal(m440.trough(0.99).count, 2, "一個來回倒兩次");
   assert.equal(m440.trough(3.2).count, 6, "計數累加");
 });
 

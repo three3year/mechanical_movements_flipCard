@@ -62,7 +62,7 @@ export default {
     { id: "labelh", kind: "group", pieces: [], label: "h", labelOffset: [-0.8, 0.6, 0.4] },
     { id: "wheelB", kind: "group", axis: Y, center: [0, Y_B, 0], label: "b", labelOffset: [0.6, -0.25, 0.4], spin: RB + 0.1, pieces: [{ kind: "bevel", radius: RB, height: 0.2, axis: [0, 0, 1] }, { kind: "bevel", radius: RC, height: 0.2, axis: [0, 0, 1], at: [0, 0, 0.45] }] },
     { id: "wheelG", kind: "group", axis: Y, center: [0, Y_G, 0], label: "g", labelOffset: [0.6, 0.25, 0.4], spin: RB + 0.1, pieces: [{ kind: "bevel", radius: RB, height: 0.2, axis: [0, 0, -1] }] },
-    { id: "wheelF", kind: "group", axis: Y, center: [0, Y_G - 0.45, 0], label: "f", labelOffset: [-0.55, 0.05, 0.4], arrow: false, pieces: [{ kind: "bevel", radius: RC, height: 0.2, axis: [0, 0, -1] }] },
+    { id: "wheelF", kind: "group", axis: Y, center: [0, Y_G - 0.45, 0], label: "f", labelOffset: [-0.55, 0.05, 0.4], pieces: [{ kind: "bevel", radius: RC, height: 0.2, axis: [0, 0, -1] }] },
     { id: "labelc", kind: "group", pieces: [], label: "c", labelOffset: [-0.55, -0.35, 0.4] },
     // 軸 m、n 與臂 k、l,臂上的 d、e
     {

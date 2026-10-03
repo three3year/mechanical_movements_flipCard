@@ -44,7 +44,7 @@ export default {
     const aL = toward(PINS[0]);
     const aR = toward(PINS[1]);
     const along = (a, d) => [P[0] + d * Math.cos(a), P[1] + d * Math.sin(a), 0.12];
-    const n = Math.max(2, Math.round((Math.abs(phi - TOP) / deg(1)) * 1));
+    const n = Math.max(2, Math.round(Math.abs(phi - TOP) / deg(1)));
     const points = Array.from({ length: n + 1 }, (_, i) => {
       const q = pencil(TOP + ((phi - TOP) * i) / n);
       return [q[0], q[1], 0.01];

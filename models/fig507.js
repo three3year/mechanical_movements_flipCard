@@ -53,7 +53,7 @@ export default {
     { id: "planetFG", kind: "group", axis: Y, label: "F", labelOffset: [0.7, 0.2, 0.3], arrow: false, pieces: [{ kind: "gear", teeth: TEETH.F, radius: R_F, width: 0.1, at: [0, 0, 0.3] }, { kind: "gear", teeth: TEETH.G, radius: R_G, width: 0.1, at: [0, 0, 0] }] },
     { id: "labelG", kind: "group", pieces: [], label: "G", labelOffset: [0, 0, 0.3] },
   ],
-  driver: { part: "arm", type: "rotation", speed: 0.8 },
+  driver: { part: "arm", type: "rotation", speed: 0.8, initial: Math.PI }, // 起始時 F、G 在左邊(依原圖)
   view: { direction: [0.3, 0.35, 1] },
   pose(arm) {
     // 轉動臂:C 轉 arm × C_PER_ARM(極慢),E、H 也很慢

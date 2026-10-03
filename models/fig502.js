@@ -43,7 +43,7 @@ export default {
     { id: "wheelA", kind: "gear", center: O, teeth: TEETH.A, radius: r(TEETH.A), width: 0.12, bore: 0.08, label: "A", labelOffset: [0.75, -0.45, 0.2] },
     { id: "wheelD", kind: "gear", center: O, teeth: TEETH.D, radius: r(TEETH.D), width: 0.12, bore: 0.08, label: "D", labelOffset: [0.15, -0.3, 0.3] },
     { id: "wheelF", kind: "gear", teeth: TEETH.F, radius: r(TEETH.F), width: 0.12, bore: 0.06, label: "F", labelOffset: [-0.35, 0.15, 0.3], arrow: false },
-    { id: "wheelE", kind: "gear", teeth: TEETH.E, radius: r(TEETH.E), width: 0.12, bore: 0.06, label: "E", labelOffset: [0.75, -0.1, 0.3], arrow: false },
+    { id: "wheelE", kind: "gear", teeth: TEETH.E, radius: r(TEETH.E), width: 0.12, bore: 0.06, label: "E", labelOffset: [0.75, -0.1, 0.3] }, // F 與 E 同軸,箭頭只畫在 E
     { id: "wheelB", kind: "gear", teeth: TEETH.B, radius: r(TEETH.B), width: 0.12, bore: 0.06, label: "B", labelOffset: [0.3, 0.2, 0.3] },
     { id: "frameC", kind: "plate", shape: shape(thickLine([[0, 0], [0, B_AT]], 0.14), [circle(0.05).reverse(), circle(0.05, 0, P_AT).reverse(), circle(0.05, 0, B_AT).reverse()]), thickness: 0.05, center: O, label: "C", labelOffset: [0.2, 0.25, 0.4], spin: 0.4 },
   ],

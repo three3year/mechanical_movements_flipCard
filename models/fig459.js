@@ -18,10 +18,10 @@ const TRAVEL = TOP - BOTTOM;
 
 /** 風車轉角 w → 水桶的位置(左桶高度)、被咬住的蝸輪、走向 */
 export function lift(w) {
-  const s = Math.abs(w) * RATIO * DRUM_R; // 繩子累計走過的長度
+  const s = w * RATIO * DRUM_R; // 繩子累計走過的長度(倒轉時為負,水桶跟著倒走)
   const n = Math.floor(s / TRAVEL);
   const f = s / TRAVEL - n;
-  const leftUp = n % 2 === 0; // 偶數段:左桶往上
+  const leftUp = ((n % 2) + 2) % 2 === 0; // 偶數段:左桶往上
   const left = leftUp ? BOTTOM + f * TRAVEL : TOP - f * TRAVEL;
   return { left, right: TOP + BOTTOM - left, leftUp, engaged: leftUp ? 0 : 1, drum: (left - BOTTOM) / DRUM_R };
 }

@@ -31,7 +31,7 @@ export function press(v) {
   const { at, forward } = stroke(v, ...SWING);
   const { E, top } = arm(at);
   const y = top[1] - ROD;
-  // 每一次下壓把泵行程的水送進圓筒:柱塞上升 = 泵行程 × 面積比
+  // 每一次下壓把泵行程的水送進圓筒:柱塞上升 = 泵行程 × 面積比(畫面上再放大 8 倍才看得出來,見檔頭)
   const strokes = Math.floor(v / span / 2) + (forward ? 0 : (v / span) % 1);
   const ratio = (PLUNGER_D / RAM_D) ** 2;
   const rise = Math.min(RAM_TRAVEL, strokes * PUMP_STROKE * ratio * 8);
