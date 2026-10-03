@@ -9,6 +9,11 @@ import * as m486 from "../models/fig486.js";
 import * as m487 from "../models/fig487.js";
 import * as m488 from "../models/fig488.js";
 import * as m489 from "../models/fig489.js";
+import * as m490 from "../models/fig490.js";
+import * as m491 from "../models/fig491.js";
+import * as m492 from "../models/fig492.js";
+import * as m493 from "../models/fig493.js";
+import * as m494 from "../models/fig494.js";
 
 test("第 484 種:圓筒上的螺旋葉片:風沿軸吹過,圓筒旋轉", () => {
   const a = fig484.pose(0.1);
@@ -62,4 +67,50 @@ test("第 489 種:垂直槳板明輪:臂轉動時,環 d 繞偏心輪 e 轉,經�
       assert.equal(parts[`paddle${i}`].angle, undefined, "槳板不轉,始終直立");
     });
   }
+});
+
+test("第 490 種:操舵裝置:轉舵輪時繩的一端捲進、另一端放出,舵柄依舵輪轉的方向擺向一側", () => {
+  const a = m490.tiller(0.5);
+  const b = m490.tiller(-0.5);
+  assert.ok(a * b < 0, "舵輪轉向相反,舵柄擺向相反的一側");
+  close(m490.tiller(0), 0, "舵輪在中間時舵柄居中", 1e-6);
+  // 上段繩捲進 r × theta
+  const [top0] = m490.ropes(0);
+  const [top1] = m490.ropes(a);
+  assert.ok(top1 < top0, "轉正向時上段繩被捲進(變短)");
+  const [, bot0] = m490.ropes(0);
+  const [, bot1] = m490.ropes(a);
+  assert.ok(bot1 > bot0, "另一段繩被放出(變長)");
+});
+
+test("第 491 種:絞盤:推桿轉動絞盤收進纜繩;棘爪在底座的棘齒上滑過,每過一齒落下一次(防止倒轉)", () => {
+  close(m491.capstan(2 * Math.PI).hauled, 2 * Math.PI * m491.DRUM_R, "轉一圈收進鼓周長的繩");
+  const tooth = (2 * Math.PI) / m491.TEETH;
+  assert.ok(m491.capstan(tooth * 0.9).lift > m491.capstan(tooth * 0.1).lift, "爪尖沿齒背抬起");
+  assert.ok(m491.capstan(tooth * 1.01).lift < m491.capstan(tooth * 0.99).lift, "過了齒尖就落下");
+});
+
+test("第 492 種:小艇脫鉤器:拉繩使槓桿上的環孔從舌片滑脫,舌片翻開滑出鉤子,小艇脫離", () => {
+  const held = m492.release(0.3);
+  assert.ok(held.held && held.fall === 0, "拉到一半之前,小艇還鉤著");
+  const free = m492.release(1);
+  assert.ok(!free.held && free.fall > 0.5, "環孔滑脫後小艇掉下");
+  assert.ok(free.tongue > held.tongue, "舌片翻開");
+  assert.ok(free.lever > held.lever, "槓桿被繩拉轉");
+});
+
+test("第 493 種:路易斯吊楔:吊起中央的楔子把兩邊的填塊擠緊在孔壁上,石塊隨之吊起", () => {
+  const early = m493.lewis(0.15);
+  assert.ok(early.lift === 0 && early.wedge > 0, "先提起楔子,石塊還沒動");
+  const tight = m493.lewis(0.35);
+  assert.ok(tight.tight && tight.spread > 0, "楔子提到位,填塊被擠開");
+  close(m493.lewis(1).lift, m493.LIFT, "之後石塊被吊起");
+});
+
+test("第 494 種:吊鉗:拉起鉤環,環節使上臂收攏,尖端夾緊石塊;夾住後一起吊起", () => {
+  const open = m494.tongs(0);
+  assert.ok(open.tip[0] > m494.GRIP_X && !open.gripped, "一開始尖端在石塊外");
+  const grip = m494.tongs(0.5);
+  close(grip.tip[0], m494.GRIP_X, "尖端夾在石塊側面", 1e-6);
+  assert.ok(grip.gripped && grip.lift > 0, "夾住後一起上升");
 });
