@@ -29,6 +29,11 @@ import * as m340 from "../models/fig340.js";
 import * as m341 from "../models/fig341.js";
 import * as m342 from "../models/fig342.js";
 import * as m343 from "../models/fig343.js";
+import * as m344 from "../models/fig344.js";
+import * as m345 from "../models/fig345.js";
+import * as m346 from "../models/fig346.js";
+import * as m347 from "../models/fig347.js";
+import * as m348 from "../models/fig348.js";
 
 /** 平行尺:起始與目前的兩條線平行,且確實移開了 */
 function parallelLines(def, values) {
@@ -213,4 +218,49 @@ test("第 342 種:大氣壓力引擎:蒸汽進入時配重抬起活塞;冷凝後
 test("第 343 種:直立式引擎:半徑桿 A、A 接在活塞桿頂的振動件上,活塞桿頂走近似直線", () => {
   straightish(sweep(1, 40).map((p) => m343.upright(p).P), 0.03);
   steamPushes(m343.default, sweep(1, 8));
+});
+
+for (const [n, m] of [[344, m344], [345, m345]]) {
+  test(`第 ${n} 種:擺動式引擎:汽缸繞樞軸擺動,活塞桿不用導件、直接與曲柄相連(始終指向樞軸)`, () => {
+    const swings = sweep(2 * Math.PI, 36).map((t) => m.engine.at(t).swing);
+    assert.ok(Math.max(...swings) - Math.min(...swings) > 0.1, "汽缸擺動");
+    const ps = sweep(2 * Math.PI, 36).map((t) => m.engine.at(t).piston);
+    assert.ok(Math.max(...ps) - Math.min(...ps) > 0.8, "活塞往復");
+    for (const t of sweep(2 * Math.PI, 12)) {
+      const pose = m.engine.pose(t).parts;
+      assert.ok(pose.steamFar.level === 0 || pose.steamNear.level === 0, "只有一側進汽");
+    }
+  });
+}
+
+test("第 346 種:桌式引擎:十字頭在開槽導件裡直線上下,經兩根側連桿帶動桌下的兩個平行曲柄", () => {
+  const heads = sweep(1, 40).map((p) => m346.table(p).head);
+  close(Math.max(...heads) - Math.min(...heads), 0.9, "十字頭行程 = 曲柄直徑", 0.02);
+  for (const p of sweep(1, 12)) {
+    const t = m346.table(p);
+    close(Math.hypot(t.pin[0], t.head - t.pin[1]), 4.0, "側連桿長度不變", 1e-9);
+  }
+  steamPushes(m346.default, sweep(1, 8));
+});
+
+test("第 347 種:碟形引擎:碟片像落下的硬幣般擺盪,活塞桿左端畫圓,帶動左側軸的曲柄", () => {
+  const { C, ROD, TILT, SHAFT_X } = m347.geometry;
+  for (const p of sweep(1, 24)) {
+    const d = m347.disk(p);
+    close(dist(d.pin, C), ROD, "活塞桿長度不變", 1e-9);
+    close(d.pin[0], SHAFT_X, "活塞桿端在曲柄的平面上", 1e-9);
+    close(Math.hypot(d.pin[1], d.pin[2]), ROD * Math.sin(TILT), "畫圓", 1e-9);
+  }
+});
+
+test("第 348 種:軸旋轉一圈,桿 B 往復兩次(兩滑塊在直角交叉的溝槽中滑動)", () => {
+  const ys = sweep(2 * Math.PI, 360).map((t) => m348.snyder(t).mid[1]);
+  let peaks = 0;
+  for (let i = 1; i < ys.length - 1; i++) if (ys[i] > ys[i - 1] && ys[i] >= ys[i + 1]) peaks++;
+  assert.equal(peaks, 2, "一圈兩次往復");
+  for (const t of sweep(2 * Math.PI, 12)) {
+    const s = m348.snyder(t);
+    close(dist(s.c1, s.c2), 0.95, "兩滑塊間距不變", 1e-9);
+    close(s.c2[0] - s.c1[0], 0, "桿保持方向(鉛直)", 1e-9);
+  }
 });
