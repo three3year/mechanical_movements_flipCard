@@ -50,6 +50,13 @@ import * as m392 from "../models/fig392.js";
 import * as m393 from "../models/fig393.js";
 import * as m394 from "../models/fig394.js";
 import * as m395 from "../models/fig395.js";
+import * as m396 from "../models/fig396.js";
+import * as m397 from "../models/fig397.js";
+import * as m398 from "../models/fig398.js";
+import * as m399 from "../models/fig399.js";
+import * as m400 from "../models/fig400.js";
+import * as m401 from "../models/fig401.js";
+import * as m402 from "../models/fig402.js";
 
 test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓桿把橫移運動傳給導件 a、a 內的桿", () => {
   const xs = sweep(0.6, 20, -1.6).map((x) => m350.traverse(x).rod);
@@ -398,4 +405,55 @@ test("第 395 種:四向活塞閥:閥塞轉 1/4 圈,進汽與排汽的端互換"
   const flows1 = m395.default.pose(0.7).flows;
   assert.ok(flows0.length === 2 && flows1.length === 2, "兩個位置都有進汽與排汽");
   assert.equal(m395.default.pose(0.45).flows.length, 0, "轉換時不流動");
+});
+
+test("第 396 種:Reed 擒縱:擺輪每擺一次,擒縱輪放走半齒,槓桿換邊", () => {
+  const S = m396.SWING;
+  close(m396.reed(2 * S).wheel - m396.reed(0).wheel, -m396.PITCH / 2, "每擺一次半齒", 1e-9);
+  assert.ok(Math.sign(m396.reed(0).lever) !== Math.sign(m396.reed(2 * S).lever), "槓桿換邊");
+});
+
+test("第 397 種:連續圓周運動 → 間歇的直線往復運動", () => {
+  const xs = sweep(2 * Math.PI, 360).map((t) => m397.slide(m397.lever(t)).x);
+  const still = xs.slice(1).filter((x, i) => x === xs[i]).length;
+  assert.ok(still > 100, "有停頓(間歇)");
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.5, "往復");
+});
+
+test("第 398 種:連續圓周運動 → 間歇圓周運動,凸輪 C 為驅動端", () => {
+  const ws = sweep(2 * Math.PI, 360).map((t) => m398.intermittent(t).wheel);
+  assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-12), "大輪只朝一個方向轉");
+  const still = ws.slice(1).filter((w, i) => w === ws[i]).length;
+  assert.ok(still > 100, "間歇:有停住的時候");
+  for (const t of sweep(2 * Math.PI, 12)) close(m398.intermittent(t).x + m398.intermittent(t + Math.PI).x, 0, "等寬凸輪:方框兩側始終夾著", 1e-9);
+});
+
+test("第 399 種:修理鏈條:每一半的螺絲旋進另一半的螺帽,轉動螺帽把兩半拉近", () => {
+  close(m399.tighten(2 * Math.PI), m399.PITCH, "每轉一圈拉近一個螺距");
+  const def = m399.default;
+  const a = def.pose(0).parts;
+  const b = def.pose(0.3).parts;
+  assert.ok(b.upper.position[1] < a.upper.position[1] && b.lower.position[1] > a.lower.position[1], "兩半互相靠近");
+});
+
+test("第 400 種:四向進料:進料齒依序上、前、下、後,把布往前送", () => {
+  const q = (f) => m400.fourMotion(f * 2 * Math.PI);
+  assert.ok(q(0.25).lift > 0.17 && q(0.25).feed === 0, "先抬起");
+  assert.ok(q(0.5).feed > 0.39 && q(0.5).lift > 0.17, "再往前");
+  assert.ok(q(0.75).lift === 0 && q(0.75).feed > 0.39, "再落下");
+  close(q(1).feed, 0, "最後退回");
+});
+
+test("第 401 種:Brownell 曲柄:手腕越過死點前,滑塊 A 往前移;越過後彈簧 B 把它推回", () => {
+  const r0 = m401.wrist(Math.PI).r; // 手腕在底部:滑塊在擋止處
+  const near = m401.wrist(-0.1).r; // 接近頂部死點
+  assert.ok(near > r0 + 0.1, "接近死點時滑塊移出");
+  close(m401.wrist(0.8).r, r0, "越過後彈回擋止處", 1e-9);
+});
+
+test("第 402 種:Guernsey 擒縱:兩個擺輪由同一槓桿帶動,朝相反方向擺動", () => {
+  const g = m402.guernsey(0);
+  assert.ok(g.bal1 * g.bal2 < 0, "兩個擺輪反向");
+  close(Math.abs(g.bal1), Math.abs(g.bal2), "擺幅相同");
+  close(m402.guernsey(2 * m402.SWING).wheel - m402.guernsey(0).wheel, -Math.PI / m402.N, "每擺一次放走半齒", 1e-9);
 });
