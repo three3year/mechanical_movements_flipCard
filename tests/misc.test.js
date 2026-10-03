@@ -38,6 +38,12 @@ import fig379 from "../models/fig379.js";
 import fig380 from "../models/fig380.js";
 import * as m381 from "../models/fig381.js";
 import * as m382 from "../models/fig382.js";
+import * as m383 from "../models/fig383.js";
+import * as m385 from "../models/fig385.js";
+import * as m386 from "../models/fig386.js";
+import * as m387 from "../models/fig387.js";
+import * as m388 from "../models/fig388.js";
+import * as m389 from "../models/fig389.js";
 
 test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓桿把橫移運動傳給導件 a、a 內的桿", () => {
   const xs = sweep(0.6, 20, -1.6).map((x) => m350.traverse(x).rod);
@@ -291,4 +297,48 @@ test("第 382 種:鏡子支架:玻璃可抬高或降下、左右轉動,並改變
   assert.ok(high.mirror.position[1] > low.mirror.position[1], "抬升");
   assert.notDeepEqual(def.pose(0, "turned").parts.mirror.rotation, high.mirror.rotation, "左右轉動");
   assert.notDeepEqual(def.pose(0.3, "high").parts.mirror.rotation, high.mirror.rotation, "改變傾角");
+});
+
+test("第 383 種:布從一個滾筒繞到另一個,中間的圓筒(刷子)處理布面", () => {
+  const c = m383.cloth(-1);
+  close(c.travel, 0.7, "布走過的長度 = 下滾筒捲上的弧長");
+  close(Math.abs(c.top) * 0.7, c.travel, "上滾筒放出同樣長的布");
+  close(Math.abs(c.mid) * 1.0, m383.BRUSH * c.travel, "中間圓筒的表面比布快");
+});
+
+test("第 385 種:俄羅斯關門裝置:開門時兩銷靠近、重物被抬起;重物下壓肘節,把兩銷撐開而關門", () => {
+  const [closed, open] = m385.RANGE;
+  assert.ok(m385.toggle(open).joint[1] > m385.toggle(closed).joint[1], "開門時重物被抬起");
+  for (const x of sweep(open, 8, closed)) {
+    const t = m385.toggle(x);
+    close(Math.hypot(t.joint[0] - t.x, t.joint[1] + 0.4), 2.2, "桿長不變", 1e-9);
+  }
+});
+
+test("第 386 種:可摺疊書房梯:推動側件時橫檔斜起,兩側件靠攏,收合成一根柱", () => {
+  const open = m386.fold(0);
+  const shut = m386.fold(m386.RANGE[1]);
+  close(open.gap, 1.1, "展開時兩側件相距一個橫檔長");
+  assert.ok(shut.gap < 0.15, "收合時兩側件併攏");
+  assert.ok(shut.angle > 1.4, "橫檔幾乎直立");
+});
+
+test("第 387 種:潮汐階梯:無論梯子在什麼位置,踏階皆保持水平", () => {
+  const def = m387.default;
+  const steep = def.pose(m387.RANGE[0]).parts;
+  const flat = def.pose(m387.RANGE[1]).parts;
+  assert.ok(Math.abs(steep.stringer.angle - flat.stringer.angle) > 0.3, "水位不同,梯子傾角不同");
+  for (const p of [steep, flat]) for (let i = 0; i < 8; i++) close(p[`step${i}`].angle, 0, "踏階水平");
+});
+
+test("第 388 種:刨木機進料:帶齒的上滾子把木板往前送,平滑的下滾子被木板帶著轉", () => {
+  const f = m388.feed(-1);
+  close(f.travel, 0.62, "木板前進 = 上滾子轉過的弧長");
+  close(f.low * 0.95, f.travel, "下滾子不打滑");
+});
+
+test("第 389 種:升降千斤頂:偏心輪每轉一圈,棘爪把棘齒桿推上一齒,上方的擋止扣住不讓它退下", () => {
+  close(m389.rack(2 * Math.PI) - m389.rack(0), 0.22, "每圈一齒");
+  const hs = sweep(4 * Math.PI, 200).map(m389.rack);
+  assert.ok(hs.every((h, i) => i === 0 || h >= hs[i - 1] - 1e-12), "只升不降");
 });
