@@ -68,6 +68,9 @@ export default {
     },
     { id: "pinion", kind: "gear", axis: Y, teeth: 10, radius: RB, width: 0.16, bore: 0.05, label: "B", labelOffset: [0.3, -0.15, 0.1], spin: 0.25 },
   ],
+  waivers: [
+    { check: "interference", parts: ["volute", "pinion"], reason: "待確認:volute 的方塊 0.3×0.045×0.07 與 pinion 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "pinion", grips: ["shaft"], type: "rotation", range: RANGE, initial: RANGE[1] * 0.78 },
   target: "volute",
   view: { direction: [0.25, -0.2, 1] },

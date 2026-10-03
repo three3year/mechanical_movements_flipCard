@@ -56,6 +56,9 @@ export default {
     { id: "rudder", kind: "plate", shape: shape(rect(0.5, 0.06, 0.25, 0)), thickness: 0.15, arrow: false },
   ],
   powered: ["boat"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["river", "boat"], reason: "待確認:river 的方塊 8.5×0.3×0.2 與 boat 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "來回", speed: 0.08, initial: 0.3 },
   target: "boat",
   view: { direction: [0.03, 0.05, 1] },

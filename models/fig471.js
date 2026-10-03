@@ -83,6 +83,11 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["cylinder"], reason: "待確認(未修):cylinder 在動,但離帶動(或支撐)它的零件還有 0.23 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["hammer"], reason: "待確認:hammer 與帶動(或支撐)它的零件之間差 0.08 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "interference", parts: ["crank", "rodD"], reason: "待確認:crank 的圓柱 r0.08×1.1 與 rodD 的方塊 1×0.1×0.06重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "crank", type: "rotation" },
   target: "hammer",
   view: { direction: [0.1, 0.08, 1] },

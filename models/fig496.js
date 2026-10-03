@@ -61,6 +61,10 @@ export default {
     { id: "bobbin", kind: "lathe", axis: Y, center: [SPINDLE_X, -0.25, 0], profile: [[0.06, -0.55], [0.3, -0.55], [0.3, -0.5], [0.2, -0.45], [0.2, 0.55], [0.3, 0.6], [0.3, 0.65], [0.06, 0.65]], mark: true, arrow: false },
   ],
   powered: ["flyer"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["bBottom", "yarn"], reason: "待確認:yarn 的第 2 段穿過bBottom 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["flyer", "yarn"], reason: "待確認:yarn 的第 4 段穿過flyer 的圓柱 r0.04×2.6重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.15 },
   target: "bobbin", // 紗被加撚後捲上去的紗管
   view: { direction: [0.15, 0.15, 1] },

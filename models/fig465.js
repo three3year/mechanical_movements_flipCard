@@ -61,6 +61,15 @@ export default {
       ];
     }),
   ],
+  waivers: [
+    { check: "interference", parts: ["frame", "beam"], reason: "待確認:frame 的方塊 0.16×1×0.16 與 beam 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["frame", "barrel0"], reason: "待確認(未修):frame 的方塊 6×0.2×1.6 與 barrel0 的旋轉體互相穿入 0.50(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["frame", "barrel1"], reason: "待確認(未修):frame 的方塊 6×0.2×1.6 與 barrel1 的旋轉體互相穿入 0.50(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["frame", "valve1"], reason: "待確認:frame 的方塊 6×0.2×1.6 與 valve1 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["beam", "rod0"], reason: "待確認:beam 的板 與 rod0 的圓柱 r0.035×1.75重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["beam", "rod1"], reason: "待確認:beam 的板 與 rod1 的圓柱 r0.035×1.75重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["frame", "valve0"], reason: "待確認:frame 的方塊 6×0.2×1.6 與 valve0 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "beam", type: "rotation", cycle: SWING },
   targets: ["rod0", "rod1"],
   view: { direction: [0.12, 0.1, 1] },

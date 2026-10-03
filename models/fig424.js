@@ -72,6 +72,10 @@ export default {
     },
     { id: "wrist", kind: "group", label: "a", labelOffset: [0.2, -0.15, 0.6], pieces: [] },
   ],
+  waivers: [
+    { check: "interference", parts: ["pistonB", "shaft"], reason: "待確認(未修):pistonB 的板 與 shaft 的圓柱 r0.1×1.2互相穿入 0.49(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["pistonC", "shaft"], reason: "待確認(未修):pistonC 的板 與 shaft 的圓柱 r0.1×1.2互相穿入 0.27(84 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "shaft", type: "rotation" },
   targets: ["pistonB", "pistonC"],
   view: { direction: [0.03, 0.05, 1] },

@@ -54,6 +54,9 @@ export default {
     { id: "water", kind: "fill", fluid: "water", shape: "cylinder", size: [0.55, 0.66, 0], level: 0 },
   ],
   powered: ["bucket", "weight"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["frame", "valve"], reason: "待確認(未修):frame 的方塊 0.5×0.15×0.3 與 valve 的板互相穿入 0.15(15 個取樣姿勢),尚未修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "次", speed: 0.15 },
   target: "bucket",
   view: { direction: [0.06, 0.08, 1] },

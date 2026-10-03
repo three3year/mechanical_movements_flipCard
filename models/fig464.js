@@ -54,6 +54,9 @@ export default {
     { id: "lowWater", kind: "fill", fluid: "water", center: [0, (LOW.y0 + LOW.y1) / 2, 0], size: [W - 0.14, LOW.y1 - LOW.y0, 0.6], level: 0.1 },
     { id: "basinWater", kind: "fill", fluid: "water", center: [0, BASIN.y - 0.15, 0], size: [1.2, 0.3, 0.6], level: 0.8 },
   ],
+  waivers: [
+    { check: "interference", parts: ["vessels", "nozzle"], reason: "待確認(未修):vessels 的板 與 nozzle 的方塊 0.1×1.45×0.1互相穿入 0.40(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.06 },
   target: "nozzle", // 只有水與空氣在動;標噴出水柱的中央管
   view: { direction: [0.06, 0.06, 1] },

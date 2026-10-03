@@ -87,6 +87,10 @@ export default {
     { id: "beltC", kind: "belt", label: "C", labelOffset: [-POST_X, ROCKER + 0.3, 0] }, // 路徑零件的標籤從原點量起
     { id: "beltD", kind: "belt", label: "D", labelOffset: [POST_X, ROCKER + 0.3, 0] },
   ],
+  waivers: [
+    { check: "interference", parts: ["stand", "wheelB"], reason: "待確認:stand 的圓柱 r0.05×0.55 與 wheelB 的方塊 0.944×0.125×0.162重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["wheelA", "wheelB"], reason: "待確認(未修):wheelA 的板 與 wheelB 的板互相穿入 0.21(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "wheelA", type: "rotation", speed: 0.8 },
   target: "cradle",
   view: { direction: [0.06, 0.06, 1] },

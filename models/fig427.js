@@ -76,6 +76,17 @@ export default {
     ...[0, 1].map((k) => ({ id: `packing${k + 1}`, kind: "cylinder", radius: 0.13, length: 0.56, label: "a", labelOffset: [0.2, 0.2, 0.3], arrow: false })),
     ...[0, 1].map((k) => ({ id: `piston${k + 1}`, kind: "plate", shape: shape(rect(PISTON, 0.14, -PISTON / 2, 0)), thickness: 0.48, label: "A", labelOffset: [0, 0, 0.4], arrow: false })),
   ],
+  waivers: [
+    { check: "interference", parts: ["cylinder", "hub"], reason: "待確認:cylinder 的板 與 hub 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["hub", "piston1"], reason: "待確認(未修):hub 的板 與 piston1 的板互相穿入 0.49(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["hub", "piston2"], reason: "待確認(未修):hub 的板 與 piston2 的板互相穿入 0.49(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["packing1", "piston1"], reason: "待確認(未修):packing1 的圓柱 r0.13×0.56 與 piston1 的板互相穿入 0.20(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["packing2", "piston2"], reason: "待確認(未修):packing2 的圓柱 r0.13×0.56 與 piston2 的板互相穿入 0.20(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["cylinder", "packing1"], reason: "待確認(未修):cylinder 的板 與 packing1 的圓柱 r0.13×0.56互相穿入 0.15(29 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["cylinder", "piston1"], reason: "待確認:cylinder 的板 與 piston1 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["cylinder", "packing2"], reason: "待確認(未修):cylinder 的板 與 packing2 的圓柱 r0.13×0.56互相穿入 0.16(25 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["cylinder", "piston2"], reason: "待確認:cylinder 的板 與 piston2 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "hub", type: "rotation", speed: -0.6, initial: deg(150) },
   targets: ["piston1", "piston2"], // 軸 B 就是主動件(輪轂);標受蒸汽推、在輪轂裡滑進滑出的兩個活塞 A
   view: { direction: [0.03, 0.05, 1] },

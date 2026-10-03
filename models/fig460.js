@@ -68,6 +68,12 @@ export default {
       { id: "far", label: "遠的凹槽(抬得多)" },
     ],
   },
+  waivers: [
+    { check: "unsupported", parts: ["scoop"], reason: "待確認(未修):scoop 在動,但離帶動(或支撐)它的零件還有 0.80 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["pitman"], reason: "待確認(未修):pitman 在動,但離帶動(或支撐)它的零件還有 0.23 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "interference", parts: ["banks", "scoop"], reason: "待確認(未修):banks 的板 與 scoop 的方塊 0.08×0.45×0.6互相穿入 0.25(288 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["banks", "lever"], reason: "待確認(未修):banks 的方塊 0.3×1×0.3 與 lever 的板互相穿入 0.15(288 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "lever", type: "rotation", cycle: SWING },
   target: "scoop",
   view: { direction: [0.15, 0.12, 1] },

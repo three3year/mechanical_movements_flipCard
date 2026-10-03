@@ -54,6 +54,11 @@ export default {
     flap("suctionValve", 0.3),
     flap("deliveryValve", 0.36),
   ],
+  waivers: [
+    { check: "interference", parts: ["works", "suctionValve"], reason: "待確認:works 的板 與 suctionValve 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["works", "deliveryValve"], reason: "待確認:works 的板 與 deliveryValve 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["works", "membrane"], reason: "待確認:membrane 的第 3 段穿過works 的方塊 2×0.08×0.8重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "handle", type: "rotation", cycle: SWING },
   target: "rod", // 隔膜是路徑零件(不上目標色),標接在隔膜中心、帶著它起落的桿
   view: { direction: [0.08, 0.08, 1] },

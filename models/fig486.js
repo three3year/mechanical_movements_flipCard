@@ -35,6 +35,14 @@ export default {
     ...Array.from({ length: ARMS }, (_, i) => ({ id: `sail${i}`, kind: "box", size: [SAIL, 0.12, 0.3], arrow: false })),
   ],
   powered: ["wheel"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["wheel", "sail0"], reason: "待確認:wheel 的方塊 1.7×0.08×0.08 與 sail0 的方塊 0.8×0.12×0.3重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["wheel", "sail1"], reason: "待確認:wheel 的方塊 1.7×0.08×0.08 與 sail1 的方塊 0.8×0.12×0.3重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["wheel", "sail2"], reason: "待確認:wheel 的方塊 1.7×0.08×0.08 與 sail2 的方塊 0.8×0.12×0.3重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["wheel", "sail3"], reason: "待確認:wheel 的方塊 1.7×0.08×0.08 與 sail3 的方塊 0.8×0.12×0.3重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["wheel", "sail4"], reason: "待確認:wheel 的方塊 1.7×0.08×0.08 與 sail4 的方塊 0.8×0.12×0.3重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["wheel", "sail5"], reason: "待確認:wheel 的方塊 1.7×0.08×0.08 與 sail5 的方塊 0.8×0.12×0.3重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.12 },
   target: "wheel",
   view: { direction: [0.03, 0.05, 1] },

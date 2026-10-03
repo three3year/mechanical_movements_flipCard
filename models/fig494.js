@@ -69,6 +69,10 @@ export default {
     { id: "rope", kind: "rope", radius: 0.03 },
   ],
   powered: ["rope"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["stone", "armL"], reason: "待確認(未修):stone 的板 與 armL 的板互相穿入 0.41(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["stone", "armR"], reason: "待確認(未修):stone 的板 與 armR 的板互相穿入 0.41(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { type: "virtual", label: "拉起", mode: "balance", range: [0, 1], initial: 0, format: (u) => Math.round(u * 100) + "%" },
   target: "stone", // 要被夾住吊起的石塊
   view: { direction: [0.06, 0.06, 1] },

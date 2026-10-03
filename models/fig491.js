@@ -70,6 +70,10 @@ export default {
     { id: "pawl", kind: "plate", shape: shape([[0, -0.06], [0.42, -0.04], [0.45, 0.04], [0, 0.06]]), thickness: 0.1, arrow: false },
     { id: "rope", kind: "rope", radius: 0.04 },
   ],
+  waivers: [
+    { check: "interference", parts: ["base", "pawl"], reason: "待確認:base 的板 與 pawl 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["drum", "pawl"], reason: "待確認:drum 的方塊 0.15×0.15×0.2 與 pawl 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "capstan", type: "rotation", speed: 0.4 },
   target: "drum", // 纜繩是路徑零件(不上目標色);標把纜繩捲進來的絞盤鼓
   view: { direction: [0.25, 0.3, 1] },

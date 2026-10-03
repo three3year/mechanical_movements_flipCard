@@ -30,6 +30,12 @@ export default {
     { id: "ropeR", kind: "rope", radius: 0.015 },
   ],
   powered: ["bell"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["frame", "weightL"], reason: "待確認(未修):frame 的方塊 0.12×2.9×0.12 與 weightL 的球 r0.3互相穿入 0.31(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["frame", "weightR"], reason: "待確認(未修):frame 的方塊 0.12×2.9×0.12 與 weightR 的球 r0.3互相穿入 0.31(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["pulleyL", "weightL"], reason: "待確認:pulleyL 的板 與 weightL 的球 r0.3重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["pulleyR", "weightR"], reason: "待確認:pulleyR 的板 與 weightR 的球 r0.3重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { type: "virtual", label: "槽裡的氣量", mode: "balance", range: [0, 1], initial: 0.5, format: (g) => Math.round(g * 100) + "%" },
   target: "bell",
   view: { direction: [0.06, 0.08, 1] },

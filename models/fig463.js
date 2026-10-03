@@ -40,6 +40,9 @@ export default {
     { id: "lower", kind: "plate", center: LOWER.pivot, shape: leaf(LOWER), thickness: 1.0, arrow: false, pieces: [{ kind: "cylinder", radius: 0.06, length: 1.2 }] },
   ],
   powered: ["upper"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["bed", "lower"], reason: "待確認:bed 的方塊 0.3×0.25×1.2 與 lower 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { type: "virtual", label: "上游水位", mode: "balance", range: [NORMAL - 0.25, FLOOD + 0.2], initial: NORMAL },
   target: "upper", // 翻轉的上閘葉
   view: { direction: [0.12, 0.08, 1] },

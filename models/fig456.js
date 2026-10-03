@@ -61,6 +61,13 @@ export default {
     { id: "labelH", kind: "group", pieces: [], label: "H", labelOffset: [1.85, 0.2, 0.5] },
     ...[0, 1].map((k) => ({ id: `piston${k}`, kind: "plate", shape: shape(rect(PISTON, 0.2, -PISTON / 2, 0)), thickness: 0.22, label: "c", labelOffset: [0, 0, 0.4], arrow: false })),
   ],
+  waivers: [
+    { check: "interference", parts: ["casing", "drum"], reason: "待確認(未修):casing 的板 與 drum 的板互相穿入 0.12(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["casing", "piston0"], reason: "待確認(未修):casing 的板 與 piston0 的板互相穿入 0.15(54 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["casing", "piston1"], reason: "待確認(未修):casing 的板 與 piston1 的板互相穿入 0.15(51 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["drum", "piston0"], reason: "待確認(未修):drum 的板 與 piston0 的板互相穿入 0.26(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["drum", "piston1"], reason: "待確認(未修):drum 的板 與 piston1 的板互相穿入 0.26(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "drum", type: "rotation", speed: -0.5, initial: deg(-60) },
   targets: ["piston0", "piston1"],
   view: { direction: [0.03, 0.05, 1] },

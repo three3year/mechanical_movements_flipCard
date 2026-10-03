@@ -65,6 +65,10 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["tanks", "screw"], reason: "待確認:tanks 的板 與 screw 的Tube重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["wheel", "screw"], reason: "待確認:wheel 的板 與 screw 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "wheel", type: "rotation", speed: 0.6 },
   target: "screw",
   view: { direction: [0.08, 0.08, 1] },

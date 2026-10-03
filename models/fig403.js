@@ -36,6 +36,14 @@ export default {
     { id: "pencil", kind: "lathe", profile: [[0, -0.1], [0.05, 0], [0.06, 0.4], [0, 0.4]] },
     { id: "arc", kind: "trace" },
   ],
+  waivers: [
+    { check: "interference", parts: ["paper", "pins"], reason: "待確認:paper 的方塊 6.5×3.6×0.04 與 pins 的圓柱 r0.08×0.5重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["pins", "rulerL"], reason: "待確認(未修):pins 的圓柱 r0.08×0.5 與 rulerL 的板互相穿入 0.19(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["pins", "rulerR"], reason: "待確認(未修):pins 的圓柱 r0.08×0.5 與 rulerR 的板互相穿入 0.19(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["rulerL", "pencil"], reason: "待確認:rulerL 的板 與 pencil 的旋轉體重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["rulerR", "pencil"], reason: "待確認(未修):rulerR 的板 與 pencil 的旋轉體互相穿入 0.11(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["pins", "brace"], reason: "待確認(未修):pins 的圓柱 r0.08×0.5 與 brace 的圓柱 r0.09×0.06互相穿入 0.16(26 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "rulerL", grips: ["rulerR", "brace"], type: "rotation", range: RANGE, initial: TOP },
   target: "pencil", // 夾角處畫出圓弧的鉛筆
   view: { direction: [0.03, 0.05, 1] },

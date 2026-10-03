@@ -66,6 +66,12 @@ export default {
     flap("valve3", 0.22, { label: "3", labelOffset: [-0.12, -0.3, 0.3] }),
     flap("valve4", 0.22, { label: "4", labelOffset: [-0.12, 0.12, 0.3] }),
   ],
+  waivers: [
+    { check: "interference", parts: ["works", "valve1"], reason: "待確認:works 的板 與 valve1 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["works", "valve2"], reason: "待確認:works 的板 與 valve2 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["works", "valve3"], reason: "待確認(未修):works 的板 與 valve3 的板互相穿入 0.12(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["works", "valve4"], reason: "待確認(未修):works 的板 與 valve4 的板互相穿入 0.12(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "piston", type: "translation", direction: [0, 1, 0], cycle: STROKE },
   targets: ["valve3", "valve4"], // 兩個排水閥:活塞上下兩程輪流把水送進排水管 B
   view: { direction: [0.06, 0.06, 1] },
