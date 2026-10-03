@@ -37,3 +37,5 @@
 ## Comments
 
 **2026-10-03(agent)** — 三批瞬移、兩批穿透、兩批結構代理完成;`npm test` 2174 全過;`scan-overlap` 全書 0 張;`scan-models` 只剩上面「刻意」的幾張;目標件補到 447/507。
+
+**2026-10-03(agent)** — `/code-review`(221da12…HEAD)後修正:(1) 12 個模型檔(57、79、80、81、85、86、87、98、237、251、253、271)插入 `target:` 時混進 `\r\r\n`,git 當成二進位檔,整檔 diff;已正規化,fig063 去 BOM,加 `.gitattributes`(`* text=auto`)。(2) 半透明的影子輪不再顯示轉向箭頭(issue 05)。(3) `jumps.falling` 由 cos 緩停改成 `x²`:一路加速、到底被擋止撞停(issue 08);全書重掃結果不變。(4) 穿入深度收攏到 `contact.penetrationDepth`(支援 `{ outline, holes }`),`scan-overlap` 與第 75 種測試不再自帶複本;fig213 改用 `contact.placeOutline`。未處理(判斷題,留待之後):播放速度規則三份複本抽共用模組、63/64 的 `springAngle`、viewer 的角色→材質表、63/64/68 檔頭補「推斷」標記;規格偏差兩點待維護者確認——`targets` 可多個(fig224 六個)、搜尋框在頁籤下方而非頁首。

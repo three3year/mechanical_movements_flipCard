@@ -58,7 +58,8 @@ export default {
       ],
     },
   ],
-  driver: { part: "cam", type: "rotation", speed: -1.0 },
+  driver: { part: "cam", type: "rotation", speed: -1.0 },
+
   target: "rod",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {

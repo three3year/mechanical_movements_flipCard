@@ -69,7 +69,8 @@ export default {
     },
     { id: "rope", kind: "rope" },
   ],
-  driver: { part: "pin", grips: ["armL", "armR"], type: "translation", direction: [0, 1, 0], cycle: [0, HEIGHT] },
+  driver: { part: "pin", grips: ["armL", "armR"], type: "translation", direction: [0, 1, 0], cycle: [0, HEIGHT] },
+
   target: "weight",
   view: { direction: [0.06, 0.06, 1] },
   pose(v) {

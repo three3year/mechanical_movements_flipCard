@@ -173,7 +173,8 @@ export default {
     },
     { id: "rope", kind: "rope" },
   ],
-  driver: { part: "shaft", type: "rotation", speed: 0.8 },
+  driver: { part: "shaft", type: "rotation", speed: 0.8 },
+
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(c) {

@@ -67,7 +67,8 @@ export default {
     },
     { id: "pawl", kind: "box", size: [0.22, 0.6, 0.4] },
   ],
-  driver: { part: "arm", type: "rotation", cycle: [FROM, TO] },
+  driver: { part: "arm", type: "rotation", cycle: [FROM, TO] },
+
   target: "wheel",
   view: { direction: [0.3, 0.75, 1] },
   pose(v) {

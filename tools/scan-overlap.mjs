@@ -1,11 +1,11 @@
-// 維護用:掃全書的模型,找同一平面上的板件 / 齒輪互相穿透(貼合不對、齒咬進實體)。
+﻿// 維護用:掃全書的模型,找同一平面上的板件 / 齒輪互相穿透(貼合不對、齒咬進實體)。
 // 只看 axis 為 Z(預設)且 z 範圍重疊的 gear / plate 零件兩兩之間,在自動播放的取樣姿勢下,
 // 一個的外形是否伸進另一個的實體(在孔裡的不算)。
 // 齒輪齒廓本身的齒頂圓角差(約 0.01)不算:只報穿入深度超過 DEPTH 的。
 // 用法:node tools/scan-overlap.mjs [取樣數=40] [圖號…]
 import { sources, loadModel } from "../models/registry.js";
 import { gearShape } from "../models/shapes.js";
-import { pointInPolygon } from "../models/contact.js";
+import { penetrationDepth } from "../models/contact.js";
 
 const samples = Number(process.argv[2] ?? 40);
 const DEPTH = 0.03;
@@ -47,39 +47,6 @@ function place(shape, pose, part) {
   return { outline: put(shape.outline), holes: shape.holes.map(put), z: c[2] ?? 0 };
 }
 
-function cross(a, b, c, d) {
-  const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
-  return o(c, d, a) * o(c, d, b) < 0 && o(a, b, c) * o(a, b, d) < 0;
-}
-const inSolid = (pt, s) => pointInPolygon(pt, s.outline) && !s.holes.some((h) => pointInPolygon(pt, h));
-function bounds(poly) {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const [x, y] of poly) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
-  return [x0, y0, x1, y1];
-}
-// 點到多邊形邊界的距離(穿入深度的近似)
-function edgeDist(p, s) {
-  let best = Infinity;
-  for (const poly of [s.outline, ...s.holes]) {
-    for (let i = 0; i < poly.length; i++) {
-      const a = poly[i], b = poly[(i + 1) % poly.length];
-      const dx = b[0] - a[0], dy = b[1] - a[1];
-      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
-      best = Math.min(best, Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy));
-    }
-  }
-  return best;
-}
-/** 穿入深度:一個的外形點伸進另一個實體多深(0 = 沒穿) */
-function penetration(A, B) {
-  const a = bounds(A.outline), b = bounds(B.outline);
-  if (a[2] < b[0] || b[2] < a[0] || a[3] < b[1] || b[3] < a[1]) return 0;
-  let depth = 0;
-  for (const p of A.outline) if (inSolid(p, B)) depth = Math.max(depth, edgeDist(p, B));
-  for (const p of B.outline) if (inSolid(p, A)) depth = Math.max(depth, edgeDist(p, A));
-  return depth;
-}
-
 const figures = (only.length ? only : Object.keys(sources).map(Number)).sort((a, b) => a - b);
 let total = 0;
 for (const figure of figures) {
@@ -98,7 +65,7 @@ for (const figure of figures) {
           if (pose[A.p.id]?.visible === false || pose[B.p.id]?.visible === false) continue;
           if (Math.abs(A.s.z - B.s.z) >= (A.t + B.t) / 2 - 1e-6) continue; // z 不重疊
           const key = `${A.p.id}×${B.p.id}`;
-          const depth = penetration(A.s, B.s);
+          const depth = penetrationDepth(A.s, B.s);
           if (depth <= DEPTH) continue;
           const f = found.get(key);
           if (f) { f.n++; if (depth > f.depth) Object.assign(f, { depth, at: v, state }); }

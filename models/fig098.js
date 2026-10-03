@@ -93,7 +93,8 @@ export default {
       ],
     },
   ],
-  driver: { part: "disc", type: "rotation" },
+  driver: { part: "disc", type: "rotation" },
+
   target: "arm",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {

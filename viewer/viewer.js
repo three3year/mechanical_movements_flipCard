@@ -515,6 +515,8 @@ class Session {
         if (a.holder.visible) a.sign = Math.sign(turned);
         a.arrow.scale.y = a.sign;
       }
+      // 半透明的影子輪(沒在傳動、只是被帶著轉)不標轉向,免得把視線拉過去
+      if (object.userData.ghost) a.holder.visible = false;
       const inverse = q.copy(baseQuat).invert();
       local.copy(camera.position).sub(object.position).applyQuaternion(inverse);
       if (Math.hypot(local.x, local.y) < 0.75 * local.length()) {

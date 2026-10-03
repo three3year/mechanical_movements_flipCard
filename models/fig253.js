@@ -105,7 +105,8 @@ export default {
     ...HOOKS.map((_, i) => ({ id: `hook${i}`, kind: "plate", shape: hookShape, thickness: 0.08, arrow: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.22 }] })),
     { id: "rope", kind: "rope" },
   ],
-  driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
+  driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
+
   target: "flangeB",
   view: { direction: [0.04, 0.04, 1] },
   pose(p) {

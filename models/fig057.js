@@ -83,7 +83,8 @@ export default {
     { id: "openBelt", kind: "belt" },
     { id: "crossBelt", kind: "belt" },
   ],
-  driver: { part: "top", type: "rotation" },
+  driver: { part: "top", type: "rotation" },
+
   target: "planet",
   view: { direction: [0.1, 0.06, 1] },
   pose(angle) {

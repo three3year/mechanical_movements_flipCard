@@ -93,11 +93,24 @@ export function edgeDistance(p, poly) {
   return best;
 }
 
-/** 兩個多邊形互相穿入的深度:一個的頂點伸進另一個裡面多深(最大值;0 = 沒穿)。簡化的梯形齒咬合時齒頂會互相擦到約 0.001 */
+// 實體:多邊形,或 { outline, holes }(在孔裡的點不算在實體裡)
+const asSolid = (s) => (Array.isArray(s) ? { outline: s, holes: [] } : { outline: s.outline, holes: s.holes ?? [] });
+const inSolid = (p, s) => pointInPolygon(p, s.outline) && !s.holes.some((h) => pointInPolygon(p, h));
+const solidEdgeDistance = (p, s) => Math.min(edgeDistance(p, s.outline), ...s.holes.map((h) => edgeDistance(p, h)));
+
+/**
+ * 兩個實體互相穿入的深度:一個的頂點伸進另一個裡面多深(最大值;0 = 沒穿)。
+ * 各可以是多邊形或 { outline, holes }。簡化的梯形齒咬合時齒頂會互相擦到約 0.001
+ */
 export function penetrationDepth(a, b) {
+  const A = asSolid(a);
+  const B = asSolid(b);
+  const ba = bounds(A.outline);
+  const bb = bounds(B.outline);
+  if (ba[2] < bb[0] || bb[2] < ba[0] || ba[3] < bb[1] || bb[3] < ba[1]) return 0;
   let depth = 0;
-  for (const p of a) if (pointInPolygon(p, b)) depth = Math.max(depth, edgeDistance(p, b));
-  for (const p of b) if (pointInPolygon(p, a)) depth = Math.max(depth, edgeDistance(p, a));
+  for (const p of A.outline) if (inSolid(p, B)) depth = Math.max(depth, solidEdgeDistance(p, B));
+  for (const p of B.outline) if (inSolid(p, A)) depth = Math.max(depth, solidEdgeDistance(p, A));
   return depth;
 }
 

@@ -131,7 +131,8 @@ export default {
     { id: "rod", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "frame", kind: "group", pieces: [{ kind: "plate", shape: shape(circle(0.24), []), thickness: 0.3, at: [F.pivot[0], F.pivot[1], 0.6] }] },
   ],
-  driver: { part: "drive", type: "rotation", speed: 1.2 },
+  driver: { part: "drive", type: "rotation", speed: 1.2 },
+
   target: "rod",
   view: { direction: [0.04, 0.12, 1], fov: 22 },
   pose(v) {

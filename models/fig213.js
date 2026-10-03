@@ -5,7 +5,7 @@
 import { TAU, Z } from "./kit.js";
 import { meshAngle } from "./gears.js";
 import { shape, rect, gearShape } from "./shapes.js";
-import { penetrationDepth } from "./contact.js";
+import { penetrationDepth, placeOutline } from "./contact.js";
 
 const NL = 18;
 const NU = 19;
@@ -27,9 +27,8 @@ export const upperAngle = (theta) => meshAngle(LOWER, UPPER, theta);
 // (不是「那段齒的兩端各留半齒」——那樣末端的齒會整個嵌進輪緣裡)。
 const lowerShape = gearShape({ teeth: NL, radius: LOWER.radius });
 const upperShape = gearShape({ teeth: NU, radius: UPPER.radius, mask: (i) => TEETH.includes(i), blank: "tip" });
-const place = (outline, center, angle) => outline.map(([x, y]) => [center[0] + x * Math.cos(angle) - y * Math.sin(angle), center[1] + x * Math.sin(angle) + y * Math.cos(angle)]);
 /** 下輪轉 theta 時,下輪的齒是否頂到擋輪的輪緣(正常咬合時齒頂只互相擦到 0.001 左右,頂到輪緣就深得多) */
-export const touching = (theta) => penetrationDepth(place(lowerShape.outline, LOWER.center, theta), place(upperShape.outline, UPPER.center, upperAngle(theta))) > 0.004;
+export const touching = (theta) => penetrationDepth(placeOutline(lowerShape.outline, LOWER.center, theta), placeOutline(upperShape.outline, UPPER.center, upperAngle(theta))) > 0.004;
 const LIMIT = (() => {
   let lo = 0;
   let hi = (TOOTHED * TAU) / NL;

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep, turned } from "./helpers.js";
 import fig75, { motion, wheelSpec } from "../models/fig075.js";
-import { pointInPolygon } from "../models/contact.js";
+import { pointInPolygon, edgeDistance } from "../models/contact.js";
 
 const PITCH = (2 * Math.PI) / wheelSpec.teeth;
 const STROKE = fig75.driver.cycle[1];
@@ -28,18 +28,6 @@ test("第 75 種:C 來回多次,A 的轉角只往前、不倒退(間歇、單向
 test("第 75 種:棘爪 B 與止回爪的爪尖始終靠在輪面上,不穿進輪裡;推程中 B 的爪尖在齒根、靠著齒的直面", () => {
   // 輪面以畫出來的棘輪折線為準(齒背是直線段,比 ratchetRadius 的極座標內插略凹進去一點)
   const outline = fig75.parts.find((q) => q.id === "wheelA").shape.outline;
-  const edgeDist = (p, poly) => {
-    let best = Infinity;
-    for (let i = 0; i < poly.length; i++) {
-      const a = poly[i];
-      const b = poly[(i + 1) % poly.length];
-      const dx = b[0] - a[0];
-      const dy = b[1] - a[1];
-      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)));
-      best = Math.min(best, Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy));
-    }
-    return best;
-  };
   for (const v of sweep(STROKE * 4, 120)) {
     const { a, forward } = motion(v);
     const pose = fig75.pose(v).parts;
@@ -49,7 +37,7 @@ test("第 75 種:棘爪 B 與止回爪的爪尖始終靠在輪面上,不穿進�
       const pivot = p.position ?? fig75.parts.find((q) => q.id === id).center;
       const length = id === "pawlB" ? 0.97 : 0.8;
       const tip = [pivot[0] + length * Math.cos(p.angle), pivot[1] + length * Math.sin(p.angle)];
-      const gap = (pointInPolygon(tip, wheel) ? -1 : 1) * edgeDist(tip, wheel);
+      const gap = (pointInPolygon(tip, wheel) ? -1 : 1) * edgeDistance(tip, wheel);
       assert.ok(gap > -1e-3 && gap < 0.02, `${id} 在主動量 ${v.toFixed(3)} 時離輪面 ${gap}`);
       if (id === "pawlB" && forward) {
         const f = (((Math.atan2(tip[1], tip[0]) - a) / PITCH) % 1 + 1) % 1; // 在一個齒距裡的位置(齒根在 0.98–1)
@@ -102,13 +90,13 @@ test("第 64 種:蝸輪軸上的銷推著凸輪走,到臨界點凸輪往前掉�
   assert.ok(still > 0, "掉落後停住");
 });
 
-test("落下的過程像從頂點放開的擺:起步慢、越來越快,到底停住", () => {
+test("落下的過程憑自重:起步慢、一路加速,到底被擋止撞停(不減速)", () => {
   const f = sweep(1, 20).map(falling);
   assert.equal(f[0], 0);
   close(f[20], 1);
-  for (let i = 1; i < f.length; i++) assert.ok(f[i] >= f[i - 1] - 1e-12, "單調");
+  for (let i = 2; i < f.length; i++) assert.ok(f[i] - f[i - 1] >= f[i - 1] - f[i - 2] - 1e-12, "每一段都不比前一段慢");
   assert.ok(f[5] < 0.2, "前段慢");
-  assert.ok(f[15] - f[10] > f[5] - f[0], "中段快");
+  assert.ok(f[20] - f[15] > f[10] - f[5], "最後一段最快:是撞停,不是緩停");
 });
 
 test("第 64、66、67 種:蝸桿每轉一圈,蝸輪 B 轉一齒", () => {

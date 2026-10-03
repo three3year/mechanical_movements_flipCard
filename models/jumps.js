@@ -4,10 +4,10 @@
 // 「頂起—落下」:主動件每經過一次,從動件被頂起再落回(第 63、76 種的撥爪與落板)。
 import { smooth } from "./kit.js";
 
-/** 落下的過程(0 → 1):像從頂點放開的擺——起步慢、越來越快,到底停住 */
+/** 落下的過程(0 → 1):憑自重落下——起步慢、一路加速,到底是被銷 / 擋止撞停的,不減速 */
 export const falling = (t) => {
   const x = Math.min(1, Math.max(0, t));
-  return 0.5 - 0.5 * Math.cos(Math.PI * x ** 1.7);
+  return x * x;
 };
 
 /**

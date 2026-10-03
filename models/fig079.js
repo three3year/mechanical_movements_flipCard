@@ -79,7 +79,8 @@ export default {
       labelOffset: [-0.1, 0.5, 0.2],
     },
   ],
-  driver: { part: "rodB", type: "translation", direction: [1, 0, 0], cycle: [B0, B0 + STROKE] },
+  driver: { part: "rodB", type: "translation", direction: [1, 0, 0], cycle: [B0, B0 + STROKE] },
+
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {

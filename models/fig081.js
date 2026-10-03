@@ -64,7 +64,8 @@ export default {
     { id: "stop", kind: "box", center: [RACK_X - 0.36, SPRING_TOP, 0], size: [0.6, 0.1, 0.4] },
     { id: "labelC", kind: "group", center: [RACK_X + 0.15, 2.35, 0.2], label: "C" },
   ],
-  driver: { part: "gear", type: "rotation", speed: -1.0, initial: -SPAN / 2 },
+  driver: { part: "gear", type: "rotation", speed: -1.0, initial: -SPAN / 2 },
+
   target: "rack",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {

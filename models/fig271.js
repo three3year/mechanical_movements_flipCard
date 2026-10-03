@@ -69,7 +69,8 @@ export default {
     { id: "pawlUp", kind: "plate", shape: pawl(PAWL.up), thickness: 0.08, arrow: false },
     { id: "pawlDown", kind: "plate", shape: pawl(PAWL.down), thickness: 0.08, arrow: false },
   ],
-  driver: { part: "lever", type: "rotation", cycle: [S, -S] },
+  driver: { part: "lever", type: "rotation", cycle: [S, -S] },
+
   target: "bar",
   view: { direction: [0.05, 0.12, 1], fit: ["base", "lever", "roller"] },
   pose(v) {
