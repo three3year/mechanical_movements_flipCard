@@ -26,7 +26,7 @@ test("前後兩層的輪同步轉但中間沒有軸會報;有軸不報", () => {
   assert.deepEqual(unsupported(model([...wheels, shaft], together, turning)), []);
 });
 
-test("懸空自轉的輪會報(主動件也要有支撐);裝在軸上不報", () => {
+test("沒有支撐、自己在轉的輪會報(主動件也要有支撐);裝在軸上不報", () => {
   const [found] = unsupported(model([gear("a", 0)], (v) => ({ a: { angle: v } }), turning));
   assert.deepEqual(found.parts, ["a"]);
   assert.match(found.message, /沒有碰到任何零件/);

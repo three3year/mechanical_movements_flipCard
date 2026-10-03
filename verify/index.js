@@ -29,7 +29,7 @@ export function verifyModel(def, options = {}) {
   } finally {
     scene.dispose();
   }
-  if (opt.checks.includes("replay") && def.replay) findings.push(...replay(def, opt));
+  if (opt.checks.includes("replay") && def.replay) findings.push(...replay(def));
   return applyWaivers(def, mergeStates(findings), opt);
 }
 
@@ -37,7 +37,7 @@ export function verifyModel(def, options = {}) {
 function mergeStates(findings) {
   const merged = new Map();
   for (const f of findings) {
-    const key = `${f.check}|${f.parts.join("|")}`;
+    const key = `${f.check}|${f.parts.join("|")}|${f.check === "replay" ? f.value : ""}`; // 動力重演:每個預期事件各一項
     const g = merged.get(key);
     if (!g) merged.set(key, { ...f, states: [f.state] });
     else {
@@ -62,7 +62,7 @@ const at = (value, state) => `主動量 ${fmt(value)}${state != null ? `、狀�
 const differs = (a, b) => a.length !== b.length || a.some((x, i) => Math.abs(x - b[i]) > 1e-9);
 
 function partMoving(a = {}, b = {}) {
-  if ((a.angle ?? 0) !== (b.angle ?? 0)) return Math.abs((a.angle ?? 0) - (b.angle ?? 0)) > 1e-9;
+  if (Math.abs((a.angle ?? 0) - (b.angle ?? 0)) > 1e-9) return true;
   for (const key of ["position", "rotation", "from", "to"]) {
     if (!a[key] !== !b[key]) return true;
     if (a[key] && differs(a[key], b[key])) return true;
@@ -180,7 +180,7 @@ function staticChecks(def, scene, opt) {
 
     const lonely = [...motion].filter(([id, m]) => !sources.has(id) ? !m.driven : !m.touched);
     if (lonely.length) {
-      // 沒連回主動件的,量它離「有實體帶動的零件」多遠;懸空的,量它離任何實體多遠
+      // 沒連回主動件的,量它離「有實體帶動的零件」多遠;沒碰到任何零件的,量它離任何實體多遠
       const nearest = nearestGaps(def, scene, values, state, lonely.map(([id, m]) => ({ id, among: m.touched && !sources.has(id) ? driven : null })), opt);
       for (const [id, m] of lonely) {
         const gap = nearest.get(id);
@@ -189,7 +189,7 @@ function staticChecks(def, scene, opt) {
           ? `${id} 在動,卻沒有碰到任何零件(沒有軸、樞軸或導軌支撐);離最近的實體 ${far}`
           : m.touched
             ? `${id} 在動,卻沒有實體把它連回主動件;離最近的被帶動零件 ${far}`
-            : `${id} 懸空在動:沒有碰到任何零件;離最近的實體 ${far}`;
+            : `${id} 在動,卻沒有碰到任何零件(沒有東西帶動它,也沒有支撐);離最近的實體 ${far}`;
         findings.push({ check: "unsupported", figure: def.figure, parts: [id], value: m.value, state, severity: gap ?? opt.reach, count: m.moved, message: `${message}(${m.moved}/${values.length} 個取樣姿勢在動;例如${at(m.value, state)})` });
       }
     }

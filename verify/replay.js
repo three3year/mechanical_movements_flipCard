@@ -2,7 +2,8 @@
 // 再和模型自己算出的姿勢比——動作有沒有發生、先後順序、停下的位置。不比花了多久。
 //
 // 模型定義的宣告(def.replay):
-//   from, to    主動量走過的區間(預設從初始值走一輪)
+//   from, to    主動量走過的區間(預設從初始值走一輪);state:在哪個狀態下重演(預設是初始狀態);
+//               seconds:走完區間的模擬秒數(預設 10;區間很長時加大,讓自由零件跟得上)
 //   free        { 零件 id: 約束與受力 }——沒列在這裡的零件都照模型的姿勢帶動(齒輪、皮帶傳動的部分屬於這類)
 //     pivot       樞軸的世界座標(起始姿勢時;預設是零件的原點),繞 axis(預設是零件定義的 axis)轉
 //     slide       改為沿這個方向滑動的滑軌
@@ -174,6 +175,7 @@ export function replay(def) {
     for (let i = 1; i <= steps && pending.length; i++) {
       const value = from + ((to - from) * i) / steps;
       step(value);
+      // 除錯:設環境變數 REPLAY_TRACE 時,每半秒印出各自由零件的位置與累計轉角
       if (process.env.REPLAY_TRACE && i % 120 === 0) console.log(value.toFixed(2), [...bodies].filter(([, e]) => e.free).map(([id, e]) => `${id} ${[e.body.translation().x, e.body.translation().y].map((x) => x.toFixed(2))} ${deg(e.turned)}`).join(" | "));
       while (pending.length && (pending[0].at - value) * Math.sign(to - from) <= 1e-12) {
         const finding = compare(def, bodies, pending.shift(), from, state);
@@ -192,6 +194,9 @@ export function replay(def) {
 // 走到預期事件的主動量時:自由零件自起點以來的轉角與位置,和模型的姿勢比
 function compare(def, bodies, expected, from, state) {
   const entry = bodies.get(expected.part);
+  if (!entry?.free) {
+    return { check: "replay", figure: def.figure, parts: [expected.part], value: expected.at, state, severity: 0, count: 1, message: `預期事件指向的 ${expected.part} 不是自由零件(或在起始姿勢是隱藏的)` };
+  }
   const part = entry.part;
   const model0 = def.pose(from, state).parts[expected.part] ?? {};
   const model1 = def.pose(expected.at, state).parts[expected.part] ?? {};

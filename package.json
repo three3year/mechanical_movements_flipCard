@@ -5,7 +5,7 @@
   "description": "機構圖鑑卡片;網站與 npm test 零依賴(Node 內建測試執行器);實體驗證(npm run verify)另用開發用依賴",
   "scripts": {
     "test": "node --test",
-    "verify": "node tools/verify.mjs",
+    "verify": "node --test \"verify/*.spec.js\" && node tools/verify.mjs",
     "test:verify": "node --test \"verify/*.spec.js\""
   },
   "devDependencies": {

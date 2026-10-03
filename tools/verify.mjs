@@ -35,6 +35,11 @@ if (process.send) {
   process.on("message", async (figure) => process.send({ figure, findings: await verifyFigure(figure) }));
   process.send({ ready: true });
 } else {
+  const unknown = args.filter((a) => !a.startsWith("--") && !/^\d+(-\d+)?$/.test(a));
+  if (unknown.length) {
+    console.error(`看不懂的圖號:${unknown.join(" ")}(要寫成 63 或 70-71)`);
+    process.exit(2);
+  }
   const wanted = args.flatMap((a) => {
     if (/^\d+$/.test(a)) return [Number(a)];
     const range = /^(\d+)-(\d+)$/.exec(a);
@@ -58,6 +63,7 @@ if (process.send) {
             next();
           });
           child.on("error", reject);
+          child.on("exit", resolve); // 子行程意外結束:它手上那張沒有結果,由下面的「沒有回報」報出
         }),
       ),
     );

@@ -39,7 +39,6 @@ function makePiece(world, hull, scale) {
 
 export class Scene {
   constructor(def) {
-    this.def = def;
     this.world = new RAPIER.World({ x: 0, y: 0, z: 0 });
     this.solids = [];
     this.paths = [];
@@ -141,7 +140,6 @@ export class Scene {
         piece.collider.setTranslation(tmpP.addScaledVector(tmpV, 0.5));
         piece.collider.setRotation(tmpQ.setFromUnitVectors(Y_AXIS, tmpV.divideScalar(length)));
         piece.segment = i;
-        piece.last = i + 2 === points.length;
         pieces.push(piece);
       }
       for (const extra of entry.pieces.slice(pieces.length)) this.world.removeCollider(extra.collider, false);
@@ -178,6 +176,7 @@ export class Scene {
   /** 開放路徑的端點(end:0 起點、1 終點)離零件實體多遠;超過 prediction 回傳 Infinity */
   endGap(path, end, solid, prediction = 0.05) {
     this.probe ??= this.world.createCollider(RAPIER.ColliderDesc.ball(path.radius));
+    this.probe.setRadius(path.radius);
     tmpP.set(...path.points[end ? path.points.length - 1 : 0]);
     this.probe.setTranslation(tmpP);
     let best = Infinity;
