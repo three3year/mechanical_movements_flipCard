@@ -28,6 +28,11 @@ import fig450 from "../models/fig450.js";
 import fig451 from "../models/fig451.js";
 import * as force from "../models/force-pump.js";
 import * as m452 from "../models/fig452.js";
+import * as m453 from "../models/fig453.js";
+import * as m454 from "../models/fig454.js";
+import * as m455 from "../models/fig455.js";
+import * as m456 from "../models/fig456.js";
+import * as m462 from "../models/fig462.js";
 
 test("第 430 種:上射式水車,進程增加時水車依原圖箭頭順時針轉", () => {
   const a = fig430.pose(0.1).parts.wheel.angle;
@@ -300,4 +305,83 @@ test("第 452 種:雙動式泵:往下時閥 1 進水、閥 3 排水;往上時閥
     assert.equal(open(4), !p.down, "閥 4:往上時開");
   }
   assert.ok(m452.pump(0.3).y < m452.pump(0).y && m452.pump(0.3).down, "一開始往下(原圖箭頭)");
+});
+
+test("第 453 種:雙風箱泵:一個風箱撐開吸水時,另一個被壓縮排水;閥門與壓力泵一樣", () => {
+  const def = m453.default;
+  const span = m453.SWING[1] - m453.SWING[0];
+  for (const v of sweep(4 * span, 40).slice(1)) {
+    if (v % span < 0.002) continue; // 剛好在行程端點
+    const a = def.pose(v - 0.001).parts;
+    const b = def.pose(v).parts;
+    const grow = [0, 1].map((k) => b[`top${k}`].position[1] - a[`top${k}`].position[1]);
+    if (Math.abs(grow[0]) < 1e-6) continue;
+    assert.ok(Math.sign(grow[0]) !== Math.sign(grow[1]), "兩個風箱一撐一壓");
+    for (const k of [0, 1]) {
+      const expanding = grow[k] > 0;
+      assert.equal(Math.abs(b[`suction${k}`].angle) > 0.3, expanding, "撐開的風箱吸水閥打開");
+      assert.equal(Math.abs(b[`delivery${k}`].angle - Math.PI / 2) > 0.3, !expanding, "壓縮的風箱出水閥打開");
+    }
+  }
+});
+
+test("第 454 種:隔膜泵:隔膜拉起時吸水閥開,壓下時水經出水閥送出", () => {
+  const def = m454.default;
+  const span = m454.SWING[0] - m454.SWING[1];
+  for (const v of sweep(4 * span, 40).slice(1)) {
+    if (v % span < 0.002) continue; // 剛好在行程端點
+    const d0 = def.pose(v - 0.001).paths.membrane.points[10][1];
+    const d1 = def.pose(v).paths.membrane.points[10][1];
+    if (Math.abs(d1 - d0) < 1e-6) continue;
+    const parts = def.pose(v).parts;
+    assert.equal(Math.abs(parts.suctionValve.angle) > 0.3, d1 > d0, "隔膜拉起時吸水閥開");
+    assert.equal(Math.abs(parts.deliveryValve.angle) > 0.3, d1 < d0, "隔膜壓下時出水閥開");
+  }
+});
+
+test("第 455 種:舊式旋轉泵:閥門貼著圓筒內面轉,到擋板處被闔上", () => {
+  const deg = Math.PI / 180;
+  for (const phi of sweep(2 * Math.PI, 72)) {
+    const open = m455.opening(phi);
+    const a = Math.atan2(Math.sin(phi), Math.cos(phi));
+    if (a > m455.ABUT[0] && a < m455.ABUT[1]) assert.equal(open, 0, "在擋板處閥門闔上");
+    if (open === 1) {
+      const ang = m455.valveAngle(phi, 1);
+      const tip = [m455.DRUM * Math.cos(phi) + m455.VALVE * Math.cos(ang), m455.DRUM * Math.sin(phi) + m455.VALVE * Math.sin(ang)];
+      close(Math.hypot(...tip), m455.BORE, "張開的閥門外緣貼著圓筒內面", 1e-9);
+    }
+  }
+  assert.equal(m455.opening(90 * deg), 1, "其他地方閥門張開");
+});
+
+test("第 456 種:Cary 旋轉泵:活塞依心形凸輪進出;對準 E 時被推回座裡,另一個同時完全伸出", () => {
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const parts = m456.default.pose(t).parts;
+    for (const k of [0, 1]) {
+      const p = parts[`piston${k}`];
+      close(Math.hypot(p.position[0], p.position[1]), m456.reach(p.angle), "活塞外端貼著圓筒");
+    }
+  }
+  close(m456.reach(-Math.PI / 2), m456.DRUM, "在 E(底部)活塞完全縮回鼓裡");
+  close(m456.reach(Math.PI / 2), m456.DRUM + 2 * m456.ECC, "同時對面的活塞完全伸出");
+});
+
+test("第 462 種:鏈式泵:上輪轉動,碟片沿不漏水的圓筒往上走,把碟片之間的水抬上去", () => {
+  const def = m462.default;
+  const a = def.pose(0).parts;
+  const b = def.pose(-0.3).parts; // 上輪順時針轉
+  const inTube = (p) => Math.abs(p.position[0] - m462.TUBE.x) < 1e-6 && p.position[1] > m462.TUBE.y0 && p.position[1] < m462.TUBE.y1;
+  let checked = 0;
+  for (const id of Object.keys(a).filter((k) => k.startsWith("disc"))) {
+    if (inTube(a[id]) && inTube(b[id])) {
+      assert.ok(b[id].position[1] > a[id].position[1], "筒裡的碟片往上走");
+      checked++;
+    }
+  }
+  assert.ok(checked > 3, "筒裡有好幾片碟片");
+  assert.ok(m462.TUBE.y0 < m462.WATER, "圓筒下端浸在水裡");
+  const s = 1.234;
+  const p = m462.chainAt(s).p;
+  const q = m462.chainAt(s + m462.LOOP).p;
+  close(Math.hypot(p[0] - q[0], p[1] - q[1]), 0, "鏈條是無端的(繞一圈回到原處)");
 });
