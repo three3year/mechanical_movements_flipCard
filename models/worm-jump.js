@@ -26,7 +26,7 @@ export function wormWheel(theta) {
  * fall:往前落的角度(= 缺口寬度);push:被推的角度;rest0:蝸輪轉角為 0 時空心軸剛落定的轉角。
  * hollowPieces:固定在空心軸上的零件(凸輪、重物);startFraction:初始時推到臨界點的幾成。
  */
-export function wormJump({ figure, fall, push, rest0, drop = deg(8), hollowPieces, hollowLabel, wheelLabel = "B", pinLabel, view, extraParts = [], extraPose }) {
+export function wormJump({ figure, fall, push, rest0, drop = deg(14), hollowPieces, hollowLabel, wheelLabel = "B", pinLabel, view, extraParts = [], extraPose }) {
   const period = fall + push;
   const hollowAt = (wheel) => pushAndFall(wheel - B0, { push, fall, rest0, drop });
   // 銷推著缺口在局部角 0 的那一面:推的時候銷的邊緘貼著那一面,銷心差半個銷寬
