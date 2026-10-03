@@ -23,6 +23,11 @@ import * as m302 from "../models/fig302.js";
 import * as m303 from "../models/fig303.js";
 import * as m304 from "../models/fig304.js";
 import * as m305 from "../models/fig305.js";
+import * as m306 from "../models/fig306.js";
+import * as m307 from "../models/fig307.js";
+import * as m308 from "../models/fig308.js";
+import * as m309 from "../models/fig309.js";
+import * as m310 from "../models/fig310.js";
 
 const half = (S) => 2 * S; // 擺一程的累計擺動量
 
@@ -125,4 +130,41 @@ test("第 304 種:銷輪式擒縱:兩個叉瓦夾著銷,擺每擺一次輪轉過
 
 test("第 305 種:單銷式擒縱:擺每擺動一次,擒縱輪(帶一根偏心銷的小圓盤)旋轉半圈", () => {
   stepsPerSwing((v) => m305.singlePin(v).disc, m305.SWING, Math.PI);
+});
+
+test("第 306 種:三腳式擺鐘擒縱:三腳輪的齒交替作用於上、下叉瓦,擺每擺一次轉六分之一圈", () => {
+  stepsPerSwing((v) => m306.threeLeg(v).wheel, m306.TRAVEL, m306.STEP);
+});
+
+test("第 307 種:三腳式擒縱的變形(較長的止動齒 D、E):擺每擺一次轉六分之一圈", () => {
+  stepsPerSwing((v) => m307.threeLeg(v).wheel, m307.SWING, m307.STEP);
+});
+
+test("第 308 種:分離式擒縱:只在擺向左擺時由槓桿 Q 解鎖並接收衝量;擺向右返回時制動爪被推向一旁", () => {
+  const T = m308.geometry.TRAVEL;
+  const right = sweep(2 * T, 100).map((v) => m308.detached(v)); // 由左往右(返回)
+  assert.ok(right.every((d) => d.lever === 0 && d.wheel === 0), "向右時不解鎖、輪不動");
+  assert.ok(right.some((d) => d.click < 0), "向右時制動爪被推向一旁");
+  const left = sweep(4 * T, 100, 2 * T).map((v) => m308.detached(v));
+  assert.ok(left.some((d) => d.lever > 0), "向左時槓桿 Q 被撥開");
+  close(m308.detached(4 * T).wheel, -m308.PITCH, "來回一次轉一齒", 1e-9);
+  close(left[0].x, -left[left.length - 1].x, "擺往左走", 1e-9);
+  assert.ok(left[0].x > left[left.length - 1].x);
+});
+
+test("第 309 種:馬奇重力擒縱:擺每次擺動把其中一個加重的叉瓦抬起,返回時叉瓦落下", () => {
+  const S = m309.SWING;
+  const atRight = m309.mudge(2 * S); // 擺到右端
+  assert.ok(atRight.right > 0 && atRight.left === 0, "擺往右時抬起右邊的叉瓦");
+  const atLeft = m309.mudge(4 * S);
+  assert.ok(atLeft.left > 0 && atLeft.right === 0, "擺往左時抬起左邊的叉瓦");
+  const mid = m309.mudge(3 * S);
+  assert.ok(mid.left === 0 && mid.right === 0, "擺在中間時兩叉瓦都落下");
+  stepsPerSwing((v) => -m309.mudge(v).wheel, S, m309.PITCH / 2);
+});
+
+test("第 310 種:三腳式重力擒縱:叉瓦 A、B 交替被抬起,擒縱輪每擺一次轉六分之一圈", () => {
+  const S = m310.SWING;
+  assert.ok(m310.gravity(2 * S).right > 0 && m310.gravity(4 * S).left > 0, "兩叉瓦交替被抬起");
+  stepsPerSwing((v) => m310.gravity(v).wheel, S, m310.STEP);
 });
