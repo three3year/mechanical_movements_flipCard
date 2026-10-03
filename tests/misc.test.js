@@ -32,6 +32,12 @@ import * as m373 from "../models/fig373.js";
 import * as m374 from "../models/fig374.js";
 import * as m375 from "../models/fig375.js";
 import * as m376 from "../models/fig376.js";
+import * as m377 from "../models/fig377.js";
+import * as m378 from "../models/fig378.js";
+import fig379 from "../models/fig379.js";
+import fig380 from "../models/fig380.js";
+import * as m381 from "../models/fig381.js";
+import * as m382 from "../models/fig382.js";
 
 test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓桿把橫移運動傳給導件 a、a 內的桿", () => {
   const xs = sweep(0.6, 20, -1.6).map((x) => m350.traverse(x).rod);
@@ -248,4 +254,41 @@ test("第 376 種:踏輪馬力裝置:馬往上走,輪在牠腳下轉", () => {
   close(m376.treadWheel(1).wheel, 2 * Math.PI, "進程一圈,輪轉一圈");
   const strides = sweep(0.2, 40).map((p) => m376.treadWheel(p).stride);
   assert.ok(Math.max(...strides) > 0.9 && Math.min(...strides) < -0.9, "腿交替擺動");
+});
+
+test("第 377 種:踏車:人踩在周邊的踏板上往上走,圓筒被人的重量帶著轉", () => {
+  close(m377.treadmill(1).drum, -2 * Math.PI, "進程一圈,圓筒轉一圈(往後轉)");
+  const steps = sweep(0.2, 60).map((p) => m377.treadmill(p).step);
+  assert.ok(Math.max(...steps) > 0.9 && Math.min(...steps) < -0.9, "人原地踏步");
+});
+
+test("第 378 種:擺鋸:擺的運動帶著鋸框往復,鋸條一面鋸一面往下切進樹幹", () => {
+  const shifts = sweep(0.2, 200).map((p) => m378.sawing(p).shift);
+  assert.ok(Math.max(...shifts) > 0.5 && Math.min(...shifts) < -0.5, "鋸框往復");
+  close(m378.sawing(0).saw - m378.sawing(1).saw, m378.DEPTH, "一輪鋸進的深度");
+});
+
+test("第 379–380 種:可攜式夾鉗鑽:379 的進料螺桿與鑽頭相對、把工件往上頂;380 的鑽頭心軸穿過進料螺桿中心、往下送", () => {
+  const a = fig379.pose(0).parts;
+  const b = fig379.pose(20).parts;
+  assert.ok(b.screw.position[1] > a.screw.position[1], "379:下臂的螺桿往上頂");
+  close(b.drill.angle, 20, "鑽頭跟著曲柄轉");
+  const c = fig380.pose(0).parts;
+  const d = fig380.pose(20).parts;
+  assert.ok(d.drill.position[1] < c.drill.position[1], "380:鑽頭心軸往下送");
+});
+
+test("第 381 種:Bowery 式夾具:楔塊順著燕尾形夾頰往裡推,內側夾緊木料", () => {
+  const [lo, hi] = m381.RANGE;
+  assert.ok(m381.clampGap(hi).inner < m381.clampGap(lo).inner, "推進時兩楔塊靠攏");
+  close(m381.clampGap(hi).inner, 0.34, "推到底時夾緊木料", 1e-9);
+});
+
+test("第 382 種:鏡子支架:玻璃可抬高或降下、左右轉動,並改變傾斜角度", () => {
+  const def = m382.default;
+  const low = def.pose(0, "low").parts;
+  const high = def.pose(0, "high").parts;
+  assert.ok(high.mirror.position[1] > low.mirror.position[1], "抬升");
+  assert.notDeepEqual(def.pose(0, "turned").parts.mirror.rotation, high.mirror.rotation, "左右轉動");
+  assert.notDeepEqual(def.pose(0.3, "high").parts.mirror.rotation, high.mirror.rotation, "改變傾角");
 });
