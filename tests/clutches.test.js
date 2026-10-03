@@ -79,16 +79,25 @@ test("第 53 種:雙離合器接合左輪或右輪,水平軸朝相反方向轉;�
   assert.equal(turned(fig53, "shaft", 0, 0.5, "neutral"), 0);
 });
 
-import fig54 from "../models/fig054.js";
+import fig54, * as fig54m from "../models/fig054.js";
 import fig55, { A as A55, C as C55 } from "../models/fig055.js";
 import fig56 from "../models/fig056.js";
 import fig57, { train, teeth as teeth57 } from "../models/fig057.js";
 
-test("第 54 種:星形輪產生交替方向的旋轉——小齒輪 A 轉向不變,換到齒條另一面時輪反轉", () => {
-  const front = turned(fig54, "wheel", 0, 0.8, "front");
-  const back = turned(fig54, "wheel", 0, 0.8, "back");
-  assert.ok(front * back < 0);
-  close(Math.abs(front), (0.8 * 8) / 36);
+test("第 54 種:星形輪產生交替方向的旋轉——小齒輪 A 轉向不變,穿過開口換到齒條另一面時輪與 B 都反轉", () => {
+  const { mangle, PERIOD, TRAVEL } = fig54m;
+  const l = PERIOD / 2;
+  const first = turned(fig54, "wheel", 0.1 * l, 0.4 * l);
+  const second = turned(fig54, "wheel", l + 0.1 * l, l + 0.4 * l);
+  assert.ok(first * second < 0, "輪前後兩程反向");
+  close(first, -second);
+  assert.ok(turned(fig54, "pinionB", 0.1 * l, 0.4 * l) * turned(fig54, "pinionB", l + 0.1 * l, l + 0.4 * l) < 0, "B 跟著交替");
+  // 一程轉將近一圈(開口以外的齒條都走過),換面時輪停住、A 從前面移到後面
+  close(Math.abs(mangle(l - 1e-6).wheel - mangle(0).wheel), TRAVEL, "單程轉過整排齒條", 1e-6);
+  assert.ok(mangle(0.3 * l).z > 0 && mangle(1.3 * l).z < 0, "前一程 A 在前面,後一程在後面");
+  const atTurn = sweep(l * 1.0, 10, l * 0.93).map(mangle);
+  assert.ok(atTurn.every((m) => Math.abs(m.wheel - atTurn[0].wheel) < 1e-9), "換面時輪停住");
+  close(mangle(PERIOD + 0.37).wheel, mangle(0.37).wheel, "週期性", 1e-9);
 });
 
 test("第 55 種:同一軸線上的 A 與 C 經小齒輪產生不同的轉速(反向,齒數反比)", () => {

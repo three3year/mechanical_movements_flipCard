@@ -4,12 +4,23 @@
 // 「頂起—落下」:主動件每經過一次,從動件被頂起再落回(第 63、76 種的撥爪與落板)。
 import { smooth } from "./kit.js";
 
-/** 推—落:主動量 v 時從動件的位置;rest0 為 v = 0 時從動件剛落定的位置(此時銷還要追 fall) */
-export function pushAndFall(v, { push, fall, rest0 = 0 }) {
+/** 落下的過程(0 → 1):像從頂點放開的擺——起步慢、越來越快,到底停住 */
+export const falling = (t) => {
+  const x = Math.min(1, Math.max(0, t));
+  return 0.5 - 0.5 * Math.cos(Math.PI * x ** 1.7);
+};
+
+/**
+ * 推—落:主動量 v 時從動件的位置;rest0 為 v = 0 時從動件剛落定的位置(此時銷還要追 fall)。
+ * drop:落下的過程佔主動量多少(0 為瞬間落下);落下期間從動件在銷前面,drop 要小於 fall。
+ */
+export function pushAndFall(v, { push, fall, rest0 = 0, drop = 0 }) {
   const period = push + fall;
   const k = Math.floor(v / period);
   const u = v - k * period;
-  return rest0 + k * period + Math.max(0, u - fall);
+  const landed = rest0 + k * period;
+  if (drop > 0 && u < drop) return landed - fall + fall * falling(u / drop);
+  return landed + Math.max(0, u - fall);
 }
 
 /** 主動量在一個週期內走到 u 時,是否處在「被推」的階段 */

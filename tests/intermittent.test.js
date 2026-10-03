@@ -41,35 +41,55 @@ test("第 75 種:棘爪 B 與止回爪的爪尖始終靠在輪面上,不穿進�
   }
 });
 
-import { counter, starPitch, pinPeriod } from "../models/fig063.js";
+import { counter, starPitch, pinPeriod, RELEASE, dropSpan } from "../models/fig063.js";
 import { hollowAt as hollow64, period as period64 } from "../models/fig064.js";
 import { hollowAt as hollow66 } from "../models/fig066.js";
 import { hollowAt as hollow67, centerOfMass } from "../models/fig067.js";
 import { register, pitch as pitch76 } from "../models/fig076.js";
 import { wormWheel, WHEEL_TEETH } from "../models/worm-jump.js";
+import { falling } from "../models/jumps.js";
 
-test("第 63 種:每通過一根插銷,落板被抬起後猛然落下,星形輪快速轉過一格", () => {
-  const before = counter(pinPeriod * 0.5);
-  const after = counter(pinPeriod * 1.5);
-  close(after.star - before.star, -starPitch, "每根插銷轉一格");
-  const lifting = sweep(pinPeriod * 0.7, 20, pinPeriod * 0.15).map((v) => counter(v).star);
-  for (const s of lifting) close(s, lifting[0], "落板被抬起時星形輪不動");
-  assert.ok(counter(pinPeriod * 0.6).height > 0.5, "插銷把落板抬起");
+test("第 63 種:插銷把落板抬起(星形輪不動),插銷滑脫後落板落下、棘爪把星形輪推轉一格", () => {
+  const before = counter(RELEASE - 0.01);
+  const after = counter(RELEASE + dropSpan + 0.01);
+  close(after.star - before.star, starPitch, "每根插銷轉一格", 1e-9);
+  close(counter(RELEASE + pinPeriod + dropSpan + 0.01).star - after.star, starPitch, "下一根插銷再轉一格", 1e-9);
+  const lifting = sweep(RELEASE - 0.02, 20, RELEASE - 0.6).map(counter);
+  for (const c of lifting) close(c.star, lifting[0].star, "落板被抬起時星形輪不動");
+  assert.ok(lifting.some((c) => c.height > 0.9), "插銷把落板抬到最高");
+  assert.ok(lifting[0].height < lifting[5].height, "抬起是漸進的");
+  // 落下是加速的過程:落板轉角單調下降,前段慢後段快
+  const fall = sweep(RELEASE + dropSpan, 10, RELEASE).map((w) => counter(w).drop);
+  for (let i = 1; i < fall.length; i++) assert.ok(fall[i] <= fall[i - 1] + 1e-9, "落板只往下");
+  assert.ok(fall[0] - fall[3] < fall[3] - fall[7], "落下先慢後快");
+  assert.ok(Math.abs(counter(RELEASE + dropSpan + 0.3).drop - after.drop) < 1e-9, "落定後靜止");
 });
 
-test("第 64 種:蝸輪軸上的銷推著凸輪走,到臨界點凸輪突然往前掉落,再停住等銷追上", () => {
+test("第 64 種:蝸輪軸上的銷推著凸輪走,到臨界點凸輪往前掉落(有加速的過程,不是瞬移),再停住等銷追上", () => {
   const wheel = (v) => v;
   const angles = sweep(period64 * 3, 3000).map((v) => hollow64(wheel(v)));
   let jumps = 0;
   let still = 0;
+  let maxStep = 0;
   for (let i = 1; i < angles.length; i++) {
     const d = angles[i] - angles[i - 1];
     assert.ok(d >= -1e-12, "只往前");
-    if (d > 0.1) jumps++;
+    maxStep = Math.max(maxStep, d);
+    if (d > 0.02) jumps++;
     if (Math.abs(d) < 1e-12) still++;
   }
-  assert.equal(jumps, 3, "每圈掉落一次");
+  assert.ok(jumps >= 3 && jumps < 300, "每圈落一次,落下佔一小段時間");
+  assert.ok(maxStep < 0.3, "落下是連續的過程,沒有一步到位");
   assert.ok(still > 0, "掉落後停住");
+});
+
+test("落下的過程像從頂點放開的擺:起步慢、越來越快,到底停住", () => {
+  const f = sweep(1, 20).map(falling);
+  assert.equal(f[0], 0);
+  close(f[20], 1);
+  for (let i = 1; i < f.length; i++) assert.ok(f[i] >= f[i - 1] - 1e-12, "單調");
+  assert.ok(f[5] < 0.2, "前段慢");
+  assert.ok(f[15] - f[10] > f[5] - f[0], "中段快");
 });
 
 test("第 64、66、67 種:蝸桿每轉一圈,蝸輪 B 轉一齒", () => {
@@ -81,12 +101,12 @@ const B0 = wormWheel(0); // 蝸輪的起始轉角
 test("第 66 種:搖臂上的重物 D 被推到頂端後自己落到下方", () => {
   // 推的階段把重物從正下方送到正上方
   close(hollow66(B0 + Math.PI + 0.001) - hollow66(B0 + Math.PI), 0.001, "被推時跟著銷走", 1e-9);
-  close(hollow66(B0), -Math.PI / 2, "剛落定時在正下方");
+  close(hollow66(B0 + Math.PI), -Math.PI / 2, "落定後在正下方");
   close(hollow66(B0 + 2 * Math.PI - 1e-9), Math.PI / 2, "推到正上方", 1e-6);
 });
 
 test("第 67 種:擺錘 E 的重心被推到頂端後翻落到下方", () => {
-  close(Math.sin(centerOfMass(hollow67(B0))), -1, "落定時重心在正下方");
+  close(Math.sin(centerOfMass(hollow67(B0 + Math.PI))), -1, "落定時重心在正下方");
   close(Math.sin(centerOfMass(hollow67(B0 + 2 * Math.PI - 1e-9))), 1, "推到頂端", 1e-6);
 });
 

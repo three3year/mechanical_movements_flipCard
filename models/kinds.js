@@ -1,6 +1,10 @@
 // 零件種類與流體種類的清單:繪圖層依此建立零件,登記表測試依此檢查定義。
 // 新增零件種類:在這裡列名,再在 viewer/parts.js 加一個建構方式。
 
+// 零件的姿勢除了位置與轉角,還可標 visible: false(隱藏)與 ghost: true(半透明、不描邊:沒在傳動的輪)。
+// 模型定義可標 target(或 targets:零件 id)為「目標件」——機構最終要帶動的那個零件,以第三種顏色標示,
+// 讓讀者在中間一堆過渡零件裡一眼看出這組結構的用途。
+
 /** 剛體零件:姿勢是 position、angle(繞定義的 axis)或 rotation(四元數),連桿類另有 from/to */
 export const PART_KINDS = new Set([
   "pulley",

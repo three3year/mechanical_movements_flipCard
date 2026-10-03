@@ -2,6 +2,7 @@
 // 第二個固定在主軸上,主軸另一端是一個小正齒輪;第三個固定在套著主軸的空心軸上,另一端是較大的正齒輪;
 // 第四個(最左)固定在再外一層的空心軸上,另一端是最大、最靠近皮帶輪的正齒輪。
 // 三個正齒輪各與下方軸上的齒輪咬合;皮帶移到哪一個輪,下方軸就得到哪一種速度。
+// 沒在傳動的皮帶輪與齒輪對畫成半透明,一眼看出目前走的是哪一對;目標件是下方的軸。
 import { X } from "./kit.js";
 import { meshAngle } from "./gears.js";
 import { pulleyOnX, belt, driven, travel } from "./belt-shift.js";
@@ -51,10 +52,12 @@ export default {
     gearPart("down2", PAIRS.p2.down, LOWER_Y, PAIRS.p2.x),
     gearPart("down3", PAIRS.p3.down, LOWER_Y, PAIRS.p3.x),
     gearPart("down4", PAIRS.p4.down, LOWER_Y, PAIRS.p4.x),
-    { id: "shafts", kind: "group", pieces: [{ kind: "cylinder", radius: 0.12, length: 4.2, axis: X, at: [3.4, 0, 0] }, { kind: "cylinder", radius: 0.12, length: 2.6, axis: X, at: [2.4, LOWER_Y, 0] }] },
+    { id: "shafts", kind: "group", pieces: [{ kind: "cylinder", radius: 0.12, length: 4.2, axis: X, at: [3.4, 0, 0] }] },
+    { id: "lowerShaft", kind: "cylinder", axis: X, center: [2.4, LOWER_Y, 0], radius: 0.12, length: 2.6, arrow: false },
     { id: "belt", kind: "belt" },
   ],
   driver: { part: "drum", type: "rotation" },
+  target: "lowerShaft",
   states: {
     options: [
       { id: "loose", label: "鬆動輪(停)" },
@@ -68,20 +71,22 @@ export default {
   pose(angle, state = "loose") {
     const s = speeds(angle, state);
     const path = belt(PX[state], DRUM.y, DRUM.radius, 0, R);
-    // 下方軸上三個齒輪同轉;各上齒輪隨各自的皮帶輪轉
+    // 下方軸上三個齒輪同轉;各上齒輪隨各自的皮帶輪轉。皮帶所在的輪與它那一對齒輪不透明,其餘半透明
+    const live = (k) => ({ ghost: state !== k });
     return {
       parts: {
         drum: { angle },
-        p2: { angle: s.p2 },
-        p3: { angle: s.p3 },
-        p4: { angle: s.p4 },
-        loose: { angle: s.loose },
-        up2: { angle: s.p2 },
-        up3: { angle: s.p3 },
-        up4: { angle: s.p4 },
-        down2: { angle: s.lower },
-        down3: { angle: s.lower },
-        down4: { angle: s.lower },
+        p2: { angle: s.p2, ...live("p2") },
+        p3: { angle: s.p3, ...live("p3") },
+        p4: { angle: s.p4, ...live("p4") },
+        loose: { angle: s.loose, ...live("loose") },
+        up2: { angle: s.p2, ...live("p2") },
+        up3: { angle: s.p3, ...live("p3") },
+        up4: { angle: s.p4, ...live("p4") },
+        down2: { angle: s.lower, ...live("p2") },
+        down3: { angle: s.lower, ...live("p3") },
+        down4: { angle: s.lower, ...live("p4") },
+        lowerShaft: { angle: s.lower },
       },
       paths: { belt: { points: path.points, closed: true, phase: travel(angle, DRUM.radius) } },
       readouts: [],

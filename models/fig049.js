@@ -3,7 +3,8 @@
 // 也朝相反方向作動。軸往一個方向擺時,左棘爪帶動左斜齒輪;擺回來時右棘爪帶動右斜齒輪。
 // 兩個斜齒輪都與上方直立軸的斜齒輪咬合、彼此反向轉,所以上方的輪始終朝同一方向轉。
 // 照原圖,搖臂在棘輪外側(棘輪與軸架之間),伸出棘輪頂端,棘爪裝在搖臂頂上、伸到棘輪的齒上。
-// 主動件是水平軸連同兩支搖臂;主動量是軸的累計擺動量(見 kit.swing):左斜齒輪的轉角就等於它。
+// 主動件是水平軸連同兩支搖臂(往復擺動的輸入);目標件是上方直立軸的斜齒輪(連續轉的輸出);
+// 三個斜齒輪一樣大(原圖如此),上方那個不是主輪。主動量是軸的累計擺動量(見 kit.swing):左斜齒輪的轉角就等於它。
 // 搖臂來回一趟擺 2·SWING,剛好是整數個棘齒:每一趟推程,帶動的棘爪都落在齒根、頂著齒的直面。
 import { X, Y, TAU, deg, swingPhase, planeBasis, add, scale } from "./kit.js";
 import { meshAngle, bevelGear, bevelContact } from "./gears.js";
@@ -130,7 +131,8 @@ export default {
     },
   ],
   driver: { part: "shaft", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
-  view: { direction: [0.05, 0.22, 1], fov: 20 },
+  target: "top",
+  view: { direction: [0.05, 0.14, 1], fov: 20 },
   pose(v) {
     const { shaft, left, right, top } = motion(v);
     // 右棘輪的局部平面朝 +x 看與左邊相同(都以軸 +x 為法線),右輪的轉角也繞 +x 量:右斜齒輪的軸朝 −x

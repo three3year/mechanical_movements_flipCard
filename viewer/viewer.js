@@ -18,6 +18,10 @@ const PAPER = "#ffffff";
 const ACCENT = "#d4572a";
 const ACCENT_MARK = "#7a2a10"; // 主動件上的轉動記號
 const MARK = "#2f6fb0"; // 從動件的轉動記號與轉向箭頭
+const TARGET = "#2a8f8a"; // 目標件(機構最終要帶動的零件)
+const TARGET_MARK = "#12504d";
+const GHOST_OPACITY = 0.3; // 姿勢標 ghost 的零件(例如沒在傳動的輪)畫成半透明
+const GHOST_PAPER = "#6b6b6b"; // 紙色的零件半透明時改用灰色,白底上才看得到
 const TRANSITION_MS = 450;
 const FOV = 32;
 const DEFAULT_VIEW = [0.12, 0.1, 1];
@@ -132,7 +136,23 @@ class Session {
     // 箭頭依轉向翻面(scale.y = −1),雙面繪製才不會被背面剔除
     const accentArrow = toon(ACCENT_MARK, { side: THREE.DoubleSide }); // 深橘,疊在橘色本體上也看得清楚
     const markArrow = toon(MARK, { side: THREE.DoubleSide });
-    this.materials = [base, accent, accentMark, mark, accentArrow, markArrow];
+    const target = toon(TARGET);
+    const targetMark = toon(TARGET_MARK);
+    const targetArrow = toon(TARGET_MARK, { side: THREE.DoubleSide });
+    this.materials = [base, accent, accentMark, mark, accentArrow, markArrow, target, targetMark, targetArrow];
+    // 半透明材質:每種實色各一份,零件標 ghost 時整個換過去,取消時換回來
+    this.ghosts = new Map();
+    this.ghostOf = (m) => {
+      if (!this.ghosts.has(m)) {
+        const g = m.clone();
+        Object.assign(g, { transparent: true, opacity: GHOST_OPACITY, depthWrite: false });
+        if (m === base) g.color.set(GHOST_PAPER);
+        this.materials.push(g);
+        this.ghosts.set(m, g);
+      }
+      return this.ghosts.get(m);
+    };
+    const targets = def.targets ?? (def.target ? [def.target] : []);
     const fluidMaterials = {};
     const fluidMaterial = (fluid) =>
       (fluidMaterials[fluid] ??= (() => {
@@ -158,7 +178,8 @@ class Session {
         object = buildPart(part, fluidMaterial(part.fluid ?? "water"), mark);
         object.traverse((o) => o.layers.set(FLUID_LAYER));
       } else {
-        object = buildPart(part, isDriver ? accent : base, isDriver ? accentMark : mark);
+        const isTarget = targets.includes(part.id);
+        object = buildPart(part, isDriver ? accent : isTarget ? target : base, isDriver ? accentMark : isTarget ? targetMark : mark);
       }
       const baseQuat = new THREE.Quaternion().setFromUnitVectors(
         Z_AXIS,
@@ -175,7 +196,7 @@ class Session {
       // 會轉的零件旁加轉向箭頭;零件不轉時隱藏。定義可用 arrow: false 關掉(例如並排同向的滑輪只留一個)
       const spin = part.arrow === false ? null : spinPlacement(part);
       if (spin) {
-        const arrow = buildSpinArrow(spin.radius + 0.22, isDriver ? accentArrow : markArrow);
+        const arrow = buildSpinArrow(spin.radius + 0.22, isDriver ? accentArrow : targets.includes(part.id) ? targetArrow : markArrow);
         arrow.position.z = spin.offset;
         const holder = new THREE.Group();
         holder.add(arrow);
@@ -413,6 +434,7 @@ class Session {
       }
       if (p.level != null) object.userData.level?.(p.level);
       object.visible = p.visible !== false;
+      this.setGhost(object, p.ghost === true);
     }
     for (const [id, path] of this.paths) {
       const p = pose.paths?.[id];
@@ -429,6 +451,24 @@ class Session {
     }
     this.flows.update(pose.flows);
     this.showReadouts(pose.readouts ?? []);
+  }
+
+  // 零件半透明(沒在傳動的輪):材質換成同色的半透明版,並移到不描邊的那一層(與流體示意同層),
+  // 看起來像淡淡的影子而不是實體;只在狀態改變時走訪
+  setGhost(object, ghost) {
+    if ((object.userData.ghost ?? false) === ghost) return;
+    object.userData.ghost = ghost;
+    object.traverse((o) => {
+      if (o.isMesh && o.material !== PROXY_MATERIAL) {
+        if (ghost) {
+          o.userData.solid = o.material;
+          o.material = this.ghostOf(o.material);
+        } else if (o.userData.solid) {
+          o.material = o.userData.solid;
+        }
+      }
+      o.layers.set(ghost ? FLUID_LAYER : 0);
+    });
   }
 
   showReadouts(readouts) {

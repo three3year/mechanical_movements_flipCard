@@ -56,6 +56,10 @@ for (const def of models) {
       if (d.type === "translation" && !d.cycle && !d.grips) assert.ok(d.range && d.direction);
       if (d.cycle) assert.ok(d.cycle[0] !== d.cycle[1], "往復的兩端不同");
     }
+    for (const t of def.targets ?? (def.target ? [def.target] : [])) {
+      assert.ok(ids.includes(t), `目標件 ${t} 指向存在的零件`);
+      assert.notEqual(t, d.part, "目標件不是主動件");
+    }
     if (def.states) {
       const options = def.states.options.map((o) => o.id);
       assert.ok(options.includes(def.states.initial), "預設狀態在狀態清單中");

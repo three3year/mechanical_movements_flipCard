@@ -53,29 +53,32 @@ export function studIndex({ figure, wheel, driver, studs, rim, tappet, labels, s
           label: labels.wheel,
           labelOffset: [0, 0.6, 0.3],
         },
+        // 驅動輪的輪板在左輪後面(像原圖,左輪畫在前面);輪緣與撥爪從輪板往前伸到凸柱那一層
         {
           id: "driver",
           kind: "group",
-          center: [driver.center[0], driver.center[1], 0.5],
+          center: [driver.center[0], driver.center[1], -0.5],
           spin: driver.radius,
+          spinOffset: 0.9,
           pieces: [
-            { kind: "plate", shape: shape(circle(driver.radius), [circle(rim.radius + 0.02).reverse()]), thickness: 0.14 },
-            ...rimShape.map((s) => ({ kind: "plate", shape: s, thickness: 0.5, at: [0, 0, -0.2] })),
-            { kind: "plate", shape: shape(circle(0.36), [circle(0.14).reverse()]), thickness: 0.3, at: [0, 0, -0.1] },
+            { kind: "plate", shape: shape(circle(driver.radius), [circle(0.14).reverse()]), thickness: 0.14 },
+            ...rimShape.map((s) => ({ kind: "plate", shape: s, thickness: 0.7, at: [0, 0, 0.42] })),
+            { kind: "plate", shape: shape(circle(0.36), [circle(0.14).reverse()]), thickness: 0.6, at: [0, 0, 0.3] },
             {
               kind: "plate",
               shape: shape([[0, 0.12], [-tappet, 0.06], [-tappet - 0.06, 0], [-tappet, -0.06], [0, -0.12]]),
-              thickness: 0.12,
-              at: [0, 0, -0.25],
+              thickness: 0.14,
+              at: [0, 0, 0.6],
               accent: true,
             },
           ],
           label: labels.driver,
-          labelOffset: [0.2, -0.65, 0.4],
+          labelOffset: [0.2, -0.65, 1.2],
         },
         ...(labels.tappet ? [{ id: "labelTappet", kind: "group", label: labels.tappet, labelOffset: [0, 0, 0.6] }] : []),
       ],
       driver: { part: "driver", type: "rotation", initial: window.from + span / 2, speed: 1.2 },
+      target: "wheel",
       view: view ?? { direction: [0.06, 0.05, 1] },
       pose(v) {
         const mid = polar(tappet * 0.55, Math.PI + v);
@@ -83,7 +86,7 @@ export function studIndex({ figure, wheel, driver, studs, rim, tappet, labels, s
           parts: {
             driver: { angle: v },
             wheel: { angle: index(v) },
-            ...(labels.tappet ? { labelTappet: { position: [driver.center[0] + mid[0], driver.center[1] + mid[1] + 0.2, 0.3] } } : {}),
+            ...(labels.tappet ? { labelTappet: { position: [driver.center[0] + mid[0], driver.center[1] + mid[1] + 0.2, 0.4] } } : {}),
           },
           readouts: [],
         };

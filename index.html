@@ -23,6 +23,11 @@
     </header>
 
     <nav class="tabs" id="tabs"></nav>
+    <form class="goto" id="goto" autocomplete="off">
+      <label for="goto-no">跳到圖號</label>
+      <input id="goto-no" type="number" inputmode="numeric" min="1" max="507" placeholder="1–507" aria-label="圖號">
+      <button type="submit">前往</button>
+    </form>
 
     <main class="viewer">
       <button class="back" id="back" hidden></button>
@@ -127,6 +132,28 @@
       selectedFig = no; // 跳到多插圖條目時,選中被引用的那一張
       render();
     }
+
+    // 頁碼搜尋:輸入圖號直接跳到那一張卡片(多插圖條目則選中該圖);找不到時輸入框短暫標紅
+    const gotoForm = document.getElementById("goto");
+    const gotoInput = document.getElementById("goto-no");
+    gotoForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const no = parseInt(gotoInput.value, 10);
+      const found = findEntry(no);
+      if (!found) {
+        gotoInput.classList.remove("miss");
+        void gotoInput.offsetWidth; // 重新觸發動畫
+        gotoInput.classList.add("miss");
+        return;
+      }
+      backStack.length = 0; // 直接跳頁視為新的閱讀起點
+      chapterIndex = found.c;
+      entryIndex = found.i;
+      selectedFig = no;
+      gotoInput.value = "";
+      gotoInput.blur();
+      render();
+    });
 
     function goBack() {
       const from = backStack.pop();
