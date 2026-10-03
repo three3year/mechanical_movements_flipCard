@@ -33,6 +33,12 @@ import * as m454 from "../models/fig454.js";
 import * as m455 from "../models/fig455.js";
 import * as m456 from "../models/fig456.js";
 import * as m462 from "../models/fig462.js";
+import * as m457 from "../models/fig457.js";
+import * as m458 from "../models/fig458.js";
+import * as m459 from "../models/fig459.js";
+import * as m460 from "../models/fig460.js";
+import * as m461 from "../models/fig461.js";
+import * as m465 from "../models/fig465.js";
 
 test("第 430 種:上射式水車,進程增加時水車依原圖箭頭順時針轉", () => {
   const a = fig430.pose(0.1).parts.wheel.angle;
@@ -384,4 +390,73 @@ test("第 462 種:鏈式泵:上輪轉動,碟片沿不漏水的圓筒往上走,�
   const p = m462.chainAt(s).p;
   const q = m462.chainAt(s + m462.LOOP).p;
   close(Math.hypot(p[0] - q[0], p[1] - q[1]), 0, "鏈條是無端的(繞一圈回到原處)");
+});
+
+test("第 457 種:桔槔:配重約為所抬重量的一半,空桶要往下拉,滿桶時配重幫忙抬起", () => {
+  assert.ok(m457.pull(false) > 0, "空桶:要往下拉");
+  assert.ok(m457.pull(true) < 0, "滿桶:配重幫忙,只需往上提一部分");
+  close(m457.LOADS.counter, (m457.LOADS.water + m457.LOADS.bucket) / 2, "配重約等於所抬重量的一半", 0.05);
+  const low = m457.sweep(Math.abs(m457.SWING[0] - m457.SWING[1]) * 0.999);
+  assert.ok(low.bucket[1] < -1.5, "放到最低時水桶進到井裡");
+  assert.ok(m457.sweep(0.1).down && !m457.sweep(0.1).full, "往下放的是空桶");
+});
+
+test("第 458 種:滑輪與兩個水桶:把空桶往下拉,另一邊的滿桶就上來", () => {
+  for (const v of sweep(4 * (m458.TOP - m458.BOTTOM), 40)) {
+    const b = m458.buckets(v);
+    close(b.left + b.right, m458.TOP + m458.BOTTOM, "繩長不變:一個下去另一個上來");
+  }
+  const b = m458.buckets(0.5);
+  assert.ok(b.rightFull && !b.leftFull, "往下拉的左桶是空的,上來的右桶是滿的");
+});
+
+test("第 459 種:往復式升降機:風車一直朝同一方向轉,水桶一上一下,到頂撞撥爪後換方向", () => {
+  let prev = m459.lift(0);
+  let flips = 0;
+  for (const w of sweep(400, 2000).slice(1)) {
+    const l = m459.lift(w);
+    close(l.left + l.right, m459.TOP + m459.BOTTOM, "一個水桶上升,另一個下降");
+    assert.ok(l.left <= m459.TOP + 1e-9 && l.left >= m459.BOTTOM - 1e-9, "水桶在井口與井底之間");
+    if (l.engaged !== prev.engaged) {
+      flips++;
+      assert.ok(Math.min(Math.abs(l.left - m459.TOP), Math.abs(l.right - m459.TOP)) < 0.1, "蝸桿在水桶到頂(撞撥爪)時換邊");
+    }
+    prev = l;
+  }
+  assert.ok(flips >= 2, "風車持續轉,水桶來回好幾趟");
+});
+
+test("第 460 種:舀水斗:槓桿經連桿把舀斗抬起,水流到鉸點倒上岸;凹槽越遠抬得越多", () => {
+  const range = (notch) => {
+    const lo = m460.scoop(m460.SWING[0], notch).beta;
+    const hi = m460.scoop(m460.SWING[1], notch).beta;
+    return hi - lo;
+  };
+  assert.ok(range("far") > range("middle") && range("middle") > range("near"), "連桿放在越遠的凹槽,抬起越多");
+  const lowEnd = (n) => m460.PIVOT[1] + m460.SCOOP * Math.sin(m460.scoop(m460.SWING[0], n).beta);
+  const highEnd = (n) => m460.PIVOT[1] + m460.SCOOP * Math.sin(m460.scoop(m460.SWING[1], n).beta);
+  for (const n of ["near", "middle", "far"]) {
+    assert.ok(lowEnd(n) < m460.WATER, "放下時斗浸在水裡");
+    assert.ok(highEnd(n) > m460.WATER, "抬起時斗離開水面");
+  }
+});
+
+test("第 461 種:擺動式水槽:擺往兩邊擺時,交替的兩組管子輪流把水送上一層", () => {
+  const left = m461.active(m461.SWING[0]);
+  const right = m461.active(m461.SWING[1]);
+  for (let k = 0; k < left.length; k++) assert.ok(left[k] !== right[k], `第 ${k + 1} 段管子只在一邊送水`);
+  assert.ok(left.some(Boolean) && right.some(Boolean), "兩邊各有管子送水");
+  assert.ok(m461.active(0).every((on) => !on), "擺在中間時管子都往上斜,水不流");
+  assert.ok(Math.abs(m461.SWING[0]) > m461.SLOPE, "擺幅大於管子的斜度");
+});
+
+test("第 465 種:平衡泵:樑兩端交替往下,兩個泵的活塞一上一下輪流出水", () => {
+  for (const a of sweep(m465.SWING[1], 10, m465.SWING[0])) {
+    const [l, r] = m465.pistons(a);
+    close(l + r, 2 * (m465.PIVOT[1] - 1.75), "兩個活塞一上一下");
+  }
+  const def = m465.default;
+  assert.equal(def.pose(0.1).readouts[0].value, "右邊的泵", "樑往一邊轉時右邊的泵出水");
+  const span = m465.SWING[1] - m465.SWING[0];
+  assert.equal(def.pose(span + 0.1).readouts[0].value, "左邊的泵", "轉回來時換左邊");
 });
