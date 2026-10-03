@@ -22,6 +22,12 @@ import * as col from "../models/oscillating-column.js";
 import fig445 from "../models/fig445.js";
 import fig446 from "../models/fig446.js";
 import * as m447 from "../models/fig447.js";
+import * as m448 from "../models/fig448.js";
+import * as m449 from "../models/fig449.js";
+import fig450 from "../models/fig450.js";
+import fig451 from "../models/fig451.js";
+import * as force from "../models/force-pump.js";
+import * as m452 from "../models/fig452.js";
 
 test("第 430 種:上射式水車,進程增加時水車依原圖箭頭順時針轉", () => {
   const a = fig430.pose(0.1).parts.wheel.angle;
@@ -230,4 +236,68 @@ test("第 447 種:渡船:錨繫住船,水流作用在舵上,帶著船以錨為�
     ys.push(B[1]);
   }
   assert.ok(Math.max(...ys) > 1.5 && Math.min(...ys) < -1.5, "船從一岸渡到另一岸再回來");
+});
+
+const OPENED = (p) => Math.abs(p.angle) > 0.3;
+
+test("第 448 種:提升泵:上行時下閥開、活塞閥關,水從出水口溢出;下行時下閥關、活塞閥開", () => {
+  const def = m448.default;
+  for (const v of sweep(4 * Math.abs(m448.SWING[0] - m448.SWING[1]), 40)) {
+    const p = m448.pump(v);
+    const parts = def.pose(v).parts;
+    assert.equal(OPENED(parts.footValve), p.up, "下方閥門在上行時打開");
+    assert.equal(OPENED(parts.pistonValve), !p.up, "活塞閥門在下行時打開");
+    if (p.up) assert.ok(def.pose(v).flows[0].points.some((q) => q[0] < -0.9), "上行時水從出水口溢出");
+  }
+  // 手柄往下壓,活塞上升
+  assert.ok(m448.pump(0.01).piston < m448.pump(0.3).piston, "壓手柄提起活塞");
+});
+
+test("第 449 種:現代提升泵:出水口的瓣閥向上開,上行時被水頂開", () => {
+  const def = m449.default;
+  for (const v of sweep(4, 40)) {
+    const parts = def.pose(v).parts;
+    const up = OPENED(parts.footValve);
+    assert.equal(OPENED(parts.outValve), up, "出水瓣閥與下閥同時(上行時)打開");
+    assert.equal(OPENED(parts.pistonValve), !up, "活塞閥門在下行時打開");
+  }
+});
+
+test("第 450 種:壓力泵:上升時吸水閥開、出水閥關;下降時吸水閥關,水經出水閥往上送", () => {
+  for (const v of sweep(4 * 0.8, 40)) {
+    const p = force.pump(v);
+    const parts = fig450.pose(v).parts;
+    assert.equal(OPENED(parts.suctionValve), p.up, "吸水閥在上升時打開");
+    assert.equal(OPENED(parts.deliveryValve), !p.up, "出水閥在下降時打開");
+  }
+});
+
+test("第 451 種:加空氣室的壓力泵:下行時空氣被壓縮(水位升),上行時膨脹把水推出,出水不斷", () => {
+  let prev = null;
+  for (const v of sweep(4 * 0.8, 80)) {
+    const p = force.pump(v);
+    const pose = fig451.pose(v);
+    const level = pose.parts.chamberWater.level;
+    if (prev) {
+      if (p.up && prev.up) assert.ok(level <= prev.level + 1e-9, "上行時空氣室的水位下降(空氣膨脹)");
+      if (!p.up && !prev.up) assert.ok(level >= prev.level - 1e-9, "下行時水位上升(空氣被壓縮)");
+    }
+    const out = pose.flows.flatMap((f) => f.points).filter((q) => q[1] > 2.0);
+    assert.ok(out.length > 0, "兩個行程都有水從出口流出(持續穩定)");
+    prev = { up: p.up, level };
+  }
+});
+
+test("第 452 種:雙動式泵:往下時閥 1 進水、閥 3 排水;往上時閥 2 進水、閥 4 排水", () => {
+  const def = m452.default;
+  for (const v of sweep(4 * 1.1, 40)) {
+    const p = m452.pump(v);
+    const parts = def.pose(v).parts;
+    const open = (k) => Math.abs(parts[`valve${k}`].angle + Math.PI / 2) > 0.3;
+    assert.equal(open(1), p.down, "閥 1:往下時開");
+    assert.equal(open(3), p.down, "閥 3:往下時開");
+    assert.equal(open(2), !p.down, "閥 2:往上時開");
+    assert.equal(open(4), !p.down, "閥 4:往上時開");
+  }
+  assert.ok(m452.pump(0.3).y < m452.pump(0).y && m452.pump(0.3).down, "一開始往下(原圖箭頭)");
 });
