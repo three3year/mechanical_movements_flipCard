@@ -44,12 +44,13 @@ export default {
       width: 0.24,
       bore: 0.14,
       pieces: [
-        { kind: "plate", shape: ring(1.78, 1.58), thickness: 0.22, at: [0, 0, -0.05] },
-        ...[0, 1, 2, 3].map((k) => ({ kind: "box", size: [0.42, 0.08, 0.18], at: [...polar(1.37, (k * TAU) / 4 + deg(45)).slice(0, 2), -0.05], angle: (k * TAU) / 4 + deg(45) })),
+        // 飛輪的輪緣與輪輻在齒輪後面一層:和齒輪同一層的話行星齒輪會掃過輪緣
+        { kind: "plate", shape: ring(1.78, 1.58), thickness: 0.22, at: [0, 0, -0.3] },
+        ...[0, 1, 2, 3].map((k) => ({ kind: "box", size: [0.42, 0.08, 0.18], at: [...polar(1.37, (k * TAU) / 4 + deg(45)).slice(0, 2), -0.3], angle: (k * TAU) / 4 + deg(45) })),
       ],
     },
     { id: "planet", kind: "gear", teeth: N, radius: R, width: 0.24, bore: 0.14, arrow: false },
-    { id: "arm", kind: "plate", center: [0, 0, 0.3], shape: stadium(D, 0.44, 0.13), thickness: 0.1, spin: D },
+    { id: "arm", kind: "plate", center: [0, 0, 0.2], shape: stadium(D, 0.44, 0.13), thickness: 0.1, spin: D },
     { id: "rod", kind: "link", width: 0.48, thickness: 0.12, axis: [0, 0, 1] },
   ],
   driver: { part: "arm", type: "rotation", initial: START },
@@ -63,7 +64,7 @@ export default {
         arm: { angle: theta },
         planet: { position: planet, angle: rod - Math.PI / 2 },
         sun: { angle: sun },
-        rod: { from: [planet[0], planet[1], 0.45], to: [top[0], top[1], 0.45] },
+        rod: { from: [planet[0], planet[1], 0.34], to: [top[0], top[1], 0.34] },
       },
       readouts: [
         { label: "行星繞行", value: turns.toFixed(2) + " 圈" },

@@ -48,6 +48,9 @@ export default {
       pieces: [{ kind: "cylinder", radius: 0.07, length: 3.3 }],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["disc", "gear"], reason: "簡化齒形:碟形輪面上的螺旋凸條與正齒輪的梯形齒在齒側擦到 0.03" },
+  ],
   driver: { part: "disc", type: "rotation" },
   target: "gear", // 每圈轉過一齒的正齒輪
   view: { direction: [0.08, 0.08, 1] },

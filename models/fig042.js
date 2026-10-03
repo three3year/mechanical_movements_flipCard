@@ -32,6 +32,9 @@ export const gears = { TOP, BOTTOM, CONTACT, SHAFT };
 export default {
   figure: 42,
   parts: [gear("top", TOP, 0.6, SHAFT), gear("bottom", BOTTOM, 0.6, 0)],
+  waivers: [
+    { check: "interference", parts: ["top", "bottom"], reason: "簡化齒形:交錯軸斜齒輪以分層錯齒近似,齒側互相擦到 0.03" },
+  ],
   driver: { part: "top", type: "rotation" },
   target: "bottom", // 斜軸上的從動輪
   view: { direction: [0.05, 0.08, 1] },

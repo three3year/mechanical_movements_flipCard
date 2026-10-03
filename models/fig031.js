@@ -30,6 +30,9 @@ export default {
     },
     { id: "wheel", kind: "gear", center: [0, 0, 0], teeth: WHEEL.teeth, radius: WHEEL.radius, width: 0.3, bore: 0.12 },
   ],
+  waivers: [
+    { check: "interference", parts: ["worm", "wheel"], reason: "簡化齒形:蝸桿螺紋是圓管、蝸輪是直齒,齒頂伸進蝸桿芯 0.04;實物的蝸輪齒是凹弧形包著蝸桿" },
+  ],
   driver: { part: "worm", type: "rotation" },
   target: "wheel", // 每圈轉過一齒的蝸輪
   view: { direction: [0.08, 0.06, 1] },

@@ -43,6 +43,9 @@ export default {
     },
     bellCrank(LEVER),
   ],
+  waivers: [
+    { check: "interference", parts: ["gear", "slider"], reason: "簡化爪形:離合器的爪畫成方塊而不是扇形,接合時內緣互相重疊;爪數與錯開半個爪距的卡合關係正確" },
+  ],
   driver: { part: "pinion", type: "rotation" },
   target: "shaft", // 離合器接合時才被帶動的軸
   states: CLUTCH_STATES,
@@ -55,7 +58,7 @@ export default {
       parts: {
         pinion: { angle },
         gear: { angle: gear },
-        shaft: { angle: engaged ? gear : 0 },
+        shaft: { angle: engaged ? gear + Math.PI / JAWS : 0 },
         slider: { position: [SLIDER_X[state], 0, 0], angle: engaged ? gear + Math.PI / JAWS : 0 },
         lever: { angle: leverTurn(SLIDER_X[state] - SLIDER_X.engaged, LEVER.up) },
       },

@@ -6,7 +6,7 @@ import { CLUTCH_STATES, bellCrank, leverTurn } from "./clutch-parts.js";
 
 const SHIFT = 0.4;
 const DISC_X = { engaged: 3.32, free: 3.32 + SHIFT };
-const LEVER = { pivot: [4.6, -1.55], up: 1.4, out: 1.6 };
+const LEVER = { pivot: [4.6, -1.55], up: 1.4, out: 1.6, z: 0.65 }; // 槓桿在滑動盤軸環的前緣外側(貼著軸環),不穿過軸環
 
 export default {
   figure: 47,

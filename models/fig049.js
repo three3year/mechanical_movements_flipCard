@@ -130,6 +130,10 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["ratchetR", "pawlR"], reason: "棘爪的停位以爪尖一點靠在齒面上計算;爪身有寬度,爪尖旁的邊角伸進齒 0.04" },
+    { check: "interference", parts: ["ratchetL", "pawlL"], reason: "棘爪的停位以爪尖一點靠在齒面上計算;爪身有寬度,爪尖旁的邊角伸進齒 0.05" },
+  ],
   driver: { part: "shaft", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
   target: "top",
   view: { direction: [0.05, 0.14, 1], fov: 20 },

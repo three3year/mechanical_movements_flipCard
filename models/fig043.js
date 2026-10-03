@@ -21,12 +21,13 @@ const bevel = (id, g, shaft) => ({
   radius: g.radius,
   cone: g.cone,
   width: g.width,
-  pieces: [{ kind: "cylinder", radius: 0.12, length: shaft, at: [0, 0, 0.3] }],
+  // 軸只畫到齒輪背後(局部 +Z 朝錐頂):兩根軸在錐頂相交,畫穿過去會互相穿過
+  pieces: [{ kind: "cylinder", radius: 0.12, length: shaft, at: [0, 0, 0.2 - shaft / 2] }],
 });
 
 export default {
   figure: 43,
-  parts: [bevel("big", BIG, 4.2), bevel("small", SMALL, 4.2)],
+  parts: [bevel("big", BIG, 2.6), bevel("small", SMALL, 2.6)],
   driver: { part: "big", type: "rotation" },
   target: "small", // 被帶動的傘齒輪
   view: { direction: [0.05, 0.1, 1] },

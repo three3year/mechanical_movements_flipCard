@@ -5,7 +5,8 @@
 import { TAU, deg, polar } from "./kit.js";
 import { circle, arcPoints, polarOutline, shape } from "./shapes.js";
 
-const R = { rim: 3.1, rimInner: 2.78, block: 2.7 };
+// 滾子最遠走到離大輪軸心 2E 處:溝槽與輪緣要容得下它(輪緣比原圖略大,否則滾子會撞進輪緣)
+const R = { rim: 3.5, rimInner: 3.2, block: 3.16 };
 const GROOVES = 6;
 const HALF_GROOVE = 0.21;
 const E = 1.49; // 三角形輪軸離大輪軸心的距離 = 滾子離三角形輪軸的距離
@@ -46,7 +47,7 @@ export default {
         { kind: "plate", shape: { outline: circle(R.rim), holes: [] }, thickness: 0.15, at: [0, 0, Z.back] },
         { kind: "cylinder", radius: R.rim, inner: R.rimInner, length: 0.55, at: [0, 0, Z.back + 0.2] },
         ...Array.from({ length: GROOVES }, (_, j) => ({ kind: "plate", shape: block(j), thickness: 0.36, at: [0, 0, Z.blocks], ...(j === 0 ? { mark: [1.9, 0.6], markSize: 0.14 } : {}) })),
-        { kind: "cylinder", radius: 0.16, length: 2.2, at: [0, 0, -1.2] },
+        { kind: "cylinder", radius: 0.16, length: 2.0, at: [0, 0, -1.4] }, // 軸只到背板為止:滾子會經過大輪軸心
       ],
     },
     {
@@ -60,7 +61,7 @@ export default {
         ...[0, 1, 2].flatMap((k) => {
           const p = polar(E, (k * TAU) / 3);
           return [
-            { kind: "cylinder", radius: 0.17, length: 0.34, at: [p[0], p[1], Z.rollers] },
+            { kind: "cylinder", radius: 0.19, length: 0.34, at: [p[0], p[1], Z.rollers] }, // 滾子貼著溝槽壁(溝槽半寬 0.21)
             { kind: "cylinder", radius: 0.07, length: 0.62, at: [p[0], p[1], 0.18] },
             { kind: "cylinder", radius: 0.22, length: 0.14, at: [p[0], p[1], Z.spider + 0.14] },
           ];

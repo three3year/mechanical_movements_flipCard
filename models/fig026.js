@@ -38,6 +38,9 @@ export default {
       pieces: [{ kind: "cylinder", radius: 0.13, length: 1.6, at: [0, 0, -0.9] }],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["spur", "crown"], reason: "簡化齒形:冠狀齒輪的齒畫成方塊,與正齒輪的梯形齒在齒側互相擦到 0.08;嚙合關係(齒數比、轉向)不受影響" },
+  ],
   driver: { part: "spur", type: "rotation" },
   target: "crown", // 被帶動的冠狀齒輪
   view: { direction: [0.12, 0.12, 1], fov: 14 },

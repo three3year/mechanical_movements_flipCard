@@ -63,6 +63,9 @@ export default {
       pieces: [...studs, { kind: "cylinder", radius: 0.12, length: H + 1.6 }],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["left", "right"], reason: "簡化齒形:右輪的齒栓是圓柱,伸進左輪錐形齒輪的齒間;齒栓與梯形齒的齒側重疊是齒形簡化" },
+  ],
   driver: { part: "left", type: "rotation" },
   target: "right", // 得到變速旋轉的錐形輪
   view: { direction: [0.03, 0.08, 1] },
