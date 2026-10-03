@@ -404,6 +404,11 @@ export const sources = {
   400: "./fig400.js",
   401: "./fig401.js",
   402: "./fig402.js",
+  403: "./fig403.js",
+  404: "./fig404.js",
+  405: "./fig405.js",
+  406: "./fig406.js",
+  407: "./fig407.js",
   430: "./fig430.js",
   500: "./fig500.js",
 };
