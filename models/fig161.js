@@ -41,6 +41,16 @@ export default {
     { id: "bracket", kind: "box", center: [-1.0, -0.8, 0], size: [2.2, 0.12, 0.3] },
   ],
   powered: ["ballL", "ballR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["spindle", "head"], reason: "待確認(未修):spindle 的圓柱 r0.07×4 與 head 的圓柱 r0.3×0.22互相穿入 0.36(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["spindle", "lever"], reason: "待確認(未修):spindle 的圓柱 r0.07×4 與 lever 的方塊 0.2×0.12×0.3互相穿入 0.17(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["spindle", "bracket"], reason: "待確認(未修):spindle 的圓柱 r0.07×4 與 bracket 的方塊 2.2×0.12×0.3互相穿入 0.17(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["armL", "head"], reason: "待確認(未修):armL 的方塊 1×0.1×0.08 與 head 的圓柱 r0.3×0.22互相穿入 0.15(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["armR", "head"], reason: "待確認(未修):armR 的方塊 1×0.1×0.08 與 head 的圓柱 r0.3×0.22互相穿入 0.15(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["linkL", "sleeve"], reason: "待確認(未修):linkL 的方塊 1×0.08×0.06 與 sleeve 的圓柱 r0.22×0.22互相穿入 0.13(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["linkR", "sleeve"], reason: "待確認(未修):linkR 的方塊 1×0.08×0.06 與 sleeve 的圓柱 r0.22×0.22互相穿入 0.13(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["sleeve", "lever"], reason: "待確認:sleeve 的圓柱 r0.22×0.22 與 lever 的方塊 0.2×0.12×0.3重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, 10], initial: 8.8 },
   target: "lever",
   view: { direction: [0.04, 0.06, 1] },

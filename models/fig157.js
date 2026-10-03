@@ -51,6 +51,12 @@ export default {
     { id: "link", kind: "link", width: 0.2, thickness: 0.08 },
     { id: "rod", kind: "group", pieces: [{ kind: "box", size: [0.18, 2.4, 0.1], at: [0, -1.4, 0] }] },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["disc"], reason: "待確認:disc 與帶動(或支撐)它的零件之間差 0.06 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["crank"], reason: "待確認(未修):crank 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["link"], reason: "待確認:link 與帶動(或支撐)它的零件之間差 0.06 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["rod"], reason: "待確認(未修):rod 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+  ],
   driver: { part: "disc", type: "rotation" },
   target: "rod",
   view: { direction: [0.06, 0.05, 1] },

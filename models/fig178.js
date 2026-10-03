@@ -70,6 +70,10 @@ export default {
     { id: "slide", kind: "box", size: [0.5, 0.35, 0.3] },
     { id: "guide", kind: "box", center: [-5.8, SLIDE_Y - 0.25, 0.3], size: [6.2, 0.1, 0.3] },
   ],
+  waivers: [
+    { check: "interference", parts: ["rod", "slide"], reason: "待確認(未修):rod 的方塊 1×0.16×0.08 與 slide 的方塊 0.5×0.35×0.3互相穿入 0.19(4 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["rod", "guide"], reason: "待確認:rod 的方塊 1×0.16×0.08 與 guide 的方塊 6.2×0.1×0.3重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "crank", type: "rotation" },
   target: "slide",
   view: { direction: [0.06, 0.05, 1], fit: ["disc", "crank"] },

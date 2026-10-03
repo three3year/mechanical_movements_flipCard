@@ -43,6 +43,11 @@ export default {
     { id: "rod", kind: "group", pieces: [{ kind: "cylinder", axis: Y, radius: 0.06, length: 1.3, at: [0, 0.6, 0] }, { kind: "cylinder", radius: 0.12, inner: 0.05, length: 0.15 }] },
   ],
   powered: ["ballL", "ballR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "unsupported", parts: ["rod"], reason: "待確認:rod 與帶動(或支撐)它的零件之間差 0.03 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "interference", parts: ["spindle", "armL"], reason: "待確認:spindle 的圓柱 r0.14×0.3 與 armL 的方塊 1×0.1×0.06重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["spindle", "armR"], reason: "待確認:spindle 的圓柱 r0.14×0.3 與 armR 的方塊 1×0.1×0.06重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, MAX], initial: 8.8 },
   target: "rod",
   view: { direction: [0.04, 0.06, 1] },

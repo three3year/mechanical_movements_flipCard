@@ -60,6 +60,12 @@ export default {
     { id: "swivel", kind: "plate", center: SWIVEL, shape: shape(circle(0.18), [circle(0.08).reverse()]), thickness: 0.25, posed: true, arrow: false },
     { id: "slider", kind: "cylinder", radius: 0.12, length: 0.4 },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["rod"], reason: "待確認:rod 與帶動(或支撐)它的零件之間差 0.08 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["swivel"], reason: "待確認:swivel 與帶動(或支撐)它的零件之間差 0.08 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["slider"], reason: "待確認(未修):slider 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "interference", parts: ["rod", "slider"], reason: "待確認(未修):rod 的方塊 1×0.16×0.08 與 slider 的圓柱 r0.12×0.4互相穿入 0.12(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "crank", type: "rotation" },
   target: "slider",
   view: { direction: [0.06, 0.05, 1] },

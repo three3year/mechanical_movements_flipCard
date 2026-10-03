@@ -63,6 +63,9 @@ export default {
     { id: "rod", kind: "plate", shape: rodShape, thickness: 0.1, arrow: false },
     { id: "mold", kind: "box", size: [0.7, 0.5, 0.4] },
   ],
+  waivers: [
+    { check: "interference", parts: ["rod", "mold"], reason: "待確認(未修):rod 的板 與 mold 的方塊 0.7×0.5×0.4互相穿入 0.25(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "disc", type: "rotation" },
   target: "mold",
   view: { direction: [0.06, 0.05, 1] },

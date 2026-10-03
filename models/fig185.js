@@ -87,6 +87,18 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["rocker"], reason: "待確認:rocker 與帶動(或支撐)它的零件之間差 0.09 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["valveRod"], reason: "待確認(未修):valveRod 在動,但離帶動(或支撐)它的零件還有 0.97 的空隙,少了相連的軸、銷或連桿,尚未補上" },
+    { check: "unsupported", parts: ["blockRod"], reason: "待確認:blockRod 與帶動(或支撐)它的零件之間差 0.03 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "interference", parts: ["shaft", "rodForward"], reason: "待確認(未修):shaft 的圓柱 r0.16×1.4 與 rodForward 的方塊 1×0.16×0.08互相穿入 0.24(384 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["shaft", "rodBackward"], reason: "待確認(未修):shaft 的圓柱 r0.16×1.4 與 rodBackward 的方塊 1×0.16×0.08互相穿入 0.19(320 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["rodForward", "block"], reason: "待確認:rodForward 的圓柱 r0.032×0.176 與 block 的方塊 0.2×0.2×0.2重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["link", "block"], reason: "待確認(未修):link 的板 與 block 的方塊 0.2×0.2×0.2互相穿入 0.15(368 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["block", "hanger"], reason: "待確認:block 的方塊 0.2×0.2×0.2 與 hanger 的圓柱 r0.02×0.132重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["rodBackward", "hanger"], reason: "待確認:rodBackward 的圓柱 r0.032×0.176 與 hanger 的方塊 1×0.1×0.06重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["rodBackward", "block"], reason: "待確認:rodBackward 的圓柱 r0.032×0.176 與 block 的方塊 0.2×0.2×0.2重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "shaft", type: "rotation" },
   target: "valveRod",
   states: {

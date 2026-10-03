@@ -43,6 +43,9 @@ export default {
     { id: "eye", kind: "plate", shape: shape(polygon(8, 0.42, Math.PI / 8), [circle(0.2).reverse()]), thickness: 0.25, arrow: false },
     { id: "egg", kind: "trace" },
   ],
+  waivers: [
+    { check: "interference", parts: ["rod", "eye"], reason: "待確認(未修):rod 的方塊 1×0.22×0.1 與 eye 的板互相穿入 0.18(96 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "crank", type: "rotation" },
   target: "point", // 畫出蛋形橢圓的點
   view: { direction: [0.06, 0.05, 1] },

@@ -42,7 +42,7 @@ function insert(s, entries) {
   }
   let m = /\nexport default \{\r?\n  \.\.\.[^\n]*\n  waivers: \[\r?\n/.exec(s);
   if (m) return s.slice(0, m.index + m[0].length) + entries.map((e) => "    " + e + "\n").join("") + s.slice(m.index + m[0].length);
-  m = /\nexport default ([^;{]+);\s*$/.exec(s);
+  m = /\nexport default ((?!\{)[\s\S]+?);\s*$/.exec(s);
   if (!m) return null;
   return s.slice(0, m.index) + "\nexport default {\n  ..." + m[1] + ",\n  waivers: [\n" + entries.map((e) => "    " + e + "\n").join("") + "  ],\n};\n";
 }

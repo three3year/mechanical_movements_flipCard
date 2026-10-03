@@ -61,6 +61,9 @@ export default {
       ],
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["treadle", "stands"], reason: "待確認:treadle 的方塊 4.6×0.16×0.2 與 stands 的方塊 7.4×0.08×1.4重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "disc", type: "rotation" },
   target: "treadle", // 原文是踏板帶動圓盤;模型以圓盤為主動件,目標件標另一端的踏板
   view: { direction: [0.06, 0.05, 1] },

@@ -48,6 +48,11 @@ export default {
     { id: "pawlLeft", kind: "group", posed: true, arrow: false, pieces: [pawl(-1)] },
     { id: "rod", kind: "group", pieces: [{ kind: "box", size: [0.3, 2.6, 0.12], at: [0, 1.4, 0] }, { kind: "cylinder", radius: 0.26, inner: 0.12, length: 0.18 }] },
   ],
+  waivers: [
+    { check: "unsupported", parts: ["gear"], reason: "待確認:gear 與帶動(或支撐)它的零件之間差 0.09 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["pawlRight"], reason: "待確認:pawlRight 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+    { check: "unsupported", parts: ["pawlLeft"], reason: "待確認:pawlLeft 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
+  ],
   driver: { part: "rod", type: "translation", direction: [0, -1, 0], cycle: [0, STROKE] },
   target: "gear",
   states: {

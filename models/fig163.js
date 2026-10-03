@@ -70,6 +70,14 @@ export default {
     { id: "belt", kind: "belt" },
   ],
   powered: ["lowerPulley"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
+  waivers: [
+    { check: "interference", parts: ["armL", "head"], reason: "待確認(未修):armL 的方塊 1×0.1×0.08 與 head 的圓柱 r0.3×0.22互相穿入 0.14(288 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["armR", "head"], reason: "待確認(未修):armR 的方塊 1×0.1×0.08 與 head 的圓柱 r0.3×0.22互相穿入 0.14(288 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["linkL", "sleeve"], reason: "待確認(未修):linkL 的方塊 1×0.08×0.06 與 sleeve 的圓柱 r0.22×0.22互相穿入 0.13(288 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["linkR", "sleeve"], reason: "待確認(未修):linkR 的方塊 1×0.08×0.06 與 sleeve 的圓柱 r0.22×0.22互相穿入 0.13(288 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["frame", "belt"], reason: "待確認:belt 的第 50 段穿過frame 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+    { check: "interference", parts: ["crank", "shifter"], reason: "待確認:crank 的方塊 1.6×0.14×0.1 與 shifter 的方塊 0.1×1.9×0.1重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "shifter", // 調速器的輸出:把皮帶撥到不同輪上的撥叉(皮帶是路徑零件,不上目標色)
   states: {

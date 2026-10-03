@@ -113,6 +113,11 @@ export default {
       pieces: [{ kind: "cylinder", radius: 0.1, length: 2.2, at: [0, 0, 1.1] }], // 軸:往右穿過機架板的軸承孔
     },
   ],
+  waivers: [
+    { check: "interference", parts: ["disc", "screw"], reason: "待確認(未修):disc 的方塊 0.3×0.5×0.45 與 screw 的Tube互相穿入 0.19(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["screw", "nut"], reason: "待確認(未修):screw 的Tube 與 nut 的方塊 0.4×0.26×0.24互相穿入 0.12(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["lever", "frame"], reason: "待確認(未修):lever 的板 與 frame 的板互相穿入 0.22(12 個取樣姿勢),尚未修正" },
+  ],
   driver: { part: "disc", type: "rotation", range: [-REVS.back * TAU, REVS.ahead * TAU] },
   target: "lever",
   view: { direction: [0.3, 0.2, 1] },

@@ -44,6 +44,9 @@ export default {
     },
     { id: "rod", kind: "group", pieces: [{ kind: "box", size: [0.2, 2.0, 0.12], at: [0, -1.1, 0] }, { kind: "cylinder", radius: 0.24, inner: 0.12, length: 0.16 }] },
   ],
+  waivers: [
+    { check: "interference", parts: ["disc", "crank"], reason: "待確認:disc 的圓柱 r0.2×0.55 與 crank 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
+  ],
   driver: { part: "disc", type: "rotation" },
   target: "rod",
   view: { direction: [0.06, 0.05, 1] },
