@@ -18,6 +18,12 @@ import * as m267 from "../models/fig267.js";
 import * as m270 from "../models/fig270.js";
 import { sweep } from "./helpers.js";
 import * as m247 from "../models/fig247.js";
+import * as m279 from "../models/fig279.js";
+import * as m280 from "../models/fig280.js";
+import * as m281 from "../models/fig281.js";
+import * as m282 from "../models/fig282.js";
+import * as m283 from "../models/fig283.js";
+import * as m284 from "../models/fig284.js";
 import * as m265 from "../models/fig265.js";
 import * as m268 from "../models/fig268.js";
 import * as m269 from "../models/fig269.js";
@@ -326,4 +332,56 @@ test("第 276 種:凸輪橫跨中心所測的每個方向直徑皆相等,兩滾�
   }
   const xs = sweep(2 * Math.PI, 90).map((t) => m276.follower(t).x);
   assert.ok(Math.max(...xs) - Math.min(...xs) > 0.4, "桿往復");
+});
+
+test("第 279 種:曲柄轉動,套在曲柄手腕上的軸承盒在十字頭的槽裡滑動,十字頭往復直線運動", () => {
+  const xs = sweep(2 * Math.PI, 72).map((t) => m279.crosshead(t).x);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 1.4, "十字頭往復,行程 = 曲柄直徑");
+  for (const t of sweep(2 * Math.PI, 12)) {
+    const { pin, x } = m279.crosshead(t);
+    close(pin[0], x, "軸承盒(曲柄銷)始終在槽的中線上", 1e-12);
+  }
+});
+
+test("第 280 種:短槓桿外端往上時夾住輪緣、帶動輪轉;往下推時鬆開滑回,棘輪擋住輪不倒轉", () => {
+  const { FROM, TO } = m280.geometry;
+  const span = TO - FROM;
+  const up = m280.capstan(span);
+  close(up.wheel, span, "往上那一程輪跟著轉");
+  const down = m280.capstan(2 * span);
+  close(down.wheel, span, "往下那一程輪不動");
+  close(down.block, FROM, "夾具滑回原位");
+  const ws = sweep(6 * span, 300).map((v) => m280.capstan(v).wheel);
+  assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-12), "輪只朝一個方向轉");
+});
+
+test("第 281 種:圓盤旋轉,槽內的銷使右側的槓桿振動(銷始終在槽裡)", () => {
+  const angles = sweep(2 * Math.PI, 72).map(m281.lever);
+  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.3, "槓桿振動");
+  close(m281.lever(2 * Math.PI), m281.lever(0), "圓盤一圈一個來回", 1e-12);
+});
+
+test("第 282 種:圓盤轉動,直立桿擺動:底部的齒條交替直線運動,頂部的重物交替上下", () => {
+  const racks = sweep(2 * Math.PI, 72).map((t) => m282.motion(t).rack);
+  const ys = sweep(2 * Math.PI, 72).map((t) => m282.weight(t).y);
+  assert.ok(Math.max(...racks) - Math.min(...racks) > 0.3, "齒條來回");
+  assert.ok(Math.max(...ys) - Math.min(...ys) > 1, "重物上下");
+  close(m282.motion(2 * Math.PI).rack, m282.motion(0).rack, "一圈回到原處", 1e-9);
+});
+
+test("第 283 種:手柄振動,經小齒輪使齒條上下移動;齒條移動量 = 小齒輪節圓上轉過的弧長", () => {
+  const a = 0.5;
+  close(m283.rack(a) - m283.rack(0), 0.55 * a * Math.sign(m283.rack(a) - m283.rack(0)), "位移 = 節圓半徑 × 轉角", 1e-9);
+  assert.ok(m283.rack(-0.5) < m283.rack(0) === m283.rack(0.5) > m283.rack(0), "手柄來回,齒條上下");
+});
+
+test("第 284 種:曲柄每轉一圈,卡榫推棘輪前進一段,小齒輪帶平台的齒條前進;接點越遠進料越慢", () => {
+  const slow = m284.feed(2 * Math.PI, "slow");
+  const fast = m284.feed(2 * Math.PI, "fast");
+  close(slow.wheel - m284.feed(0, "slow").wheel, slow.step, "一圈前進一段", 1e-9);
+  assert.ok(fast.step > slow.step, "接點靠近支點時進料快");
+  const ws = sweep(4 * Math.PI, 200).map((t) => m284.feed(t, "slow").wheel);
+  assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-9), "棘輪只往前");
+  assert.ok(ws.slice(1).some((w, i) => w === ws[i]), "回程時棘輪不動");
+  close(m284.feed(4 * Math.PI, "slow").carriage - m284.feed(0, "slow").carriage, -2 * slow.step * 0.42, "平台位移 = 小齒輪轉角 × 節圓半徑", 1e-9);
 });
