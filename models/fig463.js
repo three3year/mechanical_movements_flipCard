@@ -31,7 +31,7 @@ export default {
       kind: "group",
       pieces: [
         { kind: "box", size: [6.0, 0.25, 1.2], at: [0.5, BED - 0.125, 0] },
-        { kind: "box", size: [0.3, 0.25, 1.2], at: [0.45, BED + 0.12, 0] },
+        { kind: "box", size: [0.3, 0.25, 1.2], at: [0.53, BED + 0.12, 0] }, // 擋塊:下閘葉倒到底時靠在它的側面
       ],
     },
     { id: "head", kind: "fill", fluid: "water", center: [-1.4, 1.75, 0], size: [2.6, 3.5, 1.0], level: NORMAL / 3.5 },
@@ -59,7 +59,4 @@ export default {
       readouts: [{ label: "堰", value: g.open ? "上閘葉翻轉、下閘葉被推回,河床處打開沖刷" : "直立關閉,水從頂上的缺口流過" }],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["bed", "lower"], reason: "未修:下模的行程端碰到床台的擋塊,重疊 0.08(96 個取樣中 37 個)(列入待確認清單)" },
-  ],
 };

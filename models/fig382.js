@@ -26,7 +26,7 @@ export default {
       kind: "group",
       arrow: false,
       pieces: [
-        { kind: "cylinder", axis: Y, radius: 0.07, length: 1.6, at: [0, -0.3, 0] },
+        { kind: "cylinder", axis: Y, radius: 0.07, length: 1.54, at: [0, -0.33, 0] },
         { kind: "box", size: [0.4, 0.14, 0.14], at: [0, 0.5, 0] },
         { kind: "cylinder", axis: [1, 0, 0], radius: 0.06, length: 0.55, at: [0, HINGE0, 0] },
       ],
@@ -37,9 +37,9 @@ export default {
       arrow: false,
       pieces: [
         // 鏡框以一段托架架在立柱的前面(立柱在鏡子背後;鏡子前後傾時下緣不會掃到立柱與底座)
-        { kind: "plate", shape: shape(rect(2.4, 3.0), [rect(1.9, 2.5).reverse()]), thickness: 0.12, at: [0, 0.6, 0.6] },
-        { kind: "plate", shape: shape(rect(1.9, 2.5)), thickness: 0.03, at: [0, 0.6, 0.59] },
-        { kind: "box", size: [0.16, 0.1, 0.5], at: [0, 0, 0.3] },
+        { kind: "plate", shape: shape(rect(2.4, 3.0), [rect(1.9, 2.5).reverse()]), thickness: 0.12, at: [0, 0.6, 1.0] }, // 鏡框離鉸鏈夠遠:往後仰到底時下緣不碰立柱與底座
+        { kind: "plate", shape: shape(rect(1.9, 2.5)), thickness: 0.03, at: [0, 0.6, 0.99] },
+        { kind: "box", size: [0.16, 0.1, 0.85], at: [0, 0, 0.525] },
         { kind: "cylinder", axis: [1, 0, 0], radius: 0.09, length: 0.25, at: [0, 0, 0] },
       ],
     },
@@ -67,8 +67,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["base", "mirror"], reason: "未修:鏡子降到最低又往後仰到底時,鏡框的下緣碰到底座,重疊 0.18(288 個取樣中 14 個)(列入待確認清單)" },
-    { check: "interference", parts: ["stem", "mirror"], reason: "未修:鏡子降到最低又往後仰時,鏡框的下緣擦到立柱,重疊 0.05;降低的位置應再高一點(列入待確認清單)" },
-  ],
 };

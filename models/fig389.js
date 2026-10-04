@@ -7,7 +7,7 @@ import { indexStep } from "./jumps.js";
 import { shape, circle, rect, thickLine } from "./shapes.js";
 
 const PITCH = 0.22;
-const ECC = { center: [0.75, 0.6, 0.2], e: 0.12, r: 0.42 };
+const ECC = { center: [0.75, 0.6, 0.3], e: 0.12, r: 0.42 }; // 偏心輪在棘齒桿的前面一層,只經偏心環與棘爪推棘齒桿
 export const TURNS = 10;
 export const RANGE = [0, TURNS * TAU];
 
@@ -34,7 +34,7 @@ export default {
       kind: "group",
       pieces: [
         // 柱身(剖面)與底座
-        { kind: "plate", shape: shape([[-1.4, -2.8], [1.6, -2.8], [1.6, -2.5], [0.9, -2.3], [0.55, -1.0], [0.5, 1.8], [0.2, 1.8], [0.2, -2.5], [-0.25, -2.5], [-0.25, 1.8], [-0.55, 1.8], [-0.6, -1.0], [-0.95, -2.3], [-1.4, -2.5]]), thickness: 0.5, at: [0, 0, -0.3] },
+        { kind: "plate", shape: shape([[-1.4, -2.8], [1.6, -2.8], [1.6, -2.5], [0.9, -2.3], [0.55, -1.0], [0.5, 1.8], [0.3, 1.8], [0.3, -2.5], [-0.25, -2.5], [-0.25, 1.8], [-0.55, 1.8], [-0.6, -1.0], [-0.95, -2.3], [-1.4, -2.5]]), thickness: 0.5, at: [0, 0, -0.3] },
         // 上方的擋止棘爪(固定在柱身上)
         { kind: "plate", shape: shape(thickLine([[0.55, 1.65], [0.3, 1.4], [0.3, 1.25]], 0.08)), thickness: 0.1, at: [0, 0, 0.1] },
         { kind: "cylinder", radius: 0.05, length: 0.3, at: [0.55, 1.65, 0.1] },
@@ -60,6 +60,17 @@ export default {
         { kind: "box", size: [1.0, 0.08, 0.08], at: [0.5, 0, 0.25], accent: true },
       ],
     },
+    // 偏心環:套在偏心輪外、不跟著轉,往下伸出一根吊臂,下端的銷掛著推棘齒桿的棘爪(推斷;原圖只畫出棘爪)
+    {
+      id: "strap",
+      kind: "group",
+      arrow: false,
+      pieces: [
+        { kind: "cylinder", radius: ECC.r + 0.07, inner: ECC.r, length: 0.18 },
+        { kind: "box", size: [0.08, 0.22, 0.1], at: [0, -0.56, 0] },
+        { kind: "cylinder", radius: 0.03, length: 0.3, at: [0, -0.6, -0.1] },
+      ],
+    },
     { id: "pawl", kind: "plate", shape: shape(thickLine([[0, 0], [-0.5, 0.25]], 0.08), [circle(0.03).reverse()]), thickness: 0.1, arrow: false },
   ],
   driver: { part: "eccentric", type: "rotation", range: RANGE, initial: 0 },
@@ -68,12 +79,11 @@ export default {
   pose(theta) {
     const h = rack(theta);
     // 下方的棘爪:掛在偏心輪上,爪尖隨偏心輪上下,往左伸到棘齒
-    const c = [ECC.center[0] + ECC.e * Math.cos(theta), ECC.center[1] - 0.6 + ECC.e * Math.sin(theta), 0.25];
-    return { parts: { rack: { position: [0, h - 0.2, 0] }, eccentric: { angle: theta }, pawl: { position: c, angle: 0 } }, readouts: [] };
+    const disc = [ECC.center[0] + ECC.e * Math.cos(theta), ECC.center[1] + ECC.e * Math.sin(theta), ECC.center[2]];
+    const c = [disc[0], disc[1] - 0.6, 0.1];
+    return { parts: { rack: { position: [0, h - 0.2, 0] }, eccentric: { angle: theta }, strap: { position: disc }, pawl: { position: c, angle: 0 } }, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["rack", "eccentric"], reason: "偏心輪頂齒條的過程依時序演出;偏心輪與齒條的齒重疊 0.04(96 個取樣中 20 個)" },
-    { check: "interference", parts: ["body", "rack"], reason: "未修:齒條與千斤頂的殼體畫在同一層,重疊 0.08;殼體上讓齒條通過的槽沒有畫出來(列入待確認清單)" },
-    { check: "unsupported", parts: ["pawl"], reason: "未修:棘爪沒有畫出樞軸,與齒條之間差 0.05(列入待確認清單)" },
+    { check: "interference", parts: ["rack", "pawl"], reason: "棘爪推棘齒的過程依時序演出(每圈推上一齒),棘爪尖與齒重疊 0.10(96 個取樣中 30 個)" },
   ],
 };

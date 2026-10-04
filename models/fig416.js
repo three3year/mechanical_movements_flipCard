@@ -81,7 +81,7 @@ export default {
         { kind: "plate", shape: ring(1.05, 0.85), thickness: 0.3, at: [0, 0, -0.15] },
         { kind: "plate", shape: shape(circle(0.9), [circle(0.12).reverse()]), thickness: 0.06, at: [0, 0, -0.15], mark: [0.55, -0.45], markSize: 0.08 },
         { kind: "plate", shape: shape(thickLine([[0, 0], [CRANK, 0]], 0.2)), thickness: 0.06, at: [0, 0, 0] },
-        { kind: "cylinder", radius: 0.13, length: 0.3, at: [0, 0, 0] },
+        { kind: "cylinder", radius: 0.13, length: 0.2, at: [0, 0, -0.05] }, // 輪轂只到曲柄臂的正面:連桿與彈簧從它前面掃過
         { kind: "cylinder", radius: 0.06, length: 0.26, at: [CRANK, 0, 0.08] },
       ],
     },
@@ -110,9 +110,7 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["crank", "spring"], reason: "未修:彈簧擺動時掃過曲柄的輪轂,重疊 0.05(96 個取樣中 5 個)(列入待確認清單)" },
     { check: "interference", parts: ["rod", "treadle"], reason: "接合處的簡化畫法:連桿的下端鉸接在踏板上,桿端與踏板重疊 0.03" },
-    { check: "interference", parts: ["crank", "rod"], reason: "未修:連桿每圈有一小段掃過曲柄的輪轂,重疊 0.04(96 個取樣中 10 個)(列入待確認清單)" },
     { check: "interference", parts: ["frame", "spring"], reason: "彈簧的上端掛在機架上:端頭伸進機架的板 0.06" },
     { check: "interference", parts: ["frame", "treadle"], reason: "接合處的簡化畫法:踏板鉸接在機架的腳上,踏板端與機架的板重疊 0.06" },
   ],

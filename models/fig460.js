@@ -38,9 +38,13 @@ export default {
       kind: "group",
       pieces: [
         // 左岸、V 形的渠、右岸與槓桿的座
-        { kind: "plate", shape: shape([[-3.0, 0.3], [-1.25, 0.3], [-0.2, -1.15], [0.9, -1.15], [1.6, 0.3], [3.0, 0.3], [3.0, -1.6], [-3.0, -1.6]]), thickness: 1.4 },
+        { kind: "plate", shape: shape([[-3.0, 0.3], [-1.25, 0.3], [-0.2, -1.15], [1.5, -1.15], [1.9, 0.3], [3.0, 0.3], [3.0, -1.6], [-3.0, -1.6]]), thickness: 1.4 },
         { kind: "box", size: [0.3, 1.0, 0.44], at: [LEVER_PIVOT[0], LEVER_PIVOT[1] - 0.55, 0] }, // 支柱頂著槓桿的背面
-        { kind: "box", size: [0.25, 0.15, 0.6], at: [PIVOT[0], PIVOT[1] - 0.12, 0] },
+        // 鉸座:底塊在舀斗下方留出擺動的空隙,兩片耳板夾著舀斗,鉸銷穿過去
+        { kind: "box", size: [0.25, 0.1, 0.8], at: [PIVOT[0], PIVOT[1] - 0.2, 0] },
+        { kind: "box", size: [0.12, 0.3, 0.05], at: [PIVOT[0], PIVOT[1] - 0.1, 0.36] },
+        { kind: "box", size: [0.12, 0.3, 0.05], at: [PIVOT[0], PIVOT[1] - 0.1, -0.36] },
+        { kind: "cylinder", radius: 0.035, length: 0.78, at: PIVOT },
       ],
     },
     { id: "channel", kind: "fill", fluid: "water", center: [0.35, (WATER - 1.15) / 2, 0], size: [2.0, WATER + 1.15, 1.2], level: 1 },
@@ -90,8 +94,5 @@ export default {
       readouts: [{ label: "舀斗", value: rising ? "抬起:水流向鉸點倒到岸上" : "放下:浸進渠裡舀水" }],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["banks", "scoop"], reason: "未修:戽斗擺到岸邊時伸進岸壁,重疊 0.25(列入待確認清單)" },
-  ],
 };
 

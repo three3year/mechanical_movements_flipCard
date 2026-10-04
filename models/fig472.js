@@ -58,7 +58,8 @@ export default {
       ],
     },
     { id: "pumpRod", kind: "link", width: 0.07, thickness: 0.05 },
-    { id: "pumpPiston", kind: "cylinder", axis: Y, radius: PUMP.r - 0.02, length: 0.16, arrow: false },
+    // 泵的活塞與活塞銷:銷往前伸到泵桿那一層
+    { id: "pumpPiston", kind: "group", arrow: false, pieces: [{ kind: "cylinder", axis: Y, radius: PUMP.r - 0.02, length: 0.16 }, { kind: "cylinder", radius: 0.03, length: 0.44, at: [0, 0.08, 0.2] }] },
     {
       id: "piston",
       kind: "cylinder",
@@ -98,7 +99,4 @@ export default {
       readouts: [{ label: "滑閥送空氣到", value: h.below ? "活塞下方(抬錘)" : "活塞上方(打擊)" }],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["pumpPiston"], reason: "未修:泵桿畫在剖面的前面一層:桿的下端與泵的活塞之間差 0.03(活塞銷沒有畫出來)(列入待確認清單)" },
-  ],
 };

@@ -37,7 +37,7 @@ const folds = (x, top, s) => {
   return pts;
 };
 
-const DELIVERY = [[0, BASE_TOP - 0.05], [0, 1.35], [0.25, 1.6], [0.5, 1.35]];
+const DELIVERY = [[0, BASE_TOP - 0.05], [0, 1.35], [0.15, 1.5], [0.3, 1.35]]; // 出水口收在兩個風箱之間,頂板升到最高時碰不到
 const INLET = [[0, -1.6], [0, -0.75]];
 
 export default {
@@ -94,7 +94,6 @@ export default {
     return { parts, paths, flows, readouts: [{ label: "風箱", value: forward ? "右邊撐開吸水、左邊壓縮排水" : "左邊撐開吸水、右邊壓縮排水" }] };
   },
   waivers: [
-    { check: "interference", parts: ["works", "top1"], reason: "未修:風箱頂板壓到最低時碰到箱體,重疊 0.10(96 個取樣中 30 個)(列入待確認清單)" },
     { check: "interference", parts: ["works", "delivery1"], reason: "簡化畫法:出氣閥的閥瓣坐在閥座上,重疊 0.06" },
     { check: "interference", parts: ["works", "delivery0"], reason: "簡化畫法:出氣閥的閥瓣坐在閥座上,重疊 0.06" },
   ],

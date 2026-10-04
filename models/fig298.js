@@ -1,6 +1,6 @@
 // 第 298 種:老式的錶用擒縱(立軸擒縱)。上方是水平的擺輪,裝在直立的立軸上;立軸下段有兩個叉瓦,
 // 分別與冠狀輪上、下兩邊的齒接觸。擺輪來回擺動,兩個叉瓦輪流擋住、放開冠狀輪的齒,冠狀輪每擺一次轉過半個齒;
-// 冠狀輪軸左端的小齒輪與左下方的冠狀齒輪(contrate wheel)咬合,整個走輪系由它帶動。主動件是擺輪(累計擺動)。
+// 冠狀輪軸末端的小齒輪與下方的冠狀齒輪(contrate wheel)咬合(模型把它們放在右邊,見下),整個走輪系由它帶動。主動件是擺輪(累計擺動)。
 // 推斷:齒數與擺幅;左下的輪以面上的冠狀齒與小齒輪咬合(原圖從正面看到它的齒)。
 import { Y, Z, TAU, deg, swing, quatMul, quatAxisAngle, quatFromZ } from "./kit.js";
 import { escapeStep, sawCrown } from "./escapement.js";
@@ -12,7 +12,9 @@ export const SWING = deg(55);
 const CROWN = { center: [0.72, -0.55, 0], radius: 0.62 };
 export const PINION = { teeth: 8, radius: 0.22 };
 export const CONTRATE = { teeth: 28, radius: 0.78 };
-const CONTRATE_AT = [-1.75, CROWN.center[1] - CONTRATE.radius, -0.42];
+// 小齒輪與冠狀齒輪在冠狀輪的背面那一側(右邊):冠狀輪的齒朝著立軸,軸往另一邊伸才不會穿過立軸。
+// 原圖把小齒輪畫在左邊,軸得穿過立軸,實物做不出來(實物可行優先於插圖)
+const CONTRATE_AT = [CROWN.center[0] + 1.7, CROWN.center[1] - CONTRATE.radius, -0.42];
 
 /** 擺輪累計擺動 v → 擺輪角、冠狀輪轉角、左下冠狀齒輪轉角 */
 export function verge(v) {
@@ -52,8 +54,8 @@ export default {
         { kind: "cylinder", radius: CROWN.radius, inner: CROWN.radius - 0.08, length: 0.15 },
         { kind: "plate", shape: shape(circle(CROWN.radius - 0.04), [circle(0.05).reverse()]), thickness: 0.04, at: [0, 0, -0.06] },
         ...sawCrown({ teeth: N, radius: CROWN.radius - 0.02, height: 0.25, base: 0.075, thick: 0.05 }),
-        // 冠狀輪軸往左伸到左下輪的上方,末端的小齒輪
-        { kind: "cylinder", radius: 0.04, length: 2.6, at: [0, 0, 1.1] },
+        // 冠狀輪軸往右(背面)伸到右下輪的上方,末端的小齒輪
+        { kind: "cylinder", radius: 0.04, length: 2.0, at: [0, 0, -0.95] },
         { kind: "gear", teeth: PINION.teeth, radius: PINION.radius, width: 0.2, at: [0, 0, CROWN.center[0] - CONTRATE_AT[0]] },
       ],
     },
@@ -77,7 +79,7 @@ export default {
     return { parts: { balance: { angle: r.balance }, crown: { angle: r.crown }, contrate: { angle: r.contrate } }, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["balance", "crown"], reason: "未修:擺輪心軸與冠狀輪心軸在圖上畫成相交(重疊 0.09);實物的冠狀輪心軸止於擺輪心軸之前,由一個沒畫出來的軸承座托住(列入待確認清單)" },
+    { check: "interference", parts: ["balance", "crown"], reason: "擒縱的接觸依擺動的相位演出(每擺一次放過半齒),沒有逐點算叉瓦與冠狀輪齒的接觸;重疊 0.05(96 個取樣中 11 個)。列入待確認清單" },
     { check: "interference", parts: ["crown", "contrate"], reason: "簡化齒形:冠狀輪的小齒輪與端面齒輪的方塊齒齒側重疊 0.07" },
   ],
 };

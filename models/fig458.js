@@ -45,7 +45,10 @@ export default {
         { kind: "box", size: [0.14, 3.0, 0.14], at: [1.0, GROUND + 1.5, 0] },
         { kind: "plate", shape: shape(thickLine([[-1.35, 2.55], [0, 3.25], [1.35, 2.55]], 0.1)), thickness: 1.2 },
         { kind: "box", size: [2.2, 0.1, 0.1], at: [0, 2.85, 0] },
-        { kind: "box", size: [0.06, 0.5, 0.06], at: [0, 2.85 - 0.2, 0] },
+        // 吊架:滑輪兩側各一片夾板,軸銷穿過滑輪(不擋住輪輻)
+        { kind: "box", size: [0.06, 2.9 - PULLEY.center[1], 0.03], at: [0, (2.8 + PULLEY.center[1]) / 2, 0.09] },
+        { kind: "box", size: [0.06, 2.9 - PULLEY.center[1], 0.03], at: [0, (2.8 + PULLEY.center[1]) / 2, -0.09] },
+        { kind: "cylinder", radius: 0.03, length: 0.24, at: PULLEY.center },
         // 左邊柱上的水桶架
         { kind: "box", size: [0.6, 0.08, 0.5], at: [-1.3, 1.0, 0] },
       ],
@@ -81,7 +84,4 @@ export default {
       readouts: [{ label: "水桶", value: b.rightFull ? "拉空桶(左)往下,滿桶(右)上來" : "拉空桶(右)往下,滿桶(左)上來" }],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["house", "pulley"], reason: "未修:滑輪的輻條轉過吊架時擦到 0.05(96 個取樣中 32 個);吊架應離輪面遠一點(列入待確認清單)" },
-  ],
 };

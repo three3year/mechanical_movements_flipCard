@@ -67,7 +67,8 @@ export default {
       ],
     },
     { id: "lever", kind: "plate", shape: shape(thickLine([[0, 0], [0.75, 0]], 0.06)), thickness: 0.05, arrow: false, pieces: [{ kind: "sphere", radius: 0.12, at: [0.75, 0.15, 0] }] },
-    { id: "waste", kind: "box", size: [0.4, 0.08, 0.36], arrow: false },
+    // 廢水閥與閥桿:閥桿往上頂著槓桿(推斷)
+    { id: "waste", kind: "group", arrow: false, pieces: [{ kind: "box", size: [0.4, 0.08, 0.36] }, { kind: "cylinder", axis: [0, 1, 0], radius: 0.03, length: 0.2, at: [0, 0.12, 0] }] },
     { id: "delivery", kind: "box", size: [0.36, 0.08, 0.36], arrow: false },
     { id: "tankWater", kind: "fill", fluid: "water", center: [TANK.x, TANK.top - 0.5, 0], size: [0.82, 0.98, 0.5], level: 0.8 },
     { id: "pond", kind: "fill", fluid: "water", center: [1.1, -1.4, 0], size: [3.2, 1.2, 1.0], level: 0.55 },
@@ -99,7 +100,6 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["works", "lever"], reason: "接合處的簡化畫法:槓桿端的球壓在閥桿的頂端,球與桿端重疊 0.15" },
-    { check: "unsupported", parts: ["lever"], reason: "未修:槓桿與帶動它的浮球桿之間差 0.16,少畫了相連的銷(列入待確認清單)" },
   ],
 };
 

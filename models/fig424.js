@@ -65,7 +65,7 @@ export default {
       labelOffset: [-0.3, 0.3, 0.6],
       spin: 0.25,
       pieces: [
-        { kind: "cylinder", radius: 0.1, length: 1.2, at: [0, 0, -0.4] },
+        { kind: "cylinder", radius: 0.1, length: 0.8, at: [0, 0, DEPTH / 2 + 0.42] }, // 軸只在汽缸的前面:曲柄銷伸進活塞 C,軸本身不穿過活塞
         { kind: "plate", shape: shape(rect(CRANK + 0.2, 0.16, CRANK / 2, 0)), thickness: 0.06, at: [0, 0, DEPTH / 2 + 0.05] },
         { kind: "cylinder", radius: 0.08, length: 0.3, at: [CRANK, 0, DEPTH / 2], accent: true },
       ],
@@ -103,9 +103,5 @@ export default {
       ],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["pistonC", "shaft"], reason: "未修:活塞 C 擺動時掃過軸,重疊 0.27(96 個取樣中 84 個);活塞 C 上讓軸通過的缺口沒有畫出來(列入待確認清單)" },
-    { check: "interference", parts: ["pistonB", "shaft"], reason: "接合處的簡化畫法:活塞 B 套在軸上;活塞畫成沒有軸孔的板,重疊 0.49" },
-  ],
 };
 

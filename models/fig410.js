@@ -48,6 +48,8 @@ export default {
         { kind: "box", size: [4.4, 0.3, 0.3], at: [0.6, 0.55, 0] },
         // 固定夾頰(在木料直邊外側)
         { kind: "box", size: JAW, at: [EDGE - JAW[0] / 2, 0.05, 0] },
+        // 夾頰內面伸出的耳片:短桿一端的銷穿在這裡(推斷;原圖是俯視圖)
+        { kind: "box", size: [INSET + 0.14, 0.06, 0.2], at: [EDGE + INSET / 2, 0.16, 0] },
       ],
     },
     {
@@ -55,14 +57,16 @@ export default {
       kind: "group",
       arrow: false,
       pieces: [
-        { kind: "box", size: JAW, at: [JAW[0] / 2, 0.05, 0] },
+        // 活動夾頰沿木料的方向做得窄:木料的斜邊上只有一小段貼著它
+        { kind: "box", size: [JAW[0], JAW[1], 0.2], at: [JAW[0] / 2, 0.05, 0] },
+        { kind: "box", size: [INSET + 0.14, 0.06, 0.2], at: [-INSET / 2, 0.16, 0] },
         // 翼形螺絲
         { kind: "cylinder", radius: 0.05, length: 0.3, axis: Y, at: [JAW[0] / 2, 0.85, 0] },
         { kind: "box", size: [0.08, 0.14, 0.34], at: [JAW[0] / 2, 1.03, 0], accent: true },
       ],
     },
-    { id: "linkA", kind: "link", width: 0.14, thickness: 0.05 },
-    { id: "linkB", kind: "link", width: 0.14, thickness: 0.05 },
+    { id: "linkA", kind: "link", width: 0.14, thickness: 0.05, axis: Y }, // 短桿平躺在木料面上方
+    { id: "linkB", kind: "link", width: 0.14, thickness: 0.05, axis: Y },
     { id: "tip", kind: "lathe", axis: Y, profile: [[0, -0.1], [0.07, 0.05], [0.07, 0.2], [0, 0.2]] },
     { id: "centerLine", kind: "trace" },
   ],
@@ -89,12 +93,8 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["board", "jaw"], reason: "未修:夾口擺到極限時碰到板的邊緣,重疊 0.12(96 個取樣中 55 個)(列入待確認清單)" },
     { check: "interference", parts: ["linkB", "tip"], reason: "接合處的簡化畫法:筆尖裝在兩根連桿的接點上,與連桿端重疊 0.03" },
     { check: "interference", parts: ["linkA", "tip"], reason: "接合處的簡化畫法:筆尖裝在兩根連桿的接點上,與連桿端重疊 0.03" },
     { check: "interference", parts: ["linkA", "linkB"], reason: "接合處的簡化畫法:兩根連桿的端頭在同一個接點相疊,軸眼互相重疊 0.10" },
-    { check: "unsupported", parts: ["tip"], reason: "未修:筆尖與兩根連桿的接點之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["linkB"], reason: "未修:連桿 B 與夾口之間差 0.05,少畫了鉸接的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["linkA"], reason: "未修:連桿 A 與夾口之間差 0.05,少畫了鉸接的銷(列入待確認清單)" },
   ],
 };

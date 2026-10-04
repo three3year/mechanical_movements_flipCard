@@ -21,15 +21,15 @@ export default {
   parts: [
     { id: "paper", kind: "box", center: [0, -0.3, -0.12], size: [6.4, 5.4, 0.04] },
     { id: "straightedge", kind: "plate", shape: shape(rect(6.0, 0.45, 0, DIRECTRIX + 0.225)), thickness: 0.1 },
-    { id: "pin", kind: "group", pieces: [{ kind: "cylinder", radius: 0.07, length: 0.4, at: [FOCUS[0], FOCUS[1], 0.1] }] },
+    { id: "pin", kind: "group", pieces: [{ kind: "cylinder", radius: 0.07, length: 0.14, at: [FOCUS[0], FOCUS[1], -0.03] }] },
     {
       id: "square",
       kind: "group",
       arrow: false,
       pieces: [
         // 曲尺:靠在直尺下緣的橫頭與往下的尺葉(尺葉的左緣是鉛筆貼的邊)
-        { kind: "plate", shape: shape(rect(0.9, 0.25, -0.15, DIRECTRIX - 0.125)), thickness: 0.08, at: [0, 0, 0.05] },
-        { kind: "plate", shape: shape(rect(0.3, BLADE, 0.15, DIRECTRIX - BLADE / 2)), thickness: 0.08, at: [0, 0, 0.05] },
+        { kind: "plate", shape: shape(rect(0.9, 0.25, -0.15, DIRECTRIX - 0.125)), thickness: 0.08, at: [0, 0, 0.12] },
+        { kind: "plate", shape: shape(rect(0.3, BLADE, 0.15, DIRECTRIX - BLADE / 2)), thickness: 0.08, at: [0, 0, 0.12] }, // 尺葉從焦點的矮銷上方滑過
       ],
     },
     { id: "string", kind: "rope", radius: 0.02 },
@@ -42,7 +42,7 @@ export default {
   pose(x0) {
     const x = clamp(x0, ...RANGE);
     const P = pencil(x);
-    const end = [x, DIRECTRIX - BLADE, 0.12];
+    const end = [x, DIRECTRIX - BLADE, 0.05];
     const n = Math.max(2, Math.round(Math.abs(x) / 0.05));
     const points = Array.from({ length: n + 1 }, (_, i) => {
       const q = pencil((x * i) / n);
@@ -50,13 +50,11 @@ export default {
     });
     return {
       parts: { square: { position: [x, 0, 0] }, pencil: { position: [P[0], P[1], 0.1] } },
-      paths: { string: { points: [[FOCUS[0], FOCUS[1], 0.12], [P[0], P[1], 0.12], end], closed: false, phase: 0 }, trace: { points, closed: false } }, // 繩端繫在焦點的銷上
+      paths: { string: { points: [[FOCUS[0], FOCUS[1], 0.02], [P[0], P[1], 0.04], end], closed: false, phase: 0 }, trace: { points, closed: false } }, // 繩端繫在焦點的銷上
       readouts: [],
     };
   },
   waivers: [
-    { check: "interference", parts: ["pin", "string"], reason: "線繫在銷上:線頭繞在銷上,中心線落在銷內 0.04" },
-    { check: "interference", parts: ["pin", "square"], reason: "未修:角尺滑到行程端時伸到固定的銷,重疊 0.19(96 個取樣中 8 個)(列入待確認清單)" },
     { check: "interference", parts: ["square", "pencil"], reason: "鉛筆靠在角尺的邊上:筆身與尺邊重疊 0.04" },
   ],
 };

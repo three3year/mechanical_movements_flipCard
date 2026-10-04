@@ -26,8 +26,8 @@ export default {
       kind: "group",
       pieces: [
         // 兩根立柱(內側是導件 D、D)與頂上的橫樑
-        { kind: "box", size: [0.3, 5.0, 0.35], at: [-1.15, -0.3, 0] },
-        { kind: "box", size: [0.3, 5.0, 0.35], at: [1.15, -0.3, 0] },
+        { kind: "box", size: [0.3, 5.0, 0.24], at: [-1.15, -0.3, 0] },
+        { kind: "box", size: [0.3, 5.0, 0.24], at: [1.15, -0.3, 0] }, // 立柱比橫樑薄:蒸汽管貼著立柱的前面走
         { kind: "plate", shape: shape([[-1.5, 2.2], [1.5, 2.2], [1.3, 2.75], [0.5, 3.0], [-0.5, 3.0], [-1.3, 2.75]]), thickness: 0.35 },
         { kind: "box", size: [3.2, 0.18, 0.9], at: [0, -2.85, 0] },
         { kind: "plate", shape: shape([...arcPoints(3.2, 0, TAU).slice(0, -1)], [arcPoints(2.95, 0, TAU).slice(0, -1).reverse()]), thickness: 0.15, at: [0, CRANK[1], -0.7] },
@@ -74,7 +74,4 @@ export default {
     const cyl = cylinderPose(CYL, y.piston, y.downward, p);
     return { parts: { crank: { angle: y.theta }, yokeA: { position: [0, y.head, 0] }, ...cyl.parts }, flows: cyl.flows, readouts: [] };
   },
-  waivers: [
-    { check: "interference", parts: ["frame", "pipe"], reason: "未修:蒸汽管貼著機架的立柱走:管與立柱在圖上重疊 0.05(管應在立柱的前面一點)(列入待確認清單)" },
-  ],
 };

@@ -31,10 +31,11 @@ export default {
   figure: 405,
   parts: [
     { id: "paper", kind: "box", center: [0, 0, -0.12], size: [5.2, 6.2, 0.04] },
-    { id: "axes", kind: "group", pieces: [{ kind: "box", size: [0.02, 6.0, 0.02], at: [0, 0, -0.05] }, { kind: "box", size: [5.0, 0.02, 0.02], at: [0, 0, -0.05] }, { kind: "cylinder", radius: 0.07, length: 0.4, at: [F2[0], F2[1], 0.1] }, { kind: "plate", shape: shape(circle(0.1)), thickness: 0.02, at: [F1[0], F1[1], -0.08] }] },
+    { id: "axes", kind: "group", pieces: [{ kind: "box", size: [0.02, 6.0, 0.02], at: [0, 0, -0.05] }, { kind: "box", size: [5.0, 0.02, 0.02], at: [0, 0, -0.05] }, { kind: "cylinder", radius: 0.07, length: 0.14, at: [F2[0], F2[1], -0.03] }, { kind: "plate", shape: shape(circle(0.1)), thickness: 0.02, at: [F1[0], F1[1], -0.08] }] },
     { id: "upper", kind: "rod", radius: 0.012 },
     { id: "lower", kind: "rod", radius: 0.012 },
-    { id: "ruler", kind: "plate", center: F1, shape: shape(rect(L, 0.24, L / 2, -0.12), [circle(0.06).reverse()]), thickness: 0.06, arrow: false },
+    { id: "ruler", kind: "plate", center: [F1[0], F1[1], 0.12], // 直尺架高:從焦點的矮銷與繩子上方掃過
+      shape: shape(rect(L, 0.24, L / 2, -0.12), [circle(0.06).reverse()]), thickness: 0.06, arrow: false },
     { id: "string", kind: "rope", radius: 0.02 },
     { id: "pencil", kind: "lathe", profile: [[0, -0.1], [0.05, 0], [0.06, 0.4], [0, 0.4]] },
     { id: "trace", kind: "trace" },
@@ -45,7 +46,7 @@ export default {
   pose(theta0) {
     const theta = clamp(theta0, ...RANGE);
     const P = pencil(theta);
-    const end = [F1[0] + L * Math.cos(theta), F1[1] + L * Math.sin(theta), 0.08];
+    const end = [F1[0] + L * Math.cos(theta), F1[1] + L * Math.sin(theta), 0.05];
     const n = Math.max(2, Math.round(Math.abs(theta - deg(90)) / deg(1)));
     const points = Array.from({ length: n + 1 }, (_, i) => {
       const q = pencil(deg(90) + ((theta - deg(90)) * i) / n);
@@ -54,7 +55,7 @@ export default {
     return {
       parts: { ruler: { angle: theta }, pencil: { position: [P[0], P[1], 0.1] } },
       paths: {
-        string: { points: [[F2[0], F2[1], 0.08], [P[0], P[1], 0.08], end], closed: false, phase: 0 }, // 繩端繫在銷上
+        string: { points: [[F2[0], F2[1], 0.02], [P[0], P[1], 0.04], end], closed: false, phase: 0 }, // 繩端繫在銷上
         trace: { points, closed: false },
         upper: { points: branch(1), closed: false },
         lower: { points: branch(-1), closed: false },
@@ -63,7 +64,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["axes", "string"], reason: "線繫在軸銷上:線頭繞在銷上,中心線落在銷內 0.06" },
-    { check: "interference", parts: ["axes", "ruler"], reason: "未修:尺滑到行程端時伸到固定的軸銷,重疊 0.13(96 個取樣中 11 個)(列入待確認清單)" },
+    { check: "interference", parts: ["ruler", "pencil"], reason: "鉛筆靠在直尺的邊上:筆身與尺邊重疊 0.05" },
   ],
 };

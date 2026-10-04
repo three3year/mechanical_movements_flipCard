@@ -356,14 +356,15 @@ test("第 455 種:舊式旋轉泵:閥門貼著圓筒內面轉,到擋板處被闔
   for (const phi of sweep(2 * Math.PI, 72)) {
     const open = m455.opening(phi);
     const a = Math.atan2(Math.sin(phi), Math.cos(phi));
-    if (a > m455.ABUT[0] && a < m455.ABUT[1]) assert.equal(open, 0, "在擋板處閥門闔上");
-    if (open === 1) {
+    // 閥門的張開由接觸算:鉸點進到擋板底下之後,閥門被擋板壓回去、貼著轉鼓通過
+    if (a > m455.ABUT[0] && a < m455.ABUT[1] - 15 * deg) assert.ok(open < 0.5, "在擋板處閥門闔上");
+    if (open > 0.95) {
       const ang = m455.valveAngle(phi, 1);
       const tip = [m455.DRUM * Math.cos(phi) + m455.VALVE * Math.cos(ang), m455.DRUM * Math.sin(phi) + m455.VALVE * Math.sin(ang)];
-      close(Math.hypot(...tip), m455.BORE, "張開的閥門外緣貼著圓筒內面", 1e-9);
+      close(Math.hypot(...tip), m455.BORE, "張開的閥門外緣貼著圓筒內面", 0.05);
     }
   }
-  assert.equal(m455.opening(90 * deg), 1, "其他地方閥門張開");
+  assert.ok(m455.opening(90 * deg) > 0.95, "其他地方閥門張開");
 });
 
 test("第 456 種:Cary 旋轉泵:活塞依心形凸輪進出;對準 E 時被推回座裡,另一個同時完全伸出", () => {

@@ -28,13 +28,18 @@ export default {
   figure: 349,
   parts: [
     { id: "paper", kind: "box", center: [0, 0, -0.12], size: [8, 5.6, 0.04] },
-    { id: "rulerLow", ...ruler(undefined), center: [0, BOTTOM - RULER.h / 2 + 0.2, 0] },
+    { id: "rulerLow", kind: "group", center: [0, BOTTOM - RULER.h / 2 + 0.2, 0], pieces: [ruler(undefined), ...XS.map((x) => ({ kind: "cylinder", radius: 0.05, length: 0.32, at: [x, RULER.h / 2 - 0.2, 0.1] }))] },
     { id: "rulerTop", ...ruler(undefined) },
     // 中介桿:左端削尖(原圖)
     { id: "midBar", kind: "plate", shape: shape([[-2.7, 0], [-2.35, 0.18], [1.4, 0.18], [1.4, -0.18], [-2.35, -0.18]]), thickness: 0.08 },
     ...XS.flatMap((_, i) => [
       { id: `up${i}`, kind: "link", width: 0.14, thickness: 0.05 },
       { id: `down${i}`, kind: "link", width: 0.14, thickness: 0.05 },
+    ]),
+    // 鉸接的銷(推斷;原圖是平面圖):臂的兩端各一根穿過尺(下尺的兩根是下尺的一部分),兩個鉸點各一根穿過中介桿與兩根臂
+    ...XS.flatMap((_, i) => [
+      { id: `pinTop${i}`, kind: "cylinder", radius: 0.05, length: 0.32 },
+      { id: `pinMid${i}`, kind: "cylinder", radius: 0.05, length: 0.24 },
     ]),
     ...rulerLineParts(),
   ],
@@ -49,17 +54,11 @@ export default {
       midBar: { position: [dx, mid, 0.1] },
     };
     XS.forEach((x, i) => {
+      parts[`pinTop${i}`] = { position: [x, BOTTOM + h, 0.1] };
+      parts[`pinMid${i}`] = { position: [x + dx, mid, 0.14] };
       parts[`up${i}`] = { from: [x, BOTTOM + h, 0.16], to: [x + dx, mid, 0.16] };
       parts[`down${i}`] = { from: [x + dx, mid, 0.2], to: [x, BOTTOM, 0.2] };
     });
     return { parts, paths: rulerLines(edge, 1.6, h), readouts: [] };
   },
-  waivers: [
-    { check: "unsupported", parts: ["down1"], reason: "未修:連桿與尺之間差 0.22(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["up1"], reason: "未修:連桿與尺之間差 0.05(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["down0"], reason: "未修:連桿與尺之間差 0.22(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["up0"], reason: "未修:連桿與尺之間差 0.05(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["midBar"], reason: "未修:中間桿與連桿之間差 0.07(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["rulerTop"], reason: "未修:上尺與連桿之間差 0.05(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
-  ],
 };

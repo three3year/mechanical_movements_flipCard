@@ -44,6 +44,9 @@ export default {
         { kind: "plate", shape: shape(circle(1.24), [circle(1.19).reverse()]), thickness: 0.06, at: [0, 0, 0.18], mark: [0, 1.21], markSize: 0.06 },
         { kind: "plate", shape: shape(circle(1.97), [circle(1.19).reverse()]), thickness: 0.04, at: [0, 0, -0.18] },
         ...blades({ ...WHEEL, thickness: 0.36 }),
+        // 轉輪的底盤與軸(推斷;原圖是俯視的剖面):底盤從導葉的背面繞過去接到軸上,軸穿過導葉中央的套筒
+        { kind: "plate", shape: shape(circle(1.97)), thickness: 0.04, at: [0, 0, -0.24] },
+        { kind: "cylinder", radius: 0.1, length: 0.9, at: [0, 0, 0.19] },
       ],
     },
   ],
@@ -59,7 +62,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["wheel"], reason: "未修:渦輪的轉輪只畫了輪環與葉片,沒有畫出輪轂與軸(離最近的實體 0.04)(列入待確認清單)" },
-  ],
 };

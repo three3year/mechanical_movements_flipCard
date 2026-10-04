@@ -9,7 +9,7 @@ import { shape, thickLine, arcPoints } from "./shapes.js";
 
 const HINGE = [0, 0.2, 0]; // B 的中點鉸接
 const HALF = 1.15; // 鉸接到 B 外端
-const WHEEL_AT = 0.55; // 鉸接到輪 A
+const WHEEL_AT = 1.0; // 鉸接到輪 A(離鉸接夠遠:B 傾斜時輪緣不掃到軸線上的閥桿)
 export const RANGE = [0, 10];
 const TILT = [deg(-35), deg(20)]; // B 的傾角(外端在左)
 const D = [0, 2.75, 0]; // 閥桿頂
@@ -29,6 +29,8 @@ const frameH = [
   // 旋轉框架 H:下方一圈弧形,左右兩端是靜止的齒環 G 的位置
   { kind: "plate", shape: shape([...arcPoints(2.05, deg(195), deg(345)), ...arcPoints(1.85, deg(345), deg(195))]), thickness: 0.18, at: [0, 0.6, 0] },
   { kind: "box", size: [0.25, 0.9, 0.25], at: [0, -1.75, 0] },
+  // 框架中央的立柱:B 的鉸接銷穿在它的上端(推斷;原圖的框架只畫了外圈)
+  { kind: "box", size: [0.16, 1.75, 0.12], at: [0, -0.6, -0.2] },
 ];
 
 export default {
@@ -57,11 +59,12 @@ export default {
       label: "B",
       labelOffset: [-0.6, 0.5, 0.4],
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[-HALF, 0], [WHEEL_AT + 0.6, 0]], 0.14)), thickness: 0.12 },
+        { kind: "plate", shape: shape(thickLine([[-HALF, 0], [WHEEL_AT + 0.35, 0]], 0.14)), thickness: 0.12 },
         // 重輪 A(剖面:看到輪緣與輪轂)
         { kind: "cylinder", axis: [1, 0, 0], radius: 0.85, inner: 0.65, length: 0.32, at: [WHEEL_AT, 0, 0] },
         { kind: "cylinder", axis: [1, 0, 0], radius: 0.25, length: 0.4, at: [WHEEL_AT, 0, 0] },
-        { kind: "cylinder", radius: 0.12, length: 0.4 },
+        { kind: "cylinder", radius: 0.12, length: 0.56, at: [0, 0, -0.06] },
+        { kind: "cylinder", radius: 0.04, length: 0.3, at: [-HALF, 0, 0.1] }, // 外端的銷:桿 C 掛在它上面
       ],
     },
     { id: "labelA", kind: "group", center: [0.6, 0.9, 0], label: "A", labelOffset: [0, 0.15, 0.6] },
@@ -95,9 +98,7 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["shaftB", "valveD"], reason: "未修:軸 B 傾斜時,它上面的輪 A 的輪緣掃過閥桿 D,重疊 0.22(96 個取樣中 45 個);閥桿應在輪的範圍之外(原圖的前後配置看不出來)(列入待確認清單)" },
     { check: "interference", parts: ["valveD", "leverN"], reason: "接合處的簡化畫法:槓桿 N 的端頭鉸接在閥桿 D 上,軸眼與桿重疊 0.04" },
-    { check: "interference", parts: ["shaftB", "leverN"], reason: "軸 B 上的凸輪撥動槓桿 N 的過程依時序演出;凸輪與槓桿端重疊 0.08(96 個取樣中 23 個)" },
     { check: "interference", parts: ["base", "frameH"], reason: "簡化畫法:框架 H 的腳嵌在底座的塊裡,重疊 0.16" },
   ],
 };

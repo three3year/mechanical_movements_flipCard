@@ -4,7 +4,7 @@
 import { Y, clamp } from "./kit.js";
 import { frame, crankPieces, feedOf, MAX } from "./cramp-drill.js";
 
-const SCREW_Y0 = -2.6;
+const SCREW_Y0 = -2.45; // 起始位置:墊塊與工件在下臂的上方(不陷進下臂)
 
 export default {
   figure: 379,
@@ -57,6 +57,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["frame", "screw"], reason: "進給螺桿旋在機架的螺孔裡,行程中螺紋的端頭進到機架裡面(螺孔沒有畫出來)" },
-    { check: "interference", parts: ["frame", "work"], reason: "未修:工件走到行程端時碰到機架,重疊 0.12(96 個取樣中 26 個)(列入待確認清單)" },
   ],
 };

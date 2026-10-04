@@ -26,23 +26,33 @@ export default {
   parts: [
     {
       id: "lower",
-      kind: "lathe",
+      kind: "group",
       axis: X,
       center: LOWER.center,
-      profile: lowerProfile,
       mark: true,
       spin: 1.0,
       pieces: [
+        { kind: "lathe", profile: lowerProfile },
         { kind: "cylinder", radius: 0.1, length: 2.6, at: [0, 0, -0.2] },
         // 手柄(左)
         { kind: "box", size: [0.12, 0.7, 0.1], at: [0, -0.3, -1.45] },
         { kind: "cylinder", radius: 0.07, length: 0.4, at: [0, -0.6, -1.65], accent: true },
         // 右邊的軸頸
-        { kind: "cylinder", radius: 0.16, length: 0.2, at: [0, 0, 0.55] },
+        { kind: "cylinder", radius: 0.16, length: 0.2, at: [0, 0, 0.5] },
       ],
     },
-    { id: "rubberLoose", kind: "lathe", axis: X, center: A_CENTER, profile: rubber(0.8, SQUEEZE.loose), mark: true, spin: 0.85, arrow: false, label: "A", labelOffset: [0, 0.75, 0.3] },
-    { id: "rubberTight", kind: "lathe", axis: X, center: A_CENTER, profile: rubber(0.88, SQUEEZE.tight), mark: true, spin: 0.95, label: "A", labelOffset: [0, 0.75, 0.3] },
+    // 機架(推斷;原圖沒有畫):兩根立柱托著上下兩根軸
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "box", size: [0.12, 3.0, 0.4], at: [-0.62, -0.56, 0] },
+        { kind: "box", size: [0.12, 3.0, 0.4], at: [0.78, -0.56, 0] },
+        { kind: "box", size: [1.9, 0.12, 0.7], at: [0.08, -2.12, 0] },
+      ],
+    },
+    { id: "rubberLoose", kind: "lathe", axis: X, center: A_CENTER, profile: rubber(0.92, SQUEEZE.loose), mark: true, spin: 0.85, arrow: false, label: "A", labelOffset: [0, 0.75, 0.3] },
+    { id: "rubberTight", kind: "lathe", axis: X, center: A_CENTER, profile: rubber(0.95, SQUEEZE.tight), mark: true, spin: 0.95, label: "A", labelOffset: [0, 0.75, 0.3] },
     plate("plateL"),
     plate("plateR"),
     {
@@ -53,7 +63,7 @@ export default {
       label: "B",
       labelOffset: [0, 0.32, 0.2],
       pieces: [
-        { kind: "cylinder", radius: 0.09, length: 1.9, at: [0, 0, 0.55] },
+        { kind: "cylinder", radius: 0.09, length: 1.9, at: [0, 0, -0.2] }, // 軸穿過兩片金屬板、橡膠碟與兩根立柱
         // 螺帽 B
         { kind: "cylinder", radius: 0.17, length: 0.14, at: [0, 0, 0], accent: true },
       ],
@@ -79,17 +89,9 @@ export default {
         rubberTight: { angle: a, visible: state === "tight" },
         plateL: { position: [A_CENTER[0] - s - 0.03, A_CENTER[1], 0], angle: a },
         plateR: { position: [A_CENTER[0] + s + 0.03, A_CENTER[1], 0], angle: a },
-        shaftA: { position: [A_CENTER[0] + s + 0.16, A_CENTER[1], 0], angle: a },
+        shaftA: { position: [A_CENTER[0] + s + 0.13, A_CENTER[1], 0], angle: a },
       },
       readouts: [{ label: "牽引力", value: state === "tight" ? "大(不打滑)" : "小(打滑)" }],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["rubberTight"], reason: "未修:夾緊狀態的橡皮圈與盤之間差 0.04(列入待確認清單)" },
-    { check: "unsupported", parts: ["shaftA"], reason: "未修:軸 A 與帶動它的盤之間沒有接上(差 0.49)(列入待確認清單)" },
-    { check: "unsupported", parts: ["plateR"], reason: "未修:右盤與軸之間少畫了相連的鍵(差 0.15)(列入待確認清單)" },
-    { check: "unsupported", parts: ["plateL"], reason: "未修:左盤與軸之間少畫了相連的鍵(差 0.15)(列入待確認清單)" },
-    { check: "unsupported", parts: ["rubberLoose"], reason: "未修:鬆開狀態的橡皮圈與兩片盤之間差 0.10(列入待確認清單)" },
-    { check: "unsupported", parts: ["lower"], reason: "未修:下方的零件沒有畫出支撐(離最近的實體 0.10)(列入待確認清單)" },
-  ],
 };

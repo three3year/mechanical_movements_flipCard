@@ -26,7 +26,8 @@ export default {
   figure: 399,
   parts: [
     { id: "upper", kind: "group", arrow: false, pieces: half(1) },
-    { id: "lower", kind: "group", arrow: false, pieces: half(-1) },
+    // 下半是上半轉半圈:它的螺桿在右邊、穿過上半的螺帽塊,上半的螺桿在左邊、穿過它的螺帽塊
+    { id: "lower", kind: "group", arrow: false, pieces: half(1).map((p) => ({ ...p, accent: false })) },
   ],
   driver: { part: "upper", type: "translation", direction: [0, -1, 0], range: [0, tighten(RANGE[1])], initial: 0 },
   target: "lower", // 鏈節的另一半:被螺帽拉近
@@ -42,6 +43,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["upper", "lower"], reason: "未修:上下兩個夾塊在行程中段重疊 0.32;夾塊的行程與外形待重排(列入待確認清單)" },
+    { check: "interference", parts: ["upper", "lower"], reason: "螺桿旋在另一半的螺帽塊裡,螺桿的端頭在塊裡面(螺孔沒有畫出來)" },
   ],
 };

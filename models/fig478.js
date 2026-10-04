@@ -59,14 +59,11 @@ export default {
     return {
       parts: {
         plunger: { position: [s.plunger + 0.6, 0, 0] },
-        lever: { position: [s.plunger + 1.2, 0, 0.2], angle: deg(-20) * clamp((s.plunger - STOP) / GROW, 0, 1) },
+        lever: { position: [s.plunger + 1.2, 0, 0.13], angle: deg(-20) * clamp((s.plunger - STOP) / GROW, 0, 1) },
       },
       paths: { pipe: { points: [[FIXED - 0.3, 0, 0], [s.end, 0, 0]], closed: false } }, // 管子從固定處伸到管端(隨溫度伸縮)
       flows,
       readouts: [{ label: "閥門 a", value: s.open ? `打開(間隙 ${s.gap.toFixed(2)}),水排出` : "管子膨脹頂住柱塞,關閉" }],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["lever"], reason: "未修:槓桿沒有畫出樞軸的支座(離最近的實體 0.06)(列入待確認清單)" },
-  ],
 };

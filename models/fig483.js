@@ -46,7 +46,7 @@ export default {
     ...[0, 1].map((k) => ({ id: `diaphragm${k}`, kind: "box", size: [0.08, H - 0.3, 0.6], label: k === 0 ? "A" : "A'", labelOffset: [0.25, -0.2, 0.4], arrow: false })),
     ...[0, 1].flatMap((k) => ["Top", "Bottom"].map((p) => ({ id: `pleat${k}${p}`, kind: "rod", radius: 0.02 }))),
     { id: "valve", kind: "box", size: [0.5, 0.15, 0.35], label: "B", labelOffset: [0.3, 0.2, 0.3], arrow: false },
-    { id: "dial", kind: "plate", shape: shape(thickLine([[0, 0], [0.32, 0]], 0.05)), thickness: 0.04, center: [1.8, H / 2 + 0.95, 0.15], spin: 0.4, accent: true },
+    { id: "dial", kind: "plate", shape: shape(thickLine([[0, 0], [0.32, 0]], 0.05)), thickness: 0.04, center: [1.8, H / 2 + 0.95, 0.44], spin: 0.4, accent: true }, // 指針在外殼的正面(不在殼壁裡)
   ],
   powered: ["diaphragm0", "diaphragm1"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "次", speed: 0.15 },
@@ -73,8 +73,7 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["case", "dial"], reason: "未修:指針擺到刻度端時伸進外殼,重疊 0.12(96 個取樣中 43 個)(列入待確認清單)" },
-    { check: "unsupported", parts: ["dial"], reason: "未修:指針與帶動它的機構之間沒有接上(差 0.78)(列入待確認清單)" },
-    { check: "unsupported", parts: ["valve"], reason: "未修:閥與帶動它的膜片桿之間差 0.15(列入待確認清單)" },
+    { check: "unsupported", parts: ["valve"], reason: "未修:閥與帶動它的膜片桿之間差 0.15;隔膜到滑閥的連桿沒有畫出來(列入待確認清單)" },
+    { check: "unsupported", parts: ["dial"], reason: "未修:指針與帶動它的機構之間沒有接上(差 0.78);隔膜到指針的連桿與曲柄沒有畫出來(列入待確認清單)" },
   ],
 };

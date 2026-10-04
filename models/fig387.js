@@ -28,12 +28,18 @@ export default {
       id: "quay",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape(rect(2.4, 4.2, 3.3, -0.5)), thickness: 1.2 },
-        { kind: "box", size: [0.12, 1.6, 0.12], at: [2.1, 2.4, 0.4] },
-        { kind: "box", size: [0.12, 1.6, 0.12], at: [4.3, 2.4, 0.4] },
-        { kind: "box", size: [2.3, 0.1, 0.1], at: [3.2, 3.15, 0.4] },
-        { kind: "box", size: [2.4, 0.08, 0.08], at: [3.2, 2.4, 0.4], angle: 0.6 },
-        { kind: "box", size: [2.4, 0.08, 0.08], at: [3.2, 2.4, 0.4], angle: -0.6 },
+        // 岸壁在梯子上端的右邊:最上一級踏板與吊桿不伸進岸壁;梯幫的樞軸由岸邊伸出的兩片耳板托著(推斷)
+        { kind: "plate", shape: shape(rect(2.4, 4.2, 3.7, -0.5)), thickness: 1.2 },
+        { kind: "box", size: [0.62, 0.1, 0.08], at: [2.22, 1.55, 0.5] },
+        { kind: "box", size: [0.62, 0.1, 0.08], at: [2.22, 1.55, -0.5] },
+        { kind: "cylinder", radius: 0.05, length: 0.15, at: [PIVOT[0], PIVOT[1], 0.475] },
+        { kind: "cylinder", radius: 0.05, length: 0.15, at: [PIVOT[0], PIVOT[1], -0.475] },
+        // 岸上的欄杆(在扶手的前面一層:扶手的上端貼在立柱的側面)
+        { kind: "box", size: [0.12, 1.6, 0.12], at: [2.5, 2.4, 0.5] },
+        { kind: "box", size: [0.12, 1.6, 0.12], at: [4.7, 2.4, 0.5] },
+        { kind: "box", size: [2.3, 0.1, 0.1], at: [3.6, 3.15, 0.5] },
+        { kind: "box", size: [2.4, 0.08, 0.08], at: [3.6, 2.4, 0.5], angle: 0.6 },
+        { kind: "box", size: [2.4, 0.08, 0.08], at: [3.6, 2.4, 0.5], angle: -0.6 },
       ],
     },
     { id: "water", kind: "fill", fluid: "water", center: [-1.5, -2.6, -1.0], size: [5.8, 3.8, 0.6], level: 0.5 }, // 水在梯子後方,看得到梯子
@@ -55,7 +61,7 @@ export default {
       stringer: { angle: l.angle },
       // 扶手:與梯幫平行,樞軸在梯幫樞軸的右上方 (STEP_W, RAIL_UP)——吊桿、踏階、梯幫、扶手構成平行四邊形
       rail: { position: [PIVOT[0] + STEP_W, PIVOT[1] + RAIL_UP, 0], angle: l.angle },
-      boat: { position: [l.foot[0], l.h + 0.2, 0] },
+      boat: { position: [l.foot[0], l.foot[1] - 0.05, 0] }, // 梯的下端擱在甲板上
       water: { level: (l.h - (-2.6 - 1.9)) / 3.8 },
     };
     for (let i = 0; i < STEPS; i++) {
@@ -69,7 +75,6 @@ export default {
     return { parts, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["boat", "step7"], reason: "未修:最下一級踏板在低水位時伸進船身 0.05(96 個取樣中 11 個)(列入待確認清單)" },
     { check: "interference", parts: ["step6", "hanger7"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
     { check: "interference", parts: ["step5", "hanger6"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
     { check: "interference", parts: ["step4", "hanger5"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
@@ -85,9 +90,5 @@ export default {
     { check: "interference", parts: ["stringer", "step2"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
     { check: "interference", parts: ["stringer", "step1"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
     { check: "interference", parts: ["stringer", "step0"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
-    { check: "interference", parts: ["boat", "stringer"], reason: "未修:梯的下端伸進船身 0.11;下端應擱在甲板上(列入待確認清單)" },
-    { check: "interference", parts: ["quay", "hanger0"], reason: "未修:最上一根吊桿伸進碼頭的岸壁 0.22(列入待確認清單)" },
-    { check: "interference", parts: ["quay", "step0"], reason: "未修:最上一級踏板伸進碼頭的岸壁 0.20(列入待確認清單)" },
-    { check: "interference", parts: ["quay", "rail"], reason: "未修:扶手的上端伸進碼頭的立柱 0.10;扶手應接在立柱的側面(列入待確認清單)" },
   ],
 };

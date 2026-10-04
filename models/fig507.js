@@ -46,7 +46,7 @@ export default {
     { id: "sleeveAH", kind: "group", axis: Y, label: "H", labelOffset: [R_H + 0.25, 0.85, 0.3], arrow: false, pieces: [{ kind: "cylinder", radius: 0.18, length: 1.6, at: [0, 0, 0.1] }, { kind: "bevel", radius: 0.28, height: 0.18, axis: [0, 0, -1], at: [0, 0, -0.65] }, { kind: "gear", teeth: TEETH.H, radius: R_H, width: 0.1, at: [0, 0, 0.85] }] },
     { id: "labelA", kind: "group", pieces: [], label: "A", labelOffset: [-0.45, -0.65, 0.3] },
     // C:橫軸 a 上的傘齒輪,同時咬 D(下)與 A(上)
-    { id: "wheelC", kind: "group", axis: X, center: [0.55, -1.12, 0], label: "C", labelOffset: [0.25, 0.75, 0.3], spin: 0.6, pieces: [{ kind: "bevel", radius: 0.5, height: 0.2, axis: [0, 0, -1] }, { kind: "cylinder", radius: 0.06, length: 0.9, at: [0, 0, 0.45] }] },
+    { id: "wheelC", kind: "group", axis: X, center: [0.27, -1.12, 0], label: "C", labelOffset: [0.25, 0.75, 0.3], spin: 0.6, pieces: [{ kind: "bevel", radius: 0.5, height: 0.2, axis: [0, 0, -1] }, { kind: "cylinder", radius: 0.06, length: 0.9, at: [0, 0, 0.45] }] },
     { id: "labela", kind: "group", pieces: [], label: "a", labelOffset: [1.35, -0.85, 0.3] },
     // 臂 m、n 與凸柱上的 F、G
     { id: "arm", kind: "group", axis: Y, label: "m", labelOffset: [-0.2, 1.75, 0.3], spin: 1.5, pieces: [{ kind: "plate", shape: shape(thickLine([[-0.2, 0], [1.45, 0]], 0.14)), thickness: 0.08, rotation: [Math.SQRT1_2, 0, 0, Math.SQRT1_2], at: [0, 0, 1.6] }, { kind: "cylinder", radius: 0.05, length: 0.9, at: [1.3, 0, 1.2] }] },
@@ -78,7 +78,4 @@ export default {
       ],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["wheelC"], reason: "未修:輪 C 與帶動它的輪之間前後錯開,齒面沒有相貼(差 0.24)(列入待確認清單)" },
-  ],
 };

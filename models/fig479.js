@@ -17,8 +17,12 @@ export default {
       kind: "group",
       pieces: [
         ...tankParts(),
-        { kind: "box", size: [0.12, PULLEY_Y - TANK.y1 + 0.3, 0.12], at: [-POST_X - 0.3, (PULLEY_Y + TANK.y1) / 2, 0] },
-        { kind: "box", size: [0.12, PULLEY_Y - TANK.y1 + 0.3, 0.12], at: [POST_X + 0.3, (PULLEY_Y + TANK.y1) / 2, 0] },
+        // 立柱在滑輪與重球的後面一層,滑輪的軸銷從柱頂往前伸(重球沿柱的前面上下,不碰到柱)
+        ...[-1, 1].flatMap((s) => [
+          { kind: "box", size: [0.12, PULLEY_Y - TANK.y1 + 0.3, 0.12], at: [s * (POST_X + 0.3), (PULLEY_Y + TANK.y1) / 2, -0.42] },
+          { kind: "box", size: [0.42, 0.12, 0.12], at: [s * (POST_X + 0.15), PULLEY_Y, -0.42] },
+          { kind: "cylinder", radius: 0.03, length: 0.54, at: [s * POST_X, PULLEY_Y, -0.21] },
+        ]),
       ],
     },
     { id: "labelB", kind: "group", pieces: [], label: "B", labelOffset: [-1.2, -1.2, 0.6] },
@@ -62,7 +66,5 @@ export default {
   waivers: [
     { check: "interference", parts: ["pulleyR", "weightR"], reason: "重球升到最高時碰到滑輪,重疊 0.09(96 個取樣中 8 個);行程是示意的大小" },
     { check: "interference", parts: ["pulleyL", "weightL"], reason: "重球升到最高時碰到滑輪,重疊 0.09(96 個取樣中 8 個);行程是示意的大小" },
-    { check: "interference", parts: ["frame", "weightR"], reason: "未修:右邊的重球沿立柱上下,球與立柱重疊 0.31;重球應在立柱的前面(列入待確認清單)" },
-    { check: "interference", parts: ["frame", "weightL"], reason: "未修:左邊的重球沿立柱上下,球與立柱重疊 0.31;重球應在立柱的前面(列入待確認清單)" },
   ],
 };

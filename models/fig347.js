@@ -25,7 +25,9 @@ export function disk(p) {
 export const geometry = { C, ROD, TILT, SHAFT_X };
 
 // 汽缸剖面:兩端圓錐形的殼(剖開前半)
-const shell = [[0.35, -1.25], [R_CYL, -0.45], [R_CYL, 0.45], [0.35, 1.25], [0.35, 1.38], [R_CYL + 0.13, 0.5], [R_CYL + 0.13, -0.5], [0.35, -1.38]];
+// 兩端的開口開得夠大,讓斜著擺盪的活塞桿穿得出去(桿在端口處離軸線約 0.5)
+const END = 0.64;
+const shell = [[END, -1.25], [R_CYL, -0.45], [R_CYL, 0.45], [END, 1.25], [END, 1.38], [R_CYL + 0.13, 0.5], [R_CYL + 0.13, -0.5], [END, -1.38]];
 
 export default {
   figure: 347,
@@ -47,8 +49,8 @@ export default {
       spin: ARM + 0.2,
       pieces: [
         { kind: "cylinder", radius: 0.15, length: 1.6, at: [0, 0, -0.75] },
-        { kind: "plate", shape: shape(thickLine([[0, 0], [ARM, 0]], 0.3), [circle(0.08).reverse()]), thickness: 0.12 },
-        { kind: "cylinder", radius: 0.08, length: 0.3, at: [ARM, 0, 0.1], accent: true },
+        { kind: "plate", shape: shape(thickLine([[0, 0], [ARM, 0]], 0.3), [circle(0.08).reverse()]), thickness: 0.12, at: [0, 0, -0.13] }, // 臂在活塞桿左端的外側,桿端只碰到球接頭
+        { kind: "sphere", radius: 0.068, at: [ARM, 0, 0], accent: true }, // 曲柄臂端的球接頭:活塞桿斜著接上來,繞著它擺
       ],
     },
     // 碟形活塞:法線沿活塞桿;中間的球
@@ -68,7 +70,7 @@ export default {
     const inlet = [[C[0] + side * 0.8, 2.3, 0.3], [C[0] + side * 0.8, R_CYL - 0.2, 0.3], [C[0] + side * 0.5, 0.6, 0.3]];
     return {
       parts: {
-        crank: { angle: d.phi },
+        crank: { angle: d.phi + Math.PI / 2 }, // 軸沿 X 時局部 X 指向 −Z:加四分之一圈,曲柄銷才對到活塞桿的左端
         piston: { position: C, rotation },
         rod: { from: C, to: d.pin },
       },
@@ -77,9 +79,8 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["cylinder", "rod"], reason: "未修:桿擺動時掃過汽缸的端蓋,重疊 0.12(96 個取樣中 49 個);端蓋上讓桿通過的開口沒有畫出來(列入待確認清單)" },
+    { check: "interference", parts: ["crank", "rod"], reason: "接合處的簡化畫法:活塞桿的左端套在曲柄臂端的球接頭上,重疊 0.10" },
     { check: "interference", parts: ["piston", "rod"], reason: "接合處的簡化畫法:桿固定在盤中心的球上;桿端在球裡,重疊 0.44" },
     { check: "interference", parts: ["cylinder", "piston"], reason: "簡化畫法:擺動的盤(活塞)邊緣貼著球形汽缸的內壁,盤緣伸進缸壁 0.06" },
-    { check: "unsupported", parts: ["crank"], reason: "未修:曲柄與盤上伸出的桿之間少畫了相連的銷(差 0.64)(列入待確認清單)" },
   ],
 };

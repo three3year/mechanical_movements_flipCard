@@ -74,7 +74,7 @@ export default {
     const paths = {};
     PULLEYS.forEach((P, k) => {
       const s = k === 0 ? 1 : -1;
-      const points = [[DRUM.center[0], s * DRUM.r, 0.1], [P[0] - PULLEY_R, P[1], 0.1], [P[0], P[1] + s * PULLEY_R, 0.1], [T[0], T[1], 0.1]];
+      const points = [[DRUM.center[0], s * DRUM.r, 0.1], [P[0] - PULLEY_R, P[1], 0.1], [P[0], P[1] + s * PULLEY_R, 0.1], [T[0], T[1], 0.06]]; // 繩端繫在舵柄的面上
       // 繩端接在舵柄上;路徑起點(鼓輪)處的繩隨捲進放出移動
       const length = points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p[0] - points[i][0], p[1] - points[i][1]), 0);
       paths[k === 0 ? "ropeTop" : "ropeBottom"] = { points, closed: false, phase: -length };
@@ -85,7 +85,4 @@ export default {
       readouts: [{ label: "舵柄", value: `${psi >= 0 ? "往上" : "往下"} ${Math.abs((psi * 180) / Math.PI).toFixed(0)}°` }],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["tiller"], reason: "未修:舵柄與舵鏈之間差 0.03(列入待確認清單)" },
-  ],
 };

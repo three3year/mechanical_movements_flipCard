@@ -92,8 +92,8 @@ export default {
       label: "e",
       labelOffset: [0.15, 0.3, 0],
     },
-    { id: "pinion", kind: "gear", center: [0, 0, MECH_Z], teeth: PINION.teeth, radius: PINION.radius, width: 0.08, arrow: false },
-    { id: "arbor", kind: "cylinder", center: [0, 0, MECH_Z / 2 + 0.06], radius: 0.035, length: 0.5 },
+    // 小齒輪與它的心軸是一體的:心軸往前穿到錶面,指針裝在軸端
+    { id: "pinion", kind: "gear", center: [0, 0, MECH_Z], teeth: PINION.teeth, radius: PINION.radius, width: 0.08, arrow: false, pieces: [{ kind: "cylinder", radius: 0.035, length: 0.44, at: [0, 0, 0.16] }] },
     { id: "needle", kind: "plate", center: [0, 0, 0.16], shape: needle, thickness: 0.04, hub: 0.08, spin: 1.1 },
   ],
   powered: ["rod"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
@@ -117,6 +117,5 @@ export default {
   waivers: [
     { check: "interference", parts: ["discA", "rod"], reason: "接合處的簡化畫法:拉桿的下端接在膜盒中心,桿端伸進膜盒 0.03" },
     { check: "interference", parts: ["case", "discA"], reason: "簡化畫法:波紋膜盒 A 的邊緣夾在錶殼裡,重疊 0.20" },
-    { check: "unsupported", parts: ["needle"], reason: "未修:指針與帶動它的拉桿之間差 0.23,少畫了相連的銷(列入待確認清單)" },
   ],
 };

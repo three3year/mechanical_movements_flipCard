@@ -4,7 +4,7 @@
 // 主動件是曲柄 D(順時針轉)。
 // 推斷:兩個活塞以曲柄為中心點對稱;連桿的長度與位置是依「約三分之二」這個條件求出的(急回機構:往內推的行程佔
 // 曲柄 240°);進汽閥 a 畫成隨曲柄轉的旋轉閥。
-import { deg } from "./kit.js";
+import { Z, deg, routeBelt, beltTravel } from "./kit.js";
 import { circleCircle } from "./linkage.js";
 import { stream } from "./flow.js";
 import { shape, thickLine, arcPoints, circle, rect } from "./shapes.js";
@@ -41,9 +41,15 @@ const quadrant = (k) => {
   ];
 };
 const VALVE = [1.35, 1.75];
+// 通道從閥室的外壁開始(不伸進閥室裡)
+const fromValve = ([x, y]) => { const d = Math.hypot(x - VALVE[0], y - VALVE[1]); return [VALVE[0] + (0.33 * (x - VALVE[0])) / d, VALVE[1] + (0.33 * (y - VALVE[1])) / d]; };
+// 閥由曲柄軸經一條皮帶帶動,兩個帶輪一樣大:每圈轉一圈(推斷;原圖沒有畫出閥的傳動)
+const BELT_Z = 0.56;
+const BELT_R = 0.16;
+const valveBelt = routeBelt([{ center: [0, 0, BELT_Z], axis: Z, radius: BELT_R, sense: 1 }, { center: [...VALVE, BELT_Z], axis: Z, radius: BELT_R, sense: 1 }]);
 const passages = [
-  [VALVE, [0.2, 2.0], [PIVOTS[0][0] + (VANE + 0.05) * Math.cos(HI + deg(3)), PIVOTS[0][1] + (VANE + 0.05) * Math.sin(HI + deg(3))]],
-  [VALVE, [2.1, 0.9], [2.0, -1.0], [PIVOTS[1][0] + (VANE + 0.05) * Math.cos(HI + deg(3) + Math.PI), PIVOTS[1][1] + (VANE + 0.05) * Math.sin(HI + deg(3) + Math.PI)]],
+  [fromValve([0.2, 2.0]), [0.2, 2.0], [PIVOTS[0][0] + (VANE + 0.05) * Math.cos(HI + deg(3)), PIVOTS[0][1] + (VANE + 0.05) * Math.sin(HI + deg(3))]],
+  [fromValve([2.1, 0.9]), [2.1, 0.9], [2.0, -1.0], [PIVOTS[1][0] + (VANE + 0.05) * Math.cos(HI + deg(3) + Math.PI), PIVOTS[1][1] + (VANE + 0.05) * Math.sin(HI + deg(3) + Math.PI)]],
 ];
 
 /** 外側的蒸汽:從活塞到外側端壁 */
@@ -88,7 +94,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(rect(VANE - 0.25, 0.14, (VANE + 0.25) / 2, 0)), thickness: 0.56 },
         { kind: "cylinder", radius: 0.22, length: 0.56 },
-        { kind: "cylinder", radius: 0.05, length: 0.3, at: [ARM, 0, 0.3] },
+        { kind: "cylinder", radius: 0.05, length: 0.18, at: [ARM, 0, 0.24] },
       ],
     })),
     {
@@ -98,12 +104,27 @@ export default {
       labelOffset: [-0.35, -0.45, 0.4],
       spin: 0.55,
       pieces: [
-        { kind: "plate", shape: shape(circle(0.62), [circle(0.08).reverse()]), thickness: 0.1, at: [0, 0, -0.2] },
-        { kind: "cylinder", radius: 0.1, length: 0.8, at: [0, 0, -0.1] },
-        { kind: "cylinder", radius: 0.06, length: 0.4, at: [CRANK, 0, 0.2], accent: true },
+        // 曲柄盤在汽缸的前面(連桿的外側),不掃過活塞;軸端是帶動閥的帶輪
+        { kind: "plate", shape: shape(circle(0.62), [circle(0.08).reverse()]), thickness: 0.1, at: [0, 0, 0.4] },
+        { kind: "cylinder", radius: 0.1, length: 0.6, at: [0, 0, 0.65] }, // 軸只往前伸:連桿在盤的背面掃過軸心
+        { kind: "cylinder", radius: 0.06, length: 0.14, at: [CRANK, 0, 0.33], accent: true },
+        { kind: "cylinder", radius: BELT_R, length: 0.08, at: [0, 0, BELT_Z] },
       ],
     },
-    { id: "valve", kind: "plate", center: [...VALVE, 0], shape: shape([[0, 0.24], [-0.24, 0], [0, -0.24], [0.08, 0]]), thickness: 0.4, label: "a", labelOffset: [0.45, -0.1, 0.3], spin: 0.32 },
+    {
+      id: "valve",
+      kind: "group",
+      center: [...VALVE, 0],
+      label: "a",
+      labelOffset: [0.45, -0.1, 0.3],
+      spin: 0.32,
+      pieces: [
+        { kind: "plate", shape: shape([[0, 0.24], [-0.24, 0], [0, -0.24], [0.08, 0]]), thickness: 0.4 },
+        { kind: "cylinder", radius: 0.05, length: 0.6, at: [0, 0, 0.3] },
+        { kind: "cylinder", radius: BELT_R, length: 0.08, at: [0, 0, BELT_Z] },
+      ],
+    },
+    { id: "valveBelt", kind: "belt" },
     { id: "link1", kind: "link", width: 0.1, thickness: 0.05 },
     { id: "link2", kind: "link", width: 0.1, thickness: 0.05 },
   ],
@@ -129,6 +150,7 @@ export default {
         link1: { from: [pin[0], pin[1], 0.3], to: [v[0].end[0], v[0].end[1], 0.3] },
         link2: { from: [pin[0], pin[1], 0.3], to: [v[1].end[0], v[1].end[1], 0.3] },
       },
+      paths: { valveBelt: { points: valveBelt.points, closed: true, phase: beltTravel(theta, BELT_R, 1) } },
       flows,
       readouts: [
         { label: "上方活塞 B", value: on[0] ? "蒸汽推動" : "排汽回程" },
@@ -137,12 +159,8 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["piston2", "crank"], reason: "未修:曲柄的臂掃過活塞,重疊 0.13(96 個取樣中 52 個);曲柄應在汽缸蓋的外側(列入待確認清單)" },
-    { check: "interference", parts: ["piston1", "crank"], reason: "未修:曲柄的臂掃過活塞,重疊 0.13(96 個取樣中 55 個);曲柄應在汽缸蓋的外側(列入待確認清單)" },
-    { check: "interference", parts: ["casing", "valve"], reason: "未修:閥與汽缸外殼畫在同一層,重疊 0.21;閥箱沒有畫出來(列入待確認清單)" },
     { check: "interference", parts: ["casing", "piston2"], reason: "簡化畫法:旋轉活塞的端緣貼著汽缸內壁滑動,重疊 0.09" },
     { check: "interference", parts: ["casing", "piston1"], reason: "簡化畫法:旋轉活塞的端緣貼著汽缸內壁滑動,重疊 0.09" },
-    { check: "unsupported", parts: ["valve"], reason: "未修:閥與帶動它的零件之間少畫了相連的桿(差 0.99)(列入待確認清單)" },
   ],
 };
 

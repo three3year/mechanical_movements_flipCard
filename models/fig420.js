@@ -2,7 +2,7 @@
 // 主動件是虛擬的「敲一下」進程:拉繩把錘子拉開 → 放開,錘子落下敲到鐘 → 彈簧把錘子抬離鐘面,停在不碰鐘的位置。
 // 推斷:錘子是曲柄形槓桿,左臂接拉繩、右臂是錘;放開後錘子靠自重落下,敲擊瞬間壓縮下方的彈簧;各階段所佔的進程。
 import { deg, smooth, clamp } from "./kit.js";
-import { shape, thickLine, circle } from "./shapes.js";
+import { shape, thickLine, circle, rect } from "./shapes.js";
 
 const ARM = 1.25; // 支點到錘頭
 const HEAD = 0.3;
@@ -53,8 +53,10 @@ export default {
       kind: "group",
       pieces: [
         // 橫木與托架
-        { kind: "box", size: [4.4, 0.5, 0.8], at: [0.6, -0.85, 0] },
-        { kind: "plate", shape: shape([[-1.25, -0.6], [0.8, -0.6], [0.8, -0.5], [0.12, -0.5], [0.12, 0.12], [-0.12, 0.12], [-0.12, -0.5], [-1.25, -0.5]]), thickness: 0.3 },
+        // 底座的左端讓出拉線往下走的位置;立柱在錘柄的後面一層,支點銷往前穿過錘柄
+        { kind: "box", size: [3.6, 0.5, 0.8], at: [1.0, -0.85, 0] },
+        { kind: "plate", shape: shape(rect(0.95, 0.1, 0.325, -0.55)), thickness: 0.3 }, // 左臂往下擺的範圍裡沒有底板
+        { kind: "plate", shape: shape(rect(0.24, 0.62, 0, -0.19)), thickness: 0.2, at: [0, 0, -0.16] },
         { kind: "cylinder", radius: 0.07, length: 0.45, at: [0, 0, 0] },
       ],
     },
@@ -95,7 +97,5 @@ export default {
   waivers: [
     { check: "interference", parts: ["bell", "hammer"], reason: "錘頭敲在鈴上:敲擊的位置依時序演出,錘頭陷進鈴壁 0.07(96 個取樣中 12 個)" },
     { check: "interference", parts: ["hammer", "spring"], reason: "彈簧的端頭扣在錘柄上:端圈伸進錘柄 0.05" },
-    { check: "interference", parts: ["frame", "wire"], reason: "未修:拉線穿過機架的底座,重疊 0.40;底座上讓線通過的孔沒有畫出來(列入待確認清單)" },
-    { check: "interference", parts: ["frame", "hammer"], reason: "未修:錘柄與機架的板畫在同一層,重疊 0.15;機架應在錘柄的後面(列入待確認清單)" },
   ],
 };
