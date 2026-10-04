@@ -27,7 +27,18 @@ export default {
       width: 0.4,
       pieces: [{ kind: "gear", crown: true, teeth: JAWS, radius: 0.72, width: 0.95, toothDepth: 0.28, faceWidth: 0.42, at: [0, 0, 0.67] }],
     },
-    { id: "shaft", kind: "cylinder", axis: X, center: [3.6, 0, 0], radius: 0.22, length: 5.6, arrow: false },
+    {
+      id: "shaft",
+      kind: "cylinder",
+      axis: X,
+      center: [3.6, 0, 0],
+      radius: 0.22,
+      length: 5.6,
+      spin: 0.45,
+      spinOffset: 2.55, // 轉向箭頭在右端露出的一段
+      // 鍵條:滑動半在上面滑動,也是軸的轉動記號(從滑動半右邊露出)
+      pieces: [{ kind: "box", size: [0.13, 0.13, 2.95], at: [0.24, 0, 1.175], accent: true }],
+    },
     {
       id: "slider",
       kind: "group",

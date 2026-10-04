@@ -23,7 +23,18 @@ export default {
         { kind: "cylinder", radius: 0.55, length: 0.95, at: [0, 0, -0.75] },
       ],
     },
-    { id: "shaft", kind: "cylinder", axis: X, center: [3.8, 0, 0], radius: 0.24, length: 4.2, arrow: false },
+    {
+      id: "shaft",
+      kind: "cylinder",
+      axis: X,
+      center: [3.95, 0, 0],
+      radius: 0.24,
+      length: 4.5,
+      spin: 0.5,
+      spinOffset: 2.05, // 轉向箭頭在右端露出的一段
+      // 長鍵:圓盤在上面滑動,也是軸的轉動記號(從滑動盤右邊露出)
+      pieces: [{ kind: "box", size: [0.14, 0.14, 2.75], at: [0.26, 0, 0.725], accent: true }],
+    },
     {
       id: "disc",
       kind: "group",
