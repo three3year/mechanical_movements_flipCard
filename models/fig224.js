@@ -79,15 +79,6 @@ export default {
       ],
     })),
   ],
-  waivers: [
-    { check: "interference", parts: ["wheelC", "pinionD"], reason: "待確認:wheelC 的板 與 pinionD 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["wheelC", "arm0"], reason: "待確認(未修):wheelC 的板 與 arm0 的方塊 0.3×0.26×0.12互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["wheelC", "arm1"], reason: "待確認(未修):wheelC 的板 與 arm1 的方塊 0.3×0.26×0.12互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["wheelC", "arm2"], reason: "待確認(未修):wheelC 的板 與 arm2 的方塊 0.3×0.26×0.12互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["wheelC", "arm3"], reason: "待確認(未修):wheelC 的板 與 arm3 的方塊 0.3×0.26×0.12互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["wheelC", "arm4"], reason: "待確認(未修):wheelC 的板 與 arm4 的方塊 0.3×0.26×0.12互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["wheelC", "arm5"], reason: "待確認(未修):wheelC 的板 與 arm5 的方塊 0.3×0.26×0.12互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "pinionD", type: "rotation", range, initial: range[1] * 0.6 },
   target: "arm3", // 六支輻臂(連輪緣段)一起縮放,只標有凸柱 a 標號的那一支作代表
   view: { direction: [0.06, 0.05, 1] },

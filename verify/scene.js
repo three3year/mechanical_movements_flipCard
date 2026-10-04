@@ -149,8 +149,8 @@ export class Scene {
   }
 
   /**
-   * 兩個零件之間,距離在 prediction 以內的每一對凸塊各呼叫一次 visit(pieceA, pieceB, distance);
-   * distance 為負表示穿入的深度。
+   * 兩個零件之間,距離在 prediction 以內的每一對凸塊各呼叫一次 visit(pieceA, pieceB, distance, normal);
+   * distance 為負表示穿入的深度;normal 是把 b 從 a 推開的方向。
    */
   contacts(a, b, prediction, visit) {
     if (apart(a.box, b.box, prediction)) return;
@@ -159,7 +159,7 @@ export class Scene {
       for (const pb of b.pieces) {
         if (apart(pa.box, pb.box, prediction)) continue;
         const contact = pa.collider.contactCollider(pb.collider, prediction);
-        if (contact) visit(pa, pb, contact.distance === 0 ? nudged(pa.collider, pb.collider, prediction) : contact.distance);
+        if (contact) visit(pa, pb, contact.distance === 0 ? nudged(pa.collider, pb.collider, prediction) : contact.distance, contact.normal1);
       }
     }
   }

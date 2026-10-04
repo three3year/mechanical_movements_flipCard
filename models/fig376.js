@@ -54,10 +54,6 @@ export default {
     ...["legFF", "legFB", "legHF", "legHB"].map((id) => ({ id, kind: "link", width: 0.09, thickness: 0.08 })),
   ],
   powered: ["wheel"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "unsupported", parts: ["legFF"], reason: "待確認(未修):legFF 在動,但離帶動(或支撐)它的零件還有 0.19 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["legFB"], reason: "待確認(未修):legFB 在動,但離帶動(或支撐)它的零件還有 0.11 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.08 },
   target: "wheel", // 被馬踩著轉的輪
   view: { direction: [0.04, 0.05, 1] },

@@ -36,11 +36,6 @@ export default {
     { id: "crosshead", kind: "group", pieces: [{ kind: "box", size: [0.4, 0.3, 0.3] }, { kind: "box", size: [0.1, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] }] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "unsupported", parts: ["lever"], reason: "待確認:lever 與帶動(或支撐)它的零件之間差 0.07 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["pipe", "sideRod"], reason: "待確認(未修):pipe 的方塊 0.14×2.4×0.14 與 sideRod 的圓柱 r0.05×0.06互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["cylinder", "lever"], reason: "待確認:cylinder 的旋轉體 與 lever 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.25 },
   target: "lever", // 被帶動的側槓桿
   view: { direction: [0.03, 0.05, 1] },

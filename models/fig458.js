@@ -47,13 +47,6 @@ export default {
     { id: "waterL", kind: "fill", fluid: "water", shape: "cylinder", size: [0.38, 0.4, 0], level: 0 },
     { id: "waterR", kind: "fill", fluid: "water", shape: "cylinder", size: [0.38, 0.4, 0], level: 0 },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["pulley"], reason: "待確認(未修):pulley 在動,但離帶動(或支撐)它的零件還有 0.55 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["bucketL"], reason: "待確認(未修):bucketL 在動,但離帶動(或支撐)它的零件還有 0.12 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["bucketR"], reason: "待確認(未修):bucketR 在動,但離帶動(或支撐)它的零件還有 0.12 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["rope"], reason: "待確認(未修):rope 在動,但離帶動(或支撐)它的零件還有 0.22 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["house", "pulley"], reason: "待確認:house 的方塊 0.06×0.5×0.06 與 pulley 的方塊 0.314×0.05×0.054重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "bucketL", type: "translation", direction: [0, -1, 0], cycle: [TOP, BOTTOM] },
   target: "bucketR", // 被抬起的滿桶
   view: { direction: [0.1, 0.06, 1] },

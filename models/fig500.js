@@ -97,11 +97,6 @@ export default {
     { id: "needle", kind: "plate", center: [0, 0, 0.16], shape: needle, thickness: 0.04, hub: 0.08, spin: 1.1 },
   ],
   powered: ["rod"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "unsupported", parts: ["needle"], reason: "待確認(未修):needle 在動,但離帶動(或支撐)它的零件還有 0.23 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["case", "discA"], reason: "待確認(未修):case 的板 與 discA 的旋轉體互相穿入 0.20(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["discA", "rod"], reason: "待確認:discA 的旋轉體 與 rod 的方塊 1×0.07×0.05重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "壓力", mode: "balance", range: [0, MAX] },
   target: "needle",
   view: { direction: [0.1, 0.08, 1] },

@@ -54,13 +54,6 @@ export default {
     { id: "rodD", kind: "link", width: 0.04, thickness: 0.03 },
   ],
   powered: ["cup"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "unsupported", parts: ["valve"], reason: "待確認(未修):valve 在動,但離帶動(或支撐)它的零件還有 0.33 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["lever"], reason: "待確認(未修):lever 在動,但離帶動(或支撐)它的零件還有 0.24 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["rodD"], reason: "待確認(未修):rodD 在動,但離帶動(或支撐)它的零件還有 0.59 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["casing", "valve"], reason: "待確認(未修):casing 的板 與 valve 的板互相穿入 0.16(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["casing", "lever"], reason: "待確認:casing 的方塊 0.06×0.5×0.06 與 lever 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "主管壓力", mode: "balance", range: RANGE, initial: 1.0 },
   target: "valve", // 節流的調節閥 D
   view: { direction: [0.06, 0.08, 1] },

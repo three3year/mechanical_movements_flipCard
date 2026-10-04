@@ -53,12 +53,6 @@ export default {
     { id: "sliderB", kind: "box", size: [0.3, 0.14, 0.18], label: "B", labelOffset: [0, 0.3, 0.3] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["frame", "pistonRod"], reason: "待確認(未修):frame 的圓柱 r0.1×0.4 與 pistonRod 的方塊 0.08×1.75×0.08互相穿入 0.14(40 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "barBC"], reason: "待確認:frame 的圓柱 r0.1×0.4 與 barBC 的圓柱 r0.02×0.132重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["barBC", "radiusFA"], reason: "待確認:barBC 的圓柱 r0.02×0.132 與 radiusFA 的圓柱 r0.02×0.132重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["rod", "radiusFA"], reason: "待確認:rod 的圓柱 r0.02×0.132 與 radiusFA 的圓柱 r0.02×0.132重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "crank", // 輸出的曲柄
   view: { direction: [0.03, 0.05, 1] },

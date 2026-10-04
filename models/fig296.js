@@ -63,9 +63,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["anchor", "roller"], reason: "待確認:anchor 的板 與 roller 的圓柱 r0.05×0.3重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "roller", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheelA", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },

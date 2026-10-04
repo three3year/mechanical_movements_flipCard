@@ -72,17 +72,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["arcPiece"], reason: "待確認:arcPiece 與帶動(或支撐)它的零件之間差 0.09 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["arm"], reason: "待確認(未修):arm 在動,但離帶動(或支撐)它的零件還有 0.22 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["shaft", "rodA"], reason: "待確認(未修):shaft 的圓柱 r0.22×1.2 與 rodA 的方塊 1×0.16×0.08互相穿入 0.30(288 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["shaft", "rodB"], reason: "待確認(未修):shaft 的圓柱 r0.22×1.2 與 rodB 的方塊 1×0.16×0.08互相穿入 0.14(288 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["rodA", "valveRod"], reason: "待確認:rodA 的圓柱 r0.032×0.176 與 valveRod 的方塊 0.22×0.22×0.2重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["link", "valveRod"], reason: "待確認(未修):link 的板 與 valveRod 的方塊 0.22×0.22×0.2互相穿入 0.11(288 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["arcPiece", "arm"], reason: "待確認:arcPiece 的板 與 arm 的方塊 1.6×0.12×0.08重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["arm", "trunnion"], reason: "待確認:arm 的方塊 1.6×0.12×0.08 與 trunnion 的板重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["rodB", "valveRod"], reason: "待確認:rodB 的圓柱 r0.032×0.176 與 valveRod 的方塊 0.22×0.22×0.2重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "shaft", type: "rotation" },
   target: "arm",
   states: {

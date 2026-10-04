@@ -67,7 +67,7 @@ export default {
       kind: "gear",
       crown: true,
       axis: Y,
-      center: [D.center[0], D.top - 0.25, 0],
+      center: [D.center[0], D.top - 0.21, 0], // 齒面抬到弧形板的齒尖處(兩者相貼)
       teeth: D.teeth,
       radius: D.radius,
       width: 0.4,
@@ -78,9 +78,6 @@ export default {
       label: "D",
       labelOffset: [-1.2, -0.65, 1.0],
     },
-  ],
-  waivers: [
-    { check: "unsupported", parts: ["wheel"], reason: "待確認:wheel 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
   ],
   driver: { part: "rock", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
   target: "wheel", // 近乎連續旋轉的棘輪 D

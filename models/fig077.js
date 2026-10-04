@@ -65,16 +65,12 @@ export default {
     { id: "pawlUpper", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "pawlLower", kind: "link", width: 0.12, thickness: 0.06 },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "pawlUpper"], reason: "待確認:wheel 的圓柱 r0.09×0.4 與 pawlUpper 的圓柱 r0.024×0.132重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["wheel", "pawlLower"], reason: "待確認:wheel 的圓柱 r0.09×0.4 與 pawlLower 的圓柱 r0.024×0.132重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "lever", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
   target: "wheel", // 近乎連續旋轉的輪 B
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const psi = swingAt(v, -SWING / 2, SWING / 2);
-    const z = 0.38;
+    const z = 0.42; // 棘爪在凸柱前端的前面
     const pin = (w) => [...bodyPoint(A, psi, PINS[w]).slice(0, 2), z];
     const tipAt = (w) => [...tip(w, psi).slice(0, 2), z];
     return {

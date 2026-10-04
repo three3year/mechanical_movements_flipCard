@@ -35,14 +35,11 @@ export default {
       kind: "group",
       center: [NEAR, 0, 0.12],
       pieces: [
-        { kind: "cylinder", radius: GROOVE * 0.85, length: 0.3, at: [0, 0, -0.06] },
+        { kind: "cylinder", radius: GROOVE * 0.6, length: 0.3, at: [0, 0, -0.06] }, // 銷比溝槽細:溝槽在最近、最遠兩處有折角,內側會變窄
         { kind: "box", size: [3.0, 0.24, 0.12], at: [1.5, 0, 0.12] },
         { kind: "cylinder", radius: 0.14, length: 0.18, at: [0, 0, 0.12] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["disc", "rod"], reason: "待確認:disc 的板 與 rod 的圓柱 r0.111×0.3重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "disc", type: "rotation" },
   target: "rod", // 均勻橫移的水平桿

@@ -56,9 +56,6 @@ export default {
     ] },
   ],
   // grips 留空:描跡針沿任意路徑走(數值微分拖動,不需要 direction);鉛筆 A 是目標件,不當抓取處
-  waivers: [
-    { check: "interference", parts: ["armHigh", "pencilA"], reason: "待確認:armHigh 的方塊 1×0.13×0.06 與 pencilA 的方塊 0.42×0.26×0.2重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "tracerB", type: "translation", grips: [], speed: 0.08 },
   target: "pencilA",
   view: { direction: [0.03, 0.06, 1] },

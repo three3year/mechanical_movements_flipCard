@@ -53,9 +53,9 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: body, thickness: 0.5, at: [0, 0, 0.45] },
+        { kind: "plate", shape: body, thickness: 0.4, at: [0, 0, 0.5] }, // 機架板在齒輪前面,不與小齒輪同層
         { kind: "box", size: [3.0, 0.3, 0.8], at: [2.25, -2.72, 0.45] },
-        { kind: "box", size: [1.8, 0.12, 0.56], at: [2.45, 0.68, 0.45] },
+        { kind: "box", size: [1.8, 0.12, 0.4], at: [2.45, 0.68, 0.5] }, // 比小齒輪靠前,不與齒相碰
         { kind: "box", size: [0.45, 0.45, 0.6], at: [2.45, 0.05, 0.45] },
       ],
     },
@@ -78,9 +78,6 @@ export default {
         { kind: "plate", shape: { outline: circle(0.16), holes: [] }, thickness: 0.14 },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["spindle", "frame"], reason: "待確認:spindle 的板 與 frame 的方塊 1.8×0.12×0.56重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "spindle", type: "rotation" },
   target: "gear", // 可嚙合或脫離的大齒輪(背齒輪)

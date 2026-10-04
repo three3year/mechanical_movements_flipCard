@@ -94,9 +94,6 @@ export default {
     },
     { id: "coupler", kind: "link", width: 0.1, thickness: 0.05 },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["valve"], reason: "待確認(未修):valve 在動,但離帶動(或支撐)它的零件還有 0.50 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-  ],
   driver: { part: "crank", type: "rotation" },
   target: "piston",
   view: { direction: [0.15, 0.1, 1] },

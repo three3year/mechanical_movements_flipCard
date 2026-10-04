@@ -31,7 +31,7 @@ export default {
       spin: 0.95,
       pieces: [
         { kind: "lathe", profile: [[0, 0.05], [0.95, 0.05], [0.95, 0.45], [0.55, 0.85], [0.55, 1.15], [0.72, 1.15], [0.72, 1.6], [0, 1.6]], mark: true },
-        { kind: "cylinder", radius: 0.07, length: 2.6, axis: [1, 0, 0], at: [1.3 + 0.65, 0, 1.4] },
+        { kind: "cylinder", radius: 0.07, length: 1.0, axis: [1, 0, 0], at: [1.15, 0, 1.4] }, // 槓桿短於立柱的間距,轉動時不掃過立柱
       ],
     },
     {
@@ -56,13 +56,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["upper", "rodA"], reason: "待確認:upper 的旋轉體 與 rodA 的圓柱 r0.032×0.352重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["upper", "rodB"], reason: "待確認:upper 的旋轉體 與 rodB 的圓柱 r0.032×0.352重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["upper", "frame"], reason: "待確認(未修):upper 的圓柱 r0.07×2.6 與 frame 的圓柱 r0.18×5.4互相穿入 0.25(6 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["lower", "rodA"], reason: "待確認(未修):lower 的圓柱 r0.95×0.35 與 rodA 的圓柱 r0.032×0.352互相穿入 0.30(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["lower", "rodB"], reason: "待確認(未修):lower 的圓柱 r0.95×0.35 與 rodB 的圓柱 r0.032×0.352互相穿入 0.30(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "upper", type: "rotation", range: RANGE },
   target: "lower",
   view: { direction: [0.06, 0.12, 1] },
@@ -70,12 +63,12 @@ export default {
     const { y } = press(phi);
     // 上圓盤的孔在 phi + 0 與 phi + π 方向;下圓盤的孔落後 skew
     const skew = SKEW0 - phi;
-    const ups = [hole(phi, UPPER_Y), hole(phi + Math.PI, UPPER_Y)];
+    const ups = [hole(phi, UPPER_Y - 0.085), hole(phi + Math.PI, UPPER_Y - 0.085)]; // 斜桿的兩端頂在上下圓盤的盤面上(球窩沒畫)
     const downs = [hole(phi + skew, y), hole(phi + skew + Math.PI, y)];
     return {
       parts: {
         upper: { angle: phi },
-        lower: { position: [0, y + 0.2, 0] },
+        lower: { position: [0, y - 0.1, 0] },
         rodA: { from: ups[0], to: downs[0] },
         rodB: { from: ups[1], to: downs[1] },
       },

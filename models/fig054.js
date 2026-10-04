@@ -130,8 +130,8 @@ export default {
     },
   ],
   waivers: [
-    { check: "interference", parts: ["wheel", "pinionB"], reason: "待確認:wheel 的方塊 0.42×0.07×0.16 與 pinionB 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["wheel", "pinionA"], reason: "待確認:小齒輪 A 繞過輪緣缺口換邊時,它的軸掃過輪上的齒栓 0.17;原圖是靠缺口讓出位置,模型的換邊路徑是演出來的" },
+    { check: "interference", parts: ["wheel", "pinionB"], reason: "簡化齒形:輪上的齒栓畫成方塊、小齒輪 B 是梯形齒,咬合時齒側擦到 0.05(96 個取樣中 4 個)" },
+    { check: "interference", parts: ["wheel", "pinionA"], reason: "小齒輪 A 繞過輪緣缺口換邊時,它的軸掃過輪上的齒栓 0.17(96 個取樣中 7 個);原圖是靠缺口讓出位置,模型的換邊路徑是演出來的,不逐點算接觸" },
     { check: "interference", parts: ["pinionA", "bearing"], reason: "小齒輪 A 的軸在軸承座的長槽裡橫移(換到輪的另一側),槽沒畫出來" },
   ],
   driver: { part: "pinionA", type: "rotation", initial: L / 2, speed: 4 },

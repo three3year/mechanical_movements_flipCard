@@ -69,11 +69,6 @@ export default {
     },
     { id: "rope", kind: "rope" },
   ],
-  waivers: [
-    { check: "interference", parts: ["armL", "armR"], reason: "待確認(未修):armL 的板 與 armR 的板互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "armL"], reason: "待確認:frame 的板 與 armL 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["frame", "armR"], reason: "待確認:frame 的板 與 armR 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "pin", grips: ["armL", "armR"], type: "translation", direction: [0, 1, 0], cycle: [0, HEIGHT] },
 
   target: "weight",

@@ -71,11 +71,6 @@ export default {
     },
     { id: "helix", kind: "trace" },
   ],
-  waivers: [
-    { check: "interference", parts: ["frame", "rack"], reason: "待確認(未修):frame 的方塊 4.8×0.12×0.6 與 rack 的板互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["gears", "rack"], reason: "待確認(未修):gears 的板 與 rack 的板互相穿入 0.12(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["spur", "rack"], reason: "待確認:spur 的板 與 rack 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "spur", type: "rotation", range: RANGE, initial: 0, speed: -1.2 },
   target: "cylinder", // 被畫上螺旋線的圓筒
   view: { direction: [0.25, 0.15, 1] },

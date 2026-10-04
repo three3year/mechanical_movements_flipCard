@@ -51,7 +51,8 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(circle(D.radius), [circle(0.2).reverse()]), thickness: 0.12, at: [0, 0, -0.1] },
         { kind: "tube", points: springB.map(([x, y]) => [x, y, 0.15]), radius: 0.06 },
-        { kind: "box", size: [0.3, 0.22, 0.3], at: [...polar(D.radius - 0.28, B_AT).slice(0, 2), 0.1], angle: B_AT, accent: true },
+        // B 的固定座壓低在輪面上,彈簧 C 從它上方通過(只有 B 的彈簧條碰得到 C)
+        { kind: "box", size: [0.3, 0.22, 0.16], at: [...polar(D.radius - 0.28, B_AT).slice(0, 2), 0], angle: B_AT, accent: true },
       ],
       label: "D",
       labelOffset: [-0.8, -1.6, 0.3],
@@ -75,9 +76,6 @@ export default {
     { id: "support", kind: "box", center: [-3.0, -2.95, 0], size: [1.3, 0.8, 0.6] },
     { id: "labelC", kind: "group", center: [-1.85, 0.75, 0.2], label: "C" },
   ],
-  waivers: [
-    { check: "interference", parts: ["d", "springC"], reason: "待確認:springC 的第 8 段穿過d 的方塊 0.3×0.22×0.3重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "d", type: "rotation", speed: -0.9 },
   target: "a", // 每圈被推一齒的棘輪 A
   view: { direction: [0.06, 0.05, 1] },
@@ -90,4 +88,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["d", "springC"], reason: "彈簧 B 從 C 下方通過、把 C 壓進齒的過程以正弦曲線演出,不逐點算接觸;兩根彈簧條(都畫成圓條)交會時最多重疊 0.05(96 個取樣中 10 個)" },
+  ],
 };

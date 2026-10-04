@@ -10,7 +10,7 @@ const BALL = 0.24;
 const FACE = { top: 0.8, bottom: -0.8 }; // 上凸塊的左面、下凸塊的右面(框架局部 x)
 const TIP = { top: 0.6, bottom: -0.6 }; // 凸塊伸到的高度
 const PERIOD = TAU / 3;
-const STEP = deg(2);
+const STEP = deg(0.5);
 
 const balls = (theta) => [0, 1, 2].map((k) => polar(ARM, deg(90) - theta + (k * TAU) / 3));
 
@@ -26,7 +26,7 @@ function bounds(theta) {
 }
 
 // 從第 k 個週期的起點推算到 theta;取樣點固定在 STEP 的整數倍上,每個週期的推算完全相同
-const PER = 60; // 每個週期的步數(PERIOD = 60 × STEP)
+const PER = 240; // 每個週期的步數(PERIOD = 240 × STEP)
 function settle(x, k, theta) {
   const last = Math.floor(theta / STEP + 1e-9);
   for (let j = k * PER + 1; j <= last; j++) x = clamp(x, ...bounds(j * STEP));
@@ -76,16 +76,13 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape(roundedBox(4.3, 3.0, 0.5), [roundedBox(3.7, 2.4, 0.35).reverse()]), thickness: 0.3 },
-        { kind: "plate", shape: shape([[FACE.top, 1.21], [FACE.top + 0.5, 1.21], [FACE.top + 0.42, TIP.top + 0.15], [FACE.top + 0.2, TIP.top], [FACE.top, TIP.top + 0.1]]), thickness: 0.3 },
-        { kind: "plate", shape: shape([[FACE.bottom - 0.5, -1.21], [FACE.bottom, -1.21], [FACE.bottom, TIP.bottom - 0.1], [FACE.bottom - 0.2, TIP.bottom], [FACE.bottom - 0.42, TIP.bottom - 0.15]]), thickness: 0.3 },
+        { kind: "plate", shape: shape(roundedBox(4.3, 3.12, 0.5), [roundedBox(3.7, 2.52, 0.35).reverse()]), thickness: 0.3 },
+        { kind: "plate", shape: shape([[FACE.top, 1.27], [FACE.top + 0.5, 1.27], [FACE.top + 0.42, TIP.top + 0.15], [FACE.top + 0.2, TIP.top], [FACE.top, TIP.top + 0.1]]), thickness: 0.3 },
+        { kind: "plate", shape: shape([[FACE.bottom - 0.5, -1.27], [FACE.bottom, -1.27], [FACE.bottom, TIP.bottom - 0.1], [FACE.bottom - 0.2, TIP.bottom], [FACE.bottom - 0.42, TIP.bottom - 0.15]]), thickness: 0.3 },
         { kind: "box", size: [0.3, 0.4, 0.3], at: [-2.3, 0, 0] },
         { kind: "box", size: [0.3, 0.4, 0.3], at: [2.3, 0, 0] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["shaft", "frame"], reason: "待確認:shaft 的圓柱 r0.24×0.25 與 frame 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "shaft", type: "rotation", speed: -0.8 },
   target: "frame", // 往復直線運動的框架

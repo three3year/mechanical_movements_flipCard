@@ -67,11 +67,6 @@ export default {
     { id: "legB", kind: "link", width: 0.12, thickness: 0.12 },
   ],
   powered: ["drum"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["frame", "drum"], reason: "待確認:frame 的方塊 6.4×0.15×1.6 與 drum 的方塊 0.4×0.3×0.25重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["person", "legA"], reason: "待確認:person 的方塊 0.35×0.8×0.3 與 legA 的圓柱 r0.06×0.12重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["person", "legB"], reason: "待確認:person 的方塊 0.35×0.8×0.3 與 legB 的圓柱 r0.06×0.12重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.06 },
   target: "drum", // 被人踩著轉的圓筒
   view: { direction: [0.55, 0.35, 1] },

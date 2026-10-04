@@ -66,9 +66,6 @@ export default {
     },
     { id: "rod", kind: "link", width: 0.14, thickness: 0.08 },
   ],
-  waivers: [
-    { check: "interference", parts: ["piston", "rod"], reason: "待確認(未修):piston 的圓柱 r0.98×0.22 與 rod 的方塊 1×0.14×0.08互相穿入 0.12(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "flywheel", type: "rotation" },
   target: "piston",
   view: { direction: [0.03, 0.05, 1] },

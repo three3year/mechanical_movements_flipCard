@@ -43,12 +43,6 @@ export default {
     { id: "rollerA", kind: "pulley", style: "disc", center: [RACK.origin[0] - 0.62, F[1] + 0.35, 0], radius: 0.32, width: 0.2, label: "A", labelOffset: [-0.45, 0, 0.3] },
     { id: "labelD", kind: "group", center: [F[0] - 1.25, F[1] + 0.25, 0], label: "D", labelOffset: [0.25, 0.25, 0.3] },
   ],
-  waivers: [
-    { check: "interference", parts: ["frame", "beam"], reason: "待確認(未修):frame 的方塊 0.3×0.5×0.4 與 beam 的板互相穿入 0.18(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "sectorC"], reason: "待確認:frame 的方塊 5.6×0.12×0.6 與 sectorC 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["frame", "rackB"], reason: "待確認:frame 的方塊 5.6×0.12×0.6 與 rackB 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["rackB", "rollerA"], reason: "待確認:rackB 的板 與 rollerA 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "beam", grips: ["sectorC"], type: "rotation", range: RANGE, initial: 0 },
   target: "rackB", // 直上直下的活塞桿
   view: { direction: [0.03, 0.05, 1] },

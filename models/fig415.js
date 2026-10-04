@@ -80,10 +80,6 @@ export default {
       { id: "B", label: "B 嚙合" },
     ],
   },
-  waivers: [
-    { check: "interference", parts: ["wheel", "lever"], reason: "待確認(未修):wheel 的板 與 lever 的板互相穿入 0.10(192 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["wheel", "rod"], reason: "待確認:wheel 的板 與 rod 的方塊 1×0.1×0.05重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "lever", type: "rotation", cycle: [-SWING, SWING], initial: SWING },
   target: "wheel",
   view: { direction: [0.05, 0.06, 1] },

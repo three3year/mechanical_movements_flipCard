@@ -77,10 +77,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["left", "rack"], reason: "待確認(未修):left 的板 與 rack 的板互相穿入 0.12(4 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["right", "rack"], reason: "待確認:right 的板 與 rack 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "rack", type: "translation", direction: [0, 1, 0], cycle: [-STROKE / 2, STROKE / 2] },
   target: "central", // 連續旋轉的中央齒輪
   view: { direction: [0.08, 0.05, 1], fit: ["left", "right", "central"] },
@@ -91,5 +87,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["right", "rack"], reason: "簡化齒形:半圈有齒的扇形段轉到換邊時,頭尾兩齒的齒頂擦到齒條的齒 0.08(96 個取樣中 6 個);實物會把頭尾的齒修短" },
+    { check: "interference", parts: ["left", "rack"], reason: "簡化齒形:半圈有齒的扇形段轉到換邊時,頭尾兩齒的齒頂擦到齒條的齒 0.12(96 個取樣中 4 個);實物會把頭尾的齒修短" },
+  ],
 };
 

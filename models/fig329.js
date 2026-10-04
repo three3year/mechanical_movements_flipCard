@@ -69,14 +69,6 @@ export default {
     ...cylinderParts(CYL),
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["frame", "flywheel"], reason: "待確認:frame 的方塊 0.25×5.4×0.3 與 flywheel 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["frame", "cylinder"], reason: "待確認:frame 的方塊 4.4×0.18×0.8 與 cylinder 的旋轉體重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["flywheel", "gearB"], reason: "待確認(未修):flywheel 的圓柱 r0.2×1 與 gearB 的板互相穿入 0.25(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["flywheel", "rodA"], reason: "待確認(未修):flywheel 的圓柱 r0.2×1 與 rodA 的方塊 0.09×3.6×0.08互相穿入 0.14(54 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["flywheel", "cylinder"], reason: "待確認:flywheel 的板 與 cylinder 的旋轉體重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["gearB", "rodA"], reason: "待確認:gearB 的圓柱 r0.043×0.266 與 rodA 的方塊 0.09×3.6×0.08重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "flywheel", // 蒸汽最終帶動的軸(板 C 與飛輪);活塞桿 A 在輸入這一側,被導引得保持直立
   view: { direction: [0.03, 0.05, 1] },

@@ -70,14 +70,11 @@ export default {
       id: "slide",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.5, 0.3, 0.2], at: [0.25, 0, 0.35] },
-        { kind: "cylinder", axis: [1, 0, 0], radius: 0.13, length: 1.6, at: [1.2, 0, 0.35] },
-        { kind: "cylinder", radius: 0.2, inner: 0.1, length: 0.25, at: [0, 0, 0.35] },
+        { kind: "box", size: [0.5, 0.3, 0.2], at: [0.25, 0, 0.4] },
+        { kind: "cylinder", axis: [1, 0, 0], radius: 0.13, length: 1.6, at: [1.2, 0, 0.4] },
+        { kind: "cylinder", radius: 0.2, inner: 0.1, length: 0.25, at: [0, 0, 0.4] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["lever", "slide"], reason: "待確認:lever 的方塊 1×0.24×0.1 與 slide 的圓柱 r0.13×1.6重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "top", type: "rotation" },
   target: "slide", // 變速交替橫移的水平桿

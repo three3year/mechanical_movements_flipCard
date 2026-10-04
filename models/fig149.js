@@ -66,7 +66,7 @@ export default {
       id: "rod",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.12, 2.4, 0.1], at: [0, -1.25, 0] },
+        { kind: "box", size: [0.12, 2.4, 0.1], at: [0, -1.25, 0.1] }, // 吊桿在槓桿上那個環的前面
         { kind: "cylinder", radius: 0.07, length: 0.4, at: [0, 0, -0.1] }, // 頂端的銷:穿過槓桿上的環與槓桿
       ],
     },
@@ -79,15 +79,12 @@ export default {
         { kind: "cylinder", radius: 0.14, length: 0.6, at: [PIVOT[0], PIVOT[1], 0.1] }, // 樞軸銷
         { kind: "plate", shape: CAM_SEAT, thickness: 0.3, at: [CAM.center[0], CAM.center[1], -0.55] }, // 凸輪的軸承座(在凸輪後方)
         // 吊桿的 U 形導座:兩側夾住桿、後板、立柱接到底板
-        { kind: "box", size: [0.1, 0.3, 0.14], at: [GUIDE[0] - 0.13, GUIDE[1], 0.4] },
-        { kind: "box", size: [0.1, 0.3, 0.14], at: [GUIDE[0] + 0.13, GUIDE[1], 0.4] },
-        { kind: "box", size: [0.36, 0.3, 0.14], at: [GUIDE[0], GUIDE[1], 0.25] },
-        { kind: "box", size: [0.2, GUIDE[1] - FLOOR_TOP, 0.2], at: [GUIDE[0], (GUIDE[1] + FLOOR_TOP) / 2, 0.22] },
+        { kind: "box", size: [0.1, 0.3, 0.14], at: [GUIDE[0] - 0.22, GUIDE[1], 0.5] },
+        { kind: "box", size: [0.1, 0.3, 0.14], at: [GUIDE[0] + 0.1, GUIDE[1], 0.5] },
+        { kind: "box", size: [0.5, 0.3, 0.14], at: [GUIDE[0] - 0.06, GUIDE[1], 0.37] },
+        { kind: "box", size: [0.2, GUIDE[1] - FLOOR_TOP, 0.2], at: [GUIDE[0], (GUIDE[1] + FLOOR_TOP) / 2, 0.34] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["lever", "rod"], reason: "待確認:lever 的板 與 rod 的方塊 0.12×2.4×0.1重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "cam", type: "rotation" },
   target: "rod",
@@ -96,7 +93,7 @@ export default {
     const psi = lever(theta);
     const rod = [PIVOT[0] + ROD_AT * Math.cos(psi), PIVOT[1] + ROD_AT * Math.sin(psi), 0.4];
     return {
-      parts: { cam: { angle: theta }, lever: { angle: psi }, rod: { position: [PIVOT[0] + ROD_AT, rod[1], 0.4] } },
+      parts: { cam: { angle: theta }, lever: { angle: psi }, rod: { position: [rod[0], rod[1], 0.4] } }, // 吊桿的頂端跟著槓桿上的環走(略有左右擺動,導座留了間隙)
       readouts: [],
     };
   },

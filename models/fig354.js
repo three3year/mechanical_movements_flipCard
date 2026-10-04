@@ -50,11 +50,6 @@ export default {
     },
     { id: "guides", kind: "group", pieces: [{ kind: "box", size: [0.9, 0.3, 0.5], at: [0, 2.0, -0.1] }, { kind: "box", size: [0.9, 0.3, 0.5], at: [0, -2.3, -0.1] }] },
   ],
-  waivers: [
-    { check: "interference", parts: ["crank", "crosshead"], reason: "待確認(未修):crank 的圓柱 r0.12×0.5 與 crosshead 的Tube互相穿入 0.13(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["crank", "guides"], reason: "待確認:crank 的板 與 guides 的方塊 0.9×0.3×0.5重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["crosshead", "guides"], reason: "待確認(未修):crosshead 的方塊 0.22×2.4×0.22 與 guides 的方塊 0.9×0.3×0.5互相穿入 0.26(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "crank", type: "rotation", initial: Math.PI / 2 },
   target: "crosshead", // 等速往復的十字頭
   view: { direction: [0.03, 0.05, 1] },

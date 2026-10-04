@@ -43,7 +43,7 @@ export default {
       spin: S,
       pieces: [
         { kind: "plate", shape: shape(reuleaux, [circle(0.15).reverse()]), thickness: 0.3, mark: [0, 1.0], markSize: 0.09 },
-        { kind: "plate", shape: shape(circle(0.28), [circle(0.15).reverse()]), thickness: 0.4 },
+        { kind: "plate", shape: shape(circle(0.28), [circle(0.15).reverse()]), thickness: 0.2, at: [0, 0, 0.25] }, // 輪轂在方框前面(軸在輪的頂角,輪轂會超出輪廓)
       ],
     },
     {
@@ -51,16 +51,13 @@ export default {
       kind: "group",
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape([[-1.75, -0.35], [1.75, -0.35], [1.85, S + 0.35], [-1.85, S + 0.35]], [[[-1.45, -0.05], [1.45, -0.05], [1.5, S + 0.05], [-1.5, S + 0.05]].reverse()]), thickness: 0.22, at: [0, 0, -0.05] },
+        { kind: "plate", shape: shape([[-1.95, -0.35], [1.95, -0.35], [2.05, S + 0.35], [-2.05, S + 0.35]], [[[-1.66, -0.05], [1.66, -0.05], [1.7, S + 0.05], [-1.7, S + 0.05]].reverse()]), thickness: 0.22, at: [0, 0, -0.05] },
         { kind: "box", size: [2.4, 0.05, 0.3], at: [0, -0.025, 0] },
         { kind: "box", size: [2.4, 0.05, 0.3], at: [0, S + 0.025, 0] },
         { kind: "cylinder", radius: 0.18, length: 1.2, axis: [0, 1, 0], at: [0, S + 0.9, -0.05] },
         { kind: "cylinder", radius: 0.18, length: 1.2, axis: [0, 1, 0], at: [0, -0.9, -0.05] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["cam", "frame"], reason: "待確認(未修):cam 的板 與 frame 的板互相穿入 0.23(96 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "cam", type: "rotation", speed: 0.6 },
   target: "frame", // 間歇上下往復的方框

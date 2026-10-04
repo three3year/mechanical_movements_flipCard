@@ -58,10 +58,6 @@ export default {
     },
     { id: "rod", kind: "group", pieces: [{ kind: "cylinder", axis: Y, radius: 0.06, length: 1.6, at: [0, -0.8, 0] }, { kind: "cylinder", radius: 0.16, inner: 0.07, length: 0.2 }] },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "rocker"], reason: "待確認(未修):wheel 的Tube 與 rocker 的板互相穿入 0.15(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["rocker", "rod"], reason: "待確認(未修):rocker 的方塊 2.7×0.14×0.1 與 rod 的板互相穿入 0.13(74 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "wheel", type: "rotation", speed: 0.5 },
   target: "rod",
   view: { direction: [0.08, 0.15, 1] },

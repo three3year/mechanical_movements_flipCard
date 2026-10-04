@@ -67,10 +67,6 @@ export default {
     },
     { id: "pawl", kind: "box", size: [0.22, 0.6, 0.4] },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "pawl"], reason: "待確認(未修):wheel 的板 與 pawl 的方塊 0.22×0.6×0.4互相穿入 0.12(90 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["arm", "pawl"], reason: "待確認(未修):arm 的圓柱 r0.06×3.2 與 pawl 的方塊 0.22×0.6×0.4互相穿入 0.26(48 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "arm", type: "rotation", cycle: [FROM, TO] },
 
   target: "wheel",

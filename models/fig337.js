@@ -26,13 +26,6 @@ export default {
     { id: "vibrating", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "pistonRod", kind: "box", size: [0.08, PISTON_ROD, 0.08] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["beam"], reason: "待確認:beam 與帶動(或支撐)它的零件之間差 0.09 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["radiusBar"], reason: "待確認(未修):radiusBar 在動,但離帶動(或支撐)它的零件還有 0.79 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["vibrating"], reason: "待確認:vibrating 與帶動(或支撐)它的零件之間差 0.09 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["pistonRod"], reason: "待確認(未修):pistonRod 在動,但離帶動(或支撐)它的零件還有 0.35 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["vibrating", "pistonRod"], reason: "待確認:vibrating 的圓柱 r0.024×0.132 與 pistonRod 的方塊 0.08×2.6×0.08重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "beam", type: "rotation", range: RANGE, initial: 0 },
   target: "pistonRod", // 直上直下的活塞桿
   view: { direction: [0.03, 0.05, 1] },

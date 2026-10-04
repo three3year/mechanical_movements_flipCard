@@ -50,11 +50,6 @@ export default {
     gear("wheelE", E, 0.3, "E", [0, 0.2, 0.4], { pieces: [{ kind: "cylinder", radius: 0.3, length: 0.5, at: [0, 0, 0.35] }] }),
     { id: "screwC", kind: "worm", axis: X, center: [XD + 1.9, AXIS_C, 0], radius: 0.2, length: 3.8, pitch: PITCH, thread: 0.05, label: "C", labelOffset: [0, 0.4, 0.3], pieces: [{ kind: "cylinder", radius: 0.12, length: 1.6, at: [0, 0, -2.6] }] },
   ],
-  waivers: [
-    { check: "interference", parts: ["frame", "wheelD"], reason: "待確認:frame 的方塊 5.4×0.12×1.2 與 wheelD 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["frame", "screwC"], reason: "待確認(未修):frame 的方塊 0.3×1×0.5 與 screwC 的Tube互相穿入 0.20(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["wheelE", "screwC"], reason: "待確認:wheelE 的板 與 screwC 的Tube重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "shaftA", grips: ["pinionB"], type: "rotation", range: RANGE, initial: 0 },
   target: "screwC",
   view: { direction: [0.2, 0.15, 1] },

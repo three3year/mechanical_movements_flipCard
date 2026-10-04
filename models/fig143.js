@@ -32,7 +32,7 @@ export default {
       spin: 0.6,
       spinOffset: 3.4,
       pieces: [
-        { kind: "cylinder", radius: 0.07, length: 7.8, at: [0, 0, 0.6] },
+        { kind: "cylinder", radius: 0.2, length: 7.8, at: [0, 0, 0.6] }, // 蝸桿套在這根軸上、沿軸滑動(滑鍵沒畫)
         { kind: "pulley", style: "disc", radius: 0.6, width: 0.22, at: [0, 0, -3.3] },
       ],
     },
@@ -42,9 +42,13 @@ export default {
       id: "carriage",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.2, 0.62, 0.4], at: [-0.5, SHAFT_Y - 0.05, -0.2] },
-        { kind: "box", size: [0.2, 0.62, 0.4], at: [0.5, SHAFT_Y - 0.05, -0.2] },
+        // 夾著蝸桿兩端的兩片耳板(軸穿過它們),下面的板上有蝸輪的軸
+        { kind: "box", size: [0.2, 0.5, 0.6], at: [-0.55, SHAFT_Y + 0.06, -0.1] },
+        { kind: "box", size: [0.2, 0.5, 0.6], at: [0.55, SHAFT_Y + 0.06, -0.1] },
         { kind: "box", size: [1.6, 0.4, 0.2], at: [0, WHEEL_Y + 0.1, -0.3] },
+        { kind: "box", size: [0.2, 1.3, 0.2], at: [-0.55, WHEEL_Y + 0.75, -0.3] },
+        { kind: "box", size: [0.2, 1.3, 0.2], at: [0.55, WHEEL_Y + 0.75, -0.3] },
+        { kind: "cylinder", radius: 0.11, length: 0.5, at: [0, WHEEL_Y, -0.05] },
       ],
     },
     { id: "rod", kind: "link", width: 0.1, thickness: 0.06 },
@@ -52,24 +56,13 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.4, 2.2, 0.6], at: [-2.7, 0.75, 0] },
-        { kind: "box", size: [0.4, 2.2, 0.6], at: [3.4, 0.75, 0] },
+        { kind: "box", size: [0.4, 2.6, 0.6], at: [-2.7, 0.55, 0] },
+        { kind: "box", size: [0.4, 2.6, 0.6], at: [3.4, 0.55, 0] },
         { kind: "cylinder", axis: X, radius: 0.06, length: 6.1, at: [0.35, WHEEL_Y + 0.25, -0.3] },
         { kind: "cylinder", axis: X, radius: 0.06, length: 6.1, at: [0.35, WHEEL_Y - 0.1, -0.3] },
-        { kind: "box", size: [7.6, 0.08, 1.2], at: [0.2, -0.38, 0] },
+        { kind: "box", size: [7.6, 0.08, 1.2], at: [0.2, -0.75, 0] }, // 底板在蝸輪的下方
       ],
     },
-  ],
-  waivers: [
-    { check: "unsupported", parts: ["shaft"], reason: "待確認(未修):shaft 在動,但離帶動(或支撐)它的零件還有 0.22 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["worm"], reason: "待確認(未修):worm 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["wheel"], reason: "待確認(未修):wheel 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["carriage"], reason: "待確認(未修):carriage 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["rod"], reason: "待確認(未修):rod 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["worm", "wheel"], reason: "待確認:worm 的Tube 與 wheel 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["worm", "carriage"], reason: "待確認:worm 的Tube 與 carriage 的方塊 0.2×0.62×0.4重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["wheel", "carriage"], reason: "待確認:wheel 的板 與 carriage 的方塊 0.2×0.62×0.4重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["wheel", "frame"], reason: "待確認(未修):wheel 的板 與 frame 的方塊 7.6×0.08×1.2互相穿入 0.14(96 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "shaft", type: "rotation", speed: 6 },
   target: "carriage",
@@ -87,4 +80,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["worm", "wheel"], reason: "簡化齒形:蝸桿螺紋是圓管、蝸輪是直齒,齒頂伸進螺紋 0.09;實物的蝸輪齒是凹弧形包著蝸桿" },
+  ],
 };

@@ -62,11 +62,6 @@ export default {
     },
     { id: "pawl", kind: "plate", shape: shape(thickLine([[0, 0], [-0.5, 0.25]], 0.08), [circle(0.03).reverse()]), thickness: 0.1, arrow: false },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["pawl"], reason: "待確認:pawl 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["body", "rack"], reason: "待確認:body 的板 與 rack 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["rack", "eccentric"], reason: "待確認:rack 的板 與 eccentric 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "eccentric", type: "rotation", range: RANGE, initial: 0 },
   target: "rack", // 一齒一齒被頂上去的棘齒桿
   view: { direction: [0.06, 0.05, 1] },

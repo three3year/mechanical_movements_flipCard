@@ -40,12 +40,6 @@ export default {
     { id: "labelF", kind: "group", center: [X, 0.85, 0], label: "F", labelOffset: [0.4, 0, 0.3] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "unsupported", parts: ["lever"], reason: "待確認:lever 與帶動(或支撐)它的零件之間差 0.07 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["piston", "sideRod"], reason: "待確認(未修):piston 的圓柱 r0.53×0.22 與 sideRod 的方塊 1×0.1×0.06互相穿入 0.28(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["cylinder", "lever"], reason: "待確認:cylinder 的旋轉體 與 lever 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["frame", "lever"], reason: "待確認:frame 的方塊 5.2×0.15×0.6 與 lever 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.25 },
   target: "lever", // 被帶動的側槓桿
   view: { direction: [0.03, 0.05, 1] },

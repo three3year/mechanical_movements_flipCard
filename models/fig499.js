@@ -81,12 +81,6 @@ export default {
     { id: "pointer", kind: "plate", center: PINION.center, shape: shape([[-0.12, -0.03], [1.55, 0], [-0.12, 0.03]]), thickness: 0.03, accent: true, spin: 0.3, pieces: [{ kind: "gear", teeth: PINION.teeth, radius: PINION.radius, width: 0.06, at: [0, 0, GEAR_Z] }] },
   ],
   powered: ["tubeL", "tubeR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["case", "tubeL"], reason: "待確認:tubeL 的第 22 段穿過case 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["case", "tubeR"], reason: "待確認:tubeR 的第 20 段穿過case 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["case", "rodL"], reason: "待確認:rodL 的第 1 段穿過case 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["case", "rodR"], reason: "待確認:rodR 的第 1 段穿過case 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "壓力", mode: "balance", range: RANGE, initial: 4 },
   target: "pointer", // 在錶盤上指示壓力的指針
   view: { direction: [0.03, 0.05, 1] },

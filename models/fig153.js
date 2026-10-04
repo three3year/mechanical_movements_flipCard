@@ -40,9 +40,11 @@ export default {
       id: "bar",
       kind: "group",
       pieces: [
-        { kind: "box", size: [6.4, 0.42, 0.3], at: [0, BAR_Y, 0.25] },
+        // 桿身在搖臂後面一層(搖臂上端從它前方擺過),凸塊與銷往前伸到凸柱、搖臂那一層
+        { kind: "box", size: [6.4, 0.42, 0.3], at: [0, BAR_Y, -0.05] },
         { kind: "box", size: [0.35, 0.6, 0.3], at: [0.35, BAR_Y - 0.5, 0.25] },
-        { kind: "cylinder", radius: 0.14, length: 0.4, at: [-2.6, BAR_Y - 0.32, 0.35] },
+        { kind: "box", size: [0.35, 0.3, 0.3], at: [0.35, BAR_Y - 0.2, 0.1] },
+        { kind: "cylinder", radius: 0.14, length: 0.39, at: [-2.6, BAR_Y - 0.32, 0.355] },
       ],
     },
     {
@@ -61,9 +63,6 @@ export default {
       kind: "group",
       pieces: [-2.6, 2.4].map((x) => ({ kind: "cylinder", radius: 0.3, inner: 0.13, length: 0.3, at: [x, BAR_Y - 0.5, 0] })),
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["bar", "crank"], reason: "待確認(未修):bar 的方塊 6.4×0.42×0.3 與 crank 的板互相穿入 0.19(48 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "disc", type: "rotation", speed: -0.9 },
   target: "bar",

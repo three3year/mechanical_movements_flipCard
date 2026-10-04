@@ -51,12 +51,6 @@ export default {
     { id: "labelA", kind: "group", center: P, label: "A", labelOffset: [0.65, -0.05, 0.3] },
     { id: "wheel", kind: "group", center: WHEEL, spin: 0.7, pieces: [{ kind: "plate", shape: { ...ratchetShape({ teeth: N, outer: 0.7, inner: 0.55, dir: -1 }), holes: [circle(0.08).reverse()] }, thickness: 0.1 }, { kind: "box", size: [0.12, 0.12, 0.12], at: [0.45, 0, 0.06], accent: true }] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["wheel"], reason: "待確認:wheel 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["bal1", "bal2"], reason: "待確認:bal1 的板 與 bal2 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["bal2", "lever"], reason: "待確認:bal2 的板 與 lever 的方塊 0.12×0.05×0.1重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["bal1", "lever"], reason: "待確認:bal1 的板 與 lever 的方塊 0.12×0.05×0.1重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "lever", type: "rotation", cycle: [-SWING, SWING] },
   targets: ["bal1", "bal2"], // 一正一反的兩個擺輪
   view: { direction: [0.03, 0.05, 1] },

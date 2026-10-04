@@ -72,11 +72,6 @@ export default {
     },
     { id: "base", kind: "box", center: [-1.9, -1.15, 0], size: [1.6, 0.12, 0.8] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["lever"], reason: "待確認(未修):lever 在動,但離帶動(或支撐)它的零件還有 0.24 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["strap", "rod"], reason: "待確認(未修):strap 的板 與 rod 的圓柱 r0.1×0.1互相穿入 0.13(192 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["rod", "spindle"], reason: "待確認(未修):rod 的圓柱 r0.1×0.1 與 spindle 的圓柱 r0.07×1.6互相穿入 0.10(192 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "shaft", type: "rotation" },
   target: "spindle",
   states: {

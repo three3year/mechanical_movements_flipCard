@@ -49,9 +49,6 @@ export default {
     { id: "jaw", kind: "plate", shape: shape(JAW, [circle(0.36).reverse()]), thickness: 0.15, arrow: false },
     { id: "screw", kind: "group", arrow: false, pieces: [{ kind: "cylinder", radius: 0.34, length: 0.3, at: [0, 0, 0.15] }, ...head([0, 0, 0.34]).map((p) => ({ ...p, at: [p.at[0], p.at[1], p.at[2] + 0.25] }))] },
   ],
-  waivers: [
-    { check: "interference", parts: ["board", "jaw"], reason: "待確認(未修):board 的方塊 0.7×4.4×0.3 與 jaw 的板互相穿入 0.23(90 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "board", type: "translation", direction: [0, 1, 0], range: [0, PUSH], initial: PUSH },
   target: "jaw",
   view: { direction: [0.06, 0.05, 1] },

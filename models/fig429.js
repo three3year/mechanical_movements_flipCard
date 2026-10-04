@@ -104,10 +104,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["casing", "left"], reason: "待確認(未修):casing 的板 與 left 的板互相穿入 0.10(37 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["casing", "right"], reason: "待確認:casing 的板 與 right 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "left", type: "rotation", speed: 0.5 },
   target: "right",
   view: { direction: [0.03, 0.05, 1] },

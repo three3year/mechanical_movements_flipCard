@@ -72,12 +72,6 @@ export default {
     { id: "labelP", kind: "group", center: [-0.6, 3.0, 0], label: "P", labelOffset: [0, 0.2, 0.2] },
   ],
   powered: ["shaftB"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["base", "frameH"], reason: "待確認(未修):base 的方塊 0.5×0.18×0.35 與 frameH 的板互相穿入 0.16(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["shaftB", "valveD"], reason: "待確認(未修):shaftB 的板 與 valveD 的圓柱 r0.06×1互相穿入 0.22(45 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["shaftB", "leverN"], reason: "待確認:shaftB 的板 與 leverN 的圓柱 r0.04×0.05重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["valveD", "leverN"], reason: "待確認:valveD 的圓柱 r0.06×1 與 leverN 的方塊 1×0.08×0.05重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: RANGE, initial: 5 },
   target: "valveD", // 被拉動的閥桿
   view: { direction: [0.03, 0.05, 1] },

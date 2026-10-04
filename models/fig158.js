@@ -52,10 +52,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["treadle", "stand"], reason: "待確認(未修):treadle 的方塊 4.3×0.16×0.2 與 stand 的方塊 5.8×0.08×1.4互相穿入 0.47(20 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["rod", "stand"], reason: "待確認(未修):rod 的方塊 1×0.14×0.08 與 stand 的方塊 5.8×0.08×1.4互相穿入 0.19(17 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "disc", type: "rotation" },
   target: "treadle", // 原文是踏板帶動圓盤;模型以圓盤為主動件,目標件標另一端的踏板
   view: { direction: [0.06, 0.05, 1] },

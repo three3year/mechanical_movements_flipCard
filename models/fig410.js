@@ -66,16 +66,6 @@ export default {
     { id: "tip", kind: "lathe", axis: Y, profile: [[0, -0.1], [0.07, 0.05], [0.07, 0.2], [0, 0.2]] },
     { id: "centerLine", kind: "trace" },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["linkA"], reason: "待確認:linkA 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["linkB"], reason: "待確認:linkB 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["tip"], reason: "待確認(未修):tip 在動,但離帶動(或支撐)它的零件還有 0.84 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["bar", "jaw"], reason: "待確認(未修):bar 的方塊 4.4×0.3×0.3 與 jaw 的方塊 0.4×1.3×0.9互相穿入 0.30(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["linkA", "linkB"], reason: "待確認:linkA 的圓柱 r0.07×0.05 與 linkB 的圓柱 r0.07×0.05重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["linkA", "tip"], reason: "待確認:linkA 的圓柱 r0.028×0.11 與 tip 的旋轉體重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["linkB", "tip"], reason: "待確認:linkB 的圓柱 r0.028×0.11 與 tip 的旋轉體重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["board", "jaw"], reason: "待確認(未修):board 的板 與 jaw 的方塊 0.4×1.3×0.9互相穿入 0.12(55 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "bar", grips: ["jaw"], type: "translation", direction: [0, 0, -1], range: RANGE, initial: -1.2 },
   target: "tip", // 始終在兩夾頰正中間的尖頂
   view: { direction: [0.8, 0.9, 1] },

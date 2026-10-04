@@ -72,11 +72,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["spring"], reason: "待確認:spring 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["rocker", "rod"], reason: "待確認(未修):rocker 的圓柱 r0.08×0.5 與 rod 的板互相穿入 0.14(27 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["rocker", "handle"], reason: "待確認:rocker 的圓柱 r0.08×0.5 與 handle 的板重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "handle", type: "rotation", range: [0, MAX] },
   target: "rod",
   view: { direction: [0.06, 0.05, 1] },

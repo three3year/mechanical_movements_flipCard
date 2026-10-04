@@ -80,11 +80,6 @@ export default {
     { id: "labelI", kind: "group", center: [B[0] - 0.95, B[1] + 0.2, 0], label: "i", labelOffset: [0, 0.25, 0.3] },
     { id: "labelA2", kind: "group", center: BAL, label: "a", labelOffset: [-0.25, 0.65, 0.3] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["balance"], reason: "待確認:balance 與帶動(或支撐)它的零件之間差 0.08 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["wheelB"], reason: "待確認(未修):wheelB 在動,但離帶動(或支撐)它的零件還有 0.25 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["detentA"], reason: "待確認:detentA 與帶動(或支撐)它的零件之間差 0.08 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-  ],
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheelB", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },

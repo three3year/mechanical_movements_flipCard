@@ -49,9 +49,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["crown", "verge"], reason: "待確認(未修):crown 的板 與 verge 的板互相穿入 0.10(88 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "verge", type: "rotation", cycle: [-SWING, SWING] },
   target: "crown", // 冠狀輪(擒縱輪)
   view: { direction: [0.08, 0.18, 1] },

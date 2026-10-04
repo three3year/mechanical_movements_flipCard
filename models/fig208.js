@@ -52,9 +52,6 @@ export default {
     },
     { id: "shaft", kind: "cylinder", center: [0, 0, Z], axis: X, radius: 0.1, length: 4.8 },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "pinion"], reason: "待確認(未修):wheel 的圓柱 r0.08×0.3 與 pinion 的方塊 0.2×0.16×0.42互相穿入 0.17(288 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "wheel", type: "rotation" },
   target: "pinion",
   states: {

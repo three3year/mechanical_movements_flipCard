@@ -31,8 +31,8 @@ const arm = (long, w, vertical) => {
   const at = (x, y, z) => (vertical ? [y, x, z] : [x, y, z]);
   return [
     { kind: "box", size: size(long, w, 0.12), at: at(0, 0, -0.06) },
-    { kind: "box", size: size(long, 0.07, 0.1), at: at(0, 0.16, 0.05) },
-    { kind: "box", size: size(long, 0.07, 0.1), at: at(0, -0.16, 0.05) },
+    // 溝槽兩側的凸緣在十字交會處斷開,凸柱才能從一道溝通過另一道溝
+    ...[1, -1].flatMap((s) => [0.16, -0.16].map((y) => ({ kind: "box", size: size(long / 2 - 0.2, 0.07, 0.1), at: at(s * (long / 4 + 0.1), y, 0.05) }))),
   ];
 };
 
@@ -45,20 +45,16 @@ export default {
     {
       id: "bar",
       kind: "plate",
-      shape: shape(rect(ARM.back + ARM.front, ARM.width, (ARM.front - ARM.back) / 2, 0), [circle(0.1, A_X, 0).reverse()]),
+      shape: shape(rect(ARM.back + ARM.front, ARM.width, (ARM.front - ARM.back) / 2, 0), [circle(0.085, A_X, 0).reverse()]),
       thickness: 0.1,
       pieces: [
-        { kind: "cylinder", radius: 0.12, length: 0.46, at: [0, 0, -0.1] },
-        { kind: "cylinder", radius: 0.12, length: 0.46, at: [STUDS, 0, -0.1] },
+        { kind: "cylinder", radius: 0.12, length: 0.34, at: [0, 0, -0.04] }, // 凸柱的下端坐在溝底上
+        { kind: "cylinder", radius: 0.12, length: 0.34, at: [STUDS, 0, -0.04] },
       ],
     },
     // 鉛筆:裝在橫移桿的桿端、跟著桿走(姿勢與桿相同);獨立成一個零件,好標成目標件
     { id: "pencil", kind: "group", pieces: [{ kind: "lathe", profile: [[0, -0.22], [0.06, -0.12], [0.08, 0.3], [0, 0.3]], at: [A_X, 0, 0] }] },
     { id: "ellipse", kind: "trace" },
-  ],
-  waivers: [
-    { check: "unsupported", parts: ["pencil"], reason: "待確認:pencil 與帶動(或支撐)它的零件之間差 0.03 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["cross", "bar"], reason: "待確認(未修):cross 的方塊 5×0.07×0.1 與 bar 的圓柱 r0.12×0.46互相穿入 0.15(96 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "bar", type: "rotation", initial: START },
   target: "pencil", // 畫出橢圓的鉛筆

@@ -7,7 +7,8 @@ import { doubleAction } from "./ratchets.js";
 import { ratchetShape, shape, stadium, circle } from "./shapes.js";
 
 const WHEEL = { center: [0, 0, 0], teeth: 30, outer: 1.68, inner: 1.48, dir: -1 };
-const PIVOT = [0, 2.2, 0.35];
+// 深度:機架板在棘輪後面,槓桿在前,兩支棘爪夾在槓桿與棘輪之間、貼著棘輪的前面(原圖只有正面,深度是推斷)
+const PIVOT = [0, 2.2, 0.2];
 const PINS = { left: [-0.78, 0], right: [0.78, 0] };
 const PAWL = { left: 1.62, right: 1.38 };
 const RIM = 1.6; // 爪尖落在齒的半徑
@@ -59,7 +60,10 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: frame, thickness: 0.18, at: [0, 0, 0.18] },
+        { kind: "plate", shape: frame, thickness: 0.18, at: [0, 0, -0.18] },
+        { kind: "cylinder", radius: 0.08, length: 0.5, at: [0, PIVOT[1], 0.05] }, // 槓桿的樞軸
+        { kind: "cylinder", radius: 0.11, length: 0.5, at: [0, 0, -0.05] }, // 棘輪的軸
+        { kind: "box", size: [0.3, 0.5, 0.18], at: [0, 0.1, -0.18] },
         { kind: "box", size: [4.4, 0.06, 0.6], at: [0, -2.0, 0] },
       ],
     },
@@ -80,15 +84,12 @@ export default {
     { id: "pawlLeft", kind: "link", width: 0.13, thickness: 0.06 },
     { id: "pawlRight", kind: "link", width: 0.11, thickness: 0.06 },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["wheel"], reason: "待確認(未修):wheel 在動,但離帶動(或支撐)它的零件還有 0.32 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-  ],
   driver: { part: "lever", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
   target: "wheel", // 近乎連續旋轉的棘輪 A
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const psi = swingAt(v, -SWING / 2, SWING / 2);
-    const z = PIVOT[2] + 0.12;
+    const z = PIVOT[2] - 0.08;
     const pin = (w) => [...bodyPoint(PIVOT, psi, PINS[w]).slice(0, 2), z];
     const tipAt = (w) => [...tip(w, psi).slice(0, 2), z];
     return {

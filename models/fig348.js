@@ -45,14 +45,6 @@ export default {
     { id: "sliderC1", kind: "box", size: [0.3, 0.2, 0.14], label: "c", labelOffset: [0.3, 0.1, 0.3] },
     { id: "sliderC2", kind: "box", size: [0.3, 0.2, 0.14], label: "c", labelOffset: [0.3, 0.1, 0.3] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["diskA"], reason: "待確認:diskA 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["barB"], reason: "待確認:barB 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["sliderC1"], reason: "待確認(未修):sliderC1 在動,但離帶動(或支撐)它的零件還有 0.13 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["sliderC2"], reason: "待確認(未修):sliderC2 在動,但離帶動(或支撐)它的零件還有 0.13 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["barB", "sliderC1"], reason: "待確認:barB 的方塊 0.5×4.2×0.1 與 sliderC1 的方塊 0.3×0.2×0.14重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["barB", "sliderC2"], reason: "待確認:barB 的方塊 0.5×4.2×0.1 與 sliderC2 的方塊 0.3×0.2×0.14重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "diskA", type: "rotation" },
   target: "barB", // 每圈往復兩次的桿
   view: { direction: [0.03, 0.04, 1] },

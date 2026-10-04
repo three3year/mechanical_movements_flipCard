@@ -51,10 +51,6 @@ export default {
     { id: "gear", kind: "gear", teeth: N, radius: R, width: 0.22, bore: 0.08, pieces: [{ kind: "cylinder", radius: 0.05, length: 0.6 }] },
     { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.2, 0.9, 0.5], at: [RIGHT + 2.25, 0, 0] }] },
   ],
-  waivers: [
-    { check: "interference", parts: ["frame", "gear"], reason: "待確認(未修):frame 的方塊 0.18×2.315×0.22 與 gear 的板互相穿入 0.16(23 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "guide"], reason: "待確認(未修):frame 的方塊 4×0.16×0.16 與 guide 的方塊 0.2×0.9×0.5互相穿入 0.33(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "frame", type: "translation", direction: [1, 0, 0], range: RANGE, initial: 0.3 },
   target: "gear", // 交替換向的齒輪
   view: { direction: [0.04, 0.05, 1] },

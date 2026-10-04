@@ -77,7 +77,7 @@ export default {
       arrow: false,
       pieces: [
         { kind: "plate", shape: lever, thickness: 0.1 },
-        { kind: "plate", shape: toe, thickness: 0.12 },
+        { kind: "plate", shape: toe, thickness: 0.12, at: [0, 0, -0.1] }, // 爪尖在槓桿後一層,貼著棘輪的前面
         { kind: "cylinder", radius: 0.07, length: 0.25, at: [-1.12, 0, 0] },
       ],
       label: "B",
@@ -87,10 +87,13 @@ export default {
       id: "bracket",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: stadium(0.9, 0.3), thickness: 0.08, at: [C[0] - 0.2, C[1], 0.1] },
-        { kind: "cylinder", radius: 0.09, length: 0.4, at: [C[0], C[1], 0.15] },
-        { kind: "box", size: [2.2, 0.08, 0.08], at: [1.4, 1.0, 0.1] },
-        { kind: "box", size: [2.0, 0.08, 0.08], at: [1.5, 0.45, 0.1] },
+        // 支架在大輪後面(凸柱 D 從它前方掃過);棘輪 A 的軸也裝在支架上(原圖只有正面,深度是推斷)
+        { kind: "plate", shape: stadium(0.9, 0.3), thickness: 0.08, at: [C[0] - 0.2, C[1], -0.2] },
+        { kind: "cylinder", radius: 0.09, length: 0.65, at: [C[0], C[1], 0.05] },
+        { kind: "box", size: [2.2, 0.08, 0.08], at: [1.4, 1.0, -0.2] },
+        { kind: "box", size: [2.0, 0.08, 0.08], at: [1.5, 0.45, -0.2] },
+        { kind: "cylinder", radius: 0.1, length: 0.5, at: [A.center[0], A.center[1], -0.1] },
+        { kind: "box", size: [2.7, 0.2, 0.08], at: [A.center[0] + 1.3, A.center[1], -0.3] },
       ],
       label: "C",
       labelOffset: [C[0] + 0.32, C[1] + 0.05, 0.3],
@@ -98,11 +101,6 @@ export default {
     { id: "studLabel", kind: "group", label: "D", labelOffset: [0.3, 0.1, 0.3] },
   ],
   // 大輪順時針轉(轉角為負)
-  waivers: [
-    { check: "unsupported", parts: ["ratchet"], reason: "待確認:ratchet 與帶動(或支撐)它的零件之間差 0.10 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["wheel", "bracket"], reason: "待確認(未修):wheel 的圓柱 r0.09×0.6 與 bracket 的板互相穿入 0.19(5 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["wheel", "lever"], reason: "待確認(未修):wheel 的圓柱 r0.09×0.6 與 lever 的板互相穿入 0.11(2 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "wheel", type: "rotation", speed: -0.6 },
   target: "ratchet", // 記錄轉數的棘輪 A
   view: { direction: [0.06, 0.05, 1], fit: ["ratchet", "lever", "bracket"] },
@@ -119,4 +117,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "lever"], reason: "凸柱 D 頂起槓桿右端的過程以平順曲線演出,不逐點算接觸;凸柱掃過槓桿端頭時最多重疊 0.11(96 個取樣中 2 個)。每圈頂一次、棘輪前進一齒的關係正確" },
+  ],
 };

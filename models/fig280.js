@@ -86,15 +86,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["wheel"], reason: "待確認(未修):wheel 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["block"], reason: "待確認(未修):block 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["short"], reason: "待確認(未修):short 在動,但離帶動(或支撐)它的零件還有 0.73 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["link"], reason: "待確認(未修):link 在動,但離帶動(或支撐)它的零件還有 0.15 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["frame", "wheel"], reason: "待確認:frame 的圓柱 r0.09×0.5 與 wheel 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["frame", "pawl"], reason: "待確認:frame 的圓柱 r0.09×0.5 與 pawl 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["wheel", "block"], reason: "待確認(未修):wheel 的板 與 block 的方塊 0.5×0.42×0.7互相穿入 0.15(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "long", type: "rotation", cycle: [FROM, TO] },
   target: "wheel", // 被夾著一步步轉的絞盤輪
   view: { direction: [0.04, 0.05, 1] },

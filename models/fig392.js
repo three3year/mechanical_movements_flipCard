@@ -47,12 +47,6 @@ export default {
     { id: "blade", kind: "group", arrow: false, pieces: [{ kind: "box", size: [0.08, BLADE, 0.02], at: [0, BLADE / 2, 0] }, ...Array.from({ length: 16 }, (_, i) => ({ kind: "box", size: [0.05, 0.05, 0.02], at: [-0.05, 0.1 + i * 0.16, 0], angle: 0.8 }))] },
     { id: "spring", kind: "spring", coils: 9, radius: 0.1, wire: 0.02 },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["spring"], reason: "待確認:spring 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["frame", "crank"], reason: "待確認:frame 的方塊 0.12×1.6×0.12 與 crank 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["frame", "blade"], reason: "待確認(未修):frame 的板 與 blade 的方塊 0.08×2.6×0.02互相穿入 0.36(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "spring"], reason: "待確認:frame 的方塊 2.6×0.18×0.3 與 spring 的Tube重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "crank", type: "rotation" },
   target: "blade",
   view: { direction: [0.08, 0.05, 1] },

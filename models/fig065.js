@@ -6,7 +6,8 @@ import { TAU, deg, polar } from "./kit.js";
 import { arcPoints, circle, shape } from "./shapes.js";
 import { indexStep } from "./jumps.js";
 
-const C = { center: [-1.6, 0, 0], radius: 1.55 };
+// C 的輪身加厚到槓桿那一層(槓桿左端靠在 C 的圓周上),撥爪貼在 C 的前面、從槓桿前方掃過(原圖只有正面,深度是推斷)
+const C = { center: [-1.6, 0, 0.1], radius: 1.55 };
 const D = { center: [1.5, 0, 0], radius: 1.5, studs: 10, studR: 1.2 };
 const TAPPET = { length: 2.05, at: deg(12) };
 const WINDOW = { from: 0, span: deg(26) };
@@ -56,7 +57,7 @@ export default {
       kind: "plate",
       center: C.center,
       shape: shape(notched, [circle(0.14).reverse()]),
-      thickness: 0.2,
+      thickness: 0.4,
       hub: 0.3,
       circles: [0.38],
       spin: C.radius,
@@ -65,7 +66,7 @@ export default {
           kind: "plate",
           shape: shape([[0, 0.24], ...arcPoints(0.24, Math.PI / 2, (3 * Math.PI) / 2), [0, -0.24], [TAPPET.length, -0.06], [TAPPET.length + 0.08, 0.04], [TAPPET.length, 0.1]]),
           thickness: 0.1,
-          at: [0, 0, 0.22],
+          at: [0, 0, 0.27],
           angle: TAPPET.at,
           accent: true,
         },
@@ -102,10 +103,6 @@ export default {
     },
   ],
   // C 順時針轉(轉角為負)
-  waivers: [
-    { check: "interference", parts: ["c", "d"], reason: "待確認(未修):c 的板 與 d 的圓柱 r0.11×0.5互相穿入 0.12(2 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["c", "lever"], reason: "待確認:c 的板 與 lever 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "c", type: "rotation", speed: -1.0, initial: deg(-6) },
   target: "d", // 每圈被撥動一格的輪 D
   view: { direction: [0.06, 0.05, 1] },
@@ -116,4 +113,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["c", "lever"], reason: "槓桿左端落進 C 的凹槽再被推出的擺動以正弦曲線演出,不是逐點算接觸;進出凹槽時端頭與槽口邊最多重疊 0.09(96 個取樣中 6 個)。鎖住與放開的時機正確" },
+    { check: "interference", parts: ["c", "d"], reason: "撥爪撥凸柱的過程以平順的起停曲線演出,不是逐點算接觸;撥動中爪尖與凸柱最多重疊 0.12(96 個取樣中 2 個)。撥動的起訖位置與「每圈一格」的關係正確" },
+  ],
 };

@@ -23,7 +23,7 @@ export function swingRack(theta) {
 // 扇形段在下方(局部 −90° 附近);開槽臂朝原位的曲柄銷方向伸出
 const span = [deg(-145), deg(-35)];
 const armDir = ARM0;
-const slotLen = 2.9;
+const slotLen = 3.1; // 槽夠長:銷走到最遠處也不頂到槽底
 
 export default {
   figure: 131,
@@ -68,9 +68,6 @@ export default {
       kind: "group",
       pieces: [-3.1, 3.1].map((x) => ({ kind: "plate", shape: shape([[-0.25, -0.5], [0.25, -0.5], [0.25, 0.5], [-0.25, 0.5]], [circle(0.07, 0, 0.3).reverse(), circle(0.07, 0, -0.3).reverse()]), thickness: 0.1, at: [x, RACK.origin[1] - 0.25, 0.2] })),
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["disc", "sector"], reason: "待確認(未修):disc 的圓柱 r0.14×0.6 與 sector 的板互相穿入 0.14(19 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "disc", type: "rotation" },
   target: "rack",

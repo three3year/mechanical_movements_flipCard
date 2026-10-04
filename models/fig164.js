@@ -58,12 +58,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["lever", "strut"], reason: "待確認:lever 的板 與 strut 的方塊 1×0.5×0.25重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["lever", "frame"], reason: "待確認(未修):lever 的板 與 frame 的方塊 3×0.15×0.8互相穿入 0.22(56 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["strut", "frame"], reason: "待確認(未修):strut 的圓柱 r0.25×0.25 與 frame 的方塊 4×0.15×0.8互相穿入 0.15(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["block", "frame"], reason: "待確認(未修):block 的方塊 0.85×0.42×0.6 與 frame 的方塊 4×0.15×0.8互相穿入 0.28(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "lever", type: "rotation", range: RANGE },
   target: "block",
   view: { direction: [0.06, 0.05, 1] },

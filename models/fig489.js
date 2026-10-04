@@ -49,18 +49,6 @@ export default {
     ...Array.from({ length: ARMS }, (_, i) => ({ id: `paddle${i}`, kind: "box", size: [0.12, PADDLE, 0.8], label: "a", labelOffset: [0, PADDLE / 2 + 0.15, 0.4], arrow: false, pieces: [{ kind: "box", size: [ECC[0] * 1.4, 0.06, 0.06], at: [ECC[0] / 2, ECC[1] / 2, 0.45], angle: Math.atan2(ECC[1], ECC[0]) }] })),
     { id: "river", kind: "fill", fluid: "water", center: [0, (WATER - 2.4) / 2, 0], size: [5.0, WATER + 2.4, 1.2], level: 1 },
   ],
-  waivers: [
-    { check: "interference", parts: ["eccentric", "arms"], reason: "待確認:eccentric 的板 與 arms 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["arms", "ring"], reason: "待確認:arms 的板 與 ring 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["arms", "paddle0"], reason: "待確認(未修):arms 的板 與 paddle0 的方塊 0.12×0.95×0.8互相穿入 0.12(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["arms", "paddle1"], reason: "待確認(未修):arms 的板 與 paddle1 的方塊 0.12×0.95×0.8互相穿入 0.12(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["arms", "paddle2"], reason: "待確認(未修):arms 的板 與 paddle2 的方塊 0.12×0.95×0.8互相穿入 0.12(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["arms", "paddle3"], reason: "待確認(未修):arms 的板 與 paddle3 的方塊 0.12×0.95×0.8互相穿入 0.12(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["ring", "paddle0"], reason: "待確認(未修):ring 的板 與 paddle0 的方塊 0.12×0.95×0.8互相穿入 0.14(33 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["ring", "paddle3"], reason: "待確認(未修):ring 的板 與 paddle3 的方塊 0.12×0.95×0.8互相穿入 0.14(34 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["ring", "paddle2"], reason: "待確認(未修):ring 的板 與 paddle2 的方塊 0.12×0.95×0.8互相穿入 0.14(31 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["ring", "paddle1"], reason: "待確認(未修):ring 的板 與 paddle1 的方塊 0.12×0.95×0.8互相穿入 0.14(30 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "arms", type: "rotation", speed: 0.5 },
   target: "paddle0", // 保持直立的槳板(四片取一片代表)
   view: { direction: [0.06, 0.06, 1] },

@@ -58,9 +58,6 @@ export default {
     { id: "lever", kind: "plate", shape: shape(thickLine([[-HANDLE, 0], [ARM + 0.1, 0]], 0.1)), thickness: 0.1, center: PIVOT, arrow: false, pieces: [{ kind: "sphere", radius: 0.12, at: [-HANDLE, 0, 0] }] },
     { id: "rope", kind: "rope", radius: 0.02 },
   ],
-  waivers: [
-    { check: "interference", parts: ["frame", "lever"], reason: "待確認(未修):frame 的方塊 3×0.16×0.3 與 lever 的板互相穿入 0.20(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "lever", type: "rotation", cycle: SWING },
   target: "bell",
   view: { direction: [0.1, 0.1, 1] },

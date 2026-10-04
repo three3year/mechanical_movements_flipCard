@@ -57,11 +57,6 @@ export default {
       ],
     })),
   ],
-  waivers: [
-    { check: "interference", parts: ["bench", "lower"], reason: "待確認:bench 的方塊 0.02×4.5×0.02 與 lower 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["board", "upper"], reason: "待確認(未修):board 的方塊 4.8×0.7×0.3 與 upper 的板互相穿入 0.23(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["board", "lower"], reason: "待確認:board 的方塊 4.8×0.7×0.3 與 lower 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "board", type: "translation", direction: [-1, 0, 0], range: [0, PUSH], initial: PUSH },
   targets: ["upper", "lower"], // 兩個夾爪
   view: { direction: [0.06, 0.05, 1] },

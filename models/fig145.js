@@ -40,7 +40,7 @@ export default {
     {
       id: "beam",
       kind: "group",
-      center: PB,
+      center: [PB[0], PB[1], 0.35], // 樑與連桿同一層(直立桿掛在樑端的孔上)
       arrow: false,
       pieces: [
         { kind: "plate", shape: shape([[0.3, -0.3], [-LBEAM, -0.12], [-LBEAM, 0.18], [0.3, 0.3]], [circle(0.16).reverse(), circle(0.07, -LBEAM, 0).reverse()]), thickness: 0.2 },
@@ -53,14 +53,13 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape([[-0.35, -0.95], [0.35, -0.95], [0.15, -0.1], [-0.15, -0.1]]), thickness: 0.3, at: [B[0], B[1], -0.1] },
-        { kind: "box", size: [6.5, 0.08, 1.2], at: [1.6, -1.0, 0] },
+        { kind: "plate", shape: shape([[-0.35, -1.71], [0.35, -1.71], [0.15, -0.1], [-0.15, -0.1]]), thickness: 0.3, at: [B[0], B[1], -0.1] },
+        { kind: "box", size: [6.5, 0.08, 1.2], at: [1.6, -1.75, 0] }, // 底板在飛輪的下方
+        // 樑的立柱與樞軸銷(原圖沒畫出支撐,推斷)
+        { kind: "box", size: [0.3, 4.9, 0.3], at: [PB[0], 0.7, 0.1] },
+        { kind: "cylinder", radius: 0.15, length: 0.5, at: [PB[0], PB[1], 0.3] },
       ],
     },
-  ],
-  waivers: [
-    { check: "unsupported", parts: ["beam"], reason: "待確認(未修):beam 在動,但離帶動(或支撐)它的零件還有 0.28 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["wheel", "frame"], reason: "待確認(未修):wheel 的方塊 1.17×0.155×0.135 與 frame 的方塊 6.5×0.08×1.2互相穿入 0.49(76 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "wheel", type: "rotation" },
   target: "beam", // 原文是樑帶動飛輪;模型以飛輪為主動件,目標件標運動鏈另一端的樑
@@ -73,7 +72,7 @@ export default {
         beam: { angle: angleOf(PB, e) - angleOf(PB, E0) },
         lever: { from: z(B, 0.35), to: z(j, 0.35) },
         rod: { from: z(j, 0.45), to: z(pin, 0.45) },
-        vertical: { from: z(e, 0.45), to: z(j, 0.45) },
+        vertical: { from: z(e, 0.49), to: z(j, 0.49) },
       },
       readouts: [],
     };

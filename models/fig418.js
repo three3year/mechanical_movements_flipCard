@@ -76,9 +76,6 @@ export default {
     { id: "link", kind: "link", width: 0.12, thickness: 0.05 },
     { id: "valve", kind: "box", size: [0.95, 0.32, 0.8], label: "A", labelOffset: [0, -0.02, 0.5] },
   ],
-  waivers: [
-    { check: "interference", parts: ["chest", "arcs"], reason: "待確認:chest 的方塊 0.07×2.432×0.07 與 arcs 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "rod", type: "rotation", cycle: [-SWING, SWING], initial: SWING },
   target: "valve",
   view: { direction: [0.03, 0.05, 1] },

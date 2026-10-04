@@ -72,12 +72,6 @@ export default {
       }),
     ),
   ],
-  waivers: [
-    { check: "interference", parts: ["lead", "cutter"], reason: "待確認(未修):lead 的Tube 與 cutter 的板互相穿入 0.23(192 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["lead", "frame"], reason: "待確認(未修):lead 的Tube 與 frame 的方塊 2.3×0.28×0.5互相穿入 0.11(192 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["blank_equal", "frame"], reason: "待確認(未修):blank_equal 的Tube 與 frame 的方塊 2.3×0.28×0.5互相穿入 0.11(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["blank_double", "frame"], reason: "待確認(未修):blank_double 的Tube 與 frame 的方塊 2.3×0.28×0.5互相穿入 0.11(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "lead", type: "rotation", range: [0, TURNS * TAU] },
   target: "cutter", // 均勻直線進給的刀具
   states: {

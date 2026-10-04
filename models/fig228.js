@@ -31,9 +31,6 @@ export default {
     },
     { id: "chain", kind: "chain", style: "ladder", pitch: (TAU * PINS) / LUGS, width: 0.3, span: WIDTH + 0.25 },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "chain"], reason: "待確認(未修):chain 的第 13 段穿過wheel 的方塊 0.22×0.32×0.36互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "wheel", type: "rotation" },
   view: { direction: [-0.55, 0.3, 1] },
   pose(angle) {

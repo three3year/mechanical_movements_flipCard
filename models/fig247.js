@@ -54,12 +54,6 @@ export default {
     { id: "plunger", kind: "group", pieces: [{ kind: "box", size: [0.12, 1.3, 0.12], at: [0, -0.65, 0] }, { kind: "box", size: [0.36, 0.12, 0.36], at: [0, -1.3, 0] }] },
   ],
   powered: ["weight"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["rod", "catch"], reason: "待確認(未修):rod 的方塊 0.3×3.4×0.3 與 catch 的板互相穿入 0.11(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["rod", "plunger"], reason: "待確認(未修):rod 的方塊 0.3×3.4×0.3 與 plunger 的方塊 0.12×1.3×0.12互相穿入 0.11(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["seabed", "plunger"], reason: "待確認:seabed 的方塊 3.6×0.3×1.6 與 plunger 的方塊 0.36×0.12×0.36重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["catch", "plunger"], reason: "待確認:catch 的板 與 plunger 的方塊 0.12×1.3×0.12重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
   target: "weight", // 被釋放的測深錘
   view: { direction: [0.05, 0.08, 1] },

@@ -47,9 +47,6 @@ export default {
     },
     { id: "labelA", kind: "group", center: AXIS, label: "a", labelOffset: [0.4, 0.1, 0.4] },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheelA", "anchor"], reason: "待確認:wheelA 的板 與 anchor 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "anchor", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheelA", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },

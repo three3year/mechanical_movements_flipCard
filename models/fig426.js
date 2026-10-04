@@ -78,12 +78,6 @@ export default {
     { id: "piston1", kind: "plate", shape: shape(rect(PISTON, 0.14, -PISTON / 2, 0)), thickness: 0.54, label: "A", labelOffset: [0, 0, 0.4], arrow: false },
     { id: "piston2", kind: "plate", shape: shape(rect(PISTON, 0.14, -PISTON / 2, 0)), thickness: 0.54, label: "A", labelOffset: [0, 0, 0.4], arrow: false },
   ],
-  waivers: [
-    { check: "interference", parts: ["hub", "piston1"], reason: "待確認(未修):hub 的板 與 piston1 的板互相穿入 0.55(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["hub", "piston2"], reason: "待確認(未修):hub 的板 與 piston2 的板互相穿入 0.55(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["cylinder", "piston1"], reason: "待確認(未修):cylinder 的板 與 piston1 的板互相穿入 0.10(29 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["cylinder", "piston2"], reason: "待確認(未修):cylinder 的板 與 piston2 的板互相穿入 0.10(29 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "hub", type: "rotation", speed: 0.6, initial: Math.PI / 2 },
   targets: ["piston1", "piston2"], // 軸 B 就是主動件(輪轂);標受蒸汽推、在輪轂裡滑進滑出的兩個活塞 A
   view: { direction: [0.03, 0.05, 1] },

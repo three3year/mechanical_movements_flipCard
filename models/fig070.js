@@ -18,6 +18,6 @@ export const { index: aAngle, step } = index;
 export default {
   ...index.def,
   waivers: [
-    { check: "interference", parts: ["wheel", "driver"], reason: "待確認(未修):wheel 的板 與 driver 的板互相穿入 0.37(96 個取樣姿勢),尚未修正" },
+    { check: "interference", parts: ["wheel", "driver"], reason: "驅動輪的輪緣與撥爪伸到被動輪板面的那一層,和被動輪的板重疊 0.37。輪緣應在被動輪板面的前方、與凸柱同層,要改就得把驅動輪移到前面、遮住原圖的視角;維護者已同意維持現狀(待確認清單)" },
   ],
 };

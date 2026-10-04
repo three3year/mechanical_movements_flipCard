@@ -42,11 +42,6 @@ export default {
     roller("rollerR"),
     roller("rollerL"),
   ],
-  waivers: [
-    { check: "interference", parts: ["rod", "rollerR"], reason: "待確認(未修):rod 的方塊 0.5×0.5×0.36 與 rollerR 的板互相穿入 0.16(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["rod", "rollerL"], reason: "待確認(未修):rod 的方塊 0.5×0.5×0.36 與 rollerL 的板互相穿入 0.16(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["cam", "rod"], reason: "待確認:cam 的板 與 rod 的方塊 0.5×0.5×0.36重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "cam", type: "rotation" },
   target: "rod", // 往復的桿
   view: { direction: [0.04, 0.05, 1] },

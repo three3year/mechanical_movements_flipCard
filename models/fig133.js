@@ -32,8 +32,10 @@ export default {
       width: 0.24,
       web: false,
       pieces: [
-        { kind: "box", size: [1.4, 0.12, 0.1], at: [0.7, 0, 0.25] },
-        { kind: "cylinder", radius: 0.1, length: 0.5, at: [1.4, 0, 0.45] },
+        // 曲柄在壓板前面一層,轉動時不碰壓板
+        { kind: "cylinder", radius: 0.12, length: 0.5, at: [0, 0, 0.2] },
+        { kind: "box", size: [1.4, 0.12, 0.1], at: [0.7, 0, 0.4] },
+        { kind: "cylinder", radius: 0.1, length: 0.5, at: [1.4, 0, 0.6] },
       ],
     },
     {
@@ -57,16 +59,12 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.3, 5.0, 0.4], at: [-1.95, -0.3, -0.5] },
-        { kind: "box", size: [0.3, 5.0, 0.4], at: [0.85, -0.3, -0.5] },
+        { kind: "box", size: [0.3, 5.8, 0.4], at: [-1.95, -0.7, -0.5] },
+        { kind: "box", size: [0.3, 5.8, 0.4], at: [0.85, -0.7, -0.5] },
         { kind: "box", size: [3.6, 0.35, 0.6], at: [-0.55, 2.35, -0.5] },
-        { kind: "box", size: [4.6, 0.1, 0.8], at: [0, -2.85, 0] },
+        { kind: "box", size: [4.6, 0.1, 0.8], at: [0, -3.6, 0] }, // 底板在扇形段擺到最低處的下方
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["sector", "frame"], reason: "待確認(未修):sector 的板 與 frame 的方塊 4.6×0.1×0.8互相穿入 0.50(29 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["crank", "platen"], reason: "待確認(未修):crank 的方塊 1.4×0.12×0.1 與 platen 的方塊 2.3×0.28×0.6互相穿入 0.10(10 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "crank", type: "rotation", range: RANGE },
   target: "platen",

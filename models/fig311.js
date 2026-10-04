@@ -75,11 +75,6 @@ export default {
     { id: "labelD", kind: "group", center: [-1.6, 2.1, 0], label: "E", labelOffset: [-0.3, 0.2, 0.3] },
     { id: "labelE", kind: "group", center: [1.6, 2.1, 0], label: "D", labelOffset: [0.4, -0.1, 0.3] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["armL"], reason: "待確認:armL 與帶動(或支撐)它的零件之間差 0.09 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["armR"], reason: "待確認:armR 與帶動(或支撐)它的零件之間差 0.09 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["wheel", "pendulum"], reason: "待確認:wheel 的圓柱 r0.1×0.9 與 pendulum 的方塊 0.12×9.8×0.08重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },

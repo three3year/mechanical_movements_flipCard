@@ -52,12 +52,6 @@ export default {
     },
     { id: "pawl", kind: "plate", shape: hook, thickness: 0.12, arrow: false },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["arm"], reason: "待確認:arm 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["pawl"], reason: "待確認:pawl 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["star"], reason: "待確認(未修):star 在動,但離帶動(或支撐)它的零件還有 0.80 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["star", "click"], reason: "待確認(未修):star 的板 與 click 的板互相穿入 0.13(83 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "arm", type: "rotation", cycle: [FROM, TO] },
   target: "star",
   view: { direction: [0.06, 0.05, 1] },

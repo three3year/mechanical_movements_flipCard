@@ -39,9 +39,6 @@ export default {
     { id: "rod", kind: "link", width: 0.14, thickness: 0.08 },
     { id: "sliderA", kind: "box", size: [0.3, 0.5, 0.36], label: "A", labelOffset: [-0.45, 0, 0.3], pieces: [{ kind: "box", size: [0.08, 3.0, 0.08], at: [0, -1.7, 0] }] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["sliderA"], reason: "待確認:sliderA 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-  ],
   driver: { part: "flywheel", type: "rotation" },
   target: "sliderA", // 被導引走直線的滑塊
   view: { direction: [0.03, 0.05, 1] },

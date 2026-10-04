@@ -71,12 +71,6 @@ export default {
     { id: "wire", kind: "rod", radius: 0.015 },
   ],
   powered: ["hammer"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["frame", "hammer"], reason: "待確認(未修):frame 的板 與 hammer 的板互相穿入 0.15(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "wire"], reason: "待確認(未修):wire 的第 1 段穿過frame 的方塊 4.4×0.5×0.8互相穿入 0.40(78 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["hammer", "spring"], reason: "待確認:hammer 的板 與 spring 的Tube重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["bell", "hammer"], reason: "待確認:bell 的旋轉體 與 hammer 的方塊 0.3×0.3×0.3重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "敲一下", mode: "progress", range: [0, 1], speed: 0.25 },
   target: "hammer",
   view: { direction: [0.03, 0.05, 1] },

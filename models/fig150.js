@@ -60,8 +60,8 @@ export default {
       center: PIVOT,
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape(stadium(ARM, 0.36).outline, [circle(0.16).reverse()]), thickness: 0.1, at: [0, 0, 0.3] },
-        { kind: "cylinder", radius: ROLLER, inner: 0.12, length: 0.25, at: [ARM, 0, 0.1] },
+        { kind: "plate", shape: shape(stadium(ARM, 0.24).outline, [circle(0.08).reverse()]), thickness: 0.1, at: [0, 0, 0.3] }, // 臂窄:不碰旁邊偏心量較大的凸輪
+        { kind: "cylinder", radius: ROLLER, inner: 0.12, length: 0.2, at: [ARM, 0, 0.08] }, // 滾子只壓在選用的那個凸輪上,不碰相鄰的凸輪
         { kind: "cylinder", radius: 0.1, length: 0.5, at: [ARM, 0, 0.15] }, // 滾子銷:穿過滾子與槓桿
         { kind: "cylinder", radius: 0.2, inner: 0.08, length: 0.2, at: [ROD_AT, 0, 0.35] },
       ],
@@ -83,16 +83,12 @@ export default {
         { kind: "box", size: [0.3, PIVOT[1] + 0.15 - FLOOR_TOP, 0.3], at: [PIVOT[0], (PIVOT[1] + 0.15 + FLOOR_TOP) / 2, 0] }, // 樞軸立柱(在槓桿後面)
         { kind: "cylinder", radius: 0.14, length: 0.7, at: [PIVOT[0], PIVOT[1], 0.2] }, // 樞軸銷
         // 閥桿的 U 形導座:兩側夾住桿、後板、立柱接到底板
-        { kind: "box", size: [0.1, 0.3, 0.14], at: [GUIDE[0] - 0.12, GUIDE[1], 0.45] },
-        { kind: "box", size: [0.1, 0.3, 0.14], at: [GUIDE[0] + 0.12, GUIDE[1], 0.45] },
-        { kind: "box", size: [0.34, 0.3, 0.14], at: [GUIDE[0], GUIDE[1], 0.3] },
+        { kind: "box", size: [0.1, 0.3, 0.14], at: [GUIDE[0] - 0.11, GUIDE[1], 0.45] },
+        { kind: "box", size: [0.1, 0.3, 0.14], at: [GUIDE[0] + 0.22, GUIDE[1], 0.45] },
+        { kind: "box", size: [0.5, 0.3, 0.14], at: [GUIDE[0] + 0.06, GUIDE[1], 0.3] },
         { kind: "box", size: [0.2, GUIDE[1] - FLOOR_TOP, 0.2], at: [GUIDE[0], (GUIDE[1] + FLOOR_TOP) / 2, 0.27] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["lever", "rod"], reason: "待確認:lever 的板 與 rod 的圓柱 r0.07×0.4重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["shaft", "lever"], reason: "待確認:shaft 的板 與 lever 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "shaft", type: "rotation" },
   target: "rod",
@@ -111,7 +107,7 @@ export default {
       parts: {
         shaft: { position: [0, 0, STACK_Z(state)], angle: theta },
         lever: { angle: psi },
-        rod: { position: [PIVOT[0] - ROD_AT, rod, 0.45] },
+        rod: { position: [PIVOT[0] + ROD_AT * Math.cos(psi), rod, 0.45] }, // 閥桿的頂端跟著槓桿上的環走(略有左右擺動,導座留了間隙)
       },
       readouts: [],
     };

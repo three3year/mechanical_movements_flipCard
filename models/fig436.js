@@ -84,9 +84,6 @@ export default {
     },
   ],
   powered: ["wheel"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["casing", "works"], reason: "待確認(未修):casing 的旋轉體 與 works 的方塊 1.8×0.7×0.9互相穿入 0.25(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.15 },
   target: "wheel",
   view: { direction: [0.25, 0.35, 1] },

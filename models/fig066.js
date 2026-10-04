@@ -25,7 +25,4 @@ const jump = wormJump({
 export const { hollowAt, period } = jump;
 export default {
   ...jump.def,
-  waivers: [
-    { check: "interference", parts: ["wheel", "hollow"], reason: "待確認:wheel 的圓柱 r0.055×0.75 與 hollow 的方塊 2.15×0.1×0.1重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
 };

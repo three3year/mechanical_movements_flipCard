@@ -79,9 +79,6 @@ export default {
     },
     ...ROLLERS.map(([x, y], i) => ({ id: `roller${i}`, kind: "group", center: [x, y, 0], spin: ROLLER, arrow: i === 0 || i === 2, pieces: [{ kind: "cylinder", radius: ROLLER, inner: 0.07, length: 0.25, mark: true }] })),
   ],
-  waivers: [
-    { check: "interference", parts: ["frame", "pinion"], reason: "待確認:frame 的板 與 pinion 的圓柱 r0.08×0.52重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "pinion", type: "rotation" },
   target: "frame",
   view: { direction: [0.06, 0.05, 1] },

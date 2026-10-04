@@ -5,10 +5,4 @@ import { makeForcePump } from "./force-pump.js";
 
 export default {
   ...makeForcePump(451, { air: true }),
-  waivers: [
-    { check: "interference", parts: ["barrel", "works"], reason: "待確認(未修):barrel 的旋轉體 與 works 的板互相穿入 0.20(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["suction", "works"], reason: "待確認:suction 的旋轉體 與 works 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["works", "handle"], reason: "待確認:works 的板 與 handle 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["works", "deliveryValve"], reason: "待確認:works 的板 與 deliveryValve 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
 };

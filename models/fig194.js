@@ -48,9 +48,6 @@ export default {
     },
     { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.25, web: false, center: [0, 0, 0.2], pieces: [{ kind: "cylinder", radius: 0.08, length: 0.9 }] },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "pinion"], reason: "待確認(未修):wheel 的板 與 pinion 的圓柱 r0.08×0.9互相穿入 0.35(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },

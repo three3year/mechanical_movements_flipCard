@@ -87,7 +87,7 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape(rect(FRAME.w, FRAME.h), [rect(FRAME.w - 0.7, FRAME.h - 0.4, 0, 0.05).reverse()]), thickness: 0.2, at: [0, 0, -0.25] },
+        { kind: "plate", shape: shape(rect(FRAME.w, FRAME.h), [rect(FRAME.w - 0.7, FRAME.h - 0.4, 0, 0.05).reverse()]), thickness: 0.2, at: [0, 0, -0.22] }, // 框架貼著齒條的背面(齒條在框架上的導槽裡上下滑)
         { kind: "box", size: [0.9, 0.3, 0.2], at: [-FRAME.w / 2 - 0.45, 0.2, -0.25] },
         { kind: "box", size: [0.9, 0.3, 0.2], at: [FRAME.w / 2 + 0.45, 0.2, -0.25] },
       ],
@@ -95,11 +95,6 @@ export default {
     { id: "wheelL", kind: "pulley", style: "disc", radius: WHEEL, width: 0.2, arrow: false },
     { id: "wheelR", kind: "pulley", style: "disc", radius: WHEEL, width: 0.2, arrow: false },
     { id: "rail", kind: "box", center: [0, -FRAME.h / 2 - 2 * WHEEL - 0.05, -0.25], size: [FRAME.w + 5, 0.1, 0.6] },
-  ],
-  waivers: [
-    { check: "unsupported", parts: ["frame"], reason: "待確認:frame 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["wheelL"], reason: "待確認(未修):wheelL 在動,但離帶動(或支撐)它的零件還有 0.50 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["wheelR"], reason: "待確認(未修):wheelR 在動,但離帶動(或支撐)它的零件還有 0.50 的空隙,少了相連的軸、銷或連桿,尚未補上" },
   ],
   driver: { part: "pinion", type: "rotation", speed: 1.3 },
   target: "frame",

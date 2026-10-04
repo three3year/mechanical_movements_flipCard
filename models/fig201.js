@@ -55,9 +55,6 @@ export default {
     },
     { id: "rodA", kind: "group", label: "A", labelOffset: [-0.3, -1.5, 0], pieces: [{ kind: "box", size: [0.14, 1.8, 0.14], at: [0, -1.0, 0.35] }, { kind: "box", size: [0.3, 0.3, 0.3], at: [0, 0, 0.35] }, { kind: "cylinder", radius: 0.15, length: 0.5, at: [0, 0, 0.4] }] },
   ],
-  waivers: [
-    { check: "interference", parts: ["crank", "rodA"], reason: "待確認:crank 的板 與 rodA 的圓柱 r0.15×0.5重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "gear", type: "rotation", speed: 1.2 },
   target: "rodA",
   view: { direction: [0.06, 0.05, 1] },

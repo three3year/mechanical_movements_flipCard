@@ -41,10 +41,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheelA", "small"], reason: "待確認(未修):wheelA 的板 與 small 的板互相穿入 0.11(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["wheelA", "click"], reason: "待確認(未修):wheelA 的板 與 click 的板互相穿入 0.15(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "small", type: "rotation" },
   target: "wheelA",
   view: { direction: [0.06, 0.05, 1] },

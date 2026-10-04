@@ -10,7 +10,7 @@ const X1 = -0.9; // 繩從大段垂下的位置
 const X2 = 0.75; // 繩從小段垂下的位置
 const PULLEY = { radius: (X2 - X1) / 2, x: (X1 + X2) / 2 };
 const Y0 = -0.6; // 滑輪起始高度
-const TURNS = 2.5;
+const TURNS = 1.6; // 滑輪升到快碰到絞盤的凸緣為止
 
 /** 絞盤轉 theta(大段捲進為正):滑輪的高度 */
 export const pulleyY = (theta) => Y0 + ((R1 - R2) * theta) / 2;
@@ -39,9 +39,9 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.22, DRUM_Y + 1.6, 0.4], at: [-2.45, DRUM_Y / 2 - 0.55, 0] },
-        { kind: "box", size: [0.22, DRUM_Y + 1.6, 0.4], at: [2.25, DRUM_Y / 2 - 0.55, 0] },
-        { kind: "box", size: [5.6, 0.12, 0.8], at: [-0.1, -1.4, 0] },
+        { kind: "box", size: [0.22, DRUM_Y + 2.2, 0.4], at: [-2.45, DRUM_Y / 2 - 0.85, 0] },
+        { kind: "box", size: [0.22, DRUM_Y + 2.2, 0.4], at: [2.25, DRUM_Y / 2 - 0.85, 0] },
+        { kind: "box", size: [5.6, 0.12, 0.8], at: [-0.1, -2.0, 0] }, // 底樑在吊鉤最低處的下方
       ],
     },
     {
@@ -57,11 +57,6 @@ export default {
       ],
     },
     { id: "rope", kind: "rope" },
-  ],
-  waivers: [
-    { check: "interference", parts: ["frame", "pulley"], reason: "待確認(未修):frame 的方塊 5.6×0.12×0.8 與 pulley 的Tube互相穿入 0.13(10 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "rope"], reason: "待確認:rope 的第 15 段穿過frame 的方塊 5.6×0.12×0.8重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["drum", "pulley"], reason: "待確認(未修):drum 的圓柱 r0.92×0.12 與 pulley 的板互相穿入 0.22(18 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "drum", type: "rotation", range: [0, TURNS * TAU] },
   target: "pulley", // 被吊起的滑輪(下接吊鉤)

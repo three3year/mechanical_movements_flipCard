@@ -65,9 +65,6 @@ export default {
     { id: "ropeTop", kind: "rope", radius: 0.02 },
     { id: "ropeBottom", kind: "rope", radius: 0.02 },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["tiller"], reason: "待確認:tiller 與帶動(或支撐)它的零件之間差 0.03 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-  ],
   driver: { part: "wheel", type: "rotation", range: RANGE, initial: 0 },
   target: "tiller",
   view: { direction: [0.03, 0.05, 1] },

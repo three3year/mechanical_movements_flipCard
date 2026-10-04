@@ -44,10 +44,6 @@ export default {
       pieces: [{ kind: "cylinder", radius: 0.28, inner: 0.14, length: 0.4 }],
     })),
   ],
-  waivers: [
-    { check: "interference", parts: ["shaft", "left"], reason: "待確認:shaft 的圓柱 r0.13×0.9 與 left 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["shaft", "right"], reason: "待確認:shaft 的圓柱 r0.13×0.9 與 right 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "shaft", type: "rotation", speed: 3 },
   targets: ["left", "right"], // 一對進料滾軸
   view: { direction: [0.08, 0.06, 1] },

@@ -48,11 +48,6 @@ export default {
     { id: "labelE", kind: "group", center: [-0.15, -1.6, 0], label: "E", labelOffset: [-0.3, 0, 0.3] },
     { id: "labelF", kind: "group", center: [0.15, 0.7, 0], label: "F", labelOffset: [0.3, 0, 0.3] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["armL"], reason: "待確認(未修):armL 在動,但離帶動(或支撐)它的零件還有 0.17 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["armR"], reason: "待確認(未修):armR 在動,但離帶動(或支撐)它的零件還有 0.24 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["wheel", "pendulum"], reason: "待確認:wheel 的方塊 0.2×0.1×0.08 與 pendulum 的圓柱 r0.05×0.6重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },

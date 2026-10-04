@@ -69,10 +69,6 @@ export default {
       pieces: [{ kind: "cylinder", radius: 0.06, length: 0.6 }],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["balance", "crown"], reason: "待確認:balance 的圓柱 r0.05×3.6 與 crown 的圓柱 r0.04×2.6重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["crown", "contrate"], reason: "待確認:crown 的板 與 contrate 的方塊 0.172×0.074×0.16重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
   target: "crown", // 冠狀輪(擒縱輪)
   view: { direction: [0.15, 0.3, 1] },

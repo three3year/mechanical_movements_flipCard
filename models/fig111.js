@@ -7,7 +7,7 @@ import { shape } from "./shapes.js";
 
 const COARSE = 0.42;
 const FINE = 0.3;
-const TURNS = 3;
+const TURNS = 1.5; // 旋到手柄快碰到螺帽為止
 
 /** 外側螺桿轉 angle(往下旋,繞 −y):外側螺桿與模具的下降量 */
 export function differential(angle) {
@@ -51,9 +51,6 @@ export default {
         { kind: "box", size: [2.6, 0.25, 0.9], at: [0, -3.1, 0] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["outer", "nut"], reason: "待確認(未修):outer 的方塊 1.6×0.12×0.12 與 nut 的板互相穿入 0.28(17 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "outer", type: "rotation", range: [0, TURNS * TAU] },
   target: "inner", // 內側螺桿(連著模具,淨移動為螺距差)

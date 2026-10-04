@@ -57,6 +57,9 @@ export const unwaived = (findings) => findings.filter((f) => !f.waived);
 const fmt = (v) => (Math.abs(v) < 1e-9 ? "0" : v.toFixed(2));
 const at = (value, state) => `主動量 ${fmt(value)}${state != null ? `、狀態 ${state}` : ""}`;
 
+// 兩塊要沿哪個方向才分得開(報告裡附上,修的時候知道該往哪邊挪)
+const along = (n) => (n ? `,沿〔${[n.x, n.y, n.z].map((x) => (Math.abs(x) < 0.05 ? "0" : x.toFixed(1))).join(", ")}〕分開` : "");
+
 // ── 姿勢有沒有在動 ─────────────────────────
 
 const differs = (a, b) => a.length !== b.length || a.some((x, i) => Math.abs(x - b[i]) > 1e-9);
@@ -260,19 +263,19 @@ function measure(scene, a, b, prediction, tolerance) {
     // 線狀零件以中心線穿進實體多深算干涉:貼著輪面(中心線在輪面上)不算。
     // 開放路徑的頭尾兩段若端點就繫在這個零件上,那一段不算
     let anchored = null;
-    scene.contacts(path, part, prediction, (pa, pb, d) => {
+    scene.contacts(path, part, prediction, (pa, pb, d, n) => {
       if (gap == null || d < gap) gap = d;
       if (d >= solid) return;
       anchored ??= path.closed ? [] : [0, path.points.length - 2].filter((s, end) => scene.endGap(path, end, part) <= prediction);
       if (anchored.includes(pa.segment)) return;
       solid = d;
-      where = `${describe(path, pa)}穿過${describe(part, pb)}`;
+      where = `${describe(path, pa)}穿過${describe(part, pb)}${along(n)}`;
     });
     return gap == null ? null : { gap, depth: Math.max(0, -solid - path.radius), where };
   }
   // 圓柱、球與對方的重疊另外記下,等整個狀態走完再判斷它是不是裝在孔裡
   const pins = [];
-  scene.contacts(a, b, prediction, (pa, pb, d) => {
+  scene.contacts(a, b, prediction, (pa, pb, d, n) => {
     if (gap == null || d < gap) gap = d;
     if (d >= 0) return;
     if (pa.axle || pb.axle) {
@@ -280,15 +283,15 @@ function measure(scene, a, b, prediction, tolerance) {
       const fits = [];
       if (pa.axle && !(pb.axle && pb.axle.radius < pa.axle.radius)) fits.push([pa, b]);
       if (pb.axle && !(pa.axle && pa.axle.radius < pb.axle.radius)) fits.push([pb, a]);
-      pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}` });
+      pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}` });
     } else if (d < solid) {
       // 鉸接處的軸眼:某根軸(任一方的圓柱)的軸線同時穿過這兩塊,而且那根軸是裝在孔裡的鉸接軸,
       // 那麼這兩塊在軸周圍的重疊是鉸接處互相套著的軸眼(連桿端頭疊在槓桿上),和軸本身一樣等走完再判斷
       const fits = d < -tolerance ? knuckles(scene, a, b, pa, pb) : [];
-      if (fits.length) pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}` });
+      if (fits.length) pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}` });
       else {
         solid = d;
-        where = `${describe(a, pa)} 與 ${describe(b, pb)}`;
+        where = `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}`;
       }
     }
   });

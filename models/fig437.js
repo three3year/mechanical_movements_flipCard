@@ -63,9 +63,6 @@ export default {
     ...[0, 1].map((k) => ({ id: `labelC${k}`, kind: "group", label: "c", labelOffset: [...polar(0.32, deg(-20) - k * deg(70)).slice(0, 2), 0.45], pieces: [] })),
   ],
   powered: ["wheel"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["casing", "wheel"], reason: "待確認(未修):casing 的板 與 wheel 的方塊 0.95×0.08×0.5互相穿入 0.55(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.12 },
   target: "wheel",
   view: { direction: [0.03, 0.05, 1] },

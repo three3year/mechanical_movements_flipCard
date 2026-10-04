@@ -82,7 +82,7 @@ export default {
         { kind: "plate", shape: stadium(C_ARM, 0.16), thickness: 0.1 },
         { kind: "plate", shape: stadium(B_ARM, 0.16), thickness: 0.1, angle: B_OFFSET },
         { kind: "cylinder", radius: 0.2, length: 0.2 },
-        { kind: "cylinder", radius: 0.07, length: 0.3, at: [C_ARM, 0, 0] },
+        { kind: "cylinder", radius: 0.07, length: 0.22, at: [C_ARM, 0, 0.04] }, // 銷只往前伸,不碰後面的棘輪
         { kind: "cylinder", radius: 0.09, length: 0.3, at: [B_ARM * Math.cos(B_OFFSET), B_ARM * Math.sin(B_OFFSET), -0.05] },
       ],
       label: "D",
@@ -115,9 +115,6 @@ export default {
       thickness: 0.14,
       pieces: [{ kind: "cylinder", radius: 0.12, length: 0.24 }],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["wheelA", "leverD"], reason: "待確認:wheelA 的板 與 leverD 的圓柱 r0.07×0.3重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "rodC", type: "translation", direction: [0, -1, 0], cycle: [0, STROKE] },
   target: "wheelA",

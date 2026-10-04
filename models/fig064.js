@@ -5,7 +5,7 @@
 // 板彈簧固定在左上的座上,自由端壓在搖臂上。
 import { deg, TAU } from "./kit.js";
 import { thickLine } from "./shapes.js";
-import { wormJump } from "./worm-jump.js";
+import { wormJump, notchSlot } from "./worm-jump.js";
 
 const FALL = deg(55);
 const PUSH = TAU - FALL;
@@ -89,7 +89,8 @@ const jump = wormJump({
   rest0: REST,
   hollowLabel: "A",
   pinLabel: "C",
-  hollowPieces: [{ kind: "plate", shape: { outline, holes: [] }, thickness: 0.22, at: [0, 0, 0.05], mark: [0, -0.4], markSize: 0.08 }],
+  // 凸輪蓋住空心軸的缺口,開一道同樣寬的弧槽讓銷 C 穿過(原圖沒畫,實物可行所需)
+  hollowPieces: [{ kind: "plate", shape: { outline, holes: [notchSlot(FALL)] }, thickness: 0.22, at: [0, 0, 0.05], mark: [0, -0.4], markSize: 0.08 }],
   extraParts: [
     {
       id: "arm",
@@ -115,8 +116,5 @@ const jump = wormJump({
 export const { hollowAt, period } = jump;
 export default {
   ...jump.def,
-  waivers: [
-    { check: "interference", parts: ["wheel", "hollow"], reason: "待確認(未修):wheel 的圓柱 r0.055×0.75 與 hollow 的板互相穿入 0.35(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["spring", "springSeat"], reason: "待確認:spring 的板 與 springSeat 的方塊 0.5×0.22×0.3重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
+  waivers: [{ check: "interference", parts: ["spring", "springSeat"], reason: "板彈簧的根部夾在座裡;彎曲以整片繞根部轉動示意,根部在座內轉動的重疊可接受" }],
 };

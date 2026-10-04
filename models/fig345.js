@@ -36,11 +36,6 @@ export default {
     },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["frame", "cylinder"], reason: "待確認(未修):frame 的方塊 3.6×0.3×0.3 與 cylinder 的旋轉體互相穿入 0.18(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "pistonRod"], reason: "待確認:frame 的方塊 1.2×0.3×0.6 與 pistonRod 的圓柱 r0.018×0.198重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["pistonRod", "crank"], reason: "待確認:pistonRod 的方塊 1×0.09×0.09 與 crank 的圓柱 r0.2×0.4重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "crank", // 輸出的曲柄
   view: { direction: [0.03, 0.05, 1] },

@@ -10,7 +10,7 @@ const LAG = deg(55); // 最高轉速時十字頭落後的角度
 const RISE = 0.55; // 斜面:每落後 LAG,滾子升高 RISE
 const ARM = 1.35; // 十字頭臂長(滾子離軸)
 const BASE_Y = -0.15; // 滾子在斜面最低處時的高度
-const LEVER = { pivot: [3.4, 2.55, 0], length: 3.0 };
+const LEVER = { pivot: [3.4, 3.47, 0], length: 3.5 }; // 槓桿的一端壓在十字頭頂端的圓頭上
 
 /** 轉速 s:十字頭落後的角度與抬升的高度 */
 export function governor(s) {
@@ -43,8 +43,8 @@ export default {
       id: "crosshead",
       kind: "group",
       pieces: [
-        { kind: "cylinder", axis: [1, 0, 0], radius: 0.14, length: 2 * ARM + 0.9, at: [0, 0.95, 0] },
         ...[1, -1].flatMap((s) => [
+          { kind: "cylinder", axis: [1, 0, 0], radius: 0.14, length: ARM + 0.15, at: [s * (0.3 + (ARM + 0.15) / 2), 0.95, 0] }, // 橫臂從套筒兩側伸出(不穿過軸)
           { kind: "cylinder", axis: [1, 0, 0], radius: 0.24, length: 0.18, at: [s * (ARM - 0.25), 0.95, 0] },
           { kind: "plate", shape: shape(rect(0.9, 1.6)), thickness: 0.06, at: [s * (ARM + 1.05), 0.95, 0] },
           { kind: "cylinder", axis: [1, 0, 0], radius: 0.13, length: 0.14, at: [s * ARM, 0.18, 0] },
@@ -68,10 +68,6 @@ export default {
     },
   ],
   powered: ["crosshead"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["shaft", "crosshead"], reason: "待確認(未修):shaft 的圓柱 r0.16×3.6 與 crosshead 的圓柱 r0.14×3.6互相穿入 0.30(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["crosshead", "lever"], reason: "待確認(未修):crosshead 的球 r0.82 與 lever 的方塊 3×0.2×0.12互相穿入 0.21(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, MAX] },
   target: "lever",
   view: { direction: [0.02, 0.12, 1] },

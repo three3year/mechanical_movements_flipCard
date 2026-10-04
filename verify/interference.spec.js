@@ -169,3 +169,13 @@ test("同一份定義跑兩次,問題清單完全相同", () => {
   );
   assert.deepEqual(verifyModel(def), verifyModel(def));
 });
+
+test("螺桿的螺紋轉在螺帽(沒畫出螺孔的方塊)裡不算干涉;螺紋掃過會動的別的零件仍算", () => {
+  const screw = { id: "screw", kind: "worm", axis: [1, 0, 0], radius: 0.2, length: 3, pitch: 0.3 };
+  const nut = { id: "nut", kind: "box", size: [0.5, 0.6, 0.6], center: [0, 0, 0] };
+  const inNut = model([screw, nut], (v) => ({ screw: { angle: v * 6 }, nut: { position: [v, 0, 0] } }));
+  assert.equal(of(verifyModel(inNut, { checks: ["interference"] }), "interference").length, 0);
+  // 方塊橫著掃過螺桿:螺桿的軸線在它的座標裡會移動,不是裝在孔裡
+  const across = model([screw, nut], (v) => ({ screw: { angle: v * 6 }, nut: { position: [0, v * 0.3, 0] } }));
+  assert.equal(of(verifyModel(across, { checks: ["interference"] }), "interference").length, 1);
+});

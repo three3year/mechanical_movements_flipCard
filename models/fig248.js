@@ -32,9 +32,6 @@ export default {
     // 螺帽的轉動記號:頂面上一個凸點,跟著螺帽轉(剖開的螺帽本身不轉,剖面一直朝向讀者)
     { id: "nutMark", kind: "group", axis: Y, center: [0, 0, 0], spin: 1.34, spinOffset: FLANGE + LIP, pieces: [{ kind: "box", size: [0.2, 0.2, 0.1], at: [1.15, 0, FLANGE + LIP + 0.04] }] },
   ],
-  waivers: [
-    { check: "interference", parts: ["pipeC", "nutB"], reason: "待確認:pipeC 的旋轉體 與 nutB 的旋轉體重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "nutB", grips: ["nutMark"], type: "rotation", range: [0, TURNS * TAU], initial: 0 },
   target: "pipeA", // 被螺帽帶著壓緊在 C 上的管
   view: { direction: [0.08, 0.12, 1] },

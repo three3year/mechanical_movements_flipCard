@@ -66,10 +66,6 @@ export default {
     { id: "labelC", kind: "group", center: [0, -0.9, 0.2], label: "C", labelOffset: [0.3, 0, 0] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["frame", "pipe"], reason: "待確認:frame 的方塊 0.3×5×0.35 與 pipe 的方塊 0.14×1.95×0.14重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["crank", "yokeA"], reason: "待確認(未修):crank 的圓柱 r0.16×1.4 與 yokeA 的板互相穿入 0.22(85 個取樣姿勢),尚未修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "crank", // 輸出的曲柄
   view: { direction: [0.03, 0.05, 1] },

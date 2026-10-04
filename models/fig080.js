@@ -45,8 +45,8 @@ export default {
       id: "guide",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape([[-0.55, 1.15], [0.55, 1.15], [0.68, 1.8], [-0.68, 1.8]], [[[-0.2, 1.3], [0.2, 1.3], [0.2, 1.65], [-0.2, 1.65]].reverse()]), thickness: 0.1, at: [0, 0, 0.15] },
-        { kind: "cylinder", radius: 0.06, length: 0.4, at: [0, 1.5, 0.15] },
+        { kind: "plate", shape: shape([[-0.45, 1.3], [0.45, 1.3], [0.5, 1.8], [-0.5, 1.8]], [[[-0.2, 1.4], [0.2, 1.4], [0.2, 1.68], [-0.2, 1.68]].reverse()]), thickness: 0.1, at: [0, 0, 0.2] }, // 在前爪那一層的前面,讓爪從它後方通過
+        { kind: "cylinder", radius: 0.06, length: 0.2, at: [0, PIVOT[1], 0.25] },
       ],
       label: "A",
       labelOffset: [0.15, -0.6, 0.3],
@@ -61,17 +61,15 @@ export default {
         { kind: "sphere", radius: 0.32, at: [-1.95, 0, 0] },
         { kind: "sphere", radius: 0.32, at: [1.95, 0, 0] },
         { kind: "cylinder", radius: 0.1, length: 0.2 },
+        // 掛棘爪的兩根銷:往後伸過齒條桿的厚度(左爪鉤在桿的前面,右爪鉤在桿的後面,兩爪交叉而不相碰;深度是推斷)
+        { kind: "cylinder", radius: 0.04, length: 0.5, at: [PINS.left[0], 0, -0.2] },
+        { kind: "cylinder", radius: 0.04, length: 0.5, at: [PINS.right[0], 0, -0.2] },
       ],
       label: "C",
       labelOffset: [1.2, 0.45, 0],
     },
     { id: "pawlLeft", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "pawlRight", kind: "link", width: 0.08, thickness: 0.05 },
-  ],
-  waivers: [
-    { check: "unsupported", parts: ["bar"], reason: "待確認:bar 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["guide", "lever"], reason: "待確認(未修):guide 的圓柱 r0.06×0.4 與 lever 的圓柱 r0.1×0.2互相穿入 0.11(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["pawlLeft", "pawlRight"], reason: "待確認:pawlLeft 的方塊 1×0.08×0.05 與 pawlRight 的圓柱 r0.016×0.11重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "lever", type: "rotation", cycle: [SWING / 2, -SWING / 2] },
 
@@ -80,13 +78,13 @@ export default {
   pose(v) {
     const psi = swingAt(v, SWING / 2, -SWING / 2);
     const h = barHeight(v);
-    const z = PIVOT[2] + 0.1;
-    const pin = (w) => [...bodyPoint(PIVOT, psi, PINS[w]).slice(0, 2), z];
+    const layer = { left: 0.09, right: -0.09 };
+    const pin = (w) => [...bodyPoint(PIVOT, psi, PINS[w]).slice(0, 2), layer[w]];
     // 爪尖鉤在對側的齒邊:左爪的尖端在右側、右爪的在左側,高度隨各自的銷
     const tip = (w, side) => {
       const p = pin(w);
       const x = side * (BAR.width / 2 + 0.12);
-      return [x, p[1] - Math.sqrt(HOOK * HOOK - (x - p[0]) ** 2), z];
+      return [x, p[1] - Math.sqrt(HOOK * HOOK - (x - p[0]) ** 2), layer[w]];
     };
     return {
       parts: {

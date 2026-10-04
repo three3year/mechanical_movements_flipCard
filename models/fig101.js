@@ -48,7 +48,8 @@ export default {
       kind: "group",
       pieces: [
         { kind: "box", size: [3.8, 0.12, 0.6], at: [-0.4, PIVOT[1] + 0.25, 0] },
-        { kind: "box", size: [0.4, 0.25, 0.2], at: [PIVOT[0], PIVOT[1] + 0.12, 0.2] },
+        { kind: "box", size: [0.4, 0.25, 0.2], at: [PIVOT[0], PIVOT[1] + 0.12, 0.09] }, // 支座在槓桿後面,樞軸銷往前穿過槓桿的軸眼
+        { kind: "cylinder", radius: 0.09, length: 0.4, at: [PIVOT[0], PIVOT[1], 0.2] },
         ...[-2.6, 1.4].map((x) => ({
           kind: "plate",
           shape: shape([[-0.25, -0.62], [0.25, -0.62], [0.25, 0.62], [-0.25, 0.62]], [circle(0.07, 0, 0.38).reverse(), circle(0.07, 0, -0.38).reverse()]),
@@ -57,9 +58,6 @@ export default {
         })),
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["lever", "fixed"], reason: "待確認(未修):lever 的板 與 fixed 的方塊 0.4×0.25×0.2互相穿入 0.10(96 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "lever", type: "rotation", range: RANGE, initial: REST },
   target: "bar", // 直線往復的水平桿

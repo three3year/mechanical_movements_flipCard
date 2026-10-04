@@ -74,11 +74,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["pumpPiston"], reason: "待確認:pumpPiston 與帶動(或支撐)它的零件之間差 0.03 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["piston"], reason: "待確認(未修):piston 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["shaftE", "pumpRod"], reason: "待確認:shaftE 的圓柱 r0.08×0.8 與 pumpRod 的方塊 1×0.07×0.05重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "shaftE", type: "rotation" },
   target: "piston",
   view: { direction: [0.08, 0.08, 1] },

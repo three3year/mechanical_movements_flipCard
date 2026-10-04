@@ -56,11 +56,6 @@ export default {
     { id: "pencilLine", kind: "trace" },
   ],
   // 讀者推的是靠著兩根銷的兩條腿(與接頭);葉片是結果——它的畫線邊始終指向會聚點
-  waivers: [
-    { check: "unsupported", parts: ["blade"], reason: "待確認:blade 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["pins", "legB"], reason: "待確認:pins 的圓柱 r0.08×0.5 與 legB 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["pins", "legA"], reason: "待確認:pins 的圓柱 r0.08×0.5 與 legA 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "legA", grips: ["legB", "joint"], type: "rotation", range: RANGE, initial: 0 },
   target: "blade", // 畫線邊始終指向會聚點的葉片
   view: { direction: [0.03, 0.05, 1] },

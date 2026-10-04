@@ -56,12 +56,6 @@ export default {
     ...Array.from({ length: ARMS }, (_, i) => ({ id: `arm${i}`, kind: "plate", shape: arm, thickness: 0.16, arrow: false, pieces: [{ kind: "cylinder", radius: 0.09, length: 0.34 }] })),
     ...Array.from({ length: ARMS }, (_, i) => ({ id: `spring${i}`, kind: "spring", coils: 5, radius: 0.05, wire: 0.015 })),
   ],
-  waivers: [
-    { check: "interference", parts: ["arm0", "spring0"], reason: "待確認:arm0 的板 與 spring0 的Tube重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["arm1", "spring1"], reason: "待確認:arm1 的板 與 spring1 的Tube重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["arm2", "spring2"], reason: "待確認:arm2 的板 與 spring2 的Tube重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["arm3", "spring3"], reason: "待確認:arm3 的板 與 spring3 的Tube重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "rim", type: "rotation", cycle: [0, SWING] },
   target: "shaft", // 只在一個轉向被帶動的軸
   view: { direction: [0.05, 0.05, 1] },

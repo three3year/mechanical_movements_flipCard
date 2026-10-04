@@ -43,9 +43,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "worm"], reason: "待確認(未修):wheel 的板 與 worm 的旋轉體互相穿入 0.13(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "worm", type: "rotation", speed: 4 },
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },

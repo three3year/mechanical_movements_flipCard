@@ -68,16 +68,6 @@ export default {
     },
   ],
   powered: ["inputShaft"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "unsupported", parts: ["spindle"], reason: "待確認(未修):spindle 在動,但離帶動(或支撐)它的零件還有 0.15 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["lowerGear"], reason: "待確認:lowerGear 與帶動(或支撐)它的零件之間差 0.07 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["armL", "head"], reason: "待確認(未修):armL 的方塊 1×0.1×0.08 與 head 的圓柱 r0.3×0.22互相穿入 0.14(288 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["armR", "head"], reason: "待確認(未修):armR 的方塊 1×0.1×0.08 與 head 的圓柱 r0.3×0.22互相穿入 0.14(288 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["linkL", "sleeve"], reason: "待確認(未修):linkL 的方塊 1×0.08×0.06 與 sleeve 的圓柱 r0.22×0.22互相穿入 0.13(288 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["linkR", "sleeve"], reason: "待確認(未修):linkR 的方塊 1×0.08×0.06 與 sleeve 的圓柱 r0.22×0.22互相穿入 0.13(288 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["upperGear", "inputShaft"], reason: "待確認:upperGear 的板 與 inputShaft 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["inputShaft", "gateShaft"], reason: "待確認(未修):inputShaft 的板 與 gateShaft 的板互相穿入 0.14(288 個取樣姿勢),尚未修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "gateShaft",
   states: {

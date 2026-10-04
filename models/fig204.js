@@ -44,9 +44,6 @@ const roller = (id, sign) => ({
 export default {
   figure: 204,
   parts: [roller("upper", 1), roller("lower", -1)],
-  waivers: [
-    { check: "interference", parts: ["upper", "lower"], reason: "待確認(未修):upper 的旋轉體 與 lower 的旋轉體互相穿入 0.48(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "upper", type: "rotation" },
   target: "lower",
   view: { direction: [-0.35, 0.25, 1] },

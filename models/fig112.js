@@ -17,7 +17,7 @@ export default {
       id: "nut",
       kind: "group",
       pieces: [
-        { kind: "lathe", axis: Y, profile: [[0.2, -0.25], [0.62, -0.25], [0.62, -0.15], [0.42, -0.1], [0.42, 0.1], [0.62, 0.15], [0.62, 0.25], [0.2, 0.25]] },
+        { kind: "lathe", axis: Y, profile: [[0.17, -0.25], [0.62, -0.25], [0.62, -0.15], [0.42, -0.1], [0.42, 0.1], [0.62, 0.15], [0.62, 0.25], [0.17, 0.25]] }, // 內孔貼著螺紋
       ],
     },
     {
@@ -37,13 +37,9 @@ export default {
       id: "head",
       kind: "lathe",
       axis: Y,
-      center: [0, 2.0, 0],
+      center: [0, 1.88, 0], // 頂著鑽柄的上端
       profile: [[0, 0], [0.2, 0], [0.25, 0.08], [0.7, 0.15], [0.72, 0.22], [0.5, 0.35], [0, 0.4]],
     },
-  ],
-  waivers: [
-    { check: "unsupported", parts: ["nut"], reason: "待確認:nut 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["stock"], reason: "待確認:stock 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
   ],
   driver: { part: "nut", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 0 },
   target: "stock", // 交替正反旋轉的鑽柄

@@ -37,10 +37,6 @@ export default {
     { id: "pistonRod", kind: "box", size: [0.08, PISTON_ROD, 0.08], label: "C", labelOffset: [0.3, 0.9, 0.3] },
     { id: "rodD", kind: "box", size: [0.08, 2.0, 0.08], label: "D", labelOffset: [-0.3, 0.9, 0.3] },
   ],
-  waivers: [
-    { check: "interference", parts: ["beam", "pistonRod"], reason: "待確認:beam 的板 與 pistonRod 的方塊 0.08×2×0.08重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["beam", "rodD"], reason: "待確認:beam 的板 與 rodD 的方塊 0.08×2×0.08重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "beam", grips: ["pillar"], type: "rotation", range: RANGE, initial: 0 },
   target: "pistonRod", // 直上直下的活塞桿
   view: { direction: [0.03, 0.05, 1] },

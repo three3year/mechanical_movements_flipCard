@@ -46,9 +46,6 @@ export default {
     { id: "labelN", kind: "group", pieces: [], label: "N", labelOffset: [0, 0, 0.5] },
     { id: "labelM", kind: "group", pieces: [], label: "M", labelOffset: [0, 0, 0.5] },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheelB", "wheelF"], reason: "待確認:wheelB 的板 與 wheelF 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "arm", type: "rotation", speed: 0.3 },
   target: "wheelE", // 展示悖論的三個輪疊在銷 N 上,取最上面看得到的 E 代表
   view: { direction: [0.08, 0.1, 1] },

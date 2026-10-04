@@ -46,9 +46,6 @@ export default {
     { id: "tagA1", kind: "group", center: [-R, ROD_Y - 0.1, 0.35], pieces: [], arrow: false, label: "A" },
     { id: "tagA2", kind: "group", center: [R, ROD_Y - 0.1, 0.35], pieces: [], arrow: false, label: "A" },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "verge"], reason: "待確認(未修):wheel 的板 與 verge 的方塊 0.08×0.55×0.32互相穿入 0.15(94 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "verge", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel",
   view: { direction: [0.35, 0.55, 1] },

@@ -60,10 +60,6 @@ export default {
     { id: "sleeve", kind: "cylinder", axis: Y, radius: 0.18, length: 0.3 },
   ],
   powered: ["ballL", "ballR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["rodL", "sleeve"], reason: "待確認:rodL 的方塊 1×0.07×0.05 與 sleeve 的圓柱 r0.18×0.3重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["rodR", "sleeve"], reason: "待確認:rodR 的方塊 1×0.07×0.05 與 sleeve 的圓柱 r0.18×0.3重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "轉速", mode: "balance", range: RANGE, initial: 6 },
   target: "sleeve", // 沿心軸升降的套筒
   view: { direction: [0.04, 0.05, 1] },

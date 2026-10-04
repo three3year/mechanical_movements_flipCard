@@ -141,3 +141,24 @@ export function dropValue(restAngle, period, samples = 720) {
 
 /** 反轉時被擋住的主動量:從 v 往回轉,碰到的最近一個擋止位置(offset + k·period ≤ v) */
 export const lastStop = (v, offset, period) => offset + Math.floor((v - offset) / period + 1e-9) * period;
+
+/**
+ * 靠在轉動零件上的從動件,滑脫後不是瞬間落下:resting(v) 是它靠著時的抬起量(週期 period,滑脫的那一刻驟降),
+ * 回傳的函式在滑脫後的 drop 這段主動量內,讓它從滑脫前的高度加速落回(起步慢、越來越快),落下途中碰到東西就靠在上面。
+ */
+export function withFall(resting, period, drop, samples = 720) {
+  let at = 0;
+  let step = 0;
+  for (let i = 1; i <= samples; i++) {
+    const d = resting((period * (i - 1)) / samples) - resting((period * i) / samples);
+    if (d > step) [step, at] = [d, (period * (i - 1)) / samples];
+  }
+  const height = resting(at);
+  return (v) => {
+    const since = (((v - at) % period) + period) % period;
+    const lift = resting(v);
+    if (since >= drop) return lift;
+    const t = since / drop;
+    return Math.max(lift, height * (1 - t * t));
+  };
+}

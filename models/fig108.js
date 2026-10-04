@@ -60,13 +60,13 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["drum", "slide"], reason: "待確認:drum 的Tube 與 slide 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "drum", type: "rotation", speed: 1.2 },
   target: "slide", // 均勻來回橫移的滑座
   view: { direction: [0.08, 0.1, 1] },
   pose(theta) {
     return { parts: { drum: { angle: theta }, slide: { position: [0, slideY(theta), 0] } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["drum", "slide"], reason: "滑座的尖點在兩道反向螺旋溝的交會處換向時,擦到溝邊的凸條 0.03(96 個取樣中 3 個);溝的交會處實物是互相切通的" },
+  ],
 };

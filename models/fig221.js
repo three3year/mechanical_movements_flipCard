@@ -76,10 +76,6 @@ export default {
     { id: "tagH", kind: "group", pieces: [], arrow: false, label: "h" },
     { id: "pivotD", kind: "group", label: "D", labelOffset: [-0.3, 0, 0.3], pieces: [{ kind: "cylinder", radius: 0.1, length: 0.7 }] },
   ],
-  waivers: [
-    { check: "interference", parts: ["gearC", "gearB"], reason: "待確認:gearC 的板 與 gearB 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["gearB", "pivotD"], reason: "待確認(未修):gearB 的板 與 pivotD 的圓柱 r0.1×0.7互相穿入 0.13(34 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "gearC", type: "rotation" },
   target: "gearA",
   view: { direction: [0.06, 0.05, 1] },

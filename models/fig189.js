@@ -68,11 +68,6 @@ export default {
     },
     { id: "hanger", kind: "link", width: 0.12, thickness: 0.08 },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["rod"], reason: "待確認(未修):rod 在動,但離帶動(或支撐)它的零件還有 0.76 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["bell"], reason: "待確認:bell 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["hanger"], reason: "待確認:hanger 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-  ],
   driver: { part: "bell", type: "rotation", range: [0, MAX] },
   target: "rod",
   view: { direction: [0.06, 0.05, 1] },

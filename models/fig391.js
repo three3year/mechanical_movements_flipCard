@@ -64,11 +64,6 @@ export default {
     { id: "toggleC", kind: "group", center: [1.15, 2.35, 0.2], arrow: false, label: "C", labelOffset: [-0.3, 0.1, 0.2], pieces: [{ kind: "plate", shape: shape(thickLine([[-0.6, -0.6], [0, 0], [0.3, 0.35]], 0.08), [circle(0.03).reverse()]), thickness: 0.06 }] },
     { id: "springD", kind: "spring", coils: 6, radius: 0.06, wire: 0.015, label: "d", labelOffset: [0.2, 0.2, 0.2] },
   ],
-  waivers: [
-    { check: "interference", parts: ["rackA1", "toggleC"], reason: "待確認:rackA1 的圓柱 r0.08×0.35 與 toggleC 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["gear", "rackA1"], reason: "待確認(未修):gear 的板 與 rackA1 的方塊 0.14×0.118×0.2互相穿入 0.13(31 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["gear", "rackA"], reason: "待確認(未修):gear 的板 與 rackA 的方塊 0.14×0.118×0.2互相穿入 0.12(32 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "piston", type: "translation", direction: [0, 1, 0], cycle: [0, STROKE] },
   target: "gear",
   view: { direction: [0.03, 0.05, 1] },

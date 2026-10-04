@@ -55,11 +55,6 @@ export default {
     { id: "weight", kind: "lathe", axis: [0, 1, 0], profile: [[0, -0.7], [0.42, -0.7], [0.32, 0], [0.12, 0.05], [0, 0.05]] },
     { id: "rope", kind: "rope" },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["weight"], reason: "待確認:weight 與帶動(或支撐)它的零件之間差 0.06 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["frame", "guideL"], reason: "待確認(未修):frame 的圓柱 r0.06×0.5 與 guideL 的圓柱 r0.145×0.048互相穿入 0.20(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "guideR"], reason: "待確認(未修):frame 的圓柱 r0.06×0.5 與 guideR 的圓柱 r0.145×0.048互相穿入 0.20(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "drum", type: "rotation", range: RANGE, initial: 0 },
   target: "weight", // 被吊起的重物
   view: { direction: [0.06, 0.06, 1] },

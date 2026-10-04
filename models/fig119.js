@@ -63,24 +63,21 @@ export default {
       kind: "group",
       pieces: [
         { kind: "plate", shape: shape(teeth, [circle(0.08, -A - 0.25, 0.18).reverse(), circle(0.08, -A - 0.25, -0.18).reverse(), circle(0.08, A + 0.25, 0.18).reverse(), circle(0.08, A + 0.25, -0.18).reverse()]), thickness: 0.22 },
-        { kind: "cylinder", axis: [1, 0, 0], radius: 0.16, length: 1.4, at: [-A - RE - 0.7, 0, 0] },
-        { kind: "cylinder", axis: [1, 0, 0], radius: 0.16, length: 1.4, at: [A + RE + 0.7, 0, 0] },
+        // 兩端的桿接在齒條板的背面:小齒輪繞過端頭時從桿的前方通過
+        { kind: "cylinder", axis: [1, 0, 0], radius: 0.16, length: 1.4, at: [-A - RE - 0.7, 0, -0.32] },
+        { kind: "cylinder", axis: [1, 0, 0], radius: 0.16, length: 1.4, at: [A + RE + 0.7, 0, -0.32] },
       ],
     },
     {
       id: "guide",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.08, 2 * RHO + 1.2, 0.08], at: [-0.12, 0, 0.3] },
-        { kind: "box", size: [0.08, 2 * RHO + 1.2, 0.08], at: [0.12, 0, 0.3] },
+        { kind: "box", size: [0.08, 2 * RHO + 1.2, 0.08], at: [-0.12, 0, 0.35] },
+        { kind: "box", size: [0.08, 2 * RHO + 1.2, 0.08], at: [0.12, 0, 0.35] },
         { kind: "box", size: [5.2, 0.32, 0.4], at: [0, RHO + 0.85, 0] },
         { kind: "box", size: [5.2, 0.22, 0.4], at: [0, -RHO - 0.75, 0] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["pinion", "guide"], reason: "待確認:pinion 的圓柱 r0.128×0.364 與 guide 的方塊 0.08×3.384×0.08重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["pinion", "rack"], reason: "待確認(未修):pinion 的圓柱 r0.128×0.364 與 rack 的圓柱 r0.16×1.4互相穿入 0.22(20 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "pinion", type: "rotation", speed: -1.4 },
   target: "rack", // 往復直線運動的無端齒條

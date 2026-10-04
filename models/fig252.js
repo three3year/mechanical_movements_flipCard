@@ -77,10 +77,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["rollerA", "partD"], reason: "待確認(未修):rollerA 的圓柱 r0.08×0.6 與 partD 的板互相穿入 0.14(20 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["rollerB", "partD"], reason: "待確認(未修):rollerB 的圓柱 r0.08×0.6 與 partD 的板互相穿入 0.14(20 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "partD", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 0 },
   targets: ["rollerA", "rollerB"], // 要被推開拉攏的兩個滾子
   view: { direction: [0.05, 0.05, 1] },

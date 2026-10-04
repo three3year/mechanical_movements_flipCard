@@ -51,10 +51,6 @@ export default {
     bevel("b", B, 1.2, { label: "B", labelOffset: [-0.6, 0.9, 0] }),
   ],
   // 起始時有齒的半圈朝向右前方(原圖)
-  waivers: [
-    { check: "interference", parts: ["c", "b"], reason: "待確認:c 的板 與 b 的板重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["c", "a"], reason: "待確認:c 的板 與 a 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "c", type: "rotation", initial: 2.2 },
   targets: ["a", "b"], // 交替得到間歇旋轉的兩輪
   view: { direction: [0.03, 0.42, 1], fov: 20 },
@@ -62,4 +58,8 @@ export default {
     const { a, b } = angles(theta);
     return { parts: { c: { angle: theta }, a: { angle: a }, b: { angle: b } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["c", "b"], reason: "簡化齒形:缺齒斜齒輪有齒的半圈重新咬入時,第一齒的齒頂與對方齒頂擦到 0.10(96 個取樣中 4–5 個);實物的缺齒輪會把第一齒修短。齒距與相位對得上、傳動關係正確" },
+    { check: "interference", parts: ["c", "a"], reason: "簡化齒形:缺齒斜齒輪有齒的半圈重新咬入時,第一齒的齒頂與對方齒頂擦到 0.10(96 個取樣中 4–5 個);實物的缺齒輪會把第一齒修短。齒距與相位對得上、傳動關係正確" },
+  ],
 };

@@ -115,7 +115,9 @@ export function pump(c) {
 }
 
 // B 的本體:從尾端到鉤尖的一條長圓板,樞軸在原點
-const catchOutline = stadium(CATCH.tail + CATCH.length, 0.2).outline.map(([x, y]) => [x - CATCH.tail, y]);
+// 鉤尖與尾端都收成尖的:接觸是以這兩個端點算的,圓頭會陷進凸輪與擋條
+// 而且鉤身幾乎是沿著凸輪面的切線躺著,所以畫成細長的桿,只在樞軸附近加粗
+const catchOutline = [[-CATCH.tail, 0], [-CATCH.tail + 0.12, -0.03], [-0.12, -0.1], [0.12, -0.1], [CATCH.length - 0.12, -0.03], [CATCH.length, 0], [CATCH.length - 0.12, 0.03], [0.12, 0.1], [-0.12, 0.1], [-CATCH.tail + 0.12, 0.03]];
 const STOP_MID = (STOP.inner + STOP.outer) / 2;
 const STOP_DIR = STOP.face + STOP_HALF / STOP_MID; // 擋條中心線的角度(面在順時針側)
 
@@ -172,10 +174,6 @@ export default {
       ],
     },
     { id: "rope", kind: "rope" },
-  ],
-  waivers: [
-    { check: "interference", parts: ["shaft", "catch"], reason: "待確認(未修):shaft 的板 與 catch 的板互相穿入 0.12(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["catch", "frame"], reason: "待確認(未修):catch 的板 與 frame 的方塊 0.12×1.5×0.3互相穿入 0.17(11 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "shaft", type: "rotation", speed: 0.8 },
 

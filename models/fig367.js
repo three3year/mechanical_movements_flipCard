@@ -46,12 +46,6 @@ export default {
     { id: "pointer", kind: "link", width: 0.05, thickness: 0.04, stretch: true },
     ...rulerLineParts(),
   ],
-  waivers: [
-    { check: "unsupported", parts: ["upper"], reason: "待確認:upper 與帶動(或支撐)它的零件之間差 0.03 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["linkL"], reason: "待確認:linkL 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["linkR"], reason: "待確認:linkR 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["pointer"], reason: "待確認:pointer 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-  ],
   driver: { part: "upper", grips: ["linkL", "linkR"], type: "rotation", range: RANGE, initial: deg(55) },
   target: "pointer", // 在刻度上指出兩片尺葉間距的指針
   view: { direction: [0.03, 0.06, 1] },

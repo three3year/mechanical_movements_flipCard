@@ -35,14 +35,15 @@ const teeth = Array.from({ length: WHEEL.teeth }, (_, i) => ({
   accent: i === 0,
 }));
 
-const armPart = (id, label) => ({
+// 兩支臂繞同一根軸、前後錯開一層(上臂在前),各自的爪往後伸到齒那一層
+const armPart = (id, label, layer = 0) => ({
   id,
   kind: "group",
-  center: [0, 0, Z],
+  center: [0, 0, Z + layer],
   arrow: false,
   pieces: [
     { kind: "plate", shape: shape(stadium(ARM, 0.22).outline, [circle(0.06, ARM, 0).reverse()]), thickness: 0.08 },
-    { kind: "plate", shape: shape([[ARM - 0.25, -0.08], [ARM - 0.05, -0.18], [ARM + 0.05, -0.08], [ARM - 0.1, 0.05]]), thickness: 0.06, at: [0, 0, -0.08] },
+    { kind: "plate", shape: shape([[ARM - 0.25, -0.08], [ARM - 0.05, -0.18], [ARM + 0.05, -0.08], [ARM - 0.1, 0.05]]), thickness: 0.06, at: [0, 0, -0.08 - layer] },
   ],
   label,
   labelOffset: [0.85, 0.1, 0.1],
@@ -64,7 +65,7 @@ export default {
       label: "A",
       labelOffset: [-0.95, -0.1, 0.3],
     },
-    armPart("armUpper", "C"),
+    armPart("armUpper", "C", 0.09),
     armPart("armLower", "C"),
     { id: "linkUpper", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "linkLower", kind: "link", width: 0.08, thickness: 0.05 },
@@ -78,9 +79,6 @@ export default {
       label: "B",
       labelOffset: [-0.1, 0.5, 0.2],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["armUpper", "armLower"], reason: "待確認:armUpper 的板 與 armLower 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "rodB", type: "translation", direction: [1, 0, 0], cycle: [B0, B0 + STROKE] },
 
@@ -97,7 +95,7 @@ export default {
         rodB: { position: [x, 0, Z] },
         armUpper: { angle: angleOf([0, 0, 0], up) },
         armLower: { angle: angleOf([0, 0, 0], down) },
-        linkUpper: { from: [up[0], up[1], z], to: [x, 0, z] },
+        linkUpper: { from: [up[0], up[1], z + 0.085], to: [x, 0, z + 0.085] }, // 在上臂的前面
         linkLower: { from: [down[0], down[1], z], to: [x, 0, z] },
       },
       readouts: [],

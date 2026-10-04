@@ -3,8 +3,4 @@ import { twinWheels } from "./twin-wheel-escapement.js";
 
 export default {
   ...twinWheels(300, [0.05, 0.06, 1]),
-  waivers: [
-    { check: "unsupported", parts: ["staff"], reason: "待確認(未修):staff 在動,但離帶動(或支撐)它的零件還有 0.16 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["wheels"], reason: "待確認(未修):wheels 在動,但離帶動(或支撐)它的零件還有 0.16 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-  ],
 };

@@ -3,7 +3,4 @@ import { makeModel } from "./oscillating-column.js";
 
 export default {
   ...makeModel(446, 0.72),
-  waivers: [
-    { check: "interference", parts: ["pipes", "riser"], reason: "待確認:pipes 的板 與 riser 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
 };

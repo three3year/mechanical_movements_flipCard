@@ -53,10 +53,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["fan"], reason: "待確認:fan 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["casing", "outlet"], reason: "待確認(未修):casing 的板 與 outlet 的板互相穿入 0.12(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "fan", type: "rotation", speed: 1.2 },
   target: "outlet", // 扇葉的軸就是主動件;標空氣被送出去的噴口
   view: { direction: [0.15, 0.1, 1] },

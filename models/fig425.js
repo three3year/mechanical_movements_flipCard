@@ -77,11 +77,6 @@ export default {
     { id: "shaftB", kind: "group", label: "B", labelOffset: [0, 0, 0.6], pieces: [] },
     { id: "abutment", kind: "box", size: [2 * SLOT, 1.2, 0.56], label: "D", labelOffset: [0.35, 0.2, 0.3] },
   ],
-  waivers: [
-    { check: "interference", parts: ["cylinder", "pistonC"], reason: "待確認:cylinder 的板 與 pistonC 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["cylinder", "abutment"], reason: "待確認(未修):cylinder 的板 與 abutment 的方塊 0.32×1.2×0.56互相穿入 0.16(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["pistonC", "abutment"], reason: "待確認:pistonC 的板 與 abutment 的方塊 0.32×1.2×0.56重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "pistonC", type: "rotation", speed: -0.8, initial: -Math.PI / 2 },
   target: "abutment", // 軸 B 就是主動件(偏心活塞);標被活塞推開讓路的滑動擋板 D
   view: { direction: [0.03, 0.05, 1] },

@@ -38,14 +38,6 @@ export default {
     ]),
     ...rulerLineParts(),
   ],
-  waivers: [
-    { check: "unsupported", parts: ["rulerTop"], reason: "待確認:rulerTop 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["midBar"], reason: "待確認:midBar 與帶動(或支撐)它的零件之間差 0.07 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["up0"], reason: "待確認:up0 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["down0"], reason: "待確認(未修):down0 在動,但離帶動(或支撐)它的零件還有 0.22 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["up1"], reason: "待確認:up1 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["down1"], reason: "待確認(未修):down1 在動,但離帶動(或支撐)它的零件還有 0.22 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-  ],
   driver: { part: "rulerTop", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 1.6 },
   target: "midBar", // 連著兩個鉸點、讓尺的兩端都保持平行的中介桿
   view: { direction: [0.03, 0.06, 1] },

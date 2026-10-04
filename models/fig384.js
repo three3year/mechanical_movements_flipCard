@@ -38,9 +38,6 @@ export default {
     { id: "wheel", kind: "gear", axis: [1, 0, 0], teeth: 30, radius: WHEEL, width: 0.12, pieces: [{ kind: "cylinder", radius: 0.12, length: 0.35, at: [0, 0, 0.2] }] },
     { id: "spiral", kind: "trace" },
   ],
-  waivers: [
-    { check: "interference", parts: ["arm", "wheel"], reason: "待確認:arm 的Tube 與 wheel 的板重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "arm", type: "rotation", range: RANGE, initial: 0 },
   target: "wheel", // 在紙上滾出渦線的小輪
   view: { direction: [0.1, 0.45, 1], fit: ["arm", "wheel"] },

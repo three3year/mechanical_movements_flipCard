@@ -62,10 +62,6 @@ export default {
       ],
     })),
   ],
-  waivers: [
-    { check: "interference", parts: ["frame", "drive"], reason: "待確認(未修):frame 的方塊 4.6×0.2×0.5 與 drive 的板互相穿入 0.27(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "shaft"], reason: "待確認(未修):frame 的方塊 4.6×0.2×0.5 與 shaft 的板互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "drive", type: "rotation" },
   targets: ["runnerL", "runnerR"], // 在盆裡繞著滾的追輪
   view: { direction: [0.08, 0.2, 1] },

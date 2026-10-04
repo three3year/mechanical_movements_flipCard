@@ -56,7 +56,7 @@ export default {
       arrow: false,
       pieces: [
         { kind: "box", size: [ARM, 0.12, 0.08], at: [ARM / 2, 0, 0] },
-        { kind: "cylinder", radius: 0.12, length: 0.3, at: [ARM, 0, -0.1], accent: true },
+        { kind: "cylinder", radius: 0.08, length: 0.3, at: [ARM, 0, -0.1], accent: true }, // 銷比溝槽窄
         { kind: "cylinder", radius: 0.16, inner: 0.07, length: 0.15 },
       ],
     },
@@ -69,9 +69,6 @@ export default {
         { kind: "box", size: [6.4, 0.25, 0.1], at: [0.05, 0, -0.3] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["big", "crank"], reason: "待確認:big 的Tube 與 crank 的圓柱 r0.12×0.3重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "small", type: "rotation", speed: 1.6 },
   target: "crank",

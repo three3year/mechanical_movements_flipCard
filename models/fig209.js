@@ -87,9 +87,6 @@ export default {
     gear("left", [0, 0, 0], outline(r1, toothed1, arcAt(r1, 0)), fork.map((s) => ({ kind: "plate", shape: s, thickness: 0.1, at: [0, 0, 0.16] }))),
     gear("right", [D, 0, 0], outline(r2, toothed2, arcAt(r2, Math.PI) + PITCH / 2), [{ kind: "plate", shape: horn, thickness: 0.1, at: [0, 0, 0.16] }]),
   ],
-  waivers: [
-    { check: "interference", parts: ["left", "right"], reason: "待確認(未修):left 的板 與 right 的板互相穿入 0.10(10 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "left", type: "rotation", initial: START },
   target: "right",
   view: { direction: [0.06, 0.05, 1] },

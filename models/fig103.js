@@ -6,7 +6,7 @@ import { shape } from "./shapes.js";
 const PITCH = 0.42;
 const SCREW_Y = 1.2;
 const START = 2.3; // 滑塊起始位置
-const TURNS = 5;
+const TURNS = 3; // 滑塊走到機架立柱前就停
 
 /** 螺桿轉 angle(繞 +x):滑塊的位置(螺帽相對螺桿後退) */
 export const sliderX = (angle) => START - screwAdvance(angle, PITCH);
@@ -41,10 +41,6 @@ export default {
         { kind: "box", size: [5.0, 0.42, 0.8], at: [2.65, 0.06, 0] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["screw", "slider"], reason: "待確認(未修):screw 的Tube 與 slider 的板互相穿入 0.23(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["slider", "frame"], reason: "待確認(未修):slider 的板 與 frame 的板互相穿入 0.55(24 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "screw", type: "rotation", range: [0, TURNS * TAU] },
   target: "slider", // 直線移動的滑塊

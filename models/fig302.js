@@ -63,9 +63,6 @@ export default {
     { id: "labelA", kind: "group", center: [0.45, STAFF_Y - 0.3, R], label: "A", labelOffset: [0.2, 0, 0.3] },
     { id: "labelB", kind: "group", center: [-0.45, STAFF_Y - 0.3, -R], label: "B", labelOffset: [-0.2, 0, 0.3] },
   ],
-  waivers: [
-    { check: "interference", parts: ["crownD", "balanceC"], reason: "待確認:crownD 的板 與 balanceC 的板重疊 0.10,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "balanceC", type: "rotation", cycle: [-SWING, SWING] },
   target: "crownD", // 冠狀輪(擒縱輪)
   view: { direction: [0.08, 0.15, 1] },

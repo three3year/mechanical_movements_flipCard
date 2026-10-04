@@ -9,7 +9,7 @@ import { shape } from "./shapes.js";
 const PITCH = 0.16;
 const ROLLER_Y = 1.25;
 const SPINDLE_Y = -0.4;
-const ARMS = { left: -1.2, right: 0.75 };
+const ARMS = { left: -1.0, right: 0.75 }; // 左臂橫移到底也碰不到機架
 const TURNS = 5;
 const TILT = deg(6);
 
@@ -18,9 +18,10 @@ export const traverse = (angle, state) => (state === "right" ? 1 : -1) * screwAd
 export const pitch = PITCH;
 
 const arm = (x, from) => [
-  { kind: "box", size: [0.22, ROLLER_Y - SPINDLE_Y - 0.1, 0.18], at: [x, (ROLLER_Y - SPINDLE_Y) / 2, 0] },
-  { kind: "plate", shape: shape([[-0.25, 0], [0.25, 0], [0.25, 0.18], [-0.25, 0.18]]), thickness: 0.35, at: [x, ROLLER_Y - SPINDLE_Y + from * 0.35 - (from < 0 ? 0.18 : 0), 0] },
-  { kind: "box", size: [0.5, 0.35, 0.4], at: [x, 0, 0] },
+  // 臂從滾軸的後方繞上去(不穿過滾軸),半螺帽從臂往前伸到滾軸的正上方 / 正下方
+  { kind: "box", size: [0.22, ROLLER_Y - SPINDLE_Y + (from > 0 ? 0.45 : -0.45), 0.18], at: [x, (ROLLER_Y - SPINDLE_Y + (from > 0 ? 0.45 : -0.45)) / 2, -0.45] },
+  { kind: "plate", shape: shape([[-0.25, 0], [0.25, 0], [0.25, 0.18], [-0.25, 0.18]]), thickness: 0.75, at: [x, ROLLER_Y - SPINDLE_Y + from * 0.31 - (from < 0 ? 0.18 : 0), -0.2] },
+  { kind: "box", size: [0.5, 0.35, 0.8], at: [x, 0, -0.2] },
 ];
 
 export default {
@@ -45,13 +46,14 @@ export default {
       posed: true,
       arrow: false,
       pieces: [
-        { kind: "cylinder", axis: X, radius: 0.1, length: 5.6, at: [0.6, 0, 0] },
+        { kind: "cylinder", axis: X, radius: 0.1, length: 6.0, at: [0.8, 0, 0] },
         ...arm(ARMS.left, -1),
         ...arm(ARMS.right, 1),
-        { kind: "box", size: [0.3, 0.3, 0.3], at: [3.1, 0, 0] },
-        { kind: "box", size: [0.1, 2.0, 0.1], at: [3.1, 0, 0] },
-        { kind: "sphere", radius: 0.12, at: [3.1, 1.0, 0] },
-        { kind: "sphere", radius: 0.12, at: [3.1, -1.0, 0] },
+        // 槓桿在機架外側夠遠處,心軸橫移到底也碰不到機架
+        { kind: "box", size: [0.3, 0.3, 0.3], at: [3.5, 0, 0] },
+        { kind: "box", size: [0.1, 2.0, 0.1], at: [3.5, 0, 0] },
+        { kind: "sphere", radius: 0.12, at: [3.5, 1.0, 0] },
+        { kind: "sphere", radius: 0.12, at: [3.5, -1.0, 0] },
       ],
     },
     {
@@ -62,10 +64,6 @@ export default {
         { kind: "box", size: [0.45, 2.6, 0.8], at: [2.15, 0.45, 0] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["roller", "spindle"], reason: "待確認(未修):roller 的圓柱 r0.25×1.5 與 spindle 的方塊 0.22×1.55×0.18互相穿入 0.16(192 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["spindle", "frame"], reason: "待確認(未修):spindle 的球 r0.12 與 frame 的方塊 0.45×2.6×0.8互相穿入 0.20(20 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "roller", type: "rotation", range: [0, TURNS * TAU] },
   target: "spindle", // 來回橫移的心軸(導引線)

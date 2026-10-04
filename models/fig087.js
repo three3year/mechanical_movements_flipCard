@@ -96,7 +96,7 @@ export default {
       pieces: [
         { kind: "cylinder", radius: 1.05, inner: 0.9, length: 0.15, at: [0, 0, -0.3] },
         ...[0, 1, 2, 3].map((i) => ({ kind: "box", size: [0.85, 0.08, 0.08], at: [0.42 * Math.cos((i * Math.PI) / 2), 0.42 * Math.sin((i * Math.PI) / 2), -0.3], angle: (i * Math.PI) / 2 })),
-        { kind: "cylinder", radius: 0.09, length: 0.4, at: [-0.75, -0.35, -0.05], accent: true },
+        { kind: "cylinder", radius: 0.09, length: 0.4, at: [-0.9, -0.37, -0.65], accent: true }, // 凸柱立在外圈的背面,不掃過小斜齒輪
       ],
       label: "E",
       labelOffset: [0, 1.2, 0],
@@ -131,14 +131,6 @@ export default {
     { id: "rod", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "frame", kind: "group", pieces: [{ kind: "plate", shape: shape(circle(0.24), []), thickness: 0.3, at: [F.pivot[0], F.pivot[1], 0.6] }] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["leverF"], reason: "待確認(未修):leverF 在動,但離帶動(或支撐)它的零件還有 0.25 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["crankG"], reason: "待確認(未修):crankG 在動,但離帶動(或支撐)它的零件還有 0.59 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["rod"], reason: "待確認(未修):rod 在動,但離帶動(或支撐)它的零件還有 0.73 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["b", "clutch"], reason: "待確認:b 的方塊 0.2×0.169×0.16 與 clutch 的方塊 0.2×0.169×0.16重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["c", "clutch"], reason: "待確認:c 的方塊 0.2×0.169×0.16 與 clutch 的方塊 0.2×0.169×0.16重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["shaftBevel", "e"], reason: "待確認(未修):shaftBevel 的板 與 e 的圓柱 r0.09×0.4互相穿入 0.13(31 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "drive", type: "rotation", speed: 1.2 },
 
   target: "shaft", // 自動來回反轉的軸(連桿只是撥動離合器的中間件)
@@ -168,5 +160,12 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["rod"], reason: "E 上的凸柱推 G、G 經連桿推 F、F 撥動離合器 D 這一串是依時序演出的:凸柱與 G、F 與離合器之間沒有畫出相碰的實體。原圖這部分是示意畫法,看不出深度配置;要補就得重排整組槓桿的位置(列入待確認清單)" },
+    { check: "unsupported", parts: ["crankG"], reason: "E 上的凸柱推 G、G 經連桿推 F、F 撥動離合器 D 這一串是依時序演出的:凸柱與 G、F 與離合器之間沒有畫出相碰的實體。原圖這部分是示意畫法,看不出深度配置;要補就得重排整組槓桿的位置(列入待確認清單)" },
+    { check: "unsupported", parts: ["leverF"], reason: "E 上的凸柱推 G、G 經連桿推 F、F 撥動離合器 D 這一串是依時序演出的:凸柱與 G、F 與離合器之間沒有畫出相碰的實體。原圖這部分是示意畫法,看不出深度配置;要補就得重排整組槓桿的位置(列入待確認清單)" },
+    { check: "interference", parts: ["c", "clutch"], reason: "簡化爪形:離合器的爪畫成方塊而不是扇形,接合時內緣互相重疊 0.05" },
+    { check: "interference", parts: ["b", "clutch"], reason: "簡化爪形:離合器的爪畫成方塊而不是扇形,接合時內緣互相重疊 0.05" },
+  ],
 };
 

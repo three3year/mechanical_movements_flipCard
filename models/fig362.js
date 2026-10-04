@@ -57,9 +57,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["upper"], reason: "待確認(未修):upper 在動,但離帶動(或支撐)它的零件還有 0.42 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-  ],
   driver: { part: "cylinder", type: "rotation" },
   target: "upper", // 來回橫移的上方軸
   view: { direction: [0.1, 0.25, 1] },

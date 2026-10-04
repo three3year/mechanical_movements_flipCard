@@ -42,9 +42,6 @@ export default {
     { id: "labelD", kind: "group", center: [1.95, 0.3, 0], label: "d", labelOffset: [0.2, 0, 0.3] },
   ],
   powered: ["weightW"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["weightw", "rope"], reason: "待確認:rope 的第 89 段穿過weightw 的方塊 0.45×0.55×0.4重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.08 },
   target: "pulleyP", // 一刻不失去動力的動力輪
   view: { direction: [0.03, 0.04, 1] },

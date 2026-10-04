@@ -43,9 +43,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["drum", "rod"], reason: "待確認:drum 的Tube 與 rod 的圓柱 r0.1×0.42重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "drum", type: "rotation", speed: 0.7 },
   target: "rod",
   view: { direction: [0.3, 0.1, 1] },

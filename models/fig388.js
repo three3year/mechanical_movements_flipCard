@@ -33,9 +33,6 @@ export default {
     { id: "low", kind: "plate", center: LOW.center, shape: shape(circle(LOW.r), [circle(0.12).reverse()]), thickness: 0.6, hub: 0.2, circles: [0.32], mark: [LOW.r * 0.6, 0], markSize: 0.08, spin: LOW.r },
     { id: "board", kind: "box", size: [BOARD_L, 0.18, 0.7] },
   ],
-  waivers: [
-    { check: "interference", parts: ["top", "board"], reason: "待確認:top 的板 與 board 的方塊 4.5×0.18×0.7重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "top", type: "rotation", range: RANGE, initial: 0 },
   target: "board", // 被送進的木板
   view: { direction: [0.03, 0.05, 1] },

@@ -58,12 +58,6 @@ export default {
     { id: "stand", kind: "plate", center: [PIVOT[0], -1.95, 0.1], shape: shape([[-0.5, 0], [0.5, 0], [0.25, 0.4], [-0.25, 0.4]]), thickness: 0.3 },
     { id: "ground", kind: "box", center: [0, -2.0, 0], size: [6.6, 0.08, 1.4] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["pulley"], reason: "待確認(未修):pulley 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["pole"], reason: "待確認(未修):pole 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["strap"], reason: "待確認(未修):strap 在動,但離帶動(或支撐)它的零件還有 0.11 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["treadle", "ground"], reason: "待確認:treadle 的方塊 3.9×0.18×0.2 與 ground 的方塊 6.6×0.08×1.4重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "treadle", type: "rotation", range: RANGE, initial: REST },
   target: "pulley",
   view: { direction: [0.06, 0.05, 1] },

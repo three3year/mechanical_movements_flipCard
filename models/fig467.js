@@ -66,11 +66,6 @@ export default {
       { id: "release", label: "開閥放下" },
     ],
   },
-  waivers: [
-    { check: "unsupported", parts: ["cylinder"], reason: "待確認(未修):cylinder 在動,但離帶動(或支撐)它的零件還有 0.23 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["base", "cylinder"], reason: "待確認(未修):base 的板 與 cylinder 的旋轉體互相穿入 0.31(117 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["base", "handle"], reason: "待確認:base 的方塊 0.22×0.9×0.22 與 handle 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "handle", type: "rotation", cycle: SWING },
   target: "cylinder",
   view: { direction: [0.15, 0.1, 1] },

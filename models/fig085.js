@@ -7,7 +7,7 @@ import { shape, circle, arcPoints } from "./shapes.js";
 import { liftAndDrop, cycleOf, falling } from "./jumps.js";
 
 const CAM = { center: [0.42, 0.55, 0], hub: 0.28, tip: 0.82 };
-const ROD = { x: -0.45, bottom: -2.6, top: 1.9, radius: 0.12 };
+const ROD = { x: -0.62, bottom: -2.6, top: 1.9, radius: 0.12 };
 const RISE = 0.5;
 const PHASE = { liftFrom: 0.05, liftTo: 0.7, dropTo: 0.84, fall: falling };
 
@@ -40,7 +40,7 @@ export default {
       center: [ROD.x, 0, 0],
       pieces: [
         { kind: "cylinder", axis: [0, 1, 0], radius: ROD.radius, length: ROD.top - ROD.bottom, at: [0, (ROD.top + ROD.bottom) / 2, 0] },
-        { kind: "box", size: [0.3, 0.2, 0.3], at: [0.12, 1.15, 0], accent: false },
+        { kind: "box", size: [0.3, 0.2, 0.3], at: [0.27, 1.15, 0], accent: false }, // 桿身往左讓開凸輪,只有凸塊 B 伸到凸輪的路徑上
         { kind: "lathe", axis: [0, 1, 0], at: [0, ROD.bottom - 0.05, 0], profile: [[0, -0.55], [0.52, -0.55], [0.42, 0], [0.18, 0.05], [0, 0.05]] },
       ],
       label: "A",
@@ -52,14 +52,11 @@ export default {
       kind: "group",
       pieces: [
         { kind: "plate", shape: shape([[0.95, -3.5], [3.3, -3.5], [3.3, -3.3], [2.5, -3.2], [2.0, -2.0], [1.9, 1.6], [1.6, 2.3], [-0.65, 2.3], [-0.65, 2.0], [0.95, 2.0]]), thickness: 0.45, at: [0, 0, -0.35] },
-        { kind: "box", size: [1.5, 0.22, 0.45], at: [0.2, -1.0, 0] },
-        { kind: "box", size: [1.5, 0.22, 0.45], at: [0.2, 2.0, 0] },
+        { kind: "box", size: [1.7, 0.22, 0.45], at: [0.1, -1.0, 0] },
+        { kind: "box", size: [1.7, 0.22, 0.45], at: [0.1, 2.0, 0] },
         { kind: "box", size: [5.0, 0.08, 1.2], at: [0.5, -3.55, 0] },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["cam", "rod"], reason: "待確認:cam 的板 與 rod 的圓柱 r0.12×4.5重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
   ],
   driver: { part: "cam", type: "rotation", speed: -1.0 },
 

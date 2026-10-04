@@ -51,10 +51,6 @@ export default {
     { id: "weightB2", kind: "box", size: [0.42, 0.42, 0.3], label: "b'", labelOffset: [-0.45, 0, 0.3] },
   ],
   powered: ["rimR", "rimL"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["weightB", "rimR"], reason: "待確認(未修):rimR 的第 18 段穿過weightB 的方塊 0.42×0.42×0.3互相穿入 0.15(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["weightB2", "rimL"], reason: "待確認(未修):rimL 的第 18 段穿過weightB2 的方塊 0.42×0.42×0.3互相穿入 0.15(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { type: "virtual", label: "溫度", mode: "balance", range: RANGE, initial: 20, unit: "°C" },
   targets: ["weightB", "weightB2"], // 隨弧桿彎曲往內、往外移的兩個配重 b、b'
   view: { direction: [0.03, 0.04, 1] },

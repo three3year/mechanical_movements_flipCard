@@ -11,7 +11,7 @@ import { shape, circle, arcPoints } from "./shapes.js";
 
 const PIVOT = [1.15, 0.85, 0.2];
 const CAM = { pin: [-2.15, -0.38, 0], radius: 0.62, offset: 0.4 };
-const UNDER = 0.22; // 長臂下緣在樞軸下方的距離(長臂水平時)
+const UNDER = 0.185; // 長臂下緣在樞軸下方的距離(長臂水平時)
 
 // 凸輪中心
 const camCenter = (theta) => {
@@ -99,9 +99,6 @@ export default {
         { kind: "plate", shape: CAM_SEAT, thickness: 0.3, at: [CAM.pin[0], CAM.pin[1], -0.45] }, // 凸輪的軸承座(在凸輪後方)
       ],
     },
-  ],
-  waivers: [
-    { check: "unsupported", parts: ["arm"], reason: "待確認:arm 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
   ],
   driver: { part: "cam", type: "rotation" },
   target: "arm", // 帶著上夾爪閉合的長臂

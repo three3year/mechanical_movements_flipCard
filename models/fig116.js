@@ -78,11 +78,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["shaft"], reason: "待確認(未修):shaft 在動,但離帶動(或支撐)它的零件還有 0.13 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["pawlFront"], reason: "待確認:pawlFront 與帶動(或支撐)它的零件之間差 0.03 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["pawlBack"], reason: "待確認:pawlBack 與帶動(或支撐)它的零件之間差 0.03 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-  ],
   driver: { part: "frame", type: "translation", direction: [1, 0, 0], cycle: [-STROKE / 2, STROKE / 2] },
   target: "shaft", // 單向均勻旋轉的小齒輪軸
   view: { direction: [0.06, 0.05, 1] },
@@ -96,8 +91,8 @@ export default {
         front: { angle: front },
         back: { angle: back },
         shaft: { angle: shaft },
-        pawlFront: { position: [pf.pivot[0], pf.pivot[1], 0.36], angle: pf.angle },
-        pawlBack: { position: [pb.pivot[0], pb.pivot[1], -0.36], angle: pb.angle },
+        pawlFront: { position: [pf.pivot[0], pf.pivot[1], 0.34], angle: pf.angle }, // 貼著小齒輪的外側面
+        pawlBack: { position: [pb.pivot[0], pb.pivot[1], -0.34], angle: pb.angle },
       },
       readouts: [],
     };

@@ -42,10 +42,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["stem", "mirror"], reason: "待確認(未修):stem 的圓柱 r0.07×1.6 與 mirror 的板互相穿入 0.14(288 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["base", "mirror"], reason: "待確認(未修):base 的旋轉體 與 mirror 的板互相穿入 0.15(47 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "mirror", type: "rotation", range: RANGE, initial: deg(-10) },
   target: "stem", // 支柱:升降、左右轉,帶著玻璃到要的位置
   states: {

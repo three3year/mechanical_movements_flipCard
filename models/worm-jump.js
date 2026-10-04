@@ -64,7 +64,8 @@ export function wormJump({ figure, fall, push, rest0, drop = deg(14), hollowPiec
           labelOffset: [0, -0.75, 0.4],
           pieces: [
             { kind: "cylinder", radius: 0.22, length: 1.1, at: [0, 0, 0.55] },
-            { kind: "cylinder", radius: PIN_R, length: 0.75, at: [PIN_AT * Math.cos(PIN), PIN_AT * Math.sin(PIN), 0.75], accent: true },
+            // 銷只伸到空心軸缺口那一層(不伸進前面的搖臂、重物)
+            { kind: "cylinder", radius: PIN_R, length: 0.45, at: [PIN_AT * Math.cos(PIN), PIN_AT * Math.sin(PIN), 0.6], accent: true },
           ],
         },
         {
@@ -102,3 +103,6 @@ export function wormJump({ figure, fall, push, rest0, drop = deg(14), hollowPiec
 }
 
 export const WHEEL_TEETH = N;
+
+/** 固定在空心軸上、蓋住缺口的板件(凸輪)要開的弧槽:讓銷穿過,寬度與缺口相同 */
+export const notchSlot = (fall) => [...arcPoints(HOLLOW.outer + 0.02, -fall, 0), ...arcPoints(HOLLOW.inner - 0.02, 0, -fall)].reverse();

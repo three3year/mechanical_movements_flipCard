@@ -72,9 +72,6 @@ export default {
     { id: "stopE", kind: "group", center: [D[0] + 0.25, D[1] + 2.0, 0], label: "E", labelOffset: [0.3, 0, 0.3], pieces: [{ kind: "box", size: [0.15, 0.25, 0.25] }] },
     { id: "labelP", kind: "group", center: [D[0] + 0.25, D[1] + 0.5, 0], label: "P", labelOffset: [0.3, 0, 0.3] },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "detent"], reason: "待確認:wheel 的板 與 detent 的方塊 0.2×0.12×0.12重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },

@@ -71,9 +71,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["gearE", "gearD"], reason: "待確認(未修):gearE 的板 與 gearD 的板互相穿入 0.12(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "gearB", type: "rotation" },
   target: "gearE",
   states: {

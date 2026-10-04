@@ -49,10 +49,6 @@ export default {
     { id: "bob", kind: "sphere", radius: 0.16 },
   ],
   powered: ["bob"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["frame", "thread"], reason: "待確認:thread 的第 17 段穿過frame 的板重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["bob", "path"], reason: "待確認(未修):path 的第 23 段穿過bob 的球 r0.16互相穿入 0.11(96 個取樣姿勢),尚未修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "次", speed: 0.25 },
   target: "bob", // 沿擺線走的擺錘
   view: { direction: [0.03, 0.05, 1] },

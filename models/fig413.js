@@ -66,14 +66,6 @@ export default {
       { id: "tight", label: "螺帽 B 旋緊" },
     ],
   },
-  waivers: [
-    { check: "unsupported", parts: ["lower"], reason: "待確認:lower 與帶動(或支撐)它的零件之間差 0.10 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["rubberLoose"], reason: "待確認:rubberLoose 與帶動(或支撐)它的零件之間差 0.10 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["plateL"], reason: "待確認(未修):plateL 在動,但離帶動(或支撐)它的零件還有 0.15 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["plateR"], reason: "待確認(未修):plateR 在動,但離帶動(或支撐)它的零件還有 0.15 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["shaftA"], reason: "待確認(未修):shaftA 在動,但離帶動(或支撐)它的零件還有 0.49 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["rubberTight"], reason: "待確認:rubberTight 與帶動(或支撐)它的零件之間差 0.04 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-  ],
   driver: { part: "lower", type: "rotation" },
   targets: ["rubberLoose", "rubberTight"], // 兩個狀態各顯示其一的輪 A
   view: { direction: [0.3, 0.15, 1] },

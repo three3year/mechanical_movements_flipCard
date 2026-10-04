@@ -98,11 +98,6 @@ export default {
     },
     { id: "chain", kind: "rope" },
   ],
-  waivers: [
-    { check: "interference", parts: ["armFront", "rodFront"], reason: "待確認:armFront 的板 與 rodFront 的方塊 1×0.08×0.05重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["armBack", "rodBack"], reason: "待確認:armBack 的方塊 1.55×0.16×0.08 與 rodBack 的方塊 1×0.08×0.05重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["back", "rodBack"], reason: "待確認:back 的方塊 4.6×0.12×0.18 與 rodBack 的方塊 1×0.08×0.05重疊 0.08,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "front", type: "rotation", cycle: [SWING / 2, -SWING / 2] },
   target: "wheel", // 近乎連續旋轉的棘輪 A
   view: { direction: [0.25, 0.12, 1] },
@@ -130,8 +125,9 @@ export default {
         wheel: { angle: wheelAngle(v) },
         armFront: { angle: armAngle("front")(t) },
         armBack: { angle: armAngle("back")(t) },
-        rodFront: { from: foot("front", Z.front), to: top("front", Z.front * 0.45) },
-        rodBack: { from: foot("back", Z.back), to: top("back", Z.back * 0.45) },
+        // 連桿的兩端掛在踏板與振動臂的內側面上(不與它們同層)
+        rodFront: { from: foot("front", Z.front - 0.12), to: top("front", Z.front * 0.45 + 0.07) },
+        rodBack: { from: foot("back", Z.back + 0.12), to: top("back", Z.back * 0.45 - 0.07) },
         pulley: { angle: ef[1] / PULLEY.radius },
       },
       // 前踏板末端上升時,鏈條往前端那頭走

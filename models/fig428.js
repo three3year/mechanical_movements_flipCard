@@ -61,15 +61,6 @@ export default {
     },
     ...[0, 1, 2].map((k) => ({ id: `roller${k + 1}`, kind: "pulley", style: "disc", radius: ROLLER - 0.04, width: 0.5, label: "A", labelOffset: [0, 0, 0.45], arrow: false })),
   ],
-  waivers: [
-    { check: "interference", parts: ["cylinder", "roller1"], reason: "待確認(未修):cylinder 的板 與 roller1 的圓柱 r0.035×0.8互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["cylinder", "roller2"], reason: "待確認(未修):cylinder 的板 與 roller2 的圓柱 r0.035×0.8互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["cylinder", "roller3"], reason: "待確認(未修):cylinder 的板 與 roller3 的圓柱 r0.035×0.8互相穿入 0.10(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["cylinder", "lining"], reason: "待確認:lining 的第 116 段穿過cylinder 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["roller2", "lining"], reason: "待確認:lining 的第 84 段穿過roller2 的圓柱 r0.231×0.2重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["roller3", "lining"], reason: "待確認:lining 的第 83 段穿過roller3 的圓柱 r0.231×0.2重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["roller1", "lining"], reason: "待確認:lining 的第 85 段穿過roller1 的圓柱 r0.231×0.2重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "arms", type: "rotation", speed: -0.5, initial: deg(80) },
   targets: ["roller1", "roller2", "roller3"], // 主軸 B 就是主動件(搖臂);標代替活塞、被橡膠內襯推著走的滾子 A
   view: { direction: [0.03, 0.05, 1] },

@@ -88,13 +88,6 @@ export default {
       { id: "modified", label: "改過的接法(g 固定在軸上)" },
     ],
   },
-  waivers: [
-    { check: "unsupported", parts: ["wheelB"], reason: "待確認(未修):wheelB 在動,但離帶動(或支撐)它的零件還有 0.30 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["wheelG"], reason: "待確認(未修):wheelG 在動,但離帶動(或支撐)它的零件還有 0.30 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["wheelF"], reason: "待確認(未修):wheelF 在動,但離帶動(或支撐)它的零件還有 0.40 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["shaftMN"], reason: "待確認:shaftMN 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "unsupported", parts: ["wheelD"], reason: "待確認(未修):wheelD 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-  ],
   driver: { part: "shaftA", type: "rotation", speed: 1.0 },
   target: "shaftMN", // 得到合成運動的臂 k、l 與軸 m、n
   view: { direction: [0.35, 0.3, 1] },

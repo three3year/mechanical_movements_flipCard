@@ -489,7 +489,9 @@ function worm(part, material, mark) {
     const a = hand * (i / steps) * turns * Math.PI * 2;
     return new THREE.Vector3(core * Math.cos(a), core * Math.sin(a), -l / 2 + (i / steps) * l);
   });
-  g.add(mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), steps, thread, 6, false), material));
+  const ridge = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), steps, thread, 6, false);
+  ridge.userData.thread = { radius: r, length: l }; // 螺紋:實體驗證把它和螺桿的芯一樣當成軸(轉在沒畫出來的螺孔裡)
+  g.add(mesh(ridge, material));
   const s = Math.max(0.03, core * 0.2);
   g.add(mesh(new THREE.BoxGeometry(s, s, l * 0.9), mark, [0, core * 0.85, 0]));
   return g;

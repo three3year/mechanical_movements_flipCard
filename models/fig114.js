@@ -71,13 +71,13 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["pinion", "frame"], reason: "待確認(未修):pinion 的板 與 frame 的板互相穿入 0.16(12 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "pinion", type: "rotation", speed: 1.2 },
   target: "frame", // 往復直線運動的框架
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { pinion: { angle: theta }, frame: { position: [frameX(theta), 0, 0] } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["pinion", "frame"], reason: "簡化齒形:缺齒小齒輪離開一排齒條、咬入另一排時,頭尾兩齒的齒頂擦到齒條的齒 0.16(96 個取樣中 12 個);實物會把頭尾的齒修短。齒距與相位對得上" },
+  ],
 };

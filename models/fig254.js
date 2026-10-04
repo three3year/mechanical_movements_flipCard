@@ -40,7 +40,4 @@ export const { travel, def } = facePulley({
 });
 export default {
   ...def,
-  waivers: [
-    { check: "interference", parts: ["wheel", "strand"], reason: "待確認:strand 的第 1 段穿過wheel 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
 };

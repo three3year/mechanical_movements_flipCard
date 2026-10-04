@@ -17,16 +17,17 @@ export function buildSolid(part) {
   object.traverse((o) => {
     if (!o.isMesh || o.material === MARK || o.userData.engraving) return;
     const hulls = convexPieces(o.geometry);
-    if (hulls.length) meshes.push({ mesh: o, hulls, axle: axleOf(o.geometry), radius: o.geometry.userData.tube?.radius ?? o.geometry.parameters?.radius ?? Math.max(o.geometry.parameters?.radiusTop ?? 0, o.geometry.parameters?.radiusBottom ?? 0) });
+    if (hulls.length) meshes.push({ mesh: o, hulls, axle: axleOf(o.geometry), radius: o.geometry.userData.tube?.radius ?? o.geometry.userData.thread?.radius ?? o.geometry.parameters?.radius ?? Math.max(o.geometry.parameters?.radiusTop ?? 0, o.geometry.parameters?.radiusBottom ?? 0) });
   });
   return { object, meshes };
 }
 
 // 圓柱(軸、銷、輪轂、軸眼)的軸線——網格局部座標的兩個端面中心;球是球心(兩個端點相同);其餘回傳 null。
-// 用來認出「裝在沒畫出來的孔裡」的軸承、鉸接與球接頭
+// 用來認出「裝在沒畫出來的孔裡」的軸承、鉸接與球接頭;螺桿的螺紋同理(轉在沒畫出來的螺孔裡:螺帽、軸承座),
+// 軸線就是螺桿的軸線——蝸桿對蝸輪不適用,蝸輪轉動時蝸桿的軸線在它的座標裡會移動
 function axleOf(geometry) {
   if (geometry.type === "SphereGeometry") return [new THREE.Vector3(), new THREE.Vector3()];
-  const tube = geometry.userData.tube; // 空心圓柱(繪圖層的 ring):軸線沿局部 Z
+  const tube = geometry.userData.tube ?? geometry.userData.thread; // 空心圓柱(繪圖層的 ring)、螺桿的螺紋:軸線沿局部 Z
   if (tube) return [new THREE.Vector3(0, 0, tube.length / 2), new THREE.Vector3(0, 0, -tube.length / 2)];
   if (geometry.type !== "CylinderGeometry") return null;
   const pos = geometry.attributes.position;

@@ -4,7 +4,7 @@ import { Y, TAU, screwAdvance } from "./kit.js";
 import { shape } from "./shapes.js";
 
 const PITCH = 0.3;
-const TOP = 0.0; // 手柄起始高度
+const TOP = 0.6; // 手柄起始高度(旋到底時手柄的方塊正好落在螺帽上)
 const TURNS = 3;
 const HANDLE = 2.2;
 
@@ -27,7 +27,7 @@ export default {
         { kind: "lathe", profile: [[0, -0.28], [0.22, -0.2], [0.26, 0], [0.22, 0.2], [0, 0.28]], axis: [1, 0, 0], at: [HANDLE, 0, 0] },
         { kind: "box", size: [0.5, 0.5, 0.3], at: [0, 0, 0] },
         { kind: "sphere", radius: 0.1, at: [0, 0, -0.2] },
-        { kind: "worm", radius: 0.22, length: 2.6, pitch: PITCH, thread: 0.07, at: [0, 0, 1.45] },
+        { kind: "worm", radius: 0.22, length: 3.4, pitch: PITCH, thread: 0.07, at: [0, 0, 1.85] }, // 螺桿的下端頂在壓頭上
       ],
     },
     {
@@ -51,10 +51,6 @@ export default {
         { kind: "plate", shape: shape([[0.3, -2.75], [1.1, -2.75], [1.1, -2.9], [0.3, -2.9]]), thickness: 0.3 },
       ],
     },
-  ],
-  waivers: [
-    { check: "unsupported", parts: ["ram"], reason: "待確認:ram 與帶動(或支撐)它的零件之間差 0.05 沒貼上,接觸位置是算出來的近似,未逐一修正" },
-    { check: "interference", parts: ["handle", "frame"], reason: "待確認(未修):handle 的圓柱 r0.06×4.4 與 frame 的圓柱 r0.38×0.85互相穿入 0.34(41 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "handle", type: "rotation", range: [0, TURNS * TAU] },
   target: "ram", // 被推下的壓頭

@@ -3,27 +3,55 @@
 // 主動件是 B(順時針,原圖箭頭)。每片推板經過時錘柄被頂起、滑脫後瞬間落下(時序為簡化的示意)。
 import { TAU, deg, polar } from "./kit.js";
 import { shape, circle, arcPoints } from "./shapes.js";
-import { liftAndDrop, cycleOf } from "./jumps.js";
+import { falling, cycleOf } from "./jumps.js";
+import { placeOutline, swingUntilContact } from "./contact.js";
 
 const B = { center: [0, 0, 0], hub: 0.42, tip: 0.88 };
 const PIVOT = [3.2, 0.42, 0]; // 錘柄的支點(右端)
 const TAPPET = [0.12, 0.55]; // 錘子落在砧上時,凸塊底端的位置
-
-const LIFT = deg(7);
-// 每片推板經過一次:錘柄從砧上被慢慢頂起,推板一滑脫就瞬間落下
-const PHASE = { liftFrom: 0.15, liftTo: 0.7, dropTo: 0.74 };
-
-/** B 順時針轉 b:錘柄繞支點抬起的角度(0 為落在砧上) */
-export function hammerLift(b) {
-  const { u } = cycleOf(b, TAU / 4);
-  return LIFT * liftAndDrop(u, PHASE).height;
-}
 
 // 推板:從輪轂伸出的彎刃,尖端在局部角 i·90°
 const wiper = (i) => {
   const a = (i * TAU) / 4;
   return shape([...arcPoints(B.hub, a - deg(32), a + deg(14)), polar(B.tip, a).slice(0, 2), polar(B.tip - 0.25, a - deg(26)).slice(0, 2)]);
 };
+const WIPERS = [0, 1, 2, 3].map((i) => wiper(i).outline);
+
+// 錘柄與它下方的凸塊(支點座標):推板頂的是這兩塊
+// 錘柄在推板輪上方拱起,讓推板只碰得到凸塊(原圖的錘柄是直的,照畫推板會掃過錘柄;實物可行優先)
+const HANDLE = [[0.15, -0.2], [0.18, 0.28], [-2.0, 0.55], [-2.9, 0.9], [-4.6, 0.95], [-6.3, 1.15], [-6.35, 0.72], [-4.6, 0.55], [-4.1, 0.51], [-2.85, 0.51], [-2.45, 0.2], [-2.2, 0.13], [-0.25, -0.2]];
+const BLOCK_AT = [TAPPET[0] - PIVOT[0], TAPPET[1] - PIVOT[1] + 0.19];
+const BLOCK = [[-0.07, -0.22], [0.07, -0.22], [0.07, 0.22], [-0.07, 0.22]].map(([x, y]) => [BLOCK_AT[0] + x, BLOCK_AT[1] + y]);
+const SWEEP = deg(20);
+
+// 錘柄憑自重靠在推板上的抬起角(由接觸算;沒有推板頂著就落在砧上,為 0)
+function resting(b) {
+  const blades = WIPERS.map((o) => placeOutline(o, B.center, -b));
+  const rest = (outline) => swingUntilContact({ pivot: PIVOT, outline, from: -SWEEP, into: 1, sweep: SWEEP }, blades);
+  return Math.max(0, -Math.min(rest(HANDLE), rest(BLOCK)));
+}
+
+// 一片推板經過的週期裡:推板滑脫的那一刻(抬起角驟降)與滑脫前的高度
+const PERIOD = TAU / 4;
+const SLIP = (() => {
+  let at = 0;
+  let drop = 0;
+  const n = 720;
+  for (let i = 1; i <= n; i++) {
+    const d = resting((PERIOD * (i - 1)) / n) - resting((PERIOD * i) / n);
+    if (d > drop) [drop, at] = [d, (PERIOD * (i - 1)) / n];
+  }
+  return { at, height: resting(at) };
+})();
+const DROP = deg(5); // 落下的過程佔推板輪轉過的角度(演出加速落下)
+
+/** B 順時針轉 b:錘柄繞支點抬起的角度(0 為落在砧上)。推板頂起時由接觸算,滑脫後憑自重加速落回砧上 */
+export function hammerLift(b) {
+  const { u } = cycleOf(b, PERIOD);
+  const since = (((u * PERIOD - SLIP.at) % PERIOD) + PERIOD) % PERIOD;
+  const lift = resting(b);
+  return since < DROP ? Math.max(lift, SLIP.height * (1 - falling(since / DROP))) : lift;
+}
 
 export default {
   figure: 72,
@@ -47,11 +75,11 @@ export default {
       arrow: false,
       pieces: [
         // 錘柄:從支點往左延伸,越過推板輪,錘頭落在左邊的砧上
-        { kind: "plate", shape: shape([[0.15, -0.2], [0.18, 0.28], [-2.0, 0.55], [-4.6, 0.95], [-6.3, 1.15], [-6.35, 0.72], [-4.6, 0.55], [-3.0, 0.12], [-0.25, -0.2]]), thickness: 0.32 },
+        { kind: "plate", shape: shape(HANDLE), thickness: 0.32 },
         { kind: "box", size: [0.35, 0.55, 0.36], at: [0, -0.1, 0] },
         { kind: "sphere", radius: 0.2, at: [0, -0.32, 0] },
         { kind: "box", size: [1.0, 0.32, 0.4], at: [-5.75, 0.55, 0] },
-        { kind: "box", size: [0.14, 0.3, 0.2], at: [TAPPET[0] - PIVOT[0], TAPPET[1] - PIVOT[1] + 0.12, 0] },
+        { kind: "box", size: [0.14, 0.44, 0.2], at: [...BLOCK_AT, 0] },
       ],
       label: "A",
       labelOffset: [-3.6, 1.15, 0.3],
@@ -64,13 +92,9 @@ export default {
         { kind: "box", size: [2.1, 0.6, 0.8], at: [2.75, -0.65, 0] }, // 砧座壓低:錘頭落下時錘面落在砧面上,不陷進去
         { kind: "box", size: [0.9, 0.25, 0.8], at: [3.2, -0.225, 0] },
         { kind: "box", size: [8.2, 0.12, 1.2], at: [0, -0.95, 0] },
-        { kind: "plate", shape: shape([[-3.6, 0.82], [-1.95, 0.82], [-2.0, 0.92], [-3.6, 0.95]]), thickness: 0.4 },
+        { kind: "plate", shape: shape([[-3.6, 0.7], [-1.95, 0.7], [-1.95, 0.805], [-3.6, 0.805]]), thickness: 0.4 },
       ],
     },
-  ],
-  waivers: [
-    { check: "interference", parts: ["wiper", "hammer"], reason: "待確認(未修):wiper 的板 與 hammer 的板互相穿入 0.31(67 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["hammer", "base"], reason: "待確認(未修):hammer 的方塊 1×0.32×0.4 與 base 的板互相穿入 0.13(52 個取樣姿勢),尚未修正" },
   ],
   driver: { part: "wiper", type: "rotation", speed: -1.0 },
   target: "hammer", // 被抬起又落下的錘子 A

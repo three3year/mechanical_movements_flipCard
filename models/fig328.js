@@ -60,10 +60,6 @@ export default {
     { id: "labelA2", kind: "group", center: GR.center, label: "A", labelOffset: [-0.25, -0.5, 0.4] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "interference", parts: ["frame", "gearL"], reason: "待確認:frame 的方塊 4.6×0.32×0.3 與 gearL 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["frame", "gearR"], reason: "待確認:frame 的方塊 4.6×0.32×0.3 與 gearR 的板重疊 0.03,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   targets: ["gearL", "gearR"], // 輸出的曲柄齒輪
   view: { direction: [0.03, 0.05, 1] },

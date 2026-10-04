@@ -56,12 +56,6 @@ export default {
     { id: "rod", kind: "link", width: 0.14, thickness: 0.14 },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  waivers: [
-    { check: "unsupported", parts: ["crank"], reason: "待確認(未修):crank 在動,但離帶動(或支撐)它的零件還有 0.64 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["cylinder", "piston"], reason: "待確認:cylinder 的旋轉體 與 piston 的圓柱 r1.6×0.08重疊 0.06,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["piston", "rod"], reason: "待確認(未修):piston 的球 r0.38 與 rod 的圓柱 r0.07×0.14互相穿入 0.44(94 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["cylinder", "rod"], reason: "待確認(未修):cylinder 的旋轉體 與 rod 的方塊 1×0.14×0.14互相穿入 0.12(49 個取樣姿勢),尚未修正" },
-  ],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
   target: "crank", // 輸出的曲柄
   view: { direction: [0.08, 0.1, 1] },

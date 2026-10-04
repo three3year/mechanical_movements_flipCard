@@ -66,9 +66,6 @@ export default {
     { id: "labelB", kind: "group", center: [A[0] + 0.15, A[1] - 0.6, 0.5], label: "B", labelOffset: [0.25, 0, 0] },
     { id: "labelD", kind: "group", center: [-1.3, -0.75, 0.5], label: "D", labelOffset: [-0.2, 0.3, 0] },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "staffA"], reason: "待確認:wheel 的板 與 staffA 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "staffA", type: "rotation", cycle: [-SWING, SWING], initial: SWING },
   target: "wheel", // 擒縱輪
   view: { direction: [0.05, 0.35, 1] },

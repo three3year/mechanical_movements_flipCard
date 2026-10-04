@@ -46,9 +46,6 @@ export default {
     // 101 齒輪鬆套在軸上,針的轂貼在輪面上(x ≈ 0.27–0.57)
     wheel("wheel101", TEETH[1], GAP, [{ kind: "cylinder", radius: 0.14, length: 0.3, at: [0, 0, 0.26] }, needle(0.44)]),
   ],
-  waivers: [
-    { check: "interference", parts: ["worm", "wheel100"], reason: "待確認:worm 的Tube 與 wheel100 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "worm", type: "rotation", speed: 10 },
   targets: ["wheel100", "wheel101"], // 慢慢錯開的兩個蝸輪
   view: { direction: [0.9, 0.5, 1] },

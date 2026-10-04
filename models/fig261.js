@@ -79,10 +79,6 @@ export default {
     { id: "ropeD", kind: "rope", label: "D", center: [XW, 0, 0.2], labelOffset: [-0.3, 0, 0] },
     { id: "weightW", kind: "box", size: [0.55, 0.85, 0.5], label: "W", labelOffset: [0, 0, 0.4] },
   ],
-  waivers: [
-    { check: "interference", parts: ["discB", "rodC"], reason: "待確認(未修):discB 的圓柱 r0.2×0.3 與 rodC 的方塊 1×0.12×0.06互相穿入 0.13(18 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["discB", "ropeD"], reason: "待確認:ropeD 的第 26 段穿過discB 的圓柱 r0.07×0.4重疊 0.07,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "discB", type: "rotation", range: RANGE, initial: 0 },
   target: "weightW", // 被吊起又放下的重物
   view: { direction: [0.05, 0.05, 1] },

@@ -53,9 +53,6 @@ export default {
     { id: "planetFG", kind: "group", axis: Y, label: "F", labelOffset: [0.7, 0.2, 0.3], arrow: false, pieces: [{ kind: "gear", teeth: TEETH.F, radius: R_F, width: 0.1, at: [0, 0, 0.3] }, { kind: "gear", teeth: TEETH.G, radius: R_G, width: 0.1, at: [0, 0, 0] }] },
     { id: "labelG", kind: "group", pieces: [], label: "G", labelOffset: [0, 0, 0.3] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["wheelC"], reason: "待確認(未修):wheelC 在動,但離帶動(或支撐)它的零件還有 0.24 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-  ],
   driver: { part: "arm", type: "rotation", speed: 0.8, initial: Math.PI }, // 起始時 F、G 在左邊(依原圖)
   target: "wheelC", // 轉得極慢的輪 C
   view: { direction: [0.3, 0.35, 1] },

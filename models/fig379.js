@@ -39,12 +39,6 @@ export default {
     },
     { id: "work", kind: "box", size: [1.2, 0.18, 0.8] },
   ],
-  waivers: [
-    { check: "unsupported", parts: ["screw"], reason: "待確認(未修):screw 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "unsupported", parts: ["work"], reason: "待確認(未修):work 在動,但離帶動(或支撐)它的零件還有 1 以上 的空隙,少了相連的軸、銷或連桿,尚未補上" },
-    { check: "interference", parts: ["frame", "screw"], reason: "待確認(未修):frame 的板 與 screw 的Tube互相穿入 0.22(96 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "work"], reason: "待確認(未修):frame 的板 與 work 的方塊 1.2×0.18×0.8互相穿入 0.12(26 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "drill", type: "rotation", range: [0, MAX], initial: 0 },
   target: "work", // 被頂向鑽頭的工件
   view: { direction: [0.08, 0.06, 1] },

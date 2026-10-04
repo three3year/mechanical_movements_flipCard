@@ -68,10 +68,6 @@ export default {
     { id: "labelB", kind: "group", center: [LEVER[0] - 0.85, LEVER[1] - 1.1, 0], label: "B", labelOffset: [-0.2, -0.25, 0.3] },
     { id: "labelC", kind: "group", center: [BAL[0] - 0.62, BAL[1] + 0.15, 0], label: "C", labelOffset: [-0.25, 0.25, 0.3] },
   ],
-  waivers: [
-    { check: "interference", parts: ["wheel", "lever"], reason: "待確認:wheel 的方塊 0.14×0.14×0.14 與 lever 的板重疊 0.09,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["balance", "lever"], reason: "待確認:balance 的板 與 lever 的板重疊 0.04,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-  ],
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },

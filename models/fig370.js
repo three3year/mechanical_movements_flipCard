@@ -68,12 +68,6 @@ export default {
       ],
     },
   ],
-  waivers: [
-    { check: "interference", parts: ["frame", "ratchet"], reason: "待確認:frame 的圓柱 r0.08×0.5 與 ratchet 的板重疊 0.05,判斷為貼合處或接合處的簡化畫法,未逐一修正" },
-    { check: "interference", parts: ["crank", "rod"], reason: "待確認(未修):crank 的圓柱 r0.2×0.3 與 rod 的板互相穿入 0.20(27 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["rod", "ratchet"], reason: "待確認(未修):rod 的板 與 ratchet 的圓柱 r0.07×0.34互相穿入 0.18(35 個取樣姿勢),尚未修正" },
-    { check: "interference", parts: ["frame", "rod"], reason: "待確認(未修):frame 的圓柱 r0.08×0.5 與 rod 的板互相穿入 0.10(32 個取樣姿勢),尚未修正" },
-  ],
   driver: { part: "crank", type: "rotation" },
   target: "ratchet", // 鏡面固定在棘輪上,得到複合運動
   view: { direction: [0.03, 0.05, 1] },
