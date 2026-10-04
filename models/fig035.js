@@ -1,14 +1,15 @@
-// 第 35 種:由均勻的旋轉運動產生變速旋轉運動。小齒輪等速轉動,與橢圓齒輪咬合;小齒輪的軸承在桿上的
+// 第 35 種:由均勻的旋轉運動產生變速旋轉運動。橢圓齒輪等速轉動,帶動與它咬合的小齒輪;小齒輪的軸承在桿上的
 // 溝槽裡滑動(彈簧使它保持嚙合),桿則鬆套在橢圓齒輪的軸上——溝槽容納了橢圓半徑的變化。
+// 哪一個等速原文沒寫(推斷:橢圓齒輪的軸固定在機架上,適合接等速的動力;小齒輪的軸在溝槽裡進出,是變速的輸出)。
 // 小齒輪沿橢圓的節曲線純滾動:兩者滾過的弧長相等。橢圓的齒是沿弧長均分的,所以小齒輪的轉角要用
 // 橢圓節曲線的弧長(ds = √(r² + r'²)·dφ)來算,齒才會一直對得上(用 r·dφ 積分的話,一圈下來
 // 小齒輪少轉了 (弧長 − ∫r dφ)/RP,齒的相位越走越偏、齒頂撞進對方的齒)。
 // 小齒輪的節圓要與橢圓節曲線相切:軸心在接觸點的法線上、離接觸點 RP(不是在半徑方向上離橢圓心 r + RP——
 // 橢圓的法線不過圓心,那樣擺小齒輪會斜著咬進橢圓)。桿的方向保持不動(推斷:原文只說桿鬆套在軸上,
 // 桿的擺動很小,略去),軸心沿桿滑動:每個輪的轉角找出法線通過桿的那個接觸點。
-// 橢圓齒輪的轉速 ≈ RP ÷ (ds/dφ):長軸端(ds/dφ = A)最慢、短軸端(= B)最快,所以轉速隨接觸處的半徑而變。
+// 小齒輪的轉速 ≈ (ds/dφ) ÷ RP:接觸在長軸端(ds/dφ = A)最快、短軸端(= B)最慢,所以轉速隨接觸處的半徑而變。
 import { TAU, deg } from "./kit.js";
-import { cumulative, periodic, inverseOf, interpolate, samplePitch, noncircularOutline, arcAt } from "./noncircular.js";
+import { cumulative, periodic, interpolate, samplePitch, noncircularOutline, arcAt } from "./noncircular.js";
 import { gearShape, circle, stadium, shape } from "./shapes.js";
 
 const A = 2.0;
@@ -16,6 +17,9 @@ const B = 1.2;
 const TEETH = 36;
 const PINION_TEETH = 10;
 const ARM = deg(135); // 桿的方向:小齒輪在橢圓的左上方
+const BAR_Z = 0.25;
+const SLOT = [1.5, 2.95]; // 桿上溝槽的範圍(離橢圓齒輪軸心)
+const SPRING_Z = BAR_Z + 0.04 + 0.09; // 彈簧躺在桿面上
 const ellipse = (a) => (A * B) / Math.sqrt((B * Math.cos(a)) ** 2 + (A * Math.sin(a)) ** 2);
 const { length } = samplePitch(ellipse);
 const PITCH = length / TEETH;
@@ -80,16 +84,14 @@ for (let i = 0; i <= N; i++) {
   ALPHA.push(theta - start.theta + (arcOf(c.psi) - S0) / RP);
   DIST.push(c.d);
 }
-const TURN = ALPHA[N]; // 輪轉一圈小齒輪轉的角度 = 36 齒 ÷ 10 齒 圈
-const wheelOf = periodic(inverseOf({ xs: W, ys: ALPHA }), TURN);
+// 輪轉一圈小齒輪轉 36 齒 ÷ 10 齒 圈
+const pinionOf = periodic({ xs: W, ys: ALPHA }, TAU);
 const distOf = (w) => interpolate(W, DIST, ((w % TAU) + TAU) % TAU);
 
-/** 小齒輪逆時針轉 alpha 時橢圓齒輪的轉角(外咬合,反向) */
-export const wheelAngle = (alpha) => -wheelOf(alpha);
-/** 接觸處橢圓的半徑 */
-export const contactRadius = (alpha) => ellipse(contactAt(wheelOf(alpha)).psi);
-/** 接觸處橢圓節曲線的滾動半徑 ds/dφ(長軸端 = A、短軸端 = B) */
-export const rollingRadius = (alpha) => rolling(contactAt(wheelOf(alpha)).psi);
+/** 橢圓齒輪逆時針轉 phi 時小齒輪的轉角(外咬合,反向) */
+export const pinionAngle = (phi) => start.theta + Math.PI / PINION_TEETH + pinionOf(-phi);
+/** 橢圓齒輪轉 phi 時,接觸處橢圓節曲線的滾動半徑 ds/dφ(長軸端 = A、短軸端 = B) */
+export const rollingRadius = (phi) => rolling(contactAt(-phi).psi);
 export const pinionRadius = RP;
 export const axes = [A, B];
 
@@ -111,6 +113,7 @@ export default {
       width: 0.24,
       center: [0, 0, 0],
       web: false,
+      pieces: [{ kind: "cylinder", radius: 0.06, length: 1.0 }], // 小齒輪軸:穿過桿上的溝槽
     },
     {
       id: "wheel",
@@ -122,26 +125,37 @@ export default {
       mark: [1.4, 0],
       markSize: 0.09,
       spin: 2.2,
+      pieces: [{ kind: "cylinder", radius: 0.11, length: 0.8 }], // 橢圓齒輪的軸:桿鬆套在上面
     },
     {
       id: "bar",
       kind: "plate",
-      center: [0, 0, 0.25],
+      center: [0, 0, BAR_Z],
       shape: shape(stadium(3.05, 0.42).outline, [circle(0.12).reverse(), [
-        ...[[1.6, -0.08], [2.95, -0.08], [2.95, 0.08], [1.6, 0.08]],
+        ...[[SLOT[0], -0.08], [SLOT[1], -0.08], [SLOT[1], 0.08], [SLOT[0], 0.08]],
       ].reverse()]),
       thickness: 0.08,
+      // 彈簧的座:溝槽外端
+      pieces: [{ kind: "box", size: [0.08, 0.24, 0.18], at: [SLOT[1] + 0.04, 0, 0.04 + 0.09] }],
     },
+    { id: "spring", kind: "spring", radius: 0.07, coils: 7, wire: 0.02 },
   ],
-  driver: { part: "pinion", type: "rotation" },
-  target: "wheel",
+  driver: { part: "wheel", type: "rotation" },
+  target: "pinion",
   view: { direction: [0.08, 0.06, 1] },
-  pose(alpha) {
-    const w = wheelOf(alpha);
-    const d = distOf(w);
-    const center = [d * Math.cos(ARM), d * Math.sin(ARM), 0];
-    // 小齒輪的齒對準橢圓齒輪:初始時接觸方向上是齒槽(齒 0 在局部 +X,齒槽中心在 ±π/10),之後純滾動
-    const pinion = start.theta + Math.PI / PINION_TEETH + alpha;
-    return { parts: { pinion: { position: center, angle: pinion }, wheel: { angle: -w } }, readouts: [] };
+  pose(phi) {
+    const d = distOf(-phi);
+    const along = (r, z) => [r * Math.cos(ARM), r * Math.sin(ARM), z];
+    return {
+      parts: {
+        // 小齒輪的齒對準橢圓齒輪:初始時接觸方向上是齒槽(齒 0 在局部 +X,齒槽中心在 ±π/10),之後純滾動
+        pinion: { position: along(d, 0), angle: pinionAngle(phi) },
+        wheel: { angle: phi },
+        bar: { angle: ARM },
+        // 彈簧從溝槽外端把小齒輪軸往橢圓齒輪推,保持嚙合
+        spring: { from: along(SLOT[1], SPRING_Z), to: along(d + 0.06, SPRING_Z) },
+      },
+      readouts: [],
+    };
   },
 };
