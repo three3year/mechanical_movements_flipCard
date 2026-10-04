@@ -12,7 +12,7 @@
 //     spring      +1 / −1:彈簧把它往軸的正向 / 反向推(繞軸逆時針為正;滑軌則是沿 slide 的方向)
 //     hold        true:有摩擦定位,沒被推時停在原地(星形輪、棘輪)
 //     limits      [min, max]:轉角或位移的範圍(擋止)
-//   expect      [{ at: 主動量, part, label, quote?(原文), tolerance? }]:走到 at 時,這個零件自起點以來的
+//   expect      [{ at: 主動量(省略 = 區間的終點), part, label, quote?(原文), tolerance? }]:走到 at 時,這個零件自起點以來的
 //               轉角與位置要和模型一致
 //   ignore      [[a, b], …]:這兩個零件之間不算碰撞(已知是示意的重疊)
 // 動力重演的豁免(def.waivers 裡 check: "replay" 的項目)可以加 at:主動量,只放過該零件在那一個預期事件的問題;
@@ -181,7 +181,7 @@ export function replay(def) {
     for (let i = 0; i < SETTLE / DT; i++) step(from);
     for (const entry of bodies.values()) entry.settled = { turned: entry.turned, position: new THREE.Vector3().copy(entry.body.translation()) };
     const steps = Math.round((spec.seconds ?? SECONDS) / DT);
-    const pending = [...(spec.expect ?? [])].sort((a, b) => (a.at - b.at) * Math.sign(to - from));
+    const pending = (spec.expect ?? []).map((e) => ({ ...e, at: e.at ?? to })).sort((a, b) => (a.at - b.at) * Math.sign(to - from));
     for (let i = 1; i <= steps && pending.length; i++) {
       const value = from + ((to - from) * i) / steps;
       step(value);

@@ -137,3 +137,17 @@ test("動力重演的豁免可以用 at 指明預期事件:只放過那一個,�
   const all = replayed({ ...def, waivers: [{ check: "replay", parts: ["bar"], reason: "沒寫 at:這個零件的每個預期事件" }] });
   assert.equal(all.length, 0);
 });
+
+test("ignore 列出的兩個零件之間不算碰撞:托著它的零件被忽略,它就掉下去;expect 省略 at 就是區間的終點", () => {
+  const lifted = (ignore) =>
+    model(
+      [{ id: "lifter", kind: "box", size: [1, 0.2, 0.4], center: [0, 0, 0] }, { id: "block", kind: "box", size: [0.3, 0.3, 0.3], center: [0, 0.25, 0] }],
+      (v) => ({ lifter: { position: [0, 0.5 * v, 0] }, block: { position: [0, 0.25 + 0.5 * v, 0] } }),
+      {
+        driver: { part: "lifter", type: "translation", range: [0, 1], direction: [0, 1, 0] },
+        replay: { free: { block: { slide: [0, 1, 0] } }, ignore, expect: [{ part: "block", label: "被托高" }] },
+      },
+    );
+  assert.equal(replayed(lifted()).length, 0);
+  assert.equal(replayed(lifted([["block", "lifter"]])).length, 1);
+});

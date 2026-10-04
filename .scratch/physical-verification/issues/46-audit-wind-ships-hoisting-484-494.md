@@ -4,7 +4,7 @@
 
 **Blocked by:** 06
 
-**Status:** partial(實體驗證通過;「待確認」的豁免已逐項處理;本範圍還有 1 項未修(第 490 種,見待確認清單);動力重演未補)
+**Status:** partial(實體驗證通過;「待確認」的豁免已逐項處理;本範圍沒有未修的項目;動力重演未補)
 
 規格:`.scratch/physical-verification/spec.md`;用語見 `CONTEXT.md`(實體驗證、干涉、憑空連動、動力重演、豁免);相關決定見 ADR-0001、ADR-0003。
 
