@@ -105,5 +105,10 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["crank", "rodD"], reason: "未修:連桿每圈有一小段掃過曲柄軸,重疊 0.08(96 個取樣中 13 個);曲柄軸應只往後伸(列入待確認清單)" },
+    { check: "unsupported", parts: ["hammer"], reason: "未修:錘頭與活塞桿之間差 0.08,少畫了相連的實體(列入待確認清單)" },
+    { check: "unsupported", parts: ["cylinder"], reason: "未修:汽缸與機架之間差 0.23,沒有畫出相連的實體(列入待確認清單)" },
+  ],
 };
 

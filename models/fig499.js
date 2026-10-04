@@ -104,4 +104,10 @@ export default {
       readouts: [{ label: "壓力", value: p.toFixed(1) }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["case", "rodR"], reason: "拉桿穿過錶殼的內壁(開口沒畫),重疊 0.06(96 個取樣中 8 個)" },
+    { check: "interference", parts: ["case", "rodL"], reason: "拉桿穿過錶殼的內壁(開口沒畫),重疊 0.04(96 個取樣中 8 個)" },
+    { check: "interference", parts: ["case", "tubeR"], reason: "彈簧管的根部接在錶殼上:管的中心線穿過殼壁 0.09" },
+    { check: "interference", parts: ["case", "tubeL"], reason: "彈簧管的根部接在錶殼上:管的中心線穿過殼壁 0.09" },
+  ],
 };

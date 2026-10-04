@@ -88,4 +88,8 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["flyer", "yarn"], reason: "紗線穿過錠翼的導孔:線貼著錠翼的臂,重疊 0.04(96 個取樣中 2 個)" },
+    { check: "interference", parts: ["bBottom", "yarn"], reason: "紗線繞在筒管上:線的中心線落在筒管的凸緣內 0.09" },
+  ],
 };

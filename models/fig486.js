@@ -53,5 +53,13 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "sail5"], reason: "接合處的簡化畫法:帆板的軸插在輪臂的端頭,帆板與輪臂重疊 0.07" },
+    { check: "interference", parts: ["wheel", "sail4"], reason: "接合處的簡化畫法:帆板的軸插在輪臂的端頭,帆板與輪臂重疊 0.07" },
+    { check: "interference", parts: ["wheel", "sail3"], reason: "接合處的簡化畫法:帆板的軸插在輪臂的端頭,帆板與輪臂重疊 0.07" },
+    { check: "interference", parts: ["wheel", "sail2"], reason: "接合處的簡化畫法:帆板的軸插在輪臂的端頭,帆板與輪臂重疊 0.07" },
+    { check: "interference", parts: ["wheel", "sail1"], reason: "接合處的簡化畫法:帆板的軸插在輪臂的端頭,帆板與輪臂重疊 0.07" },
+    { check: "interference", parts: ["wheel", "sail0"], reason: "接合處的簡化畫法:帆板的軸插在輪臂的端頭,帆板與輪臂重疊 0.07" },
+  ],
 };
 

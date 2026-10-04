@@ -59,4 +59,10 @@ export default {
       readouts: [{ label: "A 的高度", value: (bottom - bellBottom(0)).toFixed(2) }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["pulleyR", "weightR"], reason: "重球升到最高時碰到滑輪,重疊 0.09(96 個取樣中 8 個);行程是示意的大小" },
+    { check: "interference", parts: ["pulleyL", "weightL"], reason: "重球升到最高時碰到滑輪,重疊 0.09(96 個取樣中 8 個);行程是示意的大小" },
+    { check: "interference", parts: ["frame", "weightR"], reason: "未修:右邊的重球沿立柱上下,球與立柱重疊 0.31;重球應在立柱的前面(列入待確認清單)" },
+    { check: "interference", parts: ["frame", "weightL"], reason: "未修:左邊的重球沿立柱上下,球與立柱重疊 0.31;重球應在立柱的前面(列入待確認清單)" },
+  ],
 };

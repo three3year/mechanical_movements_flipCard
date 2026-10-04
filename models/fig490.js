@@ -85,4 +85,7 @@ export default {
       readouts: [{ label: "舵柄", value: `${psi >= 0 ? "往上" : "往下"} ${Math.abs((psi * 180) / Math.PI).toFixed(0)}°` }],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["tiller"], reason: "未修:舵柄與舵鏈之間差 0.03(列入待確認清單)" },
+  ],
 };

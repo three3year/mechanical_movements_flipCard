@@ -3,4 +3,7 @@ import { makeModel } from "./oscillating-column.js";
 
 export default {
   ...makeModel(446, 0.72),
+  waivers: [
+    { check: "interference", parts: ["pipes", "riser"], reason: "簡化畫法:立管接在管路上,接口處重疊 0.04" },
+  ],
 };

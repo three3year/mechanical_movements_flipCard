@@ -65,4 +65,16 @@ export default {
       readouts: [{ label: "槳板", value: "始終直立" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["ring", "paddle3"], reason: "槳板的拉桿接在偏心環上:槳板轉過偏心環的位置時與環重疊 0.14(約三分之一的取樣)" },
+    { check: "interference", parts: ["arms", "paddle3"], reason: "接合處的簡化畫法:槳板鉸接在輪臂的端頭,槳板與輪臂重疊 0.12" },
+    { check: "interference", parts: ["ring", "paddle2"], reason: "槳板的拉桿接在偏心環上:槳板轉過偏心環的位置時與環重疊 0.14(約三分之一的取樣)" },
+    { check: "interference", parts: ["arms", "paddle2"], reason: "接合處的簡化畫法:槳板鉸接在輪臂的端頭,槳板與輪臂重疊 0.12" },
+    { check: "interference", parts: ["ring", "paddle1"], reason: "槳板的拉桿接在偏心環上:槳板轉過偏心環的位置時與環重疊 0.14(約三分之一的取樣)" },
+    { check: "interference", parts: ["arms", "paddle1"], reason: "接合處的簡化畫法:槳板鉸接在輪臂的端頭,槳板與輪臂重疊 0.12" },
+    { check: "interference", parts: ["ring", "paddle0"], reason: "槳板的拉桿接在偏心環上:槳板轉過偏心環的位置時與環重疊 0.14(約三分之一的取樣)" },
+    { check: "interference", parts: ["arms", "paddle0"], reason: "接合處的簡化畫法:槳板鉸接在輪臂的端頭,槳板與輪臂重疊 0.12" },
+    { check: "interference", parts: ["arms", "ring"], reason: "簡化畫法:偏心環貼著輪臂的輪轂,重疊 0.03" },
+    { check: "interference", parts: ["eccentric", "arms"], reason: "簡化畫法:偏心輪與輪臂前後貼合,重疊 0.05" },
+  ],
 };

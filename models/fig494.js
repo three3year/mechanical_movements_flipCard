@@ -87,4 +87,8 @@ export default {
       readouts: [{ label: "吊鉗", value: t.gripped ? "尖端咬進石塊,一起吊起" : "收攏中" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["stone", "armR"], reason: "石鉗夾住石塊:鉗尖嵌進石塊側面的凹窩(凹窩沒畫),重疊 0.41" },
+    { check: "interference", parts: ["stone", "armL"], reason: "石鉗夾住石塊:鉗尖嵌進石塊側面的凹窩(凹窩沒畫),重疊 0.41" },
+  ],
 };

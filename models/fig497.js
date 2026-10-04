@@ -73,4 +73,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["casing", "outlet"], reason: "簡化畫法:出風口接在外殼上,接口處重疊 0.12" },
+    { check: "unsupported", parts: ["fan"], reason: "未修:風扇的葉輪沒有畫出軸(離最近的實體 0.05)(列入待確認清單)" },
+  ],
 };

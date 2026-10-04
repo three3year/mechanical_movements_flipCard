@@ -77,4 +77,7 @@ export default {
       readouts: [{ label: "船", value: f.moored ? "靠岸,扳舵" : f.dir > 0 ? "往上方的岸" : "往下方的岸" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["river", "boat"], reason: "簡化畫法:船浮在水面上,船底浸入水面 0.06" },
+  ],
 };

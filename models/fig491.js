@@ -92,4 +92,8 @@ export default {
       readouts: [{ label: "收進的纜繩", value: c.hauled.toFixed(2) }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["drum", "pawl"], reason: "止回爪靠在絞盤底部凸塊上的位置依時序演出;爪尖伸進凸塊 0.09" },
+    { check: "interference", parts: ["base", "pawl"], reason: "簡化畫法:止回爪落下時爪尾碰到底座 0.03(96 個取樣中 2 個)" },
+  ],
 };

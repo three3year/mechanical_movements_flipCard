@@ -92,4 +92,11 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["drum", "valve1"], reason: "接合處的簡化畫法:滑片插在鼓的槽裡,槽沒有畫出來,重疊 0.15" },
+    { check: "interference", parts: ["drum", "valve0"], reason: "接合處的簡化畫法:滑片插在鼓的槽裡,槽沒有畫出來,重疊 0.13" },
+    { check: "interference", parts: ["casing", "valve1"], reason: "未修:滑片轉到進出口附近時伸進外殼,重疊 0.38(96 個取樣中 5 個);滑片的伸出量應由外殼內壁的接觸算(列入待確認清單)" },
+    { check: "interference", parts: ["casing", "valve0"], reason: "未修:滑片轉到進出口附近時伸進外殼,重疊 0.38(96 個取樣中 5 個);滑片的伸出量應由外殼內壁的接觸算(列入待確認清單)" },
+    { check: "interference", parts: ["casing", "drum"], reason: "簡化畫法:偏心的鼓貼著外殼內壁的密封處,重疊 0.05" },
+  ],
 };

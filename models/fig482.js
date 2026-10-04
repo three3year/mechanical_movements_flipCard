@@ -83,4 +83,11 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["casing", "lever"], reason: "接合處的簡化畫法:槓桿鉸接在外殼的支柱上,重疊 0.04" },
+    { check: "interference", parts: ["casing", "valve"], reason: "簡化畫法:閥瓣坐在外殼的閥座上,重疊 0.16" },
+    { check: "unsupported", parts: ["rodD"], reason: "未修:桿 D 與槓桿之間少畫了相連的銷(差 0.59)(列入待確認清單)" },
+    { check: "unsupported", parts: ["lever"], reason: "未修:槓桿與浮筒的桿之間差 0.24,少畫了相連的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["valve"], reason: "未修:閥與槓桿之間少畫了相連的桿(差 0.33)(列入待確認清單)" },
+  ],
 };

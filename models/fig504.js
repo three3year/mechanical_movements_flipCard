@@ -73,6 +73,9 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheelB", "wheelF"], reason: "簡化齒形:梯形齒的齒頂互相擦到 0.08(96 個取樣中 11 個)" },
+  ],
 };
 
 /** 臂轉一圈時 X 的絕對轉數 */

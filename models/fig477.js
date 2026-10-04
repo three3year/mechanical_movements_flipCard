@@ -76,4 +76,7 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["body", "valve"], reason: "簡化畫法:閥瓣坐在閥座上,重疊 0.03" },
+  ],
 };

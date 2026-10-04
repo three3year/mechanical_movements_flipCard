@@ -96,4 +96,7 @@ export default {
       readouts: [{ label: "水團沿軸的位置", value: pockets(a).map((z) => z.toFixed(1)).join(" / ") }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["screw", "works"], reason: "簡化畫法:螺旋的葉片浸在水槽裡,葉片的邊緣與槽底重疊 0.14" },
+  ],
 };

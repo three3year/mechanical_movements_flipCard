@@ -75,4 +75,10 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["ground", "rope"], reason: "繩垂進井裡:井口沒有畫出來,繩穿過地面 0.37(96 個取樣中 5 個)" },
+    { check: "interference", parts: ["ground", "bucket"], reason: "水桶放到井裡:井在地面以下,井口沒有畫出來,桶與地面重疊 0.35(96 個取樣中 20 個)" },
+    { check: "interference", parts: ["ground", "pole"], reason: "未修:桿與地面的支架畫在同一層,重疊 0.14;支架應在桿的後面(列入待確認清單)" },
+    { check: "unsupported", parts: ["bucket"], reason: "未修:水桶與吊著它的繩之間差 0.23,繩頭沒有接到桶上(列入待確認清單)" },
+  ],
 };

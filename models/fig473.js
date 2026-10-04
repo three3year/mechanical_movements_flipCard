@@ -80,4 +80,7 @@ export default {
       readouts: [{ label: "倒扣的桶", value: b.rising ? "被提起:裡面變稀薄,氣體經下方的閥上來" : "下降:空氣經頂上的閥排出" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "lever"], reason: "接合處的簡化畫法:槓桿鉸接在機架的橫樑上,槓桿與橫樑重疊 0.20(支座的耳沒有畫出來)" },
+  ],
 };

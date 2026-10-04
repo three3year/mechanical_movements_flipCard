@@ -81,4 +81,8 @@ export default {
       readouts: [{ label: "溫度差如何維持", value: "原文未說明" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "screw"], reason: "簡化齒形:帶動螺旋的齒輪與螺旋軸上的齒輪齒側重疊 0.05" },
+    { check: "interference", parts: ["tanks", "screw"], reason: "簡化畫法:螺旋泵的葉片浸在水槽裡,葉片與槽壁重疊 0.08" },
+  ],
 };

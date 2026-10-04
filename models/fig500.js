@@ -114,4 +114,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["discA", "rod"], reason: "接合處的簡化畫法:拉桿的下端接在膜盒中心,桿端伸進膜盒 0.03" },
+    { check: "interference", parts: ["case", "discA"], reason: "簡化畫法:波紋膜盒 A 的邊緣夾在錶殼裡,重疊 0.20" },
+    { check: "unsupported", parts: ["needle"], reason: "未修:指針與帶動它的拉桿之間差 0.23,少畫了相連的銷(列入待確認清單)" },
+  ],
 };

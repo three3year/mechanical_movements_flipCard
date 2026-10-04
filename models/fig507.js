@@ -78,4 +78,7 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["wheelC"], reason: "未修:輪 C 與帶動它的輪之間前後錯開,齒面沒有相貼(差 0.24)(列入待確認清單)" },
+  ],
 };

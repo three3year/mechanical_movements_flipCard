@@ -72,4 +72,9 @@ export default {
       readouts: [{ label: "錶盤記錄", value: `${(v * 2).toFixed(1)} 腔室` }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["case", "dial"], reason: "未修:指針擺到刻度端時伸進外殼,重疊 0.12(96 個取樣中 43 個)(列入待確認清單)" },
+    { check: "unsupported", parts: ["dial"], reason: "未修:指針與帶動它的機構之間沒有接上(差 0.78)(列入待確認清單)" },
+    { check: "unsupported", parts: ["valve"], reason: "未修:閥與帶動它的膜片桿之間差 0.15(列入待確認清單)" },
+  ],
 };

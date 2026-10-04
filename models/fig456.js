@@ -81,4 +81,11 @@ export default {
       readouts: [{ label: "活塞伸出", value: `${(reach(theta + Math.PI / 2) - DRUM).toFixed(2)} / ${(reach(theta + 1.5 * Math.PI) - DRUM).toFixed(2)}` }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["drum", "piston1"], reason: "接合處的簡化畫法:滑動活塞插在鼓的槽裡,槽沒有畫出來,重疊 0.26" },
+    { check: "interference", parts: ["drum", "piston0"], reason: "接合處的簡化畫法:滑動活塞插在鼓的槽裡,槽沒有畫出來,重疊 0.26" },
+    { check: "interference", parts: ["casing", "piston1"], reason: "簡化畫法:滑動活塞的外端貼著外殼內壁,重疊 0.15(96 個取樣中 51 個)" },
+    { check: "interference", parts: ["casing", "piston0"], reason: "簡化畫法:滑動活塞的外端貼著外殼內壁,重疊 0.15(96 個取樣中 54 個)" },
+    { check: "interference", parts: ["casing", "drum"], reason: "簡化畫法:鼓貼著外殼內壁的密封處,重疊 0.12" },
+  ],
 };

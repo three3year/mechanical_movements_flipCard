@@ -70,4 +70,11 @@ export default {
       readouts: [{ label: "水桶", value: b.rightFull ? "拉空桶(左)往下,滿桶(右)上來" : "拉空桶(右)往下,滿桶(左)上來" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["house", "pulley"], reason: "簡化畫法:滑輪的輻條轉過吊架時擦到 0.05(96 個取樣中 32 個)" },
+    { check: "unsupported", parts: ["rope"], reason: "未修:繩與滑輪之間差 0.22(列入待確認清單)" },
+    { check: "unsupported", parts: ["bucketR"], reason: "未修:右桶與吊著它的繩之間差 0.12(列入待確認清單)" },
+    { check: "unsupported", parts: ["bucketL"], reason: "未修:左桶與吊著它的繩之間差 0.12(列入待確認清單)" },
+    { check: "unsupported", parts: ["pulley"], reason: "未修:滑輪與繩之間沒有貼上(差 0.55)(列入待確認清單)" },
+  ],
 };

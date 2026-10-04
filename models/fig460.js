@@ -90,5 +90,11 @@ export default {
       readouts: [{ label: "舀斗", value: rising ? "抬起:水流向鉸點倒到岸上" : "放下:浸進渠裡舀水" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["banks", "lever"], reason: "未修:槓桿與岸上的支柱畫在同一層,重疊 0.15(列入待確認清單)" },
+    { check: "interference", parts: ["banks", "scoop"], reason: "未修:戽斗擺到岸邊時伸進岸壁,重疊 0.25(列入待確認清單)" },
+    { check: "unsupported", parts: ["pitman"], reason: "未修:連桿與槓桿之間差 0.23,少畫了相連的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["scoop"], reason: "未修:戽斗與吊著它的桿之間沒有接上(差 0.80)(列入待確認清單)" },
+  ],
 };
 

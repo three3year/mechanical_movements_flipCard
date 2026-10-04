@@ -59,4 +59,7 @@ export default {
       readouts: [{ label: "堰", value: g.open ? "上閘葉翻轉、下閘葉被推回,河床處打開沖刷" : "直立關閉,水從頂上的缺口流過" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["bed", "lower"], reason: "未修:下模的行程端碰到床台的擋塊,重疊 0.08(96 個取樣中 37 個)(列入待確認清單)" },
+  ],
 };

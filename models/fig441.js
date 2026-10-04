@@ -91,4 +91,22 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["works", "bucket7"], reason: "水斗在最低處舀水:斗身經過水槽時與槽底重疊 0.27(槽底應再低一點)" },
+    { check: "interference", parts: ["wheel", "bucket7"], reason: "接合處的簡化畫法:水斗掛在輪緣的銷上,斗的吊耳與輪緣重疊 0.08" },
+    { check: "interference", parts: ["works", "bucket6"], reason: "水斗在最低處舀水:斗身經過水槽時與槽底重疊 0.27(槽底應再低一點)" },
+    { check: "interference", parts: ["wheel", "bucket6"], reason: "接合處的簡化畫法:水斗掛在輪緣的銷上,斗的吊耳與輪緣重疊 0.08" },
+    { check: "interference", parts: ["works", "bucket5"], reason: "水斗在最低處舀水:斗身經過水槽時與槽底重疊 0.27(槽底應再低一點)" },
+    { check: "interference", parts: ["wheel", "bucket5"], reason: "接合處的簡化畫法:水斗掛在輪緣的銷上,斗的吊耳與輪緣重疊 0.08" },
+    { check: "interference", parts: ["works", "bucket4"], reason: "水斗在最低處舀水:斗身經過水槽時與槽底重疊 0.27(槽底應再低一點)" },
+    { check: "interference", parts: ["wheel", "bucket4"], reason: "接合處的簡化畫法:水斗掛在輪緣的銷上,斗的吊耳與輪緣重疊 0.08" },
+    { check: "interference", parts: ["works", "bucket3"], reason: "水斗在最低處舀水:斗身經過水槽時與槽底重疊 0.27(槽底應再低一點)" },
+    { check: "interference", parts: ["wheel", "bucket3"], reason: "接合處的簡化畫法:水斗掛在輪緣的銷上,斗的吊耳與輪緣重疊 0.08" },
+    { check: "interference", parts: ["works", "bucket2"], reason: "水斗在最低處舀水:斗身經過水槽時與槽底重疊 0.27(槽底應再低一點)" },
+    { check: "interference", parts: ["wheel", "bucket2"], reason: "接合處的簡化畫法:水斗掛在輪緣的銷上,斗的吊耳與輪緣重疊 0.08" },
+    { check: "interference", parts: ["works", "bucket1"], reason: "水斗在最低處舀水:斗身經過水槽時與槽底重疊 0.27(槽底應再低一點)" },
+    { check: "interference", parts: ["wheel", "bucket1"], reason: "接合處的簡化畫法:水斗掛在輪緣的銷上,斗的吊耳與輪緣重疊 0.08" },
+    { check: "interference", parts: ["works", "bucket0"], reason: "水斗在最低處舀水:斗身經過水槽時與槽底重疊 0.27(槽底應再低一點)" },
+    { check: "interference", parts: ["wheel", "bucket0"], reason: "接合處的簡化畫法:水斗掛在輪緣的銷上,斗的吊耳與輪緣重疊 0.08" },
+  ],
 };

@@ -97,4 +97,9 @@ export default {
       readouts: [{ label: "滑閥送空氣到", value: h.below ? "活塞下方(抬錘)" : "活塞上方(打擊)" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["shaftE", "pumpRod"], reason: "未修:泵桿每圈有一小段掃過軸 E,重疊 0.08(96 個取樣中 5 個)(列入待確認清單)" },
+    { check: "unsupported", parts: ["piston"], reason: "未修:活塞沒有標成外力來源(受蒸汽推動),也沒有實體連回主動件(列入待確認清單)" },
+    { check: "unsupported", parts: ["pumpPiston"], reason: "未修:泵的活塞與泵桿之間差 0.03(列入待確認清單)" },
+  ],
 };

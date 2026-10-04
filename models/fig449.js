@@ -74,4 +74,10 @@ export default {
       readouts: [{ label: "活塞", value: up ? "上行:下閥開、活塞閥關,出水瓣閥被頂開" : "下行:下閥關、活塞閥開,出水瓣閥關上" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["piston", "pistonValve"], reason: "簡化畫法:活塞上的閥瓣套在活塞桿上(桿穿過閥瓣的孔沒畫),重疊 0.17" },
+    { check: "interference", parts: ["works", "outValve"], reason: "簡化畫法:出水閥的閥瓣坐在閥座上,重疊 0.05(96 個取樣中 50 個)" },
+    { check: "interference", parts: ["suction", "footValve"], reason: "簡化畫法:底閥的閥瓣坐在吸水管口上,重疊 0.04" },
+    { check: "interference", parts: ["barrel", "works"], reason: "簡化畫法:泵筒接在泵體上,接口處重疊 0.07" },
+  ],
 };

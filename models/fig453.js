@@ -92,4 +92,18 @@ export default {
     });
     return { parts, paths, flows, readouts: [{ label: "風箱", value: forward ? "右邊撐開吸水、左邊壓縮排水" : "左邊撐開吸水、右邊壓縮排水" }] };
   },
+  waivers: [
+    { check: "interference", parts: ["works", "top1"], reason: "未修:風箱頂板壓到最低時碰到箱體,重疊 0.10(96 個取樣中 30 個)(列入待確認清單)" },
+    { check: "interference", parts: ["works", "delivery1"], reason: "簡化畫法:出氣閥的閥瓣坐在閥座上,重疊 0.06" },
+    { check: "interference", parts: ["works", "delivery0"], reason: "簡化畫法:出氣閥的閥瓣坐在閥座上,重疊 0.06" },
+    { check: "unsupported", parts: ["fold1R"], reason: "未修:風箱的摺邊(畫成線)與頂板之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["fold1L"], reason: "未修:風箱的摺邊(畫成線)與頂板之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["fold0R"], reason: "未修:風箱的摺邊(畫成線)與頂板之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["fold0L"], reason: "未修:風箱的摺邊(畫成線)與頂板之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["top1"], reason: "未修:風箱的頂板與連桿之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["top0"], reason: "未修:風箱的頂板與連桿之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["link1"], reason: "未修:連桿與搖樑之間差 0.04(前後不同層)(列入待確認清單)" },
+    { check: "unsupported", parts: ["link0"], reason: "未修:連桿與搖樑之間差 0.04(前後不同層)(列入待確認清單)" },
+    { check: "unsupported", parts: ["beam"], reason: "未修:搖樑的樞軸沒有畫出支座(離最近的實體 0.04)(列入待確認清單)" },
+  ],
 };

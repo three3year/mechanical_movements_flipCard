@@ -44,7 +44,7 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [4.6, 0.32, 0.3], at: [0, 1.3, -0.2] },
+        { kind: "box", size: [4.6, 0.32, 0.3], at: [0, 1.3, -0.26] },
         { kind: "box", size: [2.6, 0.18, 0.8], at: [0, -3.45, 0] },
         { kind: "plate", shape: shape([...arcPoints(3.2, 0, TAU).slice(0, -1)], [arcPoints(2.95, 0, TAU).slice(0, -1).reverse()]), thickness: 0.15, at: [GR.center[0] - 0.2, GR.center[1] - 1.3, -0.7] },
       ],

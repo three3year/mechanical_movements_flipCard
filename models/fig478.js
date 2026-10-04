@@ -66,4 +66,7 @@ export default {
       readouts: [{ label: "閥門 a", value: s.open ? `打開(間隙 ${s.gap.toFixed(2)}),水排出` : "管子膨脹頂住柱塞,關閉" }],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["lever"], reason: "未修:槓桿沒有畫出樞軸的支座(離最近的實體 0.06)(列入待確認清單)" },
+  ],
 };

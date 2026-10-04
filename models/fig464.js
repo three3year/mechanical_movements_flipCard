@@ -70,4 +70,7 @@ export default {
       readouts: [{ label: "空氣被壓縮(水柱高)", value: f.pressure.toFixed(2) }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["vessels", "nozzle"], reason: "簡化畫法:噴嘴插在容器的頸部(容器畫成實心的板),重疊 0.40" },
+  ],
 };

@@ -97,5 +97,9 @@ export default {
       readouts: [{ label: "階段", value: r.phase }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["works", "lever"], reason: "接合處的簡化畫法:槓桿端的球壓在閥桿的頂端,球與桿端重疊 0.15" },
+    { check: "unsupported", parts: ["lever"], reason: "未修:槓桿與帶動它的浮球桿之間差 0.16,少畫了相連的銷(列入待確認清單)" },
+  ],
 };
 

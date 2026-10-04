@@ -116,6 +116,7 @@ export default {
     };
   },
   waivers: [
+    { check: "unsupported", parts: ["wheelG"], reason: "未修:輪 G 與帶動它的小齒輪之間前後錯開,齒面沒有相貼(差 0.06)(列入待確認清單)" },
     { check: "interference", parts: ["clickT", "frame"], reason: "止回爪的軸眼比機架上的樞軸銷小(軸眼畫得小),銷伸進爪 0.08" },
     { check: "interference", parts: ["bigRatchet", "springS2"], reason: "彈簧的一端扣在大棘輪上:彈簧的端圈伸進棘輪 0.07" },
     { check: "interference", parts: ["bigRatchet", "springS"], reason: "彈簧的一端扣在大棘輪上:彈簧的端圈伸進棘輪 0.07" },

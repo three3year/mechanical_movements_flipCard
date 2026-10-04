@@ -115,5 +115,24 @@ export default {
       readouts: [{ label: "管頭", value: head[0] < 3.2 ? "在河裡,順著河床前進" : "到北岸" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["river", "joint8"], reason: "浮橋的接頭浮在水面上:接頭浸入水面 0.15(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "joint7"], reason: "浮橋的接頭浮在水面上:接頭浸入水面 0.15(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "joint6"], reason: "浮橋的接頭浮在水面上:接頭浸入水面 0.15(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "joint5"], reason: "浮橋的接頭浮在水面上:接頭浸入水面 0.15(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "joint4"], reason: "浮橋的接頭浮在水面上:接頭浸入水面 0.15(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "joint3"], reason: "浮橋的接頭浮在水面上:接頭浸入水面 0.15(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "joint2"], reason: "浮橋的接頭浮在水面上:接頭浸入水面 0.15(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "joint1"], reason: "浮橋的接頭浮在水面上:接頭浸入水面 0.15(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "joint0"], reason: "浮橋的接頭浮在水面上:接頭浸入水面 0.15(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "segment7"], reason: "浮橋的浮筒浮在水面上:浮筒浸入水面 0.17(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "segment6"], reason: "浮橋的浮筒浮在水面上:浮筒浸入水面 0.17(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "segment5"], reason: "浮橋的浮筒浮在水面上:浮筒浸入水面 0.17(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "segment4"], reason: "浮橋的浮筒浮在水面上:浮筒浸入水面 0.17(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "segment3"], reason: "浮橋的浮筒浮在水面上:浮筒浸入水面 0.17(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "segment2"], reason: "浮橋的浮筒浮在水面上:浮筒浸入水面 0.17(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "segment1"], reason: "浮橋的浮筒浮在水面上:浮筒浸入水面 0.17(水面畫成實體的板)" },
+    { check: "interference", parts: ["river", "segment0"], reason: "浮橋的浮筒浮在水面上:浮筒浸入水面 0.17(水面畫成實體的板)" },
+  ],
 };
 

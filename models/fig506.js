@@ -110,4 +110,11 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["wheelD"], reason: "未修:輪 D 與帶動它的輪之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["shaftMN"], reason: "未修:軸 MN 與它上面的輪之間差 0.05(列入待確認清單)" },
+    { check: "unsupported", parts: ["wheelF"], reason: "未修:周轉輪系各輪之間前後錯開的量太大,齒面沒有相貼(差 0.40)(列入待確認清單)" },
+    { check: "unsupported", parts: ["wheelG"], reason: "未修:周轉輪系各輪之間前後錯開的量太大,齒面沒有相貼(差 0.30)(列入待確認清單)" },
+    { check: "unsupported", parts: ["wheelB"], reason: "未修:周轉輪系各輪之間前後錯開的量太大,齒面沒有相貼(差 0.30)(列入待確認清單)" },
+  ],
 };

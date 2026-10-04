@@ -95,4 +95,10 @@ export default {
       readouts: [{ label: "活塞", value: p.down ? "往下:閥 1 進水、閥 3 排水" : "往上:閥 2 進水、閥 4 排水" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["works", "valve4"], reason: "簡化畫法:閥瓣坐在閥座上,重疊 0.12" },
+    { check: "interference", parts: ["works", "valve3"], reason: "簡化畫法:閥瓣坐在閥座上,重疊 0.12" },
+    { check: "interference", parts: ["works", "valve2"], reason: "簡化畫法:閥瓣坐在閥座上,重疊 0.05" },
+    { check: "interference", parts: ["works", "valve1"], reason: "簡化畫法:閥瓣坐在閥座上,重疊 0.05" },
+  ],
 };

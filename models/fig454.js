@@ -80,4 +80,9 @@ export default {
       readouts: [{ label: "隔膜", value: rising ? "拉起:吸水閥開、出水閥關" : "壓下:吸水閥關、水經出水閥送出" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["works", "membrane"], reason: "膜片的邊緣夾在泵體的接合面裡:膜片的中心線落在泵體內 0.06" },
+    { check: "interference", parts: ["works", "deliveryValve"], reason: "簡化畫法:排出閥的閥瓣坐在閥座上,重疊 0.09" },
+    { check: "interference", parts: ["works", "suctionValve"], reason: "簡化畫法:吸入閥的閥瓣坐在閥座上,重疊 0.06" },
+  ],
 };

@@ -109,4 +109,17 @@ export default {
       readouts: [{ label: "蝸桿咬著", value: l.engaged === 0 ? "左輪:左桶上升(滿)、右桶下降" : "右輪:右桶上升(滿)、左桶下降" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["tappet", "ropeR"], reason: "繩的端頭繫在撥桿上:繩頭伸進撥桿的板 0.06" },
+    { check: "interference", parts: ["tappet", "ropeL"], reason: "繩的端頭繫在撥桿上:繩頭伸進撥桿的板 0.06" },
+    { check: "interference", parts: ["worm", "wheelL"], reason: "簡化齒形:蝸桿畫成圓柱加螺紋、蝸輪是直齒,齒頂伸進蝸桿的芯 0.09" },
+    { check: "unsupported", parts: ["ropeR"], reason: "未修:右繩與鼓輪之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["ropeL"], reason: "未修:左繩與鼓輪之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["bucketR"], reason: "未修:右桶與吊著它的繩之間差 0.04(列入待確認清單)" },
+    { check: "unsupported", parts: ["bucketL"], reason: "未修:左桶與吊著它的繩之間差 0.19(列入待確認清單)" },
+    { check: "unsupported", parts: ["wheelR"], reason: "未修:右蝸輪與蝸桿之間沒有接上(蝸桿未被帶動)(列入待確認清單)" },
+    { check: "unsupported", parts: ["wheelL"], reason: "未修:左蝸輪與蝸桿之間沒有接上(蝸桿未被帶動)(列入待確認清單)" },
+    { check: "unsupported", parts: ["worm"], reason: "未修:蝸桿與風車的軸之間少畫了相連的軸(差 0.36)(列入待確認清單)" },
+    { check: "unsupported", parts: ["windmill"], reason: "未修:風車的軸沒有畫出支座(離最近的實體 0.17)(列入待確認清單)" },
+  ],
 };
