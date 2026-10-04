@@ -64,6 +64,18 @@ export default {
     { id: "stop", kind: "box", center: [RACK_X - 0.36, SPRING_TOP, 0], size: [0.6, 0.1, 0.4] },
     { id: "labelC", kind: "group", center: [RACK_X + 0.15, 2.35, 0.2], label: "C" },
   ],
+  // 動力重演:只推缺齒齒輪;齒條在導軌上自由滑動,由彈簧往回推
+  replay: {
+    // 從齒條在原位(缺齒段對著齒條)的時刻開始轉一圈
+    from: -Math.PI,
+    to: -3 * Math.PI,
+    free: { rack: { slide: [0, 1, 0], spring: -1, limits: [0, 3] } },
+    ignore: [["rack", "stop"], ["rack", "spring"]], // 擋止由 limits 代表,彈簧的力由 spring 代表
+    expect: [
+      // 上升的過程是齒輪咬合(齒形簡化,重演裡最後一齒會把桿多頂高一點),這裡只驗放開後有沒有回到原位
+      { at: -3 * Math.PI, part: "rack", label: "齒離開後彈簧把桿推回原位", quote: "彈簧 C 把桿推回原位" },
+    ],
+  },
   driver: { part: "gear", type: "rotation", speed: -1.0, initial: -SPAN / 2 },
 
   target: "rack",

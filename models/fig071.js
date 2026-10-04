@@ -26,6 +26,8 @@ const upperGap = [aroundB(rest) - SPAN / 2 - MARGIN, aroundB(exitAt) - 0 + MARGI
 const index = studIndex({
   figure: 71,
   wheel: { center: [-D / 2, 0, 0], radius: 1.82 },
+  // 動力重演:只推驅動輪;被動輪靠摩擦定位,由驅動輪上的凸柱撥動
+  replay: { from: 0, to: 2 * Math.PI, free: { wheel: { hold: true } }, expect: [{ part: "wheel", label: "驅動輪轉一圈,凸柱把被動輪撥過的角度" }] },
   driver: { center: [D / 2, 0, 0], radius: 2.1 },
   studs: STUDS,
   rim: { radius: RIM.outer, inner: RIM.inner, gaps: [upperGap, lowerGap] },

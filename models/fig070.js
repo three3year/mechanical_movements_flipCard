@@ -7,6 +7,8 @@ import { studIndex } from "./stud-index.js";
 const index = studIndex({
   figure: 70,
   wheel: { center: [-1.55, 0, 0], radius: 1.82 },
+  // 動力重演:只推驅動輪;被動輪靠摩擦定位,由驅動輪上的凸柱撥動
+  replay: { from: 0, to: 2 * Math.PI, free: { wheel: { hold: true } }, expect: [{ part: "wheel", label: "驅動輪轉一圈,凸柱把被動輪撥過的角度" }] },
   driver: { center: [1.62, 0, 0], radius: 1.95 },
   studs: { count: 10, radius: 1.5 },
   rim: { radius: 1.82, inner: 1.68, gaps: [[deg(160), deg(200)]] },

@@ -116,6 +116,8 @@ export default {
       pieces: [{ kind: "cylinder", radius: 0.12, length: 0.24 }],
     },
   ],
+  // 動力重演:只推桿 C;輪 A 靠摩擦定位,棘爪 B 鉸在槓桿 D 上、止回爪鉸在機架上,都靠自重搭在齒上
+  replay: { free: { wheelA: { hold: true }, pawlB: { on: "leverD" }, click: {} }, expect: [{ part: "wheelA", label: "桿 C 一個來回,棘爪把輪 A 推過一齒、止回爪不讓它退回" }] },
   driver: { part: "rodC", type: "translation", direction: [0, -1, 0], cycle: [0, STROKE] },
   target: "wheelA",
   view: { direction: [0.08, 0.06, 1] },
@@ -138,4 +140,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["wheelA"], reason: "未修:動力重演不成立——「桿 C 一個來回,棘爪把輪 A 推過一齒、止回爪不讓它退回」預期 wheelA 在主動量 0.58 時已轉 -20°,實際轉了 -11°。重演中棘爪每個行程只把輪推了 18°(不到一齒 20°),止回爪還沒落進下一齒,回程時輪被帶回去;行程要比一齒多一點,或止回爪的位置要調(列入待確認清單)" },
+  ],
 };

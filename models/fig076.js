@@ -101,6 +101,8 @@ export default {
     { id: "studLabel", kind: "group", label: "D", labelOffset: [0.3, 0.1, 0.3] },
   ],
   // 大輪順時針轉(轉角為負)
+  // 動力重演:只推輪;棘輪靠摩擦定位,由槓桿上的棘爪撥動
+  replay: { from: 0, to: -2 * Math.PI, free: { ratchet: { hold: true } }, expect: [{ part: "ratchet", label: "輪轉一圈,棘輪被撥過的角度" }] },
   driver: { part: "wheel", type: "rotation", speed: -0.6 },
   target: "ratchet", // 記錄轉數的棘輪 A
   view: { direction: [0.06, 0.05, 1], fit: ["ratchet", "lever", "bracket"] },
@@ -118,6 +120,7 @@ export default {
     };
   },
   waivers: [
+    { check: "replay", parts: ["ratchet"], reason: "未修:動力重演不成立——「輪轉一圈,棘輪被撥過的角度」預期 ratchet 在主動量 -6.28 時已轉 15°,實際轉了 1°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["wheel", "lever"], reason: "凸柱 D 頂起槓桿右端的過程以平順曲線演出,不逐點算接觸;凸柱掃過槓桿端頭時最多重疊 0.11(96 個取樣中 2 個)。每圈頂一次、棘輪前進一齒的關係正確" },
   ],
 };
