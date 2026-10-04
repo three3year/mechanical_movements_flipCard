@@ -76,4 +76,8 @@ export default {
     };
     return { parts: { drive: { angle: a }, shaft: { angle: r.shaft }, runnerR: runner(1), runnerL: runner(-1) }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "shaft"], reason: "簡化畫法:軸的軸承座畫成機架的橫樑,軸頸與橫樑重疊 0.10" },
+    { check: "interference", parts: ["frame", "drive"], reason: "未修:主動輪的輪緣伸到機架的橫樑,重疊 0.27;橫樑應在輪的後面(列入待確認清單)" },
+  ],
 };

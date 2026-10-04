@@ -63,4 +63,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["bob", "path"], reason: "擺錘沿著示意的擺線軌跡走:軌跡線(畫成一條線狀零件)穿過擺錘 0.11" },
+    { check: "interference", parts: ["frame", "thread"], reason: "擺線穿過支架頂端的夾口(夾口沒畫),線的中心線穿過支架的板 0.06" },
+  ],
 };

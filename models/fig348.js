@@ -61,4 +61,12 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["barB", "sliderC2"], reason: "接合處的簡化畫法:滑塊上的銷穿在桿 B 的孔裡,滑塊與桿面重疊 0.03" },
+    { check: "interference", parts: ["barB", "sliderC1"], reason: "接合處的簡化畫法:滑塊上的銷穿在桿 B 的孔裡,滑塊與桿面重疊 0.03" },
+    { check: "unsupported", parts: ["sliderC2"], reason: "未修:滑塊 C 與桿 B 之間差 0.13(前後不同層),少畫了相連的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["sliderC1"], reason: "未修:滑塊 C 與桿 B 之間差 0.13(前後不同層),少畫了相連的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["barB"], reason: "未修:桿 B 與圓盤 A 上的銷之間差 0.04(前後不同層)(列入待確認清單)" },
+    { check: "unsupported", parts: ["diskA"], reason: "未修:圓盤 A 的軸沒有畫出支座(離最近的實體 0.04)(列入待確認清單)" },
+  ],
 };

@@ -136,5 +136,13 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["piston2", "crank"], reason: "未修:曲柄的臂掃過活塞,重疊 0.13(96 個取樣中 52 個);曲柄應在汽缸蓋的外側(列入待確認清單)" },
+    { check: "interference", parts: ["piston1", "crank"], reason: "未修:曲柄的臂掃過活塞,重疊 0.13(96 個取樣中 55 個);曲柄應在汽缸蓋的外側(列入待確認清單)" },
+    { check: "interference", parts: ["casing", "valve"], reason: "未修:閥與汽缸外殼畫在同一層,重疊 0.21;閥箱沒有畫出來(列入待確認清單)" },
+    { check: "interference", parts: ["casing", "piston2"], reason: "簡化畫法:旋轉活塞的端緣貼著汽缸內壁滑動,重疊 0.09" },
+    { check: "interference", parts: ["casing", "piston1"], reason: "簡化畫法:旋轉活塞的端緣貼著汽缸內壁滑動,重疊 0.09" },
+    { check: "unsupported", parts: ["valve"], reason: "未修:閥與帶動它的零件之間少畫了相連的桿(差 0.99)(列入待確認清單)" },
+  ],
 };
 

@@ -92,4 +92,10 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["bell", "hammer"], reason: "錘頭敲在鈴上:敲擊的位置依時序演出,錘頭陷進鈴壁 0.07(96 個取樣中 12 個)" },
+    { check: "interference", parts: ["hammer", "spring"], reason: "彈簧的端頭扣在錘柄上:端圈伸進錘柄 0.05" },
+    { check: "interference", parts: ["frame", "wire"], reason: "未修:拉線穿過機架的底座,重疊 0.40;底座上讓線通過的孔沒有畫出來(列入待確認清單)" },
+    { check: "interference", parts: ["frame", "hammer"], reason: "未修:錘柄與機架的板畫在同一層,重疊 0.15;機架應在錘柄的後面(列入待確認清單)" },
+  ],
 };

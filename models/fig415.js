@@ -115,4 +115,8 @@ export default {
       readouts: [{ label: "輪 D", value: m.driving ? (state === "C" ? "被帶著逆時針轉" : "被帶著順時針轉") : "停住(棘爪滑過)" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "rod"], reason: "簡化畫法:桿的端頭貼著輪面,重疊 0.04" },
+    { check: "interference", parts: ["wheel", "lever"], reason: "簡化畫法:槓桿貼著輪面,重疊 0.10" },
+  ],
 };

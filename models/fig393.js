@@ -65,4 +65,8 @@ export default {
     const rotation = quatMul(quatFromZ([-n[0], -n[1], -n[2]]), quatAxisAngle(Z, p.self));
     return { parts: { spindle: { angle: a }, cup: { position: p.center, rotation } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["spindle", "cup"], reason: "簡化畫法:心軸端的圓條貼著杯的內壁,重疊 0.06" },
+    { check: "interference", parts: ["table", "cup"], reason: "簡化畫法:杯形件坐在轉盤的凹窩裡(凹窩沒畫),與盤面重疊 0.12" },
+  ],
 };

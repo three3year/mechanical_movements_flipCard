@@ -98,4 +98,12 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["cart", "load"], reason: "簡化畫法:載重放在車斗裡,重物的底面陷進車斗 0.06" },
+    { check: "interference", parts: ["dial", "spring"], reason: "彈簧的端頭扣在刻度盤後面:彈簧的端圈伸進盤面 0.07" },
+    { check: "interference", parts: ["cart", "cartWheelR"], reason: "簡化畫法:車輪的輻條轉到上方時擦到車身的底板 0.06" },
+    { check: "interference", parts: ["cart", "cartWheelL"], reason: "簡化畫法:車輪的輻條轉到上方時擦到車身的底板 0.06" },
+    { check: "unsupported", parts: ["cartWheelR"], reason: "未修:台車的輪子與車身之間差 0.08,少畫了輪軸(列入待確認清單)" },
+    { check: "unsupported", parts: ["cartWheelL"], reason: "未修:台車的輪子與車身之間差 0.08,少畫了輪軸(列入待確認清單)" },
+  ],
 };

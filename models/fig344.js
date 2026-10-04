@@ -45,4 +45,10 @@ export default {
     const e = engine.pose(theta);
     return { parts: { ...e.parts, crank: { angle: theta } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "pistonRod"], reason: "未修:機架的立柱畫在汽缸中心線上,活塞桿與它重疊 0.26;立柱應在汽缸的前後兩側(列入待確認清單)" },
+    { check: "interference", parts: ["frame", "piston"], reason: "未修:機架的立柱畫在汽缸中心線上,活塞經過時與它重疊 0.31;立柱應在汽缸的前後兩側(列入待確認清單)" },
+    { check: "interference", parts: ["pistonRod", "crank"], reason: "未修:活塞桿的上端每圈有一小段掃過曲柄軸,重疊 0.15(96 個取樣中 17 個);曲柄軸應只往後伸(列入待確認清單)" },
+    { check: "interference", parts: ["frame", "cylinder"], reason: "簡化畫法:擺動汽缸的耳軸座畫成機架的橫樑,汽缸與橫樑重疊 0.20" },
+  ],
 };

@@ -57,6 +57,13 @@ export default {
   figure: 430,
   parts: [
     {
+      id: "axle",
+      kind: "cylinder",
+      center: [0, 0, 0],
+      radius: 0.08,
+      length: 1.6, // 水車的固定軸(軸承座沒畫,推斷)
+    },
+    {
       id: "wheel",
       kind: "pulley",
       style: "spoked",

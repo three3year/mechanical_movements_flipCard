@@ -63,4 +63,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "lever"], reason: "接合處的簡化畫法:槓桿以長孔套在機架的固定銷上,長孔沒有畫出來;槓桿擺動時銷與板重疊 0.10(96 個取樣中 35 個)" },
+    { check: "interference", parts: ["rod", "lever"], reason: "接合處的簡化畫法:桿頂的方塊鉸接在槓桿上,方塊與槓桿的板重疊 0.13(叉口沒有畫出來)" },
+  ],
 };

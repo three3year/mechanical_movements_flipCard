@@ -93,4 +93,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["pistonRod", "beam"], reason: "接合處的簡化畫法:活塞桿的頂端以滑塊接在樑上,桿端伸進樑的板 0.15(96 個取樣中 76 個);滑槽沒有畫出來" },
+    { check: "interference", parts: ["frame", "cylinder"], reason: "簡化畫法:汽缸的底座嵌在機架的台面裡,重疊 0.07" },
+  ],
 };

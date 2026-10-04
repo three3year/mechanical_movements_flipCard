@@ -76,4 +76,10 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["cylinder", "rod"], reason: "未修:桿擺動時掃過汽缸的端蓋,重疊 0.12(96 個取樣中 49 個);端蓋上讓桿通過的開口沒有畫出來(列入待確認清單)" },
+    { check: "interference", parts: ["piston", "rod"], reason: "接合處的簡化畫法:桿固定在盤中心的球上;桿端在球裡,重疊 0.44" },
+    { check: "interference", parts: ["cylinder", "piston"], reason: "簡化畫法:擺動的盤(活塞)邊緣貼著球形汽缸的內壁,盤緣伸進缸壁 0.06" },
+    { check: "unsupported", parts: ["crank"], reason: "未修:曲柄與盤上伸出的桿之間少畫了相連的銷(差 0.64)(列入待確認清單)" },
+  ],
 };

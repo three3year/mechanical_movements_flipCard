@@ -87,4 +87,7 @@ export default {
     const flows = pos === null ? [] : PATHS[pos].map((path) => ({ fluid: "steam", points: stream(path, p * 12, { spacing: 0.22 }) }));
     return { parts: { plug: { angle: a } }, flows, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["casing", "plug"], reason: "簡化畫法:旋塞在殼體的孔裡轉動;殼體畫成實心方塊(孔沒畫),旋塞上的凸條與殼體重疊 0.36" },
+  ],
 };

@@ -63,4 +63,12 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["pins", "brace"], reason: "接合處的簡化畫法:撐桿的端環套在圖釘上,環與釘重疊 0.16(96 個取樣中 26 個)" },
+    { check: "interference", parts: ["rulerR", "pencil"], reason: "接合處的簡化畫法:鉛筆插在兩把尺交點的孔裡,孔沒有畫出來,重疊 0.11" },
+    { check: "interference", parts: ["rulerL", "pencil"], reason: "接合處的簡化畫法:鉛筆插在兩把尺交點的孔裡,孔沒有畫出來,重疊 0.09" },
+    { check: "interference", parts: ["pins", "rulerR"], reason: "接合處的簡化畫法:尺以長孔套在圖釘上滑動,長孔沒有畫出來,圖釘與尺重疊 0.19" },
+    { check: "interference", parts: ["pins", "rulerL"], reason: "接合處的簡化畫法:尺以長孔套在圖釘上滑動,長孔沒有畫出來,圖釘與尺重疊 0.19" },
+    { check: "interference", parts: ["paper", "pins"], reason: "圖釘釘在紙上:釘尖穿過紙面 0.05" },
+  ],
 };

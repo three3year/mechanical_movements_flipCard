@@ -54,4 +54,12 @@ export default {
     });
     return { parts, paths: rulerLines(edge, 1.6, h), readouts: [] };
   },
+  waivers: [
+    { check: "unsupported", parts: ["down1"], reason: "未修:連桿與尺之間差 0.22(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["up1"], reason: "未修:連桿與尺之間差 0.05(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["down0"], reason: "未修:連桿與尺之間差 0.22(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["up0"], reason: "未修:連桿與尺之間差 0.05(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["midBar"], reason: "未修:中間桿與連桿之間差 0.07(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["rulerTop"], reason: "未修:上尺與連桿之間差 0.05(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+  ],
 };

@@ -103,5 +103,9 @@ export default {
       readouts: [{ label: "搖籃", value: `${((r.gamma * 180) / Math.PI).toFixed(1)}°` }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheelA", "wheelB"], reason: "簡化齒形:兩輪的齒畫得比節圓深,嚙合處齒頂伸進對方的齒根 0.21" },
+    { check: "interference", parts: ["stand", "wheelB"], reason: "簡化畫法:輪 B 的輻條轉過支架的軸端時擦到 0.06(96 個取樣中 12 個)" },
+  ],
 };
 

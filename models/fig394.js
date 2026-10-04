@@ -75,4 +75,7 @@ export default {
     // 小齒輪的軸固定;框相對它左右往復、上下移(小齒輪咬上排時框在下,咬下排時框在上)
     return { parts: { pinion: { angle: theta, position: [0, 0, 0.05] }, frame: { position: [p.x, -p.y * (H / 2 - RP + 0.02), 0] } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "pinion"], reason: "簡化齒形:機架上的齒條畫成方塊齒,與小齒輪的梯形齒重疊 0.13(96 個取樣中 81 個)" },
+  ],
 };

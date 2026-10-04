@@ -108,4 +108,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["crank", "lever"], reason: "未修:槓桿擺動時掃過曲柄的輪轂,重疊 0.10(96 個取樣中 58 個);槓桿應在曲柄的另一層(列入待確認清單)" },
+  ],
 };

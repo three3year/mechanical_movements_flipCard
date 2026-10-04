@@ -93,5 +93,14 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["roller3", "lining"], reason: "滾子把彈性襯墊壓向缸壁:襯墊在滾子下方被壓扁,中心線落在滾子內 0.05" },
+    { check: "interference", parts: ["roller2", "lining"], reason: "滾子把彈性襯墊壓向缸壁:襯墊在滾子下方被壓扁,中心線落在滾子內 0.05" },
+    { check: "interference", parts: ["roller1", "lining"], reason: "滾子把彈性襯墊壓向缸壁:襯墊在滾子下方被壓扁,中心線落在滾子內 0.05" },
+    { check: "interference", parts: ["cylinder", "lining"], reason: "彈性襯墊貼著汽缸的內壁:襯墊的中心線落在缸壁內 0.03" },
+    { check: "interference", parts: ["cylinder", "roller3"], reason: "接合處的簡化畫法:滾子的軸伸到汽缸的後蓋上(軸孔沒畫),重疊 0.10" },
+    { check: "interference", parts: ["cylinder", "roller2"], reason: "接合處的簡化畫法:滾子的軸伸到汽缸的後蓋上(軸孔沒畫),重疊 0.10" },
+    { check: "interference", parts: ["cylinder", "roller1"], reason: "接合處的簡化畫法:滾子的軸伸到汽缸的後蓋上(軸孔沒畫),重疊 0.10" },
+  ],
 };
 

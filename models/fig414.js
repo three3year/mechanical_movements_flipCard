@@ -85,4 +85,7 @@ export default {
       readouts: [{ label: "A 的轉速 / B 的轉速", value: (RB / r).toFixed(3) }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["volute", "pinion"], reason: "簡化齒形:渦形齒條的齒畫成方塊,與小齒輪的梯形齒重疊 0.06(96 個取樣中 63 個)" },
+  ],
 };

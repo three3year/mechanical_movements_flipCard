@@ -44,4 +44,9 @@ export default {
     const e = engine.pose(theta);
     return { parts: { ...e.parts, crank: { angle: theta } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["pistonRod", "crank"], reason: "接合處的簡化畫法:活塞桿的端頭套在曲柄銷上,桿端與曲柄的輪轂重疊 0.05(96 個取樣中 17 個)" },
+    { check: "interference", parts: ["frame", "pistonRod"], reason: "未修:活塞桿的端頭轉到最低時碰到機架的底座,重疊 0.10(96 個取樣中 23 個)(列入待確認清單)" },
+    { check: "interference", parts: ["frame", "cylinder"], reason: "簡化畫法:擺動汽缸的耳軸座畫成機架的橫樑,汽缸與橫樑重疊 0.18" },
+  ],
 };

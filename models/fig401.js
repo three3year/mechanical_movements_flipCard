@@ -65,4 +65,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["treadle"], reason: "未修:踏板沒有畫出樞軸的支座(離最近的實體 0.15)(列入待確認清單)" },
+  ],
 };

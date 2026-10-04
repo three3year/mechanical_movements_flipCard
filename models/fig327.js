@@ -49,7 +49,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape([...arcPoints(2.95, 0, TAU).slice(0, -1)], [arcPoints(2.75, 0, TAU).slice(0, -1).reverse()]), thickness: 0.2, at: [0, 0, -0.8] },
         ...[0, 1, 2, 3].map((i) => ({ kind: "box", size: [5.5, 0.14, 0.1], at: [0, 0, -0.8], angle: deg(20) + (i * Math.PI) / 4 })),
-        { kind: "cylinder", radius: 0.2, length: 1.2, at: [0, 0, -0.3] },
+        { kind: "cylinder", radius: 0.2, length: 1.1, at: [0, 0, -0.35] },
         { kind: "plate", shape: shape([[0, -0.15], [R, -0.1], [R, 0.1], [0, 0.15]], [circle(0.06).reverse()]), thickness: 0.1, at: [0, 0, 0.2] },
         { kind: "cylinder", radius: 0.07, length: 0.3, at: [R, 0, 0.28], accent: true },
       ],
@@ -59,9 +59,9 @@ export default {
       id: "crosshead",
       kind: "group",
       pieces: [
-        { kind: "box", size: [1.7, 0.16, 0.14], at: [0, 0, 0.1] },
-        { kind: "cylinder", radius: 0.16, length: 0.14, at: [-GUIDE_X + 0.24, 0, 0.1] },
-        { kind: "cylinder", radius: 0.16, length: 0.14, at: [GUIDE_X - 0.24, 0, 0.1] },
+        { kind: "box", size: [1.7, 0.16, 0.14], at: [0, 0, 0.16] },
+        { kind: "cylinder", radius: 0.16, length: 0.14, at: [-GUIDE_X + 0.24, 0, 0.16] },
+        { kind: "cylinder", radius: 0.16, length: 0.14, at: [GUIDE_X - 0.24, 0, 0.16] },
         { kind: "box", size: [0.08, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] },
       ],
     },
@@ -74,7 +74,7 @@ export default {
     const e = engine(p);
     const cyl = cylinderPose(CYL, e.piston, e.downward, p);
     return {
-      parts: { flywheel: { angle: e.theta }, rod: { from: [e.pin[0], e.pin[1], 0.38], to: [0, e.head, 0.38] }, crosshead: { position: [0, e.head, 0] }, ...cyl.parts },
+      parts: { flywheel: { angle: e.theta }, rod: { from: [e.pin[0], e.pin[1], 0.28], to: [0, e.head, 0.28] }, crosshead: { position: [0, e.head, 0] }, ...cyl.parts },
       flows: cyl.flows,
       readouts: [],
     };

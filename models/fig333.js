@@ -59,4 +59,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["ground", "beam"], reason: "樑擺到極限位置時,端頭碰到地面上的支座,重疊 0.08(96 個取樣中 28 個);擺幅是示意的大小" },
+  ],
 };

@@ -46,7 +46,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape([[0, -0.15], [R, -0.1], [R, 0.1], [0, 0.15]], [circle(0.06).reverse()]), thickness: 0.1, at: [0, 0, 0.25] },
         { kind: "cylinder", radius: 0.06, length: 0.35, at: [R, 0, 0.3], accent: true },
-        { kind: "cylinder", radius: 0.12, length: 0.9 },
+        { kind: "cylinder", radius: 0.12, length: 0.55, at: [0, 0, -0.075] }, // 曲柄軸只往後伸(叉形連桿從曲柄前面掃過軸心)
       ],
     },
     // 叉形連桿(局部 +x 由曲柄銷指向十字頭):上半一根,下半分成兩股夾著活塞桿
@@ -61,7 +61,7 @@ export default {
         { kind: "plate", shape: shape(thickLine([[ROD * 0.55, 0], [ROD * 0.7, -0.22], [ROD, -0.22]], 0.09)), thickness: 0.06 },
       ],
     },
-    { id: "pistonRod", kind: "group", pieces: [{ kind: "box", size: [0.08, PISTON_ROD + 1.95, 0.08], at: [0, (1.95 - PISTON_ROD) / 2, 0] }, { kind: "box", size: [0.5, 0.12, 0.14], at: [0, 0, 0.12] }] },
+    { id: "pistonRod", kind: "group", pieces: [{ kind: "box", size: [0.08, PISTON_ROD + 1.95, 0.08], at: [0, (1.95 - PISTON_ROD) / 2, 0] }, { kind: "box", size: [0.5, 0.12, 0.14], at: [0, 0, 0.2] }] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },

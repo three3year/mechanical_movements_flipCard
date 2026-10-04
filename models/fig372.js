@@ -81,4 +81,10 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["sun2", "planetBottom"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.08" },
+    { check: "interference", parts: ["sun2", "planetTop"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.08" },
+    { check: "interference", parts: ["shaft", "planetBottom"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.08" },
+    { check: "interference", parts: ["shaft", "planetTop"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.08" },
+  ],
 };

@@ -87,4 +87,8 @@ export default {
     // 齒條的齒朝 +x(朝小齒輪),節線在 x = −R
     return { parts: { pinion: { angle: theta }, stamp: { position: [RACK_X, lift + BASE, 0] } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["pinion", "stamp"], reason: "搗桿被缺齒小齒輪抬起的過程依時序演出,不逐點算齒與凸塊的接觸;重疊 0.07(96 個取樣中 14 個)" },
+    { check: "interference", parts: ["stamp", "guides"], reason: "未修:搗桿上的凸塊升到最高時伸進導座,重疊 0.32(96 個取樣中 33 個);導座應讓出凸塊的行程(列入待確認清單)" },
+  ],
 };

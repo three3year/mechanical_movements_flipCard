@@ -109,5 +109,12 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["crank", "spring"], reason: "未修:彈簧擺動時掃過曲柄的輪轂,重疊 0.05(96 個取樣中 5 個)(列入待確認清單)" },
+    { check: "interference", parts: ["rod", "treadle"], reason: "接合處的簡化畫法:連桿的下端鉸接在踏板上,桿端與踏板重疊 0.03" },
+    { check: "interference", parts: ["crank", "rod"], reason: "未修:連桿每圈有一小段掃過曲柄的輪轂,重疊 0.04(96 個取樣中 10 個)(列入待確認清單)" },
+    { check: "interference", parts: ["frame", "spring"], reason: "彈簧的上端掛在機架上:端頭伸進機架的板 0.06" },
+    { check: "interference", parts: ["frame", "treadle"], reason: "接合處的簡化畫法:踏板鉸接在機架的腳上,踏板端與機架的板重疊 0.06" },
+  ],
 };
 

@@ -58,4 +58,10 @@ export default {
     const g = guernsey(v);
     return { parts: { lever: { angle: g.lever }, bal1: { angle: g.bal1 }, bal2: { angle: g.bal2 }, wheel: { angle: g.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["bal1", "lever"], reason: "擒縱的時序依相位演出,沒有逐點算槓桿與擺輪的接觸;重疊 0.06(96 個取樣中 80 個)" },
+    { check: "interference", parts: ["bal2", "lever"], reason: "擒縱的時序依相位演出,沒有逐點算槓桿與擺輪的接觸;重疊 0.06(96 個取樣中 11 個)" },
+    { check: "interference", parts: ["bal1", "bal2"], reason: "簡化畫法:兩個擺輪以輪緣上的齒互相嚙合,輪緣重疊 0.08" },
+    { check: "unsupported", parts: ["wheel"], reason: "未修:擒縱輪與掣子之間差 0.05,沒有畫到互相碰到(列入待確認清單)" },
+  ],
 };

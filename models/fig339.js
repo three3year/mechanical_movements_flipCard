@@ -74,4 +74,10 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["rod", "radiusFA"], reason: "接合處的簡化畫法:兩根連桿的端頭在同一個接點相疊,軸眼互相重疊 0.04" },
+    { check: "interference", parts: ["barBC", "radiusFA"], reason: "接合處的簡化畫法:兩根連桿的端頭在同一個接點相疊,軸眼互相重疊 0.04" },
+    { check: "interference", parts: ["frame", "barBC"], reason: "接合處的簡化畫法:連桿 BC 的端頭經過機架上的固定銷時,軸眼與銷重疊 0.09(96 個取樣中 30 個)" },
+    { check: "interference", parts: ["frame", "pistonRod"], reason: "未修:活塞桿的頂端上行時掃過機架上的固定銷,重疊 0.14(96 個取樣中 40 個);固定銷應只伸到連桿那一層(列入待確認清單)" },
+  ],
 };

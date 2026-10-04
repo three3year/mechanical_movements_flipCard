@@ -96,4 +96,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["casing", "works"], reason: "簡化畫法:傳動機構的箱體接在渦輪外殼的側面,重疊 0.25" },
+  ],
 };

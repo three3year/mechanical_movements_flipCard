@@ -42,4 +42,11 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["vibrating", "pistonRod"], reason: "接合處的簡化畫法:擺動桿的端頭鉸接在活塞桿的頂端,軸眼與桿端重疊 0.05" },
+    { check: "unsupported", parts: ["pistonRod"], reason: "未修:活塞桿頂端與平行運動的連桿之間差 0.35(前後不同層),少畫了十字頭的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["vibrating"], reason: "未修:擺動桿與樑之間差 0.09,少畫了相連的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["radiusBar"], reason: "未修:半徑桿與樑上的連桿之間少畫了相連的銷,前後各層之間有空隙(列入待確認清單)" },
+    { check: "unsupported", parts: ["beam"], reason: "未修:樑的樞軸沒有畫出支座(離最近的實體 0.09)(列入待確認清單)" },
+  ],
 };

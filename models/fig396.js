@@ -69,4 +69,7 @@ export default {
     const r = reed(v);
     return { parts: { balance: { angle: r.balance }, lever: { angle: r.lever }, wheel: { angle: r.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["balance", "wheel"], reason: "擒縱輪的進退依擺動的相位演出,沒有逐點算擺輪上的掣子與輪齒的接觸;重疊 0.10。列入待確認清單的動力重演名單" },
+  ],
 };

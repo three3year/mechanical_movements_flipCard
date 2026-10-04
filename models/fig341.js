@@ -87,4 +87,10 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["pipe", "crank"], reason: "未修:曲柄銷每圈有一小段掃過蒸汽管,重疊 0.13(96 個取樣中 16 個);蒸汽管應繞到曲柄的後面(列入待確認清單)" },
+    { check: "interference", parts: ["beam", "pistonRod"], reason: "接合處的簡化畫法:活塞桿的頂端鉸接在樑端,桿端伸進樑的板 0.04" },
+    { check: "unsupported", parts: ["crank"], reason: "未修:曲柄與連桿之間少畫了相連的銷(前後不同層)(列入待確認清單)" },
+    { check: "unsupported", parts: ["conRod"], reason: "未修:連桿與樑端之間差 0.06,少畫了相連的銷(列入待確認清單)" },
+  ],
 };

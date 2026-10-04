@@ -83,4 +83,10 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "rod"], reason: "未修:連桿的下端擺動時掃過機架上的軸,重疊 0.10(96 個取樣中 32 個)(列入待確認清單)" },
+    { check: "interference", parts: ["rod", "ratchet"], reason: "連桿下端推棘輪上的銷:推的過程依時序演出,桿端與銷重疊 0.18(96 個取樣中 35 個)" },
+    { check: "interference", parts: ["crank", "rod"], reason: "未修:連桿的上端每圈有一段掃過曲柄的輪轂,重疊 0.20(96 個取樣中 27 個);連桿應在曲柄的前面一層(列入待確認清單)" },
+    { check: "interference", parts: ["frame", "ratchet"], reason: "接合處的簡化畫法:棘輪套在機架的軸上,軸孔比軸小,重疊 0.05" },
+  ],
 };

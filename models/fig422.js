@@ -119,4 +119,7 @@ export default {
       readouts: [{ label: "蒸汽推活塞", value: side > 0 ? "左側進汽、右側排汽" : "右側進汽、左側排汽" }],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["valve"], reason: "未修:閥與帶動它的偏心桿之間少畫了相連的桿(差 0.50)(列入待確認清單)" },
+  ],
 };

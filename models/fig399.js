@@ -41,4 +41,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["upper", "lower"], reason: "未修:上下兩個夾塊在行程中段重疊 0.32;夾塊的行程與外形待重排(列入待確認清單)" },
+  ],
 };

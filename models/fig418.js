@@ -93,4 +93,7 @@ export default {
       readouts: [{ label: "閥 A 的位置", value: P[0].toFixed(2) }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["chest", "arcs"], reason: "簡化畫法:弧形片貼著箱體的導條滑動,重疊 0.03" },
+  ],
 };

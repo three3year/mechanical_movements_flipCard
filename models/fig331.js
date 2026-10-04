@@ -45,7 +45,7 @@ export default {
       label: "B",
       labelOffset: [0.25, 0.45, 0.5],
       pieces: [
-        { kind: "cylinder", radius: 0.16, length: 1.4, at: [0, 0, -0.5] },
+        { kind: "cylinder", radius: 0.16, length: 1.15, at: [0, 0, -0.625] },
         { kind: "plate", shape: shape([[0, -0.15], [R, -0.1], [R, 0.1], [0, 0.15]], [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, -0.2] },
         { kind: "cylinder", radius: 0.2, length: 0.35, at: [R, 0, 0.05], accent: true },
       ],
@@ -74,4 +74,7 @@ export default {
     const cyl = cylinderPose(CYL, y.piston, y.downward, p);
     return { parts: { crank: { angle: y.theta }, yokeA: { position: [0, y.head, 0] }, ...cyl.parts }, flows: cyl.flows, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "pipe"], reason: "蒸汽管貼著機架的立柱走:管與立柱在圖上重疊 0.05(管應在立柱的前面一點)" },
+  ],
 };

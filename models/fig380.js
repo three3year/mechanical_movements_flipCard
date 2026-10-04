@@ -44,4 +44,7 @@ export default {
     const f = feedOf(theta);
     return { parts: { drill: { angle: theta, position: [0.25, TOP - f, 0] }, feedScrew: { angle: (f / 0.12) * Math.PI * 2 } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["feedScrew", "drill"], reason: "簡化畫法:進給螺桿與鑽軸同軸、端對端頂著,兩者畫成互相套入 0.11" },
+  ],
 };

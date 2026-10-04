@@ -60,4 +60,7 @@ export default {
   pose(theta) {
     return { parts: { small: { angle: theta }, big: { angle: bigAngle(theta) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["small", "big"], reason: "摩擦傳動的小輪壓在大輪的渦形凸條上:小輪的位置依渦線的半徑算,輪緣伸進凸條 0.07(96 個取樣中 87 個)" },
+  ],
 };

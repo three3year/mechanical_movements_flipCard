@@ -41,4 +41,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["barR", "weight"], reason: "簡化畫法:重物的吊桿掛在兩根桿的交點上,吊桿與桿端重疊 0.05(96 個取樣中 49 個)" },
+    { check: "interference", parts: ["barL", "weight"], reason: "簡化畫法:重物的吊桿掛在兩根桿的交點上,吊桿與桿端重疊 0.05(96 個取樣中 49 個)" },
+  ],
 };

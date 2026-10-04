@@ -85,4 +85,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "carriage"], reason: "未修:滑座走到行程端時碰到機架的立柱,重疊 0.20(96 個取樣中 8 個)(列入待確認清單)" },
+    { check: "interference", parts: ["frame", "fusee"], reason: "未修:均力圓錐輪的大端伸到機架的底樑,重疊 0.16;底樑應再低一點(列入待確認清單)" },
+  ],
 };

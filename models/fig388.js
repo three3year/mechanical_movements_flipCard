@@ -41,4 +41,7 @@ export default {
     const x = -BOARD_L / 2 + 0.8 + f.travel;
     return { parts: { top: { angle: a }, low: { angle: f.low }, board: { position: [x, BOARD_Y, 0] } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["top", "board"], reason: "簡化畫法:壓板貼著木板的上緣,重疊 0.04(96 個取樣中 76 個)" },
+  ],
 };

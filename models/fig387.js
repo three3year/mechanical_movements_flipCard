@@ -68,4 +68,26 @@ export default {
     }
     return { parts, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["boat", "step7"], reason: "未修:最下一級踏板在低水位時伸進船身 0.05(96 個取樣中 11 個)(列入待確認清單)" },
+    { check: "interference", parts: ["step6", "hanger7"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
+    { check: "interference", parts: ["step5", "hanger6"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
+    { check: "interference", parts: ["step4", "hanger5"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
+    { check: "interference", parts: ["step3", "hanger4"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
+    { check: "interference", parts: ["step2", "hanger3"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
+    { check: "interference", parts: ["step1", "hanger2"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
+    { check: "interference", parts: ["step0", "hanger1"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
+    { check: "interference", parts: ["stringer", "step7"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
+    { check: "interference", parts: ["stringer", "step6"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
+    { check: "interference", parts: ["stringer", "step5"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
+    { check: "interference", parts: ["stringer", "step4"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
+    { check: "interference", parts: ["stringer", "step3"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
+    { check: "interference", parts: ["stringer", "step2"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
+    { check: "interference", parts: ["stringer", "step1"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
+    { check: "interference", parts: ["stringer", "step0"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
+    { check: "interference", parts: ["boat", "stringer"], reason: "未修:梯的下端伸進船身 0.11;下端應擱在甲板上(列入待確認清單)" },
+    { check: "interference", parts: ["quay", "hanger0"], reason: "未修:最上一根吊桿伸進碼頭的岸壁 0.22(列入待確認清單)" },
+    { check: "interference", parts: ["quay", "step0"], reason: "未修:最上一級踏板伸進碼頭的岸壁 0.20(列入待確認清單)" },
+    { check: "interference", parts: ["quay", "rail"], reason: "未修:扶手的上端伸進碼頭的立柱 0.10;扶手應接在立柱的側面(列入待確認清單)" },
+  ],
 };

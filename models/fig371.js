@@ -65,4 +65,8 @@ export default {
     // 小齒輪在輪緣的左側,咬著前面(z > 0)或後面的冠狀齒
     return { parts: { pinion: { position: [-R, 0, m.z * 1.9], angle: theta }, wheel: { angle: m.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["pinion", "bearing"], reason: "小齒輪的軸在軸承座的長槽裡橫移(換到銷圈的另一側),槽沒畫出來" },
+    { check: "interference", parts: ["wheel", "pinion"], reason: "簡化齒形:輪面上的銷畫成方塊,小齒輪繞過銷圈時齒側與銷重疊 0.23(96 個取樣中 77 個)" },
+  ],
 };

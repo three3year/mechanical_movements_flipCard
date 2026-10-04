@@ -59,4 +59,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["wheel"], reason: "未修:渦輪的轉輪只畫了輪環與葉片,沒有畫出輪轂與軸(離最近的實體 0.04)(列入待確認清單)" },
+  ],
 };

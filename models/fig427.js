@@ -98,5 +98,16 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["cylinder", "piston2"], reason: "簡化畫法:活塞的外端貼著汽缸內壁,重疊 0.05(96 個取樣中 3 個)" },
+    { check: "interference", parts: ["cylinder", "piston1"], reason: "簡化畫法:活塞的外端貼著汽缸內壁,重疊 0.05(96 個取樣中 4 個)" },
+    { check: "interference", parts: ["cylinder", "packing2"], reason: "簡化畫法:填料條貼著汽缸內壁滑動,重疊 0.16(96 個取樣中 25 個)" },
+    { check: "interference", parts: ["cylinder", "packing1"], reason: "簡化畫法:填料條貼著汽缸內壁滑動,重疊 0.15(96 個取樣中 29 個)" },
+    { check: "interference", parts: ["packing2", "piston2"], reason: "接合處的簡化畫法:活塞端的填料條嵌在活塞的槽裡,重疊 0.20" },
+    { check: "interference", parts: ["packing1", "piston1"], reason: "接合處的簡化畫法:活塞端的填料條嵌在活塞的槽裡,重疊 0.20" },
+    { check: "interference", parts: ["hub", "piston2"], reason: "接合處的簡化畫法:滑動活塞插在輪轂的槽裡,槽沒有畫出來,重疊 0.49" },
+    { check: "interference", parts: ["hub", "piston1"], reason: "接合處的簡化畫法:滑動活塞插在輪轂的槽裡,槽沒有畫出來,重疊 0.49" },
+    { check: "interference", parts: ["cylinder", "hub"], reason: "簡化畫法:輪轂貼著汽缸內壁的密封處,重疊 0.04" },
+  ],
 };
 

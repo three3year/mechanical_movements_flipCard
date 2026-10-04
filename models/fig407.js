@@ -59,4 +59,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "bow"], reason: "簡化畫法:弓的兩端夾在機架的立桿上,弓端與立桿重疊 0.12" },
+  ],
 };

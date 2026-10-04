@@ -80,4 +80,10 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["log", "rod"], reason: "未修:推桿的端頭伸到木頭的範圍,重疊 0.22(96 個取樣中 6 個)(列入待確認清單)" },
+    { check: "interference", parts: ["log", "saw"], reason: "鋸片鋸進木頭是這個機構的作用:鋸片與木頭重疊 0.81 是鋸口(木頭上的鋸縫沒有畫出來)" },
+    { check: "interference", parts: ["frame", "pendulum"], reason: "未修:擺錘擺動時掃過機架的板,重疊 0.20(96 個取樣中 64 個);擺應在機架的前面一層(列入待確認清單)" },
+    { check: "unsupported", parts: ["saw"], reason: "未修:鋸與帶動它的桿之間差 0.09,少畫了相連的銷(列入待確認清單)" },
+  ],
 };

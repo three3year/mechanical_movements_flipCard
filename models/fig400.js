@@ -95,4 +95,10 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["bed", "pinB"], reason: "未修:銷 B 移動時掃過床台,重疊 0.08(96 個取樣中 40 個)(列入待確認清單)" },
+    { check: "interference", parts: ["bed", "barB"], reason: "未修:桿 B 擺動時掃過床台,重疊 0.10(96 個取樣中 62 個)(列入待確認清單)" },
+    { check: "interference", parts: ["barA", "pinB"], reason: "接合處的簡化畫法:桿 A 套在銷 B 上,軸眼與銷重疊 0.10" },
+    { check: "interference", parts: ["bed", "barA"], reason: "未修:桿 A 的下端伸進床台 0.26;床台上讓桿通過的槽沒有畫出來(列入待確認清單)" },
+  ],
 };

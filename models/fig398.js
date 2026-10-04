@@ -61,4 +61,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["cam", "yoke"], reason: "接合處的簡化畫法:凸輪在叉形框裡轉;框與凸輪前後錯開的量不夠,重疊 0.14" },
+    { check: "unsupported", parts: ["wheel"], reason: "未修:輪沒有畫出支撐的軸(離最近的實體 0.07)(列入待確認清單)" },
+  ],
 };

@@ -45,7 +45,7 @@ export default {
   pose(theta) {
     const { pin, y } = slider(theta);
     return {
-      parts: { flywheel: { angle: theta }, rod: { from: [pin[0], pin[1], 0.32], to: [0, y, 0.32] }, sliderA: { position: [0, y, 0] } },
+      parts: { flywheel: { angle: theta }, rod: { from: [pin[0], pin[1], 0.27], to: [0, y, 0.27] }, sliderA: { position: [0, y, 0] } },
       readouts: [],
     };
   },

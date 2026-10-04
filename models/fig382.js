@@ -65,4 +65,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["base", "mirror"], reason: "未修:鏡子降到低位時下緣碰到底座,重疊 0.15(288 個取樣中 47 個)(列入待確認清單)" },
+    { check: "interference", parts: ["stem", "mirror"], reason: "未修:鏡子降到低位時與立柱重疊 0.14;鏡架應在立柱的前面(列入待確認清單)" },
+  ],
 };

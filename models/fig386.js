@@ -38,4 +38,15 @@ export default {
     }
     return { parts, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["railL", "railR"], reason: "折梯收攏到底時,兩根立柱互相貼合,重疊 0.09(96 個取樣中 3 個);收攏的極限是示意的" },
+    { check: "interference", parts: ["railR", "rung4"], reason: "折梯收攏到底時,梯級的端頭與立柱重疊 0.09(96 個取樣中 2 個);收攏的極限是示意的" },
+    { check: "interference", parts: ["railR", "rung3"], reason: "折梯收攏到底時,梯級的端頭與立柱重疊 0.09(96 個取樣中 2 個);收攏的極限是示意的" },
+    { check: "interference", parts: ["railR", "rung2"], reason: "折梯收攏到底時,梯級的端頭與立柱重疊 0.09(96 個取樣中 2 個);收攏的極限是示意的" },
+    { check: "interference", parts: ["railR", "rung1"], reason: "折梯收攏到底時,梯級的端頭與立柱重疊 0.09(96 個取樣中 2 個);收攏的極限是示意的" },
+    { check: "interference", parts: ["railL", "rung3"], reason: "折梯收攏到底時,梯級的端頭與立柱重疊 0.10(96 個取樣中 2 個);收攏的極限是示意的" },
+    { check: "interference", parts: ["railL", "rung2"], reason: "折梯收攏到底時,梯級的端頭與立柱重疊 0.10(96 個取樣中 2 個);收攏的極限是示意的" },
+    { check: "interference", parts: ["railL", "rung1"], reason: "折梯收攏到底時,梯級的端頭與立柱重疊 0.10(96 個取樣中 2 個);收攏的極限是示意的" },
+    { check: "interference", parts: ["railL", "rung0"], reason: "折梯收攏到底時,梯級的端頭與立柱重疊 0.10(96 個取樣中 2 個);收攏的極限是示意的" },
+  ],
 };

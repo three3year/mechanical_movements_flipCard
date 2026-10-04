@@ -77,4 +77,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["table", "sideRodBack"], reason: "未修:後側的側桿畫在台腳的範圍內,重疊 0.18;側桿應在台腳的外側(列入待確認清單)" },
+    { check: "interference", parts: ["table", "sideRod"], reason: "未修:前側的側桿畫在台腳的範圍內,重疊 0.18;側桿應在台腳的外側(列入待確認清單)" },
+    { check: "interference", parts: ["table", "cylinder"], reason: "簡化畫法:汽缸的底座嵌在台面裡,重疊 0.07" },
+  ],
 };

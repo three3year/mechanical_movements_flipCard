@@ -78,5 +78,8 @@ export default {
       readouts: [{ label: "階段", value: c.phase }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "valve"], reason: "閥瓣落回閥座時陷進座面 0.15(96 個取樣中 15 個);閥瓣的開合依時序演出" },
+  ],
 };
 

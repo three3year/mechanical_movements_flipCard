@@ -83,4 +83,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["gear", "rackA"], reason: "簡化齒形:齒條的齒畫成方塊,與齒輪的梯形齒重疊 0.12(96 個取樣中 32 個)" },
+    { check: "interference", parts: ["gear", "rackA1"], reason: "簡化齒形:齒條的齒畫成方塊,與齒輪的梯形齒重疊 0.13(96 個取樣中 31 個)" },
+    { check: "interference", parts: ["rackA1", "toggleC"], reason: "接合處的簡化畫法:肘節 C 的端頭鉸接在齒條頂端的銷上,軸眼與銷重疊 0.09" },
+  ],
 };

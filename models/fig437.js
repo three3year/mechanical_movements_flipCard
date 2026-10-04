@@ -74,4 +74,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["casing", "wheel"], reason: "接合處的簡化畫法:輪葉在外殼的環形流道裡轉;外殼畫成整塊的板,輪葉與它重疊 0.55" },
+  ],
 };

@@ -54,4 +54,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["beam", "rodD"], reason: "接合處的簡化畫法:桿 D 的頂端鉸接在樑端,桿端伸進樑的板 0.06" },
+    { check: "interference", parts: ["beam", "pistonRod"], reason: "接合處的簡化畫法:活塞桿的頂端鉸接在樑端,桿端伸進樑的板 0.04" },
+  ],
 };

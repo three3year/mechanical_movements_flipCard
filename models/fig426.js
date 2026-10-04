@@ -104,4 +104,10 @@ export default {
       readouts: [{ label: "活塞伸出", value: `${(wall(angles[0]) - HUB).toFixed(2)} / ${(wall(angles[1]) - HUB).toFixed(2)}` }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["cylinder", "piston2"], reason: "簡化畫法:活塞的外端貼著偏心的汽缸內壁滑動,重疊 0.10(96 個取樣中 29 個)" },
+    { check: "interference", parts: ["cylinder", "piston1"], reason: "簡化畫法:活塞的外端貼著偏心的汽缸內壁滑動,重疊 0.10(96 個取樣中 29 個)" },
+    { check: "interference", parts: ["hub", "piston2"], reason: "接合處的簡化畫法:滑動活塞插在輪轂的徑向槽裡,槽沒有畫出來,重疊 0.55" },
+    { check: "interference", parts: ["hub", "piston1"], reason: "接合處的簡化畫法:滑動活塞插在輪轂的徑向槽裡,槽沒有畫出來,重疊 0.55" },
+  ],
 };

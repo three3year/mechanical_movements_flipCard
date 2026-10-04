@@ -97,4 +97,7 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["piston", "rod"], reason: "接合處的簡化畫法:連桿的下端鉸接在活塞裡的銷上(筒形活塞),桿端伸進活塞 0.12" },
+  ],
 };

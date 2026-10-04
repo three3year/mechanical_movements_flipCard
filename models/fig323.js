@@ -23,7 +23,7 @@ export default {
       labelOffset: [0, 0.3, 0.35],
       pieces: [
         { kind: "box", size: [L, 1.1, 0.12], at: [0, 0, 0.05] },
-        { kind: "cylinder", axis: X, radius: 0.06, length: L - 1.0, at: [0, 0, 0.18] },
+        { kind: "cylinder", axis: X, radius: 0.06, length: L - 1.0, at: [0, 0, WR - 0.45] }, // 輪軸與兩個滾輪同心
         { kind: "sphere", radius: 0.09, at: [0, 0, 0.2] },
       ],
     },

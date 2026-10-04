@@ -62,4 +62,10 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "spring"], reason: "彈簧的上端掛在機架的橫樑上:端圈伸進橫樑 0.04(96 個取樣中 38 個)" },
+    { check: "interference", parts: ["frame", "blade"], reason: "簡化畫法:鋸條穿過台面上的鋸縫(鋸縫沒畫),鋸條與台面重疊 0.18" },
+    { check: "interference", parts: ["frame", "crank"], reason: "未修:曲柄轉到下方時掃過機架的立柱,重疊 0.09(列入待確認清單)" },
+    { check: "unsupported", parts: ["spring"], reason: "未修:彈簧的上端與機架之間差 0.04(列入待確認清單)" },
+  ],
 };

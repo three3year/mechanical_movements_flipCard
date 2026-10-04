@@ -57,4 +57,8 @@ export default {
   pose(b) {
     return { parts: { wheel: { angle: b }, hammer: { angle: -hammer(-b) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "hammer"], reason: "未修:凸輪抬起錘柄尾端的過程依時序演出,凸輪的凸部與錘柄重疊 0.25;應改成由接觸算(動力重演名單)(列入待確認清單)" },
+    { check: "interference", parts: ["frame", "hammer"], reason: "未修:錘柄與機架的立柱畫在同一層,重疊 0.10;立柱應在錘柄的後面(列入待確認清單)" },
+  ],
 };

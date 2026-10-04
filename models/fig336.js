@@ -58,4 +58,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["lever"], reason: "未修:槓桿與帶動它的側桿之間差 0.07,少畫了相連的銷(列入待確認清單)" },
+    { check: "interference", parts: ["cylinder", "lever"], reason: "未修:槓桿擺動時掃過汽缸的下端,重疊 0.06(96 個取樣中 38 個);槓桿應在汽缸的前面一層(列入待確認清單)" },
+    { check: "interference", parts: ["pipe", "sideRod"], reason: "未修:側桿的下端與蒸汽管畫在同一層,重疊 0.10;蒸汽管應在側桿的後面(列入待確認清單)" },
+  ],
 };

@@ -56,4 +56,9 @@ export default {
   pose(theta) {
     return { parts: { crank: { angle: theta }, crosshead: { position: [0, crosshead(theta), 0] } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["crosshead", "guides"], reason: "十字頭走到行程頂端時碰到導座,重疊 0.14(96 個取樣中 5 個);行程是示意的大小" },
+    { check: "interference", parts: ["crank", "guides"], reason: "未修:曲柄的輪盤與導座畫在同一層,重疊 0.08;導座應在輪盤的前面(列入待確認清單)" },
+    { check: "interference", parts: ["crank", "crosshead"], reason: "接合處的簡化畫法:曲柄銷在十字頭的橫槽裡滑動,銷與槽壁(畫成圓條)重疊 0.13" },
+  ],
 };

@@ -84,4 +84,12 @@ export default {
       readouts: [{ label: "牽引力", value: state === "tight" ? "大(不打滑)" : "小(打滑)" }],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["rubberTight"], reason: "未修:夾緊狀態的橡皮圈與盤之間差 0.04(列入待確認清單)" },
+    { check: "unsupported", parts: ["shaftA"], reason: "未修:軸 A 與帶動它的盤之間沒有接上(差 0.49)(列入待確認清單)" },
+    { check: "unsupported", parts: ["plateR"], reason: "未修:右盤與軸之間少畫了相連的鍵(差 0.15)(列入待確認清單)" },
+    { check: "unsupported", parts: ["plateL"], reason: "未修:左盤與軸之間少畫了相連的鍵(差 0.15)(列入待確認清單)" },
+    { check: "unsupported", parts: ["rubberLoose"], reason: "未修:鬆開狀態的橡皮圈與兩片盤之間差 0.10(列入待確認清單)" },
+    { check: "unsupported", parts: ["lower"], reason: "未修:下方的零件沒有畫出支撐(離最近的實體 0.10)(列入待確認清單)" },
+  ],
 };

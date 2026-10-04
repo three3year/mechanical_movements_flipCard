@@ -99,4 +99,9 @@ export default {
       readouts: [{ label: "擋板 D 退出", value: (BORE - tip).toFixed(2) }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["pistonC", "abutment"], reason: "擋板被活塞頂起的過程依時序演出;活塞經過時與擋板重疊 0.05(96 個取樣中 46 個)" },
+    { check: "interference", parts: ["cylinder", "abutment"], reason: "接合處的簡化畫法:滑動擋板插在汽缸壁的槽裡,槽沒有畫出來,重疊 0.16" },
+    { check: "interference", parts: ["cylinder", "pistonC"], reason: "簡化畫法:活塞的端緣貼著汽缸內壁滑動,重疊 0.09(96 個取樣中 19 個)" },
+  ],
 };

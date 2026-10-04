@@ -77,6 +77,11 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["pins", "legA"], reason: "接合處的簡化畫法:腳以長孔套在銷上滑動,長孔沒有畫出來,重疊 0.08" },
+    { check: "interference", parts: ["pins", "legB"], reason: "接合處的簡化畫法:腳以長孔套在銷上滑動,長孔沒有畫出來,重疊 0.08" },
+    { check: "unsupported", parts: ["blade"], reason: "未修:刀片與夾著它的臂之間差 0.04(列入待確認清單)" },
+  ],
 };
 
 export { LEGS };

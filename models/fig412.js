@@ -83,4 +83,7 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["base", "barrel"], reason: "接合處的簡化畫法:發條盒坐在底板的凹座裡,重疊 0.10" },
+  ],
 };

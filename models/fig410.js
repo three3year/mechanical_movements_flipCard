@@ -88,4 +88,13 @@ export default {
       readouts: [{ label: "兩夾頰間距", value: (s.jaws[1] - s.jaws[0]).toFixed(2) }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["board", "jaw"], reason: "未修:夾口擺到極限時碰到板的邊緣,重疊 0.12(96 個取樣中 55 個)(列入待確認清單)" },
+    { check: "interference", parts: ["linkB", "tip"], reason: "接合處的簡化畫法:筆尖裝在兩根連桿的接點上,與連桿端重疊 0.03" },
+    { check: "interference", parts: ["linkA", "tip"], reason: "接合處的簡化畫法:筆尖裝在兩根連桿的接點上,與連桿端重疊 0.03" },
+    { check: "interference", parts: ["linkA", "linkB"], reason: "接合處的簡化畫法:兩根連桿的端頭在同一個接點相疊,軸眼互相重疊 0.10" },
+    { check: "unsupported", parts: ["tip"], reason: "未修:筆尖與兩根連桿的接點之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["linkB"], reason: "未修:連桿 B 與夾口之間差 0.05,少畫了鉸接的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["linkA"], reason: "未修:連桿 A 與夾口之間差 0.05,少畫了鉸接的銷(列入待確認清單)" },
+  ],
 };

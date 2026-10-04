@@ -54,4 +54,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["pin", "string"], reason: "線繫在銷上:線頭繞在銷上,中心線落在銷內 0.04" },
+    { check: "interference", parts: ["pin", "square"], reason: "未修:角尺滑到行程端時伸到固定的銷,重疊 0.19(96 個取樣中 8 個)(列入待確認清單)" },
+    { check: "interference", parts: ["square", "pencil"], reason: "鉛筆靠在角尺的邊上:筆身與尺邊重疊 0.04" },
+  ],
 };

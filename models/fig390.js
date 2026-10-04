@@ -75,4 +75,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["pulleyC", "strapC"], reason: "帶子的端頭繫在輪緣上:帶子的第一段貼著輪面,中心線落在輪緣內 0.05" },
+    { check: "interference", parts: ["pulleyD", "strapD"], reason: "帶子的端頭繫在輪緣上:帶子的第一段貼著輪面,中心線落在輪緣內 0.06" },
+  ],
 };

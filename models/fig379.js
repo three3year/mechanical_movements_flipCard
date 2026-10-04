@@ -54,4 +54,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "work"], reason: "未修:工件走到行程端時碰到機架,重疊 0.12(96 個取樣中 26 個)(列入待確認清單)" },
+    { check: "unsupported", parts: ["work"], reason: "未修:工件與推它的螺桿之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["screw"], reason: "未修:螺桿與帶動它的零件之間少畫了相連的軸(列入待確認清單)" },
+  ],
 };

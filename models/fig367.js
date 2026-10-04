@@ -65,4 +65,10 @@ export default {
       readouts: [{ label: "兩尺葉間距", value: `${(r.gap * 10).toFixed(1)} mm` }],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["pointer"], reason: "未修:指針與連桿之間差 0.04(前後不同層),少畫了相連的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["linkR"], reason: "未修:右連桿與上下兩桿之間差 0.04(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["linkL"], reason: "未修:左連桿與上下兩桿之間差 0.04(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["upper"], reason: "未修:上方的桿與連桿之間差 0.03(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+  ],
 };

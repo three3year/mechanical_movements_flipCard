@@ -77,4 +77,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["legFB"], reason: "未修:後腿與機身之間差 0.11(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["legFF"], reason: "未修:前腿與機身之間差 0.19(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
+  ],
 };

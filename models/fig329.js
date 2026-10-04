@@ -39,10 +39,10 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.25, 5.4, 0.3], at: [-2.05, -1.3, -0.4] },
-        { kind: "box", size: [0.25, 5.4, 0.3], at: [2.05, -1.3, -0.4] },
-        { kind: "box", size: [4.4, 0.2, 0.3], at: [0, 0.9, -0.4] },
-        { kind: "box", size: [4.4, 0.18, 0.8], at: [0, -4.3, 0] },
+        { kind: "box", size: [0.25, 5.4, 0.3], at: [-2.05, -1.3, -0.3] },
+        { kind: "box", size: [0.25, 5.4, 0.3], at: [2.05, -1.3, -0.3] },
+        { kind: "box", size: [4.4, 0.2, 0.3], at: [0, 0.9, -0.3] },
+        { kind: "box", size: [4.4, 0.18, 0.8], at: [0, -4.37, 0] },
       ],
     },
     // 靜止的內齒輪 D
@@ -53,17 +53,17 @@ export default {
       center: C0,
       spin: 2.7,
       pieces: [
-        { kind: "plate", shape: shape([...arcPoints(2.8, 0, TAU).slice(0, -1)], [arcPoints(2.55, 0, TAU).slice(0, -1).reverse()]), thickness: 0.2, at: [0, 0, -0.6] },
-        ...[0, 1, 2].map((i) => ({ kind: "box", size: [2.6, 0.14, 0.1], at: [1.3 * Math.cos((i * TAU) / 3), 1.3 * Math.sin((i * TAU) / 3), -0.6], angle: (i * TAU) / 3 })),
-        { kind: "cylinder", radius: 0.2, length: 1.0, at: [0, 0, -0.2] },
+        { kind: "plate", shape: shape([...arcPoints(2.8, 0, TAU).slice(0, -1)], [arcPoints(2.55, 0, TAU).slice(0, -1).reverse()]), thickness: 0.2, at: [0, 0, -0.68] },
+        ...[0, 1, 2].map((i) => ({ kind: "box", size: [2.6, 0.14, 0.1], at: [1.3 * Math.cos((i * TAU) / 3), 1.3 * Math.sin((i * TAU) / 3), -0.68], angle: (i * TAU) / 3 })),
+        { kind: "cylinder", radius: 0.2, length: 0.75, at: [0, 0, -0.375] }, // 軸止於行星齒輪 B 的背面(B 的輪緣繞著軸心轉)
         // 板 C:從軸心到曲柄銷
-        { kind: "plate", shape: shape([[0, -0.14], [RB, -0.1], [RB, 0.1], [0, 0.14]], [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, 0.22] },
-        { kind: "cylinder", radius: 0.06, length: 0.35, at: [RB, 0, 0.2], accent: true },
+        { kind: "plate", shape: shape([[0, -0.14], [RB, -0.1], [RB, 0.1], [0, 0.14]], [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, -0.05] }, // 板 C 在行星齒輪 B 的後面,曲柄銷往前插進 B 的中心
+        { kind: "cylinder", radius: 0.06, length: 0.3, at: [RB, 0, 0.05], accent: true },
       ],
       label: "C",
       labelOffset: [0.35, -0.25, 0.4],
     },
-    { id: "gearB", kind: "gear", teeth: NB, radius: RB, width: 0.14, label: "B", labelOffset: [-0.3, 0, 0.3], pieces: [{ kind: "cylinder", radius: 0.05, length: 0.3, at: [RB * Math.cos(WRIST), RB * Math.sin(WRIST), 0.15] }] },
+    { id: "gearB", kind: "gear", teeth: NB, radius: RB, width: 0.14, hub: false, label: "B", labelOffset: [-0.3, 0, 0.3], pieces: [{ kind: "cylinder", radius: 0.05, length: 0.5, at: [RB * Math.cos(WRIST), RB * Math.sin(WRIST), 0.2] }] },
     { id: "rodA", kind: "box", size: [0.09, PISTON_ROD, 0.08], label: "A", labelOffset: [0.25, 1.2, 0.3] },
     { id: "pipe", ...steamPipe(CYL) },
     ...cylinderParts(CYL),
@@ -80,7 +80,7 @@ export default {
       parts: {
         flywheel: { angle: h.phi },
         gearB: { position: [h.center[0], h.center[1], 0.1], angle: h.spin },
-        rodA: { position: [0, h.wrist[1] - PISTON_ROD / 2, 0.2] },
+        rodA: { position: [0, h.wrist[1] - PISTON_ROD / 2, 0.45] },
         ...cyl.parts,
       },
       flows: cyl.flows,

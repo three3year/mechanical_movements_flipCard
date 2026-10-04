@@ -45,4 +45,10 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["pistonRod"], reason: "未修:活塞桿頂端與平行運動的連桿之間少畫了十字頭的銷(前後不同層)(列入待確認清單)" },
+    { check: "unsupported", parts: ["short"], reason: "未修:短連桿與樑之間差 0.13,少畫了相連的銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["radiusBar"], reason: "未修:半徑桿與樑上的連桿之間少畫了相連的銷,前後各層之間有空隙(列入待確認清單)" },
+    { check: "unsupported", parts: ["beam"], reason: "未修:樑的樞軸沒有畫出支座(離最近的實體 0.13)(列入待確認清單)" },
+  ],
 };

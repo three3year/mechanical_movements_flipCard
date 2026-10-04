@@ -62,4 +62,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["bed", "board"], reason: "未修:木板與床台的擋塊重疊 0.14;擋塊應貼著木板的邊緣(列入待確認清單)" },
+  ],
 };

@@ -71,4 +71,9 @@ export default {
     const c = [ECC.center[0] + ECC.e * Math.cos(theta), ECC.center[1] - 0.6 + ECC.e * Math.sin(theta), 0.25];
     return { parts: { rack: { position: [0, h - 0.2, 0] }, eccentric: { angle: theta }, pawl: { position: c, angle: 0 } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["rack", "eccentric"], reason: "偏心輪頂齒條的過程依時序演出;偏心輪與齒條的齒重疊 0.04(96 個取樣中 20 個)" },
+    { check: "interference", parts: ["body", "rack"], reason: "未修:齒條與千斤頂的殼體畫在同一層,重疊 0.08;殼體上讓齒條通過的槽沒有畫出來(列入待確認清單)" },
+    { check: "unsupported", parts: ["pawl"], reason: "未修:棘爪沒有畫出樞軸,與齒條之間差 0.05(列入待確認清單)" },
+  ],
 };

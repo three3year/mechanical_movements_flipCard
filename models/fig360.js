@@ -112,4 +112,12 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["flywheel", "pawl"], reason: "棘爪落在飛輪側面棘齒上的位置依時序演出;爪尖伸進齒 0.08" },
+    { check: "interference", parts: ["frame", "flywheel"], reason: "未修:飛輪的輪緣與機架的立柱畫在同一層,重疊 0.13;立柱應在飛輪的後面(列入待確認清單)" },
+    { check: "unsupported", parts: ["ropeR"], reason: "未修:右繩與鼓輪之間差 0.13(列入待確認清單)" },
+    { check: "unsupported", parts: ["pawl"], reason: "未修:棘爪與鼓輪之間少畫了樞軸銷(列入待確認清單)" },
+    { check: "unsupported", parts: ["drum"], reason: "未修:鼓輪與踏板的繩之間沒有接上(列入待確認清單)" },
+    { check: "unsupported", parts: ["flywheel"], reason: "未修:飛輪與帶動它的鼓輪之間少畫了相連的軸(差 0.15)(列入待確認清單)" },
+  ],
 };

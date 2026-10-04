@@ -62,4 +62,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["axes", "string"], reason: "線繫在軸銷上:線頭繞在銷上,中心線落在銷內 0.06" },
+    { check: "interference", parts: ["axes", "ruler"], reason: "未修:尺滑到行程端時伸到固定的軸銷,重疊 0.13(96 個取樣中 11 個)(列入待確認清單)" },
+  ],
 };

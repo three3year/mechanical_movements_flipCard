@@ -79,4 +79,9 @@ export default {
     };
     return { parts: { drum: { angle: t.drum }, legA: leg(1), legB: leg(-1) }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["person", "legB"], reason: "簡化畫法:人形的腿接在身體下緣,腿根伸進身體的方塊 0.08" },
+    { check: "interference", parts: ["person", "legA"], reason: "簡化畫法:人形的腿接在身體下緣,腿根伸進身體的方塊 0.08" },
+    { check: "interference", parts: ["frame", "drum"], reason: "簡化畫法:鼓輪上的踏塊轉到最低時擦到底板 0.03(96 個取樣中 29 個)" },
+  ],
 };
