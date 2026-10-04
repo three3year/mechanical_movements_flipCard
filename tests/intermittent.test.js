@@ -48,7 +48,8 @@ test("第 75 種:棘爪 B 與止回爪的爪尖始終靠在輪面上,不穿進�
   }
 });
 
-import { counter, starPitch, pinPeriod, RELEASE, dropSpan } from "../models/fig063.js";
+import { counter, starPitch, pinPeriod, RELEASE, dropSpan, contactAt as contactAt63 } from "../models/fig063.js";
+import { penetrationDepth as depth63 } from "../models/contact.js";
 import { hollowAt as hollow64, period as period64 } from "../models/fig064.js";
 import { hollowAt as hollow66 } from "../models/fig066.js";
 import { hollowAt as hollow67, centerOfMass } from "../models/fig067.js";
@@ -69,7 +70,31 @@ test("第 63 種:插銷把落板抬起(星形輪不動),插銷滑脫後落板落
   const fall = sweep(RELEASE + dropSpan, 10, RELEASE).map((w) => counter(w).drop);
   for (let i = 1; i < fall.length; i++) assert.ok(fall[i] <= fall[i - 1] + 1e-9, "落板只往下");
   assert.ok(fall[0] - fall[3] < fall[3] - fall[7], "落下先慢後快");
-  assert.ok(Math.abs(counter(RELEASE + dropSpan + 0.3).drop - after.drop) < 1e-9, "落定後靜止");
+  assert.ok(Math.abs(counter(RELEASE + dropSpan + 0.15).drop - after.drop) < 1e-9, "落定後靜止");
+});
+
+test("第 63 種:照原文的順序——插銷先從棘爪滑脫、棘爪落進下一格,再從落板滑脫;落板落下的過程中星形輪被爪尖一路推過去", () => {
+  const centerOf = (poly) => poly.reduce((c, [x, y]) => [c[0] + x / poly.length, c[1] + y / poly.length], [0, 0]);
+  const tipRadius = (w) => {
+    const { peg, star } = contactAt63(w);
+    const [px, py] = centerOf(peg);
+    const [sx, sy] = centerOf(star);
+    return Math.hypot(px - sx, py - sy);
+  };
+  const OUTER = 1.38; // 星形輪的齒尖半徑
+  assert.ok(sweep(RELEASE - 0.8, 10, RELEASE - 1.2).some((w) => tipRadius(w) > OUTER), "插銷頂著棘爪的耳時,爪尖被抬到齒尖外");
+  assert.ok(tipRadius(RELEASE - 0.02) < OUTER - 0.1, "落板滑脫之前,棘爪已經落進下一格");
+  // 星形輪在落板落下的過程中一步一步被推(不是落定那一刻跳一格)
+  const stars = sweep(RELEASE + dropSpan, 60, RELEASE).map((w) => counter(w).star);
+  const steps = stars.slice(1).map((a, i) => a - stars[i]);
+  for (const d of steps) assert.ok(d > -1e-9 && d < starPitch / 4, `星形輪只往前、每一小段只轉一點(${d.toFixed(3)})`);
+  assert.ok(steps.filter((d) => d > 1e-6).length > 10, "推動佔落下過程的一段時間");
+  // 爪尖不穿入星形輪,插銷不穿入棘爪
+  for (const w of sweep(pinPeriod * 2, 240)) {
+    const c = contactAt63(w);
+    assert.ok(depth63(c.peg, c.star) < 0.01, `w = ${w.toFixed(3)} 時爪尖沒有穿入星形輪`);
+    for (const p of c.pins) assert.ok(depth63(c.pawl, p) < 0.01, `w = ${w.toFixed(3)} 時插銷沒有穿入棘爪`);
+  }
 });
 
 test("第 64 種:蝸輪軸上的銷推著凸輪走,到臨界點凸輪往前掉落(有加速的過程,不是瞬移),再停住等銷追上", () => {
