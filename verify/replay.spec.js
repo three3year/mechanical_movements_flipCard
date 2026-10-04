@@ -126,3 +126,14 @@ test("同樣的輸入每次結果相同;豁免對動力重演同樣有效", () =
   const waived = { ...def, waivers: [{ check: "replay", parts: ["bar"], reason: "示範:棘爪刻意做短" }] };
   assert.deepEqual(unwaived(verifyModel(waived, { checks: ["replay"] })), []);
 });
+
+test("動力重演的豁免可以用 at 指明預期事件:只放過那一個,同一個零件的其他事件照報", () => {
+  const def = pushRatchet(0.7); // 棘爪太短:去程與回程兩個預期事件都不成立
+  const both = replayed(def);
+  assert.equal(both.length, 2);
+  const one = replayed({ ...def, waivers: [{ check: "replay", parts: ["bar"], at: 1, reason: "只放過去程這一項" }] });
+  assert.equal(one.length, 1);
+  assert.equal(one[0].value, 2);
+  const all = replayed({ ...def, waivers: [{ check: "replay", parts: ["bar"], reason: "沒寫 at:這個零件的每個預期事件" }] });
+  assert.equal(all.length, 0);
+});

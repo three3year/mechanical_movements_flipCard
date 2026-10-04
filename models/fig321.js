@@ -98,7 +98,7 @@ export default {
     const h = harrison(p);
     // 彈簧:一端在較大的棘輪上、一端在主輪上
     const onBig = (a, r) => [r * Math.cos(a + h.big), r * Math.sin(a + h.big), 0.05];
-    const onG = (a, r) => [r * Math.cos(a + h.g), r * Math.sin(a + h.g), -0.12]; // 彈簧的另一端扣在後面一層的主輪 G 上
+    const onG = (a, r) => [r * Math.cos(a + h.g), r * Math.sin(a + h.g), -0.04]; // 彈簧的另一端扣在後面一層的主輪 G 上
     const t = pawlRest({ pivot: T_PIVOT, length: Math.hypot(1.15, 0.55), from: deg(160), into: 1, sweep: 1.0 }, { center: [0, 0], angle: h.big, ...BIG });
     const ropeX = DRUM; // 繩從捲繩筒右側垂下:筒順時針轉時重物下降
     return {

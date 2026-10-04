@@ -340,13 +340,14 @@ function nearestGaps(def, scene, values, state, wanted, opt) {
 
 const sameParts = (a, b) => a.length === b.length && [...a].sort().join("\n") === [...b].sort().join("\n");
 
-/** 有原因的豁免才有效;每一項只放過它指明的檢查與零件。沒對到任何問題的豁免報為過時 */
+/** 有原因的豁免才有效;每一項只放過它指明的檢查與零件(動力重演另可用 at 指明是哪一個預期事件)。沒對到任何問題的豁免報為過時 */
 function applyWaivers(def, findings, opt) {
   const out = findings.map((f) => ({ ...f }));
   for (const waiver of def.waivers ?? []) {
     if (!waiver.reason || !String(waiver.reason).trim()) continue;
     if (!opt.checks.includes(waiver.check)) continue;
-    const matched = out.filter((f) => f.check === waiver.check && sameParts(f.parts, waiver.parts ?? []));
+    // 動力重演的豁免可以用 at 指明是哪一個預期事件(主動量),只放過那一個;沒寫 at 就是這個零件的每個預期事件
+    const matched = out.filter((f) => f.check === waiver.check && sameParts(f.parts, waiver.parts ?? []) && (waiver.at == null || (f.check === "replay" && Math.abs(f.value - waiver.at) < 1e-9)));
     for (const f of matched) f.waived = waiver.reason;
     if (!matched.length) {
       out.push({

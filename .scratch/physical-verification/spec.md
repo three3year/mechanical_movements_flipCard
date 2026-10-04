@@ -1,6 +1,6 @@
 # 實體驗證:全書模型的干涉、憑空連動與動力重演檢查,並逐張對照原文與插圖
 
-Status: in-progress(工具完成;全書查修以待確認的豁免帶過,見 pending.md)
+Status: in-progress(工具完成;「待確認」的豁免已逐項處理,還有 60 項未修與動力重演未補,見 pending.md)
 
 ## Problem Statement
 
