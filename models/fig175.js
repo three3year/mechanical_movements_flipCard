@@ -58,7 +58,7 @@ export default {
     },
     { id: "rod", kind: "link", width: 0.16, thickness: 0.08, stretch: true },
     { id: "swivel", kind: "plate", center: SWIVEL, shape: shape(circle(0.18), [circle(0.08).reverse()]), thickness: 0.25, posed: true, arrow: false },
-    { id: "slider", kind: "cylinder", radius: 0.12, length: 0.4 },
+    { id: "slider", kind: "cylinder", radius: 0.12, length: 0.36 }, // 在機架的長槽裡滑,頂面貼著連桿的背面
   ],
   driver: { part: "crank", type: "rotation" },
   target: "slider",
@@ -68,9 +68,9 @@ export default {
     return {
       parts: {
         crank: { angle: theta },
-        rod: { from: [pin[0], pin[1], 0.25], to: [end[0], end[1], 0.25] },
+        rod: { from: [pin[0], pin[1], 0.17], to: [end[0], end[1], 0.17] }, // 連桿貼著曲柄、銷座與滑銷的前面
         swivel: { angle },
-        slider: { position: [end[0], end[1], 0.15] },
+        slider: { position: [end[0], end[1], -0.06] },
       },
       readouts: [],
     };

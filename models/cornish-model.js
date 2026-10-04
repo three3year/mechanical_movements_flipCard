@@ -51,17 +51,20 @@ const ARMS = {
   lower: { angle: deg(206) - ANGLES.lower.A, length: 1.9, rod: -1.6 },
 };
 
+const ARM_Z = -0.6; // 閥桿臂在活塞桿的後面(撥爪從它前方通過)
+
 function shaftPart(which, lock) {
   const arm = ARMS[which];
   const pieces = [
     { kind: "cylinder", radius: 0.36, inner: 0.2, length: 0.3 },
-    { kind: "cylinder", radius: 0.2, length: 0.5, accent: true },
+    { kind: "cylinder", radius: 0.2, length: 1.0, at: [0, 0, -0.2], accent: true }, // 軸往後伸到活塞桿後面的閥桿臂
     // 手柄:直臂與端點的圓頭
-    { kind: "box", size: [HANDLE - 0.3, 0.13, 0.1], at: [(HANDLE + 0.3) / 2, 0, 0.1] },
-    { kind: "sphere", radius: 0.13, at: [HANDLE, 0, 0.1] },
+    // 手柄是薄的直條、端頭不加球:撥爪是以手柄中心線與活塞桿邊緣的交點算的,有厚度的端頭會陷進撥爪。
+    // 上下兩支手柄前後錯開一層,交叉時互不相碰
+    { kind: "box", size: [HANDLE - 0.3, 0.04, 0.1], at: [(HANDLE + 0.3) / 2, 0, which === "upper" ? 0.22 : 0.1] },
     // 閥臂
-    { kind: "plate", shape: shape(thick([[0, 0], polar(arm.length, arm.angle).slice(0, 2)], 0.2)), thickness: 0.1, at: [0, 0, -0.15] },
-    { kind: "cylinder", radius: 0.12, inner: 0.05, length: 0.15, at: [...polar(arm.length, arm.angle).slice(0, 2), -0.15] },
+    { kind: "plate", shape: shape(thick([[0, 0], polar(arm.length, arm.angle).slice(0, 2)], 0.2)), thickness: 0.1, at: [0, 0, ARM_Z] },
+    { kind: "cylinder", radius: 0.12, inner: 0.05, length: 0.15, at: [...polar(arm.length, arm.angle).slice(0, 2), ARM_Z] },
   ];
   if (lock === "quadrants") pieces.push({ kind: "plate", shape: localSector(which), thickness: 0.12, at: [0, 0, 0.3] });
   return { id: which, kind: "group", center: SHAFTS[which], arrow: false, pieces };
@@ -88,8 +91,8 @@ export function cornishModel({ figure, lock, initial }) {
       kind: "group",
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape(CATCH), thickness: 0.12, at: [0, 0, 0.3] },
-        { kind: "cylinder", radius: 0.3, inner: 0.14, length: 0.2, at: [0, 0, 0.3] },
+        { kind: "plate", shape: shape(CATCH), thickness: 0.12, at: [0, 0, 0.34] },
+        { kind: "cylinder", radius: 0.3, inner: 0.14, length: 0.12, at: [0, 0, 0.34] },
       ],
     });
   return {
@@ -103,7 +106,7 @@ export function cornishModel({ figure, lock, initial }) {
       const state = cornish(v);
       const pin = (which) => {
         const a = state[which] + ARMS[which].angle;
-        return add(SHAFTS[which], polar(ARMS[which].length, a, -0.15));
+        return add(SHAFTS[which], polar(ARMS[which].length, a, ARM_Z));
       };
       const up = pin("upper");
       const low = pin("lower");

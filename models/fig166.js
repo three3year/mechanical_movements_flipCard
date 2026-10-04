@@ -73,7 +73,7 @@ export default {
       parts: {
         disc: { angle: theta },
         rod: { position: [x, MOLD_Y, 0.35], angle: angleOf([x, MOLD_Y, 0], pin) },
-        mold: { position: [x + 0.3, MOLD_Y, 0.35] },
+        mold: { position: [x + 0.3, MOLD_Y, 0.1] }, // 模具在桿的後面一層
       },
       readouts: [],
     };

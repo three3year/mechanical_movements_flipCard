@@ -5,7 +5,7 @@ import { Y, deg } from "./kit.js";
 import { flyBall } from "./governor.js";
 
 const GOV = flyBall({ top: 2.4, arm: 2.3, at: 1.15, link: 1.6, ball: 0.45, range: [deg(16), deg(48)] });
-const LEVER = { pivot: [-2.0, -0.4, 0], length: 2.0 };
+const LEVER = { pivot: [-2.0, -0.46, 0], length: 2.0 };
 
 /** 轉速 s:張角與滑塊的高度 */
 export function governor(s) {
@@ -34,11 +34,13 @@ export default {
       center: LEVER.pivot,
       arrow: false,
       pieces: [
-        { kind: "plate", shape: { outline: [[0, -0.08], [LEVER.length, -0.05], [LEVER.length, 0.08], [0, 0.12]], holes: [] }, thickness: 0.12 },
-        { kind: "box", size: [0.2, 0.12, 0.3], at: [LEVER.length, 0, 0] },
+        { kind: "plate", shape: { outline: [[0, -0.08], [LEVER.length - 0.1, -0.05], [LEVER.length - 0.1, 0.08], [0, 0.12]], holes: [] }, thickness: 0.12 },
+        // 叉形的端頭:兩支叉齒夾著心軸、托在套筒的下面
+        { kind: "box", size: [0.2, 0.06, 0.08], at: [LEVER.length, 0.06, 0.14] },
+        { kind: "box", size: [0.2, 0.06, 0.08], at: [LEVER.length, 0.06, -0.14] },
       ],
     },
-    { id: "bracket", kind: "box", center: [-1.0, -0.8, 0], size: [2.2, 0.12, 0.3] },
+    { id: "bracket", kind: "group", pieces: [{ kind: "box", size: [2.0, 0.12, 0.3], at: [-1.1, -0.8, 0] }, { kind: "box", size: [0.12, 0.26, 0.3], at: [-2.0, -0.67, 0] }] }, // 支架不碰心軸,立柱托著槓桿的樞軸
   ],
   powered: ["ballL", "ballR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, 10], initial: 8.8 },

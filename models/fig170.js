@@ -31,7 +31,7 @@ export default {
       pieces: [
         { kind: "cylinder", axis: Y, radius: 0.07, length: 3.8, at: [0, 0.1, 0] },
         { kind: "gear", teeth: 24, radius: 0.5, cone: deg(45), width: 0.2, axis: [0, 1, 0], at: [0, -1.25, 0] },
-        { kind: "cylinder", axis: Y, radius: 0.14, length: 0.3, at: [0, PIVOT[1], 0] },
+        { kind: "cylinder", radius: 0.05, length: 0.4, at: [0, PIVOT[1], 0] }, // 兩支搖臂共用的樞軸銷(橫穿心軸)
       ],
     },
     { id: "armL", kind: "link", width: 0.1, thickness: 0.06 },
@@ -40,7 +40,7 @@ export default {
     { id: "ballR", kind: "sphere", radius: 0.42 },
     { id: "linkL", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "linkR", kind: "link", width: 0.08, thickness: 0.05 },
-    { id: "rod", kind: "group", pieces: [{ kind: "cylinder", axis: Y, radius: 0.06, length: 1.3, at: [0, 0.6, 0] }, { kind: "cylinder", radius: 0.12, inner: 0.05, length: 0.15 }] },
+    { id: "rod", kind: "group", pieces: [{ kind: "cylinder", axis: Y, radius: 0.06, length: 1.3, at: [0, 0.6, 0] }, { kind: "cylinder", radius: 0.12, inner: 0.05, length: 0.24 }] },
   ],
   powered: ["ballL", "ballR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, MAX], initial: 8.8 },

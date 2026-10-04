@@ -55,4 +55,8 @@ export default {
       readouts: [{ label: "銷", value: released ? "已脫出鉤口" : "在鉤口中" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["rocker", "handle"], reason: "手柄抬桿的量是以指頭尖一點頂在凸柱上算的;指頭有寬度,尖端旁的邊角伸進凸柱 0.11" },
+    { check: "interference", parts: ["rocker", "rod"], reason: "搖臂上的凸柱與偏心桿畫在同一層:手柄把偏心桿抬離銷時,桿的上緣擺到凸柱的位置,重疊 0.23。原圖是平面圖,看不出凸柱與偏心桿前後怎麼錯開;要改得把凸柱移到桿的輪廓之外(列入待確認清單)" },
+  ],
 };

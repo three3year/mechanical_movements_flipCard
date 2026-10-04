@@ -64,11 +64,11 @@ export default {
     // 上圓盤的孔在 phi + 0 與 phi + π 方向;下圓盤的孔落後 skew
     const skew = SKEW0 - phi;
     const ups = [hole(phi, UPPER_Y - 0.085), hole(phi + Math.PI, UPPER_Y - 0.085)]; // 斜桿的兩端頂在上下圓盤的盤面上(球窩沒畫)
-    const downs = [hole(phi + skew, y), hole(phi + skew + Math.PI, y)];
+    const downs = [hole(phi + skew, y - 0.085), hole(phi + skew + Math.PI, y - 0.085)];
     return {
       parts: {
         upper: { angle: phi },
-        lower: { position: [0, y - 0.1, 0] },
+        lower: { position: [0, y - 0.185, 0] },
         rodA: { from: ups[0], to: downs[0] },
         rodB: { from: ups[1], to: downs[1] },
       },

@@ -3,6 +3,7 @@
 // 下端的鉤把木料壓向側板夾緊。夾爪的上端伸到側板後面(原圖的虛線)。主動件是木料(往上推)。
 // 推斷:同第 174 種——頂到之前夾爪張開不動,頂到之後轉角與推進量成正比;初始是原圖的夾緊位置。
 import { shape, circle, rect } from "./shapes.js";
+import { swingUntilContact } from "./contact.js";
 
 const PLATE = { x: [-2.55, -1.75], y: [-2.6, 3.55] };
 const BOARD = { x: [-1.75, -1.05], top: 1.8, bottom: -2.6 };
@@ -10,12 +11,11 @@ const PUSH = 1.0;
 const ARM = 1.2; // 接觸點到螺絲的水平距離
 const GRIP = 0; // 夾緊時(原圖)夾爪的轉角
 const OPEN = 0.18; // 未頂到時夾爪張開的轉角(逆時針)
-const CONTACT = PUSH - (OPEN - GRIP) * ARM;
 
 /** 木料推進 d(0 為最低、PUSH 為夾緊):木料頂端高度與夾爪轉角 */
 export function clamp(d) {
-  const t = Math.max(0, Math.min(1, (d - CONTACT) / (PUSH - CONTACT)));
-  return { top: BOARD.top - (PUSH - d), angle: OPEN + (GRIP - OPEN) * t };
+  const top = TOP_AT - (PUSH - d);
+  return { top, angle: jawAngle(top) };
 }
 export const grip = { GRIP, OPEN, BOARD };
 
@@ -25,6 +25,20 @@ const JAW = [
   [-0.55, -2.4], [-0.9, -2.3], [-1.05, -2.0], [-1.05, -1.7], [-0.75, -1.45], [-0.5, -1.1], [-0.55, -0.7], [-0.75, -0.3],
   [-0.85, 0.3], [-0.9, 1.0], [-1.05, 1.5], [-1.3, 1.9], [-1.7, 2.5], [-2.2, 2.8],
 ].reverse();
+// 木料的頂端頂著夾爪的上臂,把夾爪從張開(OPEN)一路推到夾緊(GRIP):轉角由頂端與上臂的接觸算
+const jawAngle = (top) =>
+  Math.min(OPEN, swingUntilContact({ pivot: [0, 0], outline: JAW, from: GRIP - 0.1, into: 1, sweep: OPEN - GRIP + 0.1 }, [[[BOARD.x[0], top - 0.3], [BOARD.x[1], top - 0.3], [BOARD.x[1], top], [BOARD.x[0], top]]]));
+// 夾緊時木料頂端的高度:正好把夾爪頂到 GRIP(BOARD.top 是原圖量的概略位置,以它為中心找)
+const TOP_AT = (() => {
+  let lo = BOARD.top - 0.8;
+  let hi = BOARD.top + 0.8;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (jawAngle(mid) > GRIP) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+})();
 /** 鉤的最左緣(局部),夾緊時貼著木料 */
 export const nose = [-1.05, -1.85];
 

@@ -254,8 +254,8 @@ test("第 174 種:把木料推入兩夾爪之間,夾爪繞螺絲轉、夾緊木�
   assert.ok(inn.angle < out.angle, "上夾爪順時針轉(下夾爪對稱)");
   close(noseAt(nose174, [0, PIVOT], inn.angle)[1], grip174.HALF, "推到底時上鉤貼著木料上緣", 0.01);
   assert.ok(noseAt(nose174, [0, PIVOT], out.angle)[1] > grip174.HALF + 0.2, "木料抽出時夾爪張開");
-  // 木料還沒頂到內緣時,夾爪不動
-  close(clamp174(0.2).angle, out.angle);
+  // 木料還沒頂到夾爪尾端時,夾爪不動(頂到的位置由夾爪外形決定)
+  close(clamp174(0.05).angle, out.angle);
 });
 
 test("第 178 種:滑塊由偏心的圓形溝槽引導,接近底部時曲柄變短,連桿的速度降低", () => {

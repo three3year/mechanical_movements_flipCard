@@ -67,6 +67,7 @@ export default {
       ],
     },
     { id: "hanger", kind: "link", width: 0.12, thickness: 0.08 },
+    { id: "pivot", kind: "cylinder", radius: 0.075, length: 0.5, center: [BELL.pivot[0], BELL.pivot[1], 0] }, // 槓桿的固定樞軸(推斷)
   ],
   driver: { part: "bell", type: "rotation", range: [0, MAX] },
   target: "rod",
@@ -78,7 +79,7 @@ export default {
       parts: {
         rod: { angle: rodAngle(lift) },
         bell: { angle: phi },
-        hanger: { from: [end[0], end[1], 0.2], to: [pin[0], pin[1], 0.2] },
+        hanger: { from: [end[0], end[1], 0.14], to: [pin[0], pin[1], 0.14] },
       },
       readouts: [{ label: "銷", value: released ? "已脫出鉤口" : "在鉤口中" }],
     };

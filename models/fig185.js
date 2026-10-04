@@ -14,8 +14,8 @@ const HALF = 0.85; // 連桿兩端離中心
 const ROD = 3.3;
 const LEADS = [deg(110), deg(-110)]; // 前進與後退偏心輪(相對曲柄,局部座標)
 const motion = linkMotion({ shaft: SHAFT, dir: [-1, 0, 0], ecc: ECC, rod: ROD, half: HALF, leads: LEADS });
-const LIFT = { forward: -HALF * 0.92, cutoff: -HALF * 0.45, mid: 0, backward: HALF * 0.92 };
-const ROCKER = { pivot: [-0.85, 0.45, 0], down: 0.95, up: 0.9 };
+const LIFT = { forward: -HALF * 0.8, cutoff: -HALF * 0.45, mid: 0, backward: HALF * 0.8 }; // 全程時滑塊離連桿端頭留一點距離(不碰偏心桿的端頭)
+const ROCKER = { pivot: [-0.85, 0.45, 0.13], down: 0.95, up: 0.9 };
 const BLOCK_ROD = 0.85;
 const HANDLE = { pivot: [-1.7, 1.15, 0], length: 2.0, arm: 1.2 };
 // 手柄轉角:讓手柄短臂端點的高度差等於連桿被移動的量
@@ -26,9 +26,10 @@ export const gear = (theta, state) => motion(theta, LIFT[state]);
 export const states = Object.keys(LIFT);
 
 // 曲面開槽連桿(在局部座標:沿 y 長 2·HALF,弧形)
+// 連桿畫成直的(原圖略彎):滑塊的位置是在連桿兩端之間直線內插的,槽是直的才對得上
 const linkShape = shape(
-  [...arcPoints(3.4, deg(-14), deg(14), -3.4 + 0.18, 0), ...arcPoints(3.4, deg(14), deg(-14), -3.4 - 0.18, 0)].map(([x, y]) => [x, y]),
-  [[...arcPoints(3.4, deg(-12), deg(12), -3.4 + 0.07, 0), ...arcPoints(3.4, deg(12), deg(-12), -3.4 - 0.07, 0)].reverse()],
+  [[-0.18, -1.05], [0.18, -1.05], [0.18, 1.05], [-0.18, 1.05]],
+  [[[-0.07, -0.98], [0.07, -0.98], [0.07, 0.98], [-0.07, 0.98]].reverse()],
 );
 
 const z = (p, d) => [p[0], p[1], d];
@@ -42,15 +43,15 @@ export default {
       center: SHAFT,
       spin: ECC + 0.55,
       pieces: [
-        { kind: "cylinder", radius: 0.16, length: 1.4, mark: true },
+        { kind: "cylinder", radius: 0.16, length: 0.7, at: [0, 0, -0.25], mark: true }, // 軸只到偏心輪的背面(偏心桿從偏心輪的中心伸出,不穿過軸)
         { kind: "plate", shape: shape(circle(0.52, ...polar(ECC, LEADS[0] + Math.PI).slice(0, 2)), [circle(0.17).reverse()]), thickness: 0.2, at: [0, 0, 0.3] },
         { kind: "plate", shape: shape(circle(0.52, ...polar(ECC, LEADS[1] + Math.PI).slice(0, 2)), [circle(0.17).reverse()]), thickness: 0.2, at: [0, 0, 0.55] },
       ],
     },
     { id: "rodForward", kind: "link", width: 0.16, thickness: 0.08 },
     { id: "rodBackward", kind: "link", width: 0.16, thickness: 0.08 },
-    { id: "link", kind: "plate", shape: linkShape, thickness: 0.12, posed: true, arrow: false },
-    { id: "block", kind: "box", size: [0.2, 0.2, 0.2] },
+    { id: "link", kind: "plate", shape: linkShape, thickness: 0.14, posed: true, arrow: false },
+    { id: "block", kind: "cylinder", radius: 0.06, length: 0.5 }, // 滑塊畫成一根在連桿槽裡滑的銷,往後伸到滑塊桿那一層
     {
       id: "rocker",
       kind: "group",
@@ -111,15 +112,16 @@ export default {
     return {
       parts: {
         shaft: { angle: theta },
-        rodForward: { from: z(eF, 0.3), to: z(aF, 0.3) },
-        rodBackward: { from: z(eB, 0.55), to: z(aB, 0.55) },
-        link: { position: z(mid, 0.4), angle: g.linkAngle - Math.PI / 2 },
-        block: { position: z(g.block, 0.4) },
+        // 由後往前:搖臂、滑塊桿與閥桿、前進偏心桿、連桿、後退偏心桿
+        rodForward: { from: z(eF, 0.425), to: z(aF, 0.425) },
+        rodBackward: { from: z(eB, 0.69), to: z(aB, 0.69) },
+        link: { position: z(mid, 0.56), angle: g.linkAngle - Math.PI / 2 },
+        block: { position: z(g.block, 0.42) },
         rocker: { angle: swing },
         blockRod: { from: z(g.block, 0.2), to: z(lower, 0.2) },
-        valveRod: { position: z(upper, 0.1) },
+        valveRod: { position: z(upper, 0.23) },
         handle: { angle: handleAngle(LIFT[state]) },
-        hanger: { from: z(add(HANDLE.pivot, polar(HANDLE.arm, handleAngle(LIFT[state]))), 0.5), to: z(aF, 0.5) },
+        hanger: { from: z(add(HANDLE.pivot, polar(HANDLE.arm, handleAngle(LIFT[state]))), 0.66), to: z(aF, 0.66) },
       },
       readouts: [],
     };

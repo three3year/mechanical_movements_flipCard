@@ -26,7 +26,7 @@ const LOOP = Array.from({ length: 48 }, (_, i) => {
   return rot2([0.36 * Math.cos(t), 1.05 * Math.sin(t)], deg(12)).map((v, k) => v + [0.62, -1.95][k]);
 });
 const NOTCH = add([...PIVOT, 0], [...rot2([1.15, -2.4], MAX), 0]); // 手柄卡住時環的外緣
-const SPRING = [[1.05, 0.33], [1.8, 0.55], [2.6, 0.85], [3.05, 1.0], [3.35, 0.4], [NOTCH[0] + 0.12, NOTCH[1] + 0.45], [NOTCH[0] + 0.12, NOTCH[1]], [NOTCH[0] - 0.1, NOTCH[1] - 0.35]];
+const SPRING = [[0.9, 0.15], [1.05, 0.33], [1.8, 0.55], [2.6, 0.85], [3.05, 1.0], [3.35, 0.4], [NOTCH[0] + 0.12, NOTCH[1] + 0.45], [NOTCH[0] + 0.12, NOTCH[1]], [NOTCH[0] - 0.1, NOTCH[1] - 0.35]];
 
 export default {
   figure: 186,
@@ -87,4 +87,8 @@ export default {
       readouts: [{ label: "銷", value: released ? "已脫出鉤口" : "在鉤口中" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["rocker", "handle"], reason: "手柄抬桿的量是以指頭尖一點頂在凸柱上算的;指頭有寬度,尖端旁的邊角伸進凸柱 0.07" },
+    { check: "interference", parts: ["rocker", "rod"], reason: "搖臂上的凸柱與偏心桿畫在同一層:手柄把偏心桿抬離銷時,桿的上緣擺到凸柱的位置,重疊 0.14。原圖是平面圖,看不出凸柱與偏心桿前後怎麼錯開;要改得把凸柱移到桿的輪廓之外(列入待確認清單)" },
+  ],
 };

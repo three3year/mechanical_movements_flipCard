@@ -31,9 +31,10 @@ export const states = Object.keys(SHIFT);
 const REST_TOP = valveGear(0, "mid").arcTop;
 ARM.pivot[1] = REST_TOP - 0.15;
 
+// 連桿畫成直的(原圖略彎):滑塊的位置是在連桿兩端之間直線內插的,槽是直的才對得上
 const linkShape = shape(
-  [...arcPoints(3.0, deg(-76), deg(-104), 0, 3.0 + 0.16), ...arcPoints(3.0, deg(-104), deg(-76), 0, 3.0 - 0.16)],
-  [[...arcPoints(3.0, deg(-78), deg(-102), 0, 3.0 + 0.06), ...arcPoints(3.0, deg(-102), deg(-78), 0, 3.0 - 0.06)].reverse()],
+  [[-0.95, -0.16], [0.95, -0.16], [0.95, 0.16], [-0.95, 0.16]],
+  [[[-0.88, -0.06], [0.88, -0.06], [0.88, 0.06], [-0.88, 0.06]].reverse()],
 );
 const arcPiece = shape(
   [...arcPoints(ARC_R + 0.3, deg(20), deg(160)), ...arcPoints(ARC_R - 0.25, deg(160), deg(20))],
@@ -51,17 +52,17 @@ export default {
       center: SHAFT,
       spin: 0.8,
       pieces: [
-        { kind: "cylinder", radius: 0.22, length: 1.2, mark: true },
+        { kind: "cylinder", radius: 0.22, length: 0.74, at: [0, 0, -0.23], mark: true }, // 軸只到偏心輪的背面(偏心桿從偏心輪的中心伸出,不穿過軸)
         { kind: "plate", shape: shape(circle(0.62, ...polar(ECC, deg(110) - Math.PI / 2).slice(0, 2)), [circle(0.23).reverse()]), thickness: 0.18, at: [0, 0, 0.25] },
         { kind: "plate", shape: shape(circle(0.62, ...polar(ECC, deg(-110) - Math.PI / 2).slice(0, 2)), [circle(0.23).reverse()]), thickness: 0.18, at: [0, 0, 0.5] },
       ],
     },
     { id: "rodA", kind: "link", width: 0.16, thickness: 0.08 },
     { id: "rodB", kind: "link", width: 0.16, thickness: 0.08 },
-    { id: "link", kind: "group", posed: true, arrow: false, pieces: [{ kind: "plate", shape: linkShape, thickness: 0.12 }, { kind: "box", size: [0.8, 0.1, 0.08], at: [-1.15, 0, 0] }] },
-    { id: "valveRod", kind: "group", pieces: [{ kind: "box", size: [0.1, VALVE_ROD, 0.08], at: [0, -VALVE_ROD / 2, 0] }, { kind: "box", size: [0.22, 0.22, 0.2] }] },
+    { id: "link", kind: "group", posed: true, arrow: false, pieces: [{ kind: "plate", shape: linkShape, thickness: 0.12 }] },
+    { id: "valveRod", kind: "group", pieces: [{ kind: "box", size: [0.1, VALVE_ROD, 0.08], at: [0, -VALVE_ROD / 2, 0] }, { kind: "cylinder", radius: 0.055, length: 0.16, at: [0, 0, 0.23] }] }, // 滑塊畫成一根在連桿槽裡滑的銷(閥桿在連桿後面)
     { id: "arcPiece", kind: "plate", shape: arcPiece, thickness: 0.15 },
-    { id: "arm", kind: "group", center: ARM.pivot, arrow: false, pieces: [{ kind: "box", size: [ARM.length, 0.12, 0.08], at: [ARM.length / 2, 0, 0.12] }, { kind: "cylinder", radius: 0.15, inner: 0.06, length: 0.2 }] },
+    { id: "arm", kind: "group", center: ARM.pivot, arrow: false, pieces: [{ kind: "box", size: [ARM.length, 0.12, 0.08], at: [ARM.length / 2, 0, 0.36] }, { kind: "cylinder", radius: 0.06, length: 0.6, at: [0, 0, 0.2] }, { kind: "cylinder", radius: 0.15, inner: 0.06, length: 0.2 }] },
     {
       id: "trunnion",
       kind: "group",
@@ -91,11 +92,12 @@ export default {
     return {
       parts: {
         shaft: { angle: theta },
-        rodA: { from: z(eA, 0.25), to: z(aA, 0.25) },
-        rodB: { from: z(eB, 0.5), to: z(aB, 0.5) },
-        link: { position: z(mid, 0.35), angle: g.linkAngle + Math.PI / 2 },
-        valveRod: { position: [0, blockY, 0.4] },
-        arcPiece: { position: [TRUNNION[0], arcTop - ARC_R - 0.3, 0.2] },
+        // 由後往前:偏心輪 A、偏心桿 A、連桿(與偏心輪 B 同層)、偏心桿 B;閥桿在連桿後面,只有滑塊的銷伸進連桿的槽
+        rodA: { from: z(eA, 0.375), to: z(aA, 0.375) },
+        rodB: { from: z(eB, 0.63), to: z(aB, 0.63) },
+        link: { position: z(mid, 0.51), angle: g.linkAngle + Math.PI / 2 },
+        valveRod: { position: [0, blockY, 0.27] },
+        arcPiece: { position: [TRUNNION[0], arcTop - ARC_R - 0.3, 0.235] }, // 貼著閥桿的背面;搖臂在它的前面
         arm: { angle: armAngle },
       },
       readouts: [],

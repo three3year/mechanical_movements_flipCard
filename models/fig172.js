@@ -53,7 +53,7 @@ export default {
         crank: { angle: theta },
         rod: { from: [pin[0], pin[1], 0.35], to: [end[0], end[1], 0.35] },
         point: { position: [point[0], point[1], 0.5] },
-        eye: { position: [end[0], end[1], 0.35] },
+        eye: { position: [end[0], end[1], 0.17] }, // 導眼在連桿的後面
       },
       paths: { egg: { points: egg, closed: true } },
       readouts: [],

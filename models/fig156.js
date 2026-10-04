@@ -27,7 +27,7 @@ export default {
       spin: DISC.radius,
       pieces: [
         { kind: "plate", shape: shape(circle(DISC.radius), [circle(0.1).reverse()]), thickness: 0.1, at: [0, 0, -0.2] },
-        { kind: "cylinder", radius: 0.2, length: 0.55, at: [...polar(DISC.pin, START).slice(0, 2), 0.05], accent: true },
+        { kind: "cylinder", radius: 0.14, length: 0.55, at: [...polar(DISC.pin, START).slice(0, 2), 0.05], accent: true }, // 銷比溝槽窄
         { kind: "cylinder", radius: 0.16, length: 0.3, at: [0, 0, -0.1] },
       ],
     },

@@ -26,8 +26,8 @@ export const stroke = STROKE;
 const pawl = (side) => ({
   kind: "plate",
   shape: shape([[-0.12, 0.1], [side * 0.35, 0.18], [side * 0.62, -0.35], [side * 0.5, -0.42], [side * 0.2, -0.05], [-0.12, -0.1]], [circle(0.06).reverse()]),
-  thickness: 0.1,
-  at: [0, TOP, 0.15],
+  thickness: 0.35, // 棘爪從槓桿的背面往後伸到齒輪那一層
+  at: [0, TOP, -0.235],
 });
 
 export default {
@@ -46,6 +46,7 @@ export default {
     },
     { id: "pawlRight", kind: "group", posed: true, arrow: false, pieces: [pawl(1)] },
     { id: "pawlLeft", kind: "group", posed: true, arrow: false, pieces: [pawl(-1)] },
+    { id: "axle", kind: "cylinder", radius: 0.29, length: 0.9, center: [0, 0, 0.1] }, // 齒輪與槓桿共用的固定軸(原圖沒畫,推斷)
     { id: "rod", kind: "group", pieces: [{ kind: "box", size: [0.3, 2.6, 0.12], at: [0, 1.4, 0] }, { kind: "cylinder", radius: 0.26, inner: 0.12, length: 0.18 }] },
   ],
   driver: { part: "rod", type: "translation", direction: [0, -1, 0], cycle: [0, STROKE] },
@@ -73,5 +74,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["gear", "pawlLeft"], reason: "棘爪以固定的角度畫在槓桿上,不逐點算爪尖落在齒上的位置;推齒時爪尖伸進齒 0.04" },
+    { check: "interference", parts: ["gear", "pawlRight"], reason: "棘爪以固定的角度畫在槓桿上,不逐點算爪尖落在齒上的位置;推齒時爪尖伸進齒 0.04" },
+  ],
 };
 

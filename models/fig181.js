@@ -7,4 +7,6 @@ import { cornishModel } from "./cornish-model.js";
 
 export default {
   ...cornishModel({ figure: 181, lock: "catch", initial: 0 }),
+  waivers: [
+  ],
 };

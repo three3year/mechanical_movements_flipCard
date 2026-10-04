@@ -38,7 +38,7 @@ export default {
       kind: "group",
       pieces: [
         { kind: "box", size: [0.14, 4.4, 0.18], at: [R + 0.42, 0, 0] },
-        { kind: "cylinder", axis: [1, 0, 0], radius: 0.1, length: 0.42, at: [R + 0.15, 0, 0] },
+        { kind: "cylinder", axis: [1, 0, 0], radius: 0.055, length: 0.42, at: [R + 0.21, 0, 0] }, // 凸柱比溝窄,端面貼著鼓面
         { kind: "box", size: [0.18, 0.4, 0.3], at: [R + 0.32, 0, 0] },
       ],
     },

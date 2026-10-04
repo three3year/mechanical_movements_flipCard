@@ -33,7 +33,7 @@ const polePoints = (pull) =>
 // 帶子:踏板上的接點 → 往上沿皮帶輪右側 → 繞輪一圈 → 往上到竿頭
 const strap = (j, tipY) => {
   const r = PULLEY.radius + 0.04;
-  const pts = [[j[0], j[1], 0.05]];
+  const pts = [[j[0], j[1], 0.2]]; // 帶子的下端繫在踏板的側面
   for (let i = 0; i <= 48; i++) {
     const a = (TAU * i) / 48;
     pts.push([PULLEY.center[0] + r * Math.cos(a), PULLEY.center[1] + r * Math.sin(a), 0.05 - 0.1 * (i / 48)]);
@@ -55,8 +55,8 @@ export default {
     { id: "pulley", kind: "pulley", style: "disc", center: PULLEY.center, radius: PULLEY.radius, width: 0.3, axis: Z },
     { id: "pole", kind: "rod", radius: 0.12 },
     { id: "strap", kind: "rope" },
-    { id: "stand", kind: "plate", center: [PIVOT[0], -1.95, 0.1], shape: shape([[-0.5, 0], [0.5, 0], [0.25, 0.4], [-0.25, 0.4]]), thickness: 0.3 },
-    { id: "ground", kind: "box", center: [0, -2.0, 0], size: [6.6, 0.08, 1.4] },
+    { id: "stand", kind: "plate", center: [PIVOT[0], -2.11, 0.1], shape: shape([[-0.5, 0], [0.5, 0], [0.25, 0.56], [-0.25, 0.56]]), thickness: 0.3 },
+    { id: "ground", kind: "box", center: [0, -2.15, 0], size: [6.6, 0.08, 1.4] }, // 地面在踏板踩到底的下方
   ],
   driver: { part: "treadle", type: "rotation", range: RANGE, initial: REST },
   target: "pulley",

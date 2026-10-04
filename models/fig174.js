@@ -4,6 +4,7 @@
 // 推斷:木料還沒頂到內緣時夾爪張開不動;頂到之後夾爪轉角與木料推進量成正比(以接觸點到樞軸的力臂換算);
 // 原圖(初始)是已夾緊的位置,往回拉可看到夾爪張開。
 import { shape, circle, rect } from "./shapes.js";
+import { swingUntilContact } from "./contact.js";
 
 const PIVOT = 1.2; // 兩根螺絲在木料中心線上下
 const HALF = 0.35; // 木料半寬
@@ -12,12 +13,11 @@ const PUSH = 1.0; // 木料可推進的總量
 const ARM = 0.9; // 接觸點到樞軸的力臂(垂直於推力)
 const GRIP = -0.03; // 夾緊時上夾爪的轉角(負為順時針)
 const OPEN = 0.2; // 未頂到時夾爪張開的轉角
-const CONTACT = PUSH - (OPEN - GRIP) * ARM; // 推進到這裡木料頂到內緣
 
 /** 木料推進 d(0 為最外、PUSH 為夾緊):木料端頭位置與上夾爪的轉角(下夾爪對稱) */
 export function clamp(d) {
-  const t = Math.max(0, Math.min(1, (d - CONTACT) / (PUSH - CONTACT)));
-  return { end: END + (PUSH - d), angle: OPEN + (GRIP - OPEN) * t };
+  const end = END_AT + (PUSH - d);
+  return { end, angle: jawAngle(end) };
 }
 export const grip = { GRIP, OPEN, HALF };
 
@@ -28,6 +28,20 @@ const UPPER = [
   [-2.3, 0.4], [-2.75, -0.2],
 ].map(([x, y]) => [x, y - PIVOT]);
 const LOWER = UPPER.map(([x, y]) => [x, -y]).reverse();
+// 木料的端頭頂著夾爪的尾端,把夾爪從張開(OPEN)一路推到夾緊(GRIP):轉角由端頭與尾端的接觸算
+const jawAngle = (end) =>
+  Math.min(OPEN, swingUntilContact({ pivot: [0, PIVOT], outline: UPPER, from: GRIP - 0.1, into: 1, sweep: OPEN - GRIP + 0.1 }, [[[end, -HALF], [end + 0.3, -HALF], [end + 0.3, HALF], [end, HALF]]]));
+// 夾緊時端頭的位置:正好把夾爪頂到 GRIP(END 是原圖量的概略位置,以它為中心找)
+const END_AT = (() => {
+  let lo = END - 0.6;
+  let hi = END + 0.6;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (jawAngle(mid) < GRIP) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+})();
 /** 夾爪上拿來檢查的點:鉤的最下緣(局部) */
 export const nose = [1.7, 0.4 - PIVOT];
 
@@ -38,9 +52,8 @@ export default {
       id: "bench",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape(rect(6.0, 4.5)), thickness: 0.1, at: [0, 0, -0.1] },
-        { kind: "box", size: [0.02, 4.5, 0.02], at: [-0.5, 0, 0] },
-        { kind: "box", size: [0.02, 4.5, 0.02], at: [0.75, 0, 0] },
+        { kind: "plate", shape: shape(rect(6.0, 4.5)), thickness: 0.1, at: [0, 0, -0.1], engrave: [-0.5, 0.75].map((x) => [[x - 0.01, -2.25], [x + 0.01, -2.25], [x + 0.01, 2.25], [x - 0.01, 2.25]]) }, // 台面上的兩道刻線
+
       ],
     },
     { id: "board", kind: "box", size: [4.8, 2 * HALF, 0.3] },

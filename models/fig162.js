@@ -9,7 +9,7 @@ import { flyBall } from "./governor.js";
 const GOV = flyBall({ top: 2.9, arm: 1.95, at: 1.0, link: 1.25, ball: 0.4, range: [deg(16), deg(46)], below: true });
 const ALPHA = { normal: deg(30), fast: deg(42), slow: deg(20) };
 const RATIO = 1; // 下方兩斜齒輪與水平軸斜齒輪等大
-const INPUT_Y = 0.25; // 心軸上固定的斜齒輪(由頂部水平軸帶動)
+const INPUT_Y = 0.6; // 心軸上固定的斜齒輪(由頂部水平軸帶動)
 const UPPER_Y = -0.75; // 下部兩個鬆套的斜齒輪
 const LOWER_Y = -1.75;
 
@@ -46,7 +46,7 @@ export default {
       id: "inputShaft",
       kind: "group",
       axis: X,
-      center: [-0.62, INPUT_Y - 0.62, 0],
+      center: [-0.5, INPUT_Y - 0.5, 0],
       spin: 0.3,
       spinOffset: -1.2,
       pieces: [
@@ -58,7 +58,7 @@ export default {
       id: "gateShaft",
       kind: "group",
       axis: X,
-      center: [-0.62, (UPPER_Y + LOWER_Y) / 2, 0],
+      center: [-0.5, (UPPER_Y + LOWER_Y) / 2, 0],
       spin: 0.3,
       spinOffset: -1.2,
       pieces: [

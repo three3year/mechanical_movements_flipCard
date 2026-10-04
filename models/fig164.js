@@ -53,8 +53,10 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [3.0, 0.15, 0.8], at: [0.2, TOP[1] + 0.3, 0] },
-        { kind: "box", size: [4.0, 0.15, 0.8], at: [0.2, -1.35, 0] },
+        // 上樑短、在長柄抬起的路徑之外,用一塊吊板(在槓桿後面)掛著槓桿的樞軸;床面在壓塊最低處
+        { kind: "box", size: [1.2, 0.15, 0.8], at: [-0.5, TOP[1] + 0.45, 0] },
+        { kind: "box", size: [0.2, 0.55, 0.2], at: [0, TOP[1] + 0.12, -0.2] },
+        { kind: "box", size: [4.0, 0.15, 0.8], at: [0.2, -1.69, 0] },
       ],
     },
   ],
@@ -64,7 +66,7 @@ export default {
   pose(psi) {
     const { k, y } = knee(psi);
     return {
-      parts: { lever: { angle: psi }, strut: { from: [k[0], k[1], 0.15], to: [BLOCK_X, y, 0.15] }, block: { position: [BLOCK_X, y - 0.21, 0] } },
+      parts: { lever: { angle: psi }, strut: { from: [k[0], k[1], 0.23], to: [BLOCK_X, y, 0.23] }, block: { position: [BLOCK_X, y - 0.21, 0] } },
       readouts: [],
     };
   },

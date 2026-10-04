@@ -6,4 +6,6 @@ import { SPAN } from "./cornish-gear.js";
 
 export default {
   ...cornishModel({ figure: 182, lock: "catch", initial: SPAN }),
+  waivers: [
+  ],
 };

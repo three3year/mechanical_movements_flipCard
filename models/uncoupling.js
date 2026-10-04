@@ -7,10 +7,11 @@ import { polar } from "./kit.js";
 import { shape, circle, arcPoints } from "./shapes.js";
 
 export const ARM = 4.05;
-export const EYE = 0.9;
-export const INSERT = 0.7;
+// 眼與環做得小:脫開時手腕銷沿圓弧穿過直的溝槽,環越小,圓弧偏離溝槽的量越小
+export const EYE = 0.65;
+export const INSERT = 0.45;
 export const GROOVE = 0.37; // 溝槽半寬
-export const WRIST = 0.28;
+export const WRIST = 0.343; // 手腕銷貼著溝槽的兩壁
 const TURN = { coupled: 0, uncoupled: Math.PI / 2 }; // 環相對臂的轉角
 
 /** 主動曲柄轉 theta、狀態:手腕銷位置、圖中曲柄與環的轉角 */
@@ -27,6 +28,15 @@ const half = (sign) => {
   return shape(sign > 0 ? pts : pts.reverse());
 };
 
+// 眼的上半或下半:一段弧形,兩側留出手腕銷通過的開口
+const eyeHalf = (sign) => {
+  const open = GROOVE + 0.08;
+  const outer = Math.asin(open / EYE);
+  const inner = Math.asin(open / INSERT);
+  const pts = [...arcPoints(EYE, outer, Math.PI - outer), ...arcPoints(INSERT, Math.PI - inner, inner)];
+  return sign > 0 ? pts : pts.map(([x, y]) => [x, -y]).reverse();
+};
+
 export function uncouplingModel({ figure, initial }) {
   return {
     figure,
@@ -37,10 +47,11 @@ export function uncouplingModel({ figure, initial }) {
         spin: 1.2,
         posed: true,
         pieces: [
-          { kind: "plate", shape: shape([[-0.88, 0], [0.88, 0], [0.75, ARM], [-0.75, ARM]], [circle(0.68).reverse(), circle(INSERT, 0, ARM).reverse()]), thickness: 0.25 },
+          // 臂端的眼兩側開口(與溝槽同寬):脫開時手腕銷從眼中橫穿而過(原圖的眼看起來是整圈,照畫銷出不去)
+          { kind: "plate", shape: shape([[-0.88, 0], [0.88, 0], [0.76, ARM - INSERT - 0.02], [-0.76, ARM - INSERT - 0.02]], [circle(0.68).reverse()]), thickness: 0.25 },
+          ...[1, -1].map((s) => ({ kind: "plate", shape: shape(eyeHalf(s)), thickness: 0.35, at: [0, ARM, 0] })),
           { kind: "cylinder", radius: 1.0, inner: 0.68, length: 0.35 },
           { kind: "cylinder", radius: 0.68, length: 0.6, mark: true },
-          { kind: "cylinder", radius: EYE, inner: INSERT, length: 0.35, at: [0, ARM, 0] },
         ],
       },
       { id: "ring", kind: "group", posed: true, arrow: false, pieces: [{ kind: "plate", shape: half(1), thickness: 0.3 }, { kind: "plate", shape: half(-1), thickness: 0.3 }] },
@@ -50,7 +61,7 @@ export function uncouplingModel({ figure, initial }) {
         spin: 1.2,
         pieces: [
           { kind: "plate", shape: shape([[-0.45, 0], [0.45, 0], [0.35, ARM], [-0.35, ARM]]), thickness: 0.15, at: [0, 0, -0.75] },
-          { kind: "cylinder", radius: 0.55, length: 0.3, at: [0, 0, -0.85] },
+          { kind: "cylinder", radius: 0.55, length: 0.7, at: [0, 0, -0.65] }, // 輪轂頂著曲柄軸的端面(同一條軸線)
           { kind: "cylinder", radius: WRIST, length: 0.75, at: [0, ARM, -0.35], accent: true },
         ],
       },

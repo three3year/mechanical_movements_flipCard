@@ -70,4 +70,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["screw", "wheel"], reason: "簡化齒形:蝸桿螺紋是圓管、蝸輪是直齒,齒頂伸進螺紋 0.04;實物的蝸輪齒是凹弧形包著蝸桿" },
+  ],
 };

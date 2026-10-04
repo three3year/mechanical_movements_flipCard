@@ -14,6 +14,7 @@
 import { TAU, deg, polar, clamp, wrap } from "./kit.js";
 import { shape, circle, stadium } from "./shapes.js";
 import { falling } from "./jumps.js";
+import { placeOutline, swingUntilContact } from "./contact.js";
 
 const R = 1.55; // 輪 A
 const CATCH = { at: deg(150), r: 0.9, length: 0.75, tail: 0.45 }; // 樞軸(在輪上)、鉤的長度、尾巴的長度
@@ -103,23 +104,33 @@ export const lift = LIFT;
 export function pump(c) {
   const k = Math.floor(c / TAU);
   const u = c - k * TAU;
-  if (u < LIFT) return { wheel: u, hooked: true, tilt: knockedTilt(u) };
+  if (u < LIFT) return { wheel: u, hooked: true, tilt: contactTilt(c, u) };
   if (u < LIFT + FALL) {
     const t = falling((u - LIFT) / FALL);
     const wheel = LIFT * (1 - t);
     // B 憑自重擺回,但鉤尖不穿進凸輪(最多貼到面上)、尾巴也不穿過擋條
-    const tilt = Math.min(TILT_RELEASED + (TILT_HOOKED - TILT_RELEASED) * t, restingTilt(c, wheel), knockedTilt(wheel));
+    const tilt = Math.min(TILT_RELEASED + (TILT_HOOKED - TILT_RELEASED) * t, contactTilt(c, wheel));
     return { wheel, hooked: false, tilt };
   }
-  return { wheel: 0, hooked: false, tilt: restingTilt(c, 0) };
+  return { wheel: 0, hooked: false, tilt: contactTilt(c, 0) };
+}
+
+// B 的實際外形(有寬度)憑自重往凸輪擺,停在第一次碰到凸輪面或擋條的位置:
+// 上面以鉤尖、尾端兩個點算出的是時序(何時鉤住、何時被撬開),畫出來的姿勢用這個,B 才不會陷進凸輪與擋條
+function contactTilt(c, wheel) {
+  const base = CATCH.at + wheel + Math.PI;
+  const pivot = polar(CATCH.r, CATCH.at + wheel).slice(0, 2);
+  const cam = placeOutline(camOutline, [0, 0], c);
+  const angle = swingUntilContact({ pivot, outline: catchOutline, from: base + TILT_OUT, into: 1, sweep: tiltForRadius(CAM.r0 - 0.1) - TILT_OUT, steps: 80 }, [cam, STOP_BAR]);
+  return angle - base;
 }
 
 // B 的本體:從尾端到鉤尖的一條長圓板,樞軸在原點
 // 鉤尖與尾端都收成尖的:接觸是以這兩個端點算的,圓頭會陷進凸輪與擋條
-// 而且鉤身幾乎是沿著凸輪面的切線躺著,所以畫成細長的桿,只在樞軸附近加粗
-const catchOutline = [[-CATCH.tail, 0], [-CATCH.tail + 0.12, -0.03], [-0.12, -0.1], [0.12, -0.1], [CATCH.length - 0.12, -0.03], [CATCH.length, 0], [CATCH.length - 0.12, 0.03], [0.12, 0.1], [-0.12, 0.1], [-CATCH.tail + 0.12, 0.03]];
+const catchOutline = [[-CATCH.tail, 0], [-CATCH.tail + 0.15, -0.1], [CATCH.length - 0.15, -0.1], [CATCH.length, 0], [CATCH.length - 0.15, 0.1], [-CATCH.tail + 0.15, 0.1]];
 const STOP_MID = (STOP.inner + STOP.outer) / 2;
 const STOP_DIR = STOP.face + STOP_HALF / STOP_MID; // 擋條中心線的角度(面在順時針側)
+const STOP_BAR = placeOutline([[-STOP_HALF, -(STOP.outer - STOP.inner) / 2], [STOP_HALF, -(STOP.outer - STOP.inner) / 2], [STOP_HALF, (STOP.outer - STOP.inner) / 2], [-STOP_HALF, (STOP.outer - STOP.inner) / 2]], polar(STOP_MID, STOP_DIR).slice(0, 2), STOP_DIR + Math.PI / 2);
 
 export default {
   figure: 86,

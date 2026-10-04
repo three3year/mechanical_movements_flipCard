@@ -53,7 +53,7 @@ const LEVER_Z = 0.7;
 const STRIP = shape(rect(3.95, 0.5), []); // 盤面上承載螺桿的長條底板
 const BLOCK_AT = 1.75; // 兩端軸承塊離盤心的距離(螺帽行程 −1.2–−0.2 碰不到)
 const PIN_Z = SCREW_Z + 0.27; // 固定銷的高度:在撥爪輪齒根(0.22)與齒尖(0.40)之間
-const WALL_X = 3.3; // 機架板的位置(圓盤右側,yz 平面)
+const WALL_X = 4.05; // 機架板在 T 形桿寬的那一段走到最右時的外側 // 機架板的位置(圓盤右側,yz 平面)
 // 機架板的輪廓(局部 x = 世界 −z、局部 y = 世界 y):小齒輪軸的軸承孔,下方一道槽讓 T 形桿的橫臂穿過(兼作導座)
 const WALL = shape(
   [[1.5, -1.75], [1.5, 0.5], [0.3, 1.3], [-0.95, 1.3], [-0.95, -1.75]],
@@ -89,7 +89,7 @@ export default {
       ],
     },
     // 螺帽與它的手腕銷(往前伸進 T 形桿的直槽)
-    { id: "nut", kind: "group", arrow: false, pieces: [{ kind: "box", size: [0.4, 0.26, 0.24] }, { kind: "cylinder", radius: 0.07, length: 0.7, at: [0, 0, 0.35] }] },
+    { id: "nut", kind: "group", arrow: false, pieces: [{ kind: "box", size: [0.4, 0.26, 0.24] }, { kind: "cylinder", radius: 0.07, length: 0.5, at: [0, 0, 0.37] }] }, // 手腕銷立在螺帽的頂面上(不穿過螺桿)
     { id: "lever", kind: "plate", shape: T_BAR, thickness: 0.1 },
     {
       id: "frame",
@@ -110,7 +110,7 @@ export default {
       teeth: PINION.teeth,
       radius: PINION.radius,
       width: 0.2,
-      pieces: [{ kind: "cylinder", radius: 0.1, length: 2.2, at: [0, 0, 1.1] }], // 軸:往右穿過機架板的軸承孔
+      pieces: [{ kind: "cylinder", radius: 0.1, length: 2.9, at: [0, 0, 1.45] }], // 軸:往右穿過機架板的軸承孔
     },
   ],
   driver: { part: "disc", type: "rotation", range: [-REVS.back * TAU, REVS.ahead * TAU] },

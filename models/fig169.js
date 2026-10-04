@@ -50,7 +50,7 @@ export default {
         { kind: "plate", shape: shape(stadium(R1, 0.4).outline, [circle(0.1).reverse(), circle(0.08, R1, 0).reverse()]), thickness: 0.12 },
         { kind: "cylinder", radius: 0.28, inner: 0.1, length: 0.25 },
         { kind: "cylinder", radius: 0.1, length: 1.0, at: [0, 0, -0.4] }, // 軸:往後穿進軸承座
-        { kind: "cylinder", radius: 0.08, length: 0.75, at: [R1, 0, 0.2], accent: true }, // 曲柄銷:穿過短連桿
+        { kind: "cylinder", radius: 0.08, length: 0.3, at: [R1, 0, 0.1], accent: true }, // 曲柄銷:穿過短連桿
       ],
     },
     {
@@ -62,7 +62,7 @@ export default {
         { kind: "plate", shape: shape(stadium(R2, 0.3).outline, [circle(0.08).reverse()]), thickness: 0.12 },
         { kind: "cylinder", radius: 0.2, inner: 0.08, length: 0.2 },
         { kind: "cylinder", radius: 0.08, length: 1.0, at: [0, 0, -0.4] }, // 軸:往後穿進軸承座
-        { kind: "cylinder", radius: 0.09, length: 0.5, at: [R2, 0, -0.15], accent: true }, // 曲柄銷:穿過抽送桿中段
+        { kind: "cylinder", radius: 0.09, length: 0.5, at: [R2, 0, 0.25], accent: true }, // 曲柄銷:穿過抽送桿中段
       ],
     },
     { id: "pitman", kind: "link", width: 0.45, thickness: 0.1 },
@@ -81,10 +81,11 @@ export default {
       parts: {
         second: { angle: psi },
         main: { angle },
-        pitman: { from: z(p, -0.15), to: z(r, -0.15) },
-        link: { from: z(p, 0.32), to: z(q, 0.32) },
-        pin: { position: z(p, 0.1) },
-        rod: { from: z(r, -0.3), to: z(MBEAM, -0.3) },
+        // 由後往前:曲柄、短連桿、抽送桿、往上的桿(兩根軸往後穿進軸承座;主曲柄銷只伸到短連桿,抽送桿從它前方掃過)
+        pitman: { from: z(p, 0.4), to: z(r, 0.4) },
+        link: { from: z(p, 0.15), to: z(q, 0.15) },
+        pin: { position: z(p, 0.2) },
+        rod: { from: z(r, 0.52), to: z(MBEAM, 0.52) },
       },
       readouts: [],
     };

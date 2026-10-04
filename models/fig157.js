@@ -32,7 +32,7 @@ export default {
       spin: DISC.radius,
       pieces: [
         { kind: "plate", shape: { outline: Array.from({ length: 64 }, (_, i) => [DISC.radius * Math.cos((i / 64) * 2 * Math.PI), DISC.radius * Math.sin((i / 64) * 2 * Math.PI)]), holes: [] }, thickness: 0.1, at: [0, 0, -0.2], circles: [0.2] },
-        { kind: "cylinder", radius: 0.2, inner: 0.1, length: 0.3, at: [...polar(DISC.pin, START).slice(0, 2), 0.1], accent: true },
+        { kind: "cylinder", radius: 0.1, length: 0.55, at: [...polar(DISC.pin, START).slice(0, 2), 0.2], accent: true }, // 曲柄銷:穿過連桿的軸眼
       ],
     },
     {
@@ -44,11 +44,13 @@ export default {
         { kind: "box", size: [UP.length, 0.26, 0.1], at: [(UP.length / 2) * Math.cos(UP.at), (UP.length / 2) * Math.sin(UP.at), 0], angle: UP.at },
         { kind: "box", size: [RIGHT.length, 0.26, 0.1], at: [(RIGHT.length / 2) * Math.cos(RIGHT.at), (RIGHT.length / 2) * Math.sin(RIGHT.at), 0], angle: RIGHT.at },
         { kind: "cylinder", radius: 0.3, inner: 0.15, length: 0.2 },
-        { kind: "cylinder", radius: 0.22, inner: 0.1, length: 0.18, at: [...polar(UP.length, UP.at).slice(0, 2), 0] },
+        { kind: "cylinder", radius: 0.1, length: 0.4, at: [...polar(UP.length, UP.at).slice(0, 2), 0.1] }, // 上臂端的銷:穿過連桿的軸眼
         { kind: "cylinder", radius: 0.22, inner: 0.1, length: 0.18, at: [...polar(RIGHT.length, RIGHT.at).slice(0, 2), 0] },
       ],
     },
     { id: "link", kind: "link", width: 0.2, thickness: 0.08 },
+    // 圓盤的軸與搖臂的樞軸銷(原圖沒畫出支撐,推斷)
+    { id: "frame", kind: "group", pieces: [{ kind: "cylinder", radius: 0.1, length: 0.5, at: [DISC.center[0], DISC.center[1], -0.3] }, { kind: "cylinder", radius: 0.14, length: 0.5, at: [PIVOT[0], PIVOT[1], 0.2] }, { kind: "box", size: [3.6, 0.3, 0.1], at: [0, 0.02, -0.5] }] },
     { id: "rod", kind: "group", pieces: [{ kind: "box", size: [0.18, 2.4, 0.1], at: [0, -1.4, 0] }] },
   ],
   driver: { part: "disc", type: "rotation" },
@@ -60,7 +62,7 @@ export default {
       parts: {
         disc: { angle: theta },
         crank: { angle: turn },
-        link: { from: z(pin, 0.35), to: z(top, 0.35) },
+        link: { from: z(pin, 0.4), to: z(top, 0.4) },
         rod: { position: [end[0], end[1], 0.4] },
       },
       readouts: [],

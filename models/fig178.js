@@ -63,7 +63,7 @@ export default {
       arrow: false,
       pieces: [
         { kind: "box", size: [0.18, 0.18, 0.5], at: [0, 0, -0.1] },
-        { kind: "cylinder", radius: 0.16, inner: 0.07, length: 0.18, at: [0, 0, 0.3] },
+        { kind: "cylinder", radius: 0.16, inner: 0.07, length: 0.18, at: [0, 0, 0.37] },
       ],
     },
     { id: "rod", kind: "link", width: 0.16, thickness: 0.08 },
@@ -79,7 +79,7 @@ export default {
       parts: {
         crank: { angle: theta },
         block: { position: [block[0], block[1], 0.15], angle: theta },
-        rod: { from: [block[0], block[1], 0.45], to: [slide[0], slide[1], 0.45] },
+        rod: { from: [block[0], block[1], 0.65], to: [slide[0], slide[1], 0.65] }, // 連桿在滑塊與刀具滑塊的前面
         slide: { position: [slide[0], slide[1], 0.45] },
       },
       readouts: [],

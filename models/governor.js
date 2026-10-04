@@ -7,6 +7,8 @@ import { Y, deg, clamp } from "./kit.js";
  * spread:左右兩支搖臂樞軸離心軸的距離;ball:球半徑;range:[最小, 最大] 張角;max:轉速範圍上限。
  * below:連桿往下接套筒(true,套筒在下方)或往上(false)。
  */
+const PLANE = 0.26; // 搖臂與連桿所在的那一層(套筒半徑 0.22 的前面)
+
 export function flyBall({ top = 2.4, arm = 2.2, at = 1.1, link = 1.25, spread = 0.18, ball = 0.42, range = [deg(14), deg(52)], max = 10, below = true }) {
   const c = max * max * Math.cos(range[1]);
   /** 轉速 s:張角 */
@@ -37,16 +39,17 @@ export function flyBall({ top = 2.4, arm = 2.2, at = 1.1, link = 1.25, spread = 
     { id: `${prefix}ballL`, kind: "sphere", radius: ball },
     { id: `${prefix}ballR`, kind: "sphere", radius: ball },
     { id: `${prefix}sleeve`, kind: "cylinder", axis: Y, radius: 0.22, length: 0.22 },
-    { id: `${prefix}head`, kind: "cylinder", axis: Y, center: [0, top, 0], radius: spread + 0.12, length: 0.22 },
+    // 頂座:搖臂掛在它的前面(搖臂、連桿都在心軸前面一層,不穿過頂座與套筒)
+    { id: `${prefix}head`, kind: "box", center: [0, top, 0.145], size: [2 * spread + 0.3, 0.22, 0.15] },
   ];
   function pose(alpha, prefix = "") {
     const { L, R, sleeve } = geometry(alpha);
-    const z = (p) => [p[0], p[1], 0];
+    const z = (p) => [p[0], p[1], PLANE];
     return {
       [`${prefix}armL`]: { from: z(L.pivot), to: z(L.ball) },
       [`${prefix}armR`]: { from: z(R.pivot), to: z(R.ball) },
-      [`${prefix}linkL`]: { from: z(L.joint), to: [-0.12, sleeve, 0] },
-      [`${prefix}linkR`]: { from: z(R.joint), to: [0.12, sleeve, 0] },
+      [`${prefix}linkL`]: { from: z(L.joint), to: [-0.12, sleeve, PLANE] },
+      [`${prefix}linkR`]: { from: z(R.joint), to: [0.12, sleeve, PLANE] },
       [`${prefix}ballL`]: { position: L.ball },
       [`${prefix}ballR`]: { position: R.ball },
       [`${prefix}sleeve`]: { position: [0, sleeve, 0] },

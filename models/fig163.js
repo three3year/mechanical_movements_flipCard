@@ -54,7 +54,7 @@ export default {
       posed: true,
       pieces: [
         { kind: "box", size: [CRANK.arm, 0.14, 0.1], at: [-CRANK.arm / 2, 0, 0] },
-        { kind: "box", size: [1.6, 0.14, 0.1], at: [0.8, 0, 0] },
+        { kind: "box", size: [1.55, 0.14, 0.1], at: [0.775, 0, 0] },
         { kind: "cylinder", radius: 0.18, inner: 0.08, length: 0.2 },
       ],
     },
@@ -63,7 +63,7 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape([[-1.6, -0.55], [1.6, -0.55], [1.6, -3.1], [1.4, -3.1], [1.4, -0.75], [-1.4, -0.75], [-1.4, -3.1], [-1.6, -3.1]]), thickness: 0.2, at: [0, 0, -0.6] },
+        { kind: "plate", shape: shape([[-1.6, -0.55], [1.6, -0.55], [1.6, -3.1], [1.4, -3.1], [1.4, -0.75], [-1.4, -0.75], [-1.4, -3.1], [-1.6, -3.1]]), thickness: 0.2, at: [0, 0, -0.95] }, // 機架在皮帶後段的後面
         { kind: "box", size: [0.5, 0.35, 0.4], at: [CRANK.pivot[0], -0.4, 0] },
       ],
     },

@@ -9,7 +9,7 @@ const SHAFT = [2.6, 0, 0];
 const ECC = 0.35;
 const ROD = 3.9;
 const VALVE_Y = 0.05;
-const LEVER = { pivot: [-1.95, -0.95, 0.35], length: 3.2 };
+const LEVER = { pivot: [-1.95, -0.95, 0.12], length: 3.2 }; // 手柄貼著閥門心軸的前面
 const OFFSET = { forward: 0, backward: Math.PI };
 
 /** 軸轉 theta、狀態:偏心輪中心與閥門心軸(偏心桿末端)的位置 */
@@ -59,7 +59,7 @@ export default {
       id: "spindle",
       kind: "group",
       pieces: [
-        { kind: "cylinder", axis: [1, 0, 0], radius: 0.07, length: 1.6, at: [-0.8, 0, 0] },
+        { kind: "cylinder", axis: [1, 0, 0], radius: 0.07, length: 1.5, at: [-0.85, 0, 0] },
         { kind: "plate", shape: shape([[0, 0.12], [0.35, 0.3], [0.45, 0.12], [0.45, -0.12], [0, -0.12]]), thickness: 0.15 },
       ],
     },
@@ -92,7 +92,7 @@ export default {
         shaft: { angle: theta },
         eccentric: { angle: theta + OFFSET[state] },
         strap: { position: ecc },
-        rod: { from: [ecc[0] + 0.85 * Math.cos(rodAngle), ecc[1] + 0.85 * Math.sin(rodAngle), 0], to: [valveX, VALVE_Y, 0] },
+        rod: { from: [ecc[0] + 1.02 * Math.cos(rodAngle), ecc[1] + 1.02 * Math.sin(rodAngle), 0], to: [valveX, VALVE_Y, 0] }, // 偏心桿從環的外緣伸出
         spindle: { position: [valveX, VALVE_Y, 0] },
         lever: { angle: -lever },
       },
