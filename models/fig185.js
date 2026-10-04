@@ -18,8 +18,11 @@ const LIFT = { forward: -HALF * 0.8, cutoff: -HALF * 0.45, mid: 0, backward: HAL
 const ROCKER = { pivot: [-0.85, 0.45, 0.13], down: 0.95, up: 0.9 };
 const BLOCK_ROD = 0.85;
 const HANDLE = { pivot: [-1.7, 1.15, 0], length: 2.0, arm: 1.2 };
-// 手柄轉角:讓手柄短臂端點的高度差等於連桿被移動的量
-const handleAngle = (lift) => Math.asin(Math.max(-1, Math.min(1, lift / HANDLE.arm)));
+// 吊桿長度固定:手柄短臂的端點在以樞軸為圓心的圓上、與連桿上端相距 HANGER。
+// 連桿的升降是近似算的(見 link-motion.js),它上端的高度隨偏心桿略有起伏;差額由手柄的微小擺動吸收
+// (實物的手柄卡在扇形板的缺口裡不動,起伏由連桿自己的擺動吸收)
+const HANGER = 2.9;
+const handleEnd = (p) => circleCircle(HANDLE.pivot, HANDLE.arm, p, HANGER, 1).point;
 
 /** 軸轉 theta、手柄在 state:閥的位移(沿 x)與各零件的位置 */
 export const gear = (theta, state) => motion(theta, LIFT[state]);
@@ -63,7 +66,7 @@ export default {
       ],
     },
     { id: "blockRod", kind: "link", width: 0.1, thickness: 0.06 },
-    // 手柄與吊桿:手柄繞樞軸轉,經吊桿把連桿抬起或降下(吊桿長度隨連桿擺動略變,為示意)
+    // 手柄與吊桿:手柄繞樞軸轉,經吊桿把連桿抬起或降下
     {
       id: "handle",
       kind: "group",
@@ -72,11 +75,14 @@ export default {
       posed: true,
       pieces: [
         { kind: "box", size: [HANDLE.length, 0.12, 0.08], at: [-HANDLE.length / 2, 0, 0] },
-        { kind: "box", size: [HANDLE.arm, 0.12, 0.08], at: [HANDLE.arm / 2, 0, 0] },
+        // 短臂在最前面一層(經一根軸接到後面的手柄):吊桿掛在它的前面,不掃過搖桿、閥桿與連桿
+        { kind: "box", size: [HANDLE.arm, 0.12, 0.08], at: [HANDLE.arm / 2, 0, 0.76] },
+        { kind: "cylinder", radius: 0.06, length: 0.78, at: [0, 0, 0.41] },
         { kind: "cylinder", radius: 0.2, inner: 0.08, length: 0.15 },
       ],
     },
-    { id: "hanger", kind: "link", width: 0.1, thickness: 0.06, stretch: true },
+    { id: "hanger", kind: "link", width: 0.1, thickness: 0.06 },
+    { id: "hangerPin", kind: "cylinder", radius: 0.018, length: 0.31 }, // 連桿上端的細銷往前伸到吊桿那一層(推斷)
     { id: "valveRod", kind: "group", pieces: [{ kind: "cylinder", axis: [1, 0, 0], radius: 0.06, length: 1.6, at: [-0.8, 0, 0] }, { kind: "box", size: [0.3, 0.3, 0.3], at: [-1.6, 0, 0] }] },
     {
       id: "frame",
@@ -105,6 +111,9 @@ export default {
     const [eF, eB] = g.eccentrics;
     const [aF, aB] = g.ends;
     const mid = [(aF[0] + aB[0]) / 2, (aF[1] + aB[1]) / 2, 0];
+    // 吊桿掛在連桿上的點:連桿板靠前進偏心桿那一端、槽旁邊的邊條上(銷固定在連桿上,不擋住槽裡的滑塊)
+    const hung = [1, -1].map((s) => [mid[0] + s * (HALF - 0.12) * Math.cos(g.linkAngle) - 0.125 * Math.sin(g.linkAngle), mid[1] + s * (HALF - 0.12) * Math.sin(g.linkAngle) + 0.125 * Math.cos(g.linkAngle)]).sort((p, q) => Math.hypot(p[0] - aF[0], p[1] - aF[1]) - Math.hypot(q[0] - aF[0], q[1] - aF[1]))[0];
+    const top = handleEnd(hung);
     // 滑塊經一根短連桿接到搖桿的下臂:下臂端點在以樞軸為圓心的圓上,與滑塊相距 BLOCK_ROD
     const lower = circleCircle(ROCKER.pivot, ROCKER.down, g.block, BLOCK_ROD, 1).point;
     const swing = Math.atan2(lower[1] - ROCKER.pivot[1], lower[0] - ROCKER.pivot[0]) + Math.PI / 2;
@@ -120,13 +129,11 @@ export default {
         rocker: { angle: swing },
         blockRod: { from: z(g.block, 0.2), to: z(lower, 0.2) },
         valveRod: { position: z(upper, 0.23) },
-        handle: { angle: handleAngle(LIFT[state]) },
-        hanger: { from: z(add(HANDLE.pivot, polar(HANDLE.arm, handleAngle(LIFT[state]))), 0.8), to: z(aF, 0.8) },
+        handle: { angle: Math.atan2(top[1] - HANDLE.pivot[1], top[0] - HANDLE.pivot[0]) },
+        hanger: { from: z(top, 0.84), to: z(hung, 0.84) },
+        hangerPin: { position: z(hung, 0.715) },
       },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["hanger"], reason: "未修:吊桿(從手柄到連桿的一端)畫在最前面一層,它兩端的銷沒有畫出來;吊桿只把連桿吊在手柄選定的高度,不傳遞閥的運動(列入待確認清單)" },
-  ],
 };

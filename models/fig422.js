@@ -3,7 +3,7 @@
 // 主動件是曲柄(在汽缸後面);活塞 B 隨之來回擺動。
 // 推斷:曲柄、搖臂與連桿的位置與長度(原圖沒有畫出);汽缸前面剖開;滑閥 D 依活塞擺動的方向把蒸汽送到推它的那一側,
 // 另一側經滑閥排汽;汽缸裡的蒸汽以點表示。
-import { deg, clamp } from "./kit.js";
+import { deg } from "./kit.js";
 import { circleCircle } from "./linkage.js";
 import { stream } from "./flow.js";
 import { shape, thickLine, arcPoints, circle, rect } from "./shapes.js";
@@ -20,6 +20,26 @@ const crankPin = (phi) => [CRANK.center[0] + CRANK.radius * Math.cos(phi), CRANK
 export function vane(phi) {
   const end = circleCircle(crankPin(phi), COUPLER, [0, 0, 0], ARM, 1).point;
   return Math.atan2(end[1], end[0]) + Math.PI / 2;
+}
+
+// 滑閥的傳動(推斷;原圖沒有畫):搖臂軸前端一根朝上的撥臂,臂端的銷在滑閥垂下的叉架兩根叉指之間;
+// 活塞擺到行程的末端時,銷碰到叉指、把滑閥推到另一邊,其餘時間滑閥停在原位(撥桿式閥動)
+const TAPPET = 1.2; // 撥臂長
+const VALVE_Y = RADIUS + 0.62;
+const VALVE_TRAVEL = 0.36;
+const tipX = (phi) => -TAPPET * Math.sin(vane(phi));
+const TIP = (() => {
+  const xs = Array.from({ length: 720 }, (_, i) => tipX((i * Math.PI) / 360));
+  return { min: Math.min(...xs), max: Math.max(...xs) };
+})();
+const GAP = TIP.max - TIP.min - VALVE_TRAVEL; // 銷在兩根叉指之間的空行程
+const YOKE0 = (TIP.max + TIP.min) / 2; // 叉架中心相對滑閥的位置
+/** 曲柄轉 phi → 滑閥的位置:銷往右走時推右叉指,往左走時推左叉指,沒碰到時滑閥停在上一次被推到的地方 */
+export function valveAt(phi) {
+  const tip = tipX(phi);
+  const right = tipX(phi + 0.01) > tip;
+  const yoke = right ? Math.max(TIP.min + GAP / 2, tip - GAP / 2) : Math.min(TIP.max - GAP / 2, tip + GAP / 2);
+  return yoke - YOKE0;
 }
 
 // 汽缸壁:扇形加上搖臂軸的軸轂
@@ -78,10 +98,26 @@ export default {
         { kind: "cylinder", radius: 0.1, length: 1.3, at: [0, 0, -0.3] },
         // 搖臂(汽缸後面)
         { kind: "plate", shape: shape(thickLine([[0, 0], [0, -ARM]], 0.14), [circle(0.04, 0, -ARM).reverse()]), thickness: 0.08, at: [0, 0, BACK] },
+        // 軸的前端與撥臂、臂端的銷
+        { kind: "cylinder", radius: 0.07, length: 0.2, at: [0, 0, 0.45] },
+        { kind: "plate", shape: shape(thickLine([[0, 0], [0, TAPPET]], 0.1)), thickness: 0.06, at: [0, 0, 0.5] },
+        { kind: "cylinder", radius: 0.05, length: 0.14, at: [0, TAPPET, 0.43] },
       ],
     },
     { id: "shaftC", kind: "group", label: "C", labelOffset: [0, -0.05, 0.45], pieces: [{ kind: "cylinder", radius: 0.12, length: 0.1, at: [0, 0, 0.33] }] },
-    { id: "valve", kind: "box", size: [0.5, 0.26, 0.3], label: "D", labelOffset: [0, 0.35, 0.3] },
+    {
+      id: "valve",
+      kind: "group",
+      label: "D",
+      labelOffset: [0, 0.35, 0.3],
+      pieces: [
+        { kind: "box", size: [0.5, 0.26, 0.3] },
+        // 閥桿往前伸出閥箱,接著垂下的叉架
+        { kind: "cylinder", radius: 0.04, length: 0.42, at: [YOKE0, 0, 0.2] },
+        { kind: "box", size: [GAP + 0.26, 0.08, 0.06], at: [YOKE0, 0, 0.42] },
+        ...[-1, 1].map((s) => ({ kind: "box", size: [0.08, VALVE_Y - TAPPET + 0.3, 0.06], at: [YOKE0 + s * (GAP / 2 + 0.09), -(VALVE_Y - TAPPET + 0.3) / 2, 0.42] })),
+      ],
+    },
     {
       id: "crank",
       kind: "group",
@@ -108,7 +144,7 @@ export default {
     return {
       parts: {
         piston: { angle: psi },
-        valve: { position: [-side * 0.18 * clamp(Math.abs(ahead) * 40, 0, 1), RADIUS + 0.62, 0.05] },
+        valve: { position: [valveAt(phi), VALVE_Y, 0.05] },
         crank: { angle: phi },
         coupler: { from: [pin[0], pin[1], BACK + 0.08], to: [end[0], end[1], BACK + 0.08] },
       },
@@ -119,7 +155,4 @@ export default {
       readouts: [{ label: "蒸汽推活塞", value: side > 0 ? "左側進汽、右側排汽" : "右側進汽、左側排汽" }],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["valve"], reason: "未修:閥與帶動它的偏心桿之間少畫了相連的桿(差 0.50)(列入待確認清單)" },
-  ],
 };
