@@ -113,6 +113,8 @@ export default {
       pieces: [{ kind: "cylinder", radius: 0.1, length: 2.9, at: [0, 0, 1.45] }], // 軸:往右穿過機架板的軸承孔
     },
   ],
+  // 動力重演:只推主動件;lever 靠摩擦定位,由接觸帶動
+  replay: { free: { lever: { slide: [1,0,0], hold: true } }, expect: [{ part: "lever", label: "主動件走完一輪後 lever 的位置" }] },
   driver: { part: "disc", type: "rotation", range: [-REVS.back * TAU, REVS.ahead * TAU] },
   target: "lever",
   view: { direction: [0.3, 0.2, 1] },

@@ -95,7 +95,7 @@ for (const def of models) {
       assert.ok(def.replay.expect?.length, "動力重演要有預期事件");
       for (const e of def.replay.expect) {
         assert.ok(ids.has(e.part), `動力重演的預期事件指向不存在的零件 ${e.part}`);
-        assert.ok(Number.isFinite(e.at), "預期事件有主動量");
+        assert.ok(e.at == null || Number.isFinite(e.at), "預期事件的主動量是數字(省略 = 區間的終點)");
       }
       for (const pair of def.replay.ignore ?? []) for (const id of pair) assert.ok(ids.has(id), `動力重演的 ignore 指向不存在的零件 ${id}`);
     }

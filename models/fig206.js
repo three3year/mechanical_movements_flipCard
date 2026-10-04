@@ -60,6 +60,8 @@ export default {
     pawl("pawlLeft", "left", -1),
     pawl("pawlRight", "right", 1),
   ],
+  // 動力重演:只推主動件;wheel 靠摩擦定位,由接觸帶動
+  replay: { free: { wheel: { hold: true } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
   driver: { part: "lever", type: "rotation", cycle: [SWING / 2, -SWING / 2] },
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
@@ -78,5 +80,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheel 的位置」預期 wheel 在主動量 0.84 時已轉 -15°,實際沒動。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
+  ],
 };
 

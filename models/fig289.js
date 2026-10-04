@@ -47,6 +47,8 @@ export default {
     },
     { id: "labelA", kind: "group", center: AXIS, label: "a", labelOffset: [0.4, 0.1, 0.4] },
   ],
+  // 動力重演:只推主動件;wheelA 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { wheelA: { spring: -1, gravity: false } }, expect: [{ part: "wheelA", label: "主動件走完一輪後 wheelA 的位置" }] },
   driver: { part: "anchor", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheelA", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
@@ -54,6 +56,7 @@ export default {
     return { parts: { anchor: { angle: swing(v, -SWING, SWING) }, wheelA: { angle: wheelAngle(v) } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["wheelA"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheelA 的位置」預期 wheelA 在主動量 0.35 時已轉 -12°,實際轉了 -22°。模型的擒縱是依擺動的相位演出的:重演裡給擒縱輪一個固定的力矩後,掣子(叉瓦)沒有照一擺放一齒那樣擋住、放行(輪一路轉走,或被卡住不動)。掣子與輪齒的外形、位置要重做成真的擋得住(列入待確認清單)" },
     { check: "interference", parts: ["wheelA", "anchor"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算錨形擒縱叉的掣子與輪齒的接觸;重疊 0.09。列入待確認清單的動力重演名單" },
   ],
 };

@@ -66,6 +66,8 @@ export default {
     { id: "springC", kind: "spring", coils: 6, radius: 0.08, wire: 0.02, label: "c", labelOffset: [0.15, 0.25, 0.3] },
     { id: "frame", kind: "box", center: [BACK + 0.3, 0.3, -0.35], size: [0.2, 3.0, 0.2] }, // 在轉輪背面棘齒的後面
   ],
+  // 動力重演:只推主動件;cylinder 靠摩擦定位,由接觸帶動
+  replay: { free: { cylinder: { hold: true } }, expect: [{ part: "cylinder", label: "主動件走完一輪後 cylinder 的位置" }] },
   driver: { part: "hammer", type: "rotation", cycle: [0, COCK] },
   target: "cylinder", // 每扳一次轉一格的轉輪
   view: { direction: [0.06, 0.05, 1] },
@@ -88,6 +90,7 @@ export default {
     };
   },
   waivers: [
+    { check: "replay", parts: ["cylinder"], reason: "未修:動力重演不成立——「主動件走完一輪後 cylinder 的位置」預期 cylinder 在主動量 1.12 時已轉 -60°,實際轉了 -69°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["pawl", "springC"], reason: "小彈簧的端頭抵在爪身上:彈簧的端圈伸進爪 0.05" },
     { check: "interference", parts: ["cylinder", "pawl"], reason: "爪推轉輪背面棘齒的過程依擊錘的行程演出,不逐點算爪尖與齒的接觸;爪尖伸進棘齒 0.12" },
   ],

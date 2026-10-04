@@ -64,6 +64,8 @@ export default {
       pieces: [-2.6, 2.4].map((x) => ({ kind: "cylinder", radius: 0.3, inner: 0.13, length: 0.3, at: [x, BAR_Y - 0.5, 0] })),
     },
   ],
+  // 動力重演:只推主動件;bar 靠摩擦定位,由接觸帶動
+  replay: { from: 0, to: -6.283185307179586, free: { bar: { slide: [1,0,0], hold: true } }, expect: [{ part: "bar", label: "主動件走完一輪後 bar 的位置" }] },
   driver: { part: "disc", type: "rotation", speed: -0.9 },
   target: "bar",
   view: { direction: [0.06, 0.05, 1] },
@@ -71,4 +73,7 @@ export default {
     const { x, crank } = shuttle(-v);
     return { parts: { disc: { angle: v }, bar: { position: [x, 0, 0] }, crank: { angle: crank } }, readouts: [] };
   },
+  waivers: [
+    { check: "replay", parts: ["bar"], reason: "未修:動力重演不成立——「主動件走完一輪後 bar 的位置」預期 bar 在主動量 -6.28 時已移 0.00,實際移了 0.55(停位差 0.55)。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
+  ],
 };

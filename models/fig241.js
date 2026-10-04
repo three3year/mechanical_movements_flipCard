@@ -41,6 +41,8 @@ export default {
       ],
     },
   ],
+  // 動力重演:只推主動件;wheelA 靠摩擦定位,由接觸帶動
+  replay: { from: 0, to: 6.283185307179586, free: { wheelA: { hold: true } }, expect: [{ part: "wheelA", label: "主動件走完一輪後 wheelA 的位置" }] },
   driver: { part: "small", type: "rotation" },
   target: "wheelA",
   view: { direction: [0.06, 0.05, 1] },
@@ -48,6 +50,7 @@ export default {
     return { parts: { small: { angle: theta }, wheelA: { angle: wheelA(theta) } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["wheelA"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheelA 的位置」預期 wheelA 在主動量 6.28 時已轉 -15°,實際轉了 -71°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["wheelA", "small"], reason: "小輪上的鉤每圈推棘輪一齒,推的過程依時序演出,不逐點算鉤與齒的接觸;鉤尖伸進齒 0.11" },
     { check: "interference", parts: ["wheelA", "click"], reason: "止回爪畫成固定的形狀(沒有演出它被齒頂開再落回),棘輪轉動時齒掃過它的末端,重疊 0.15" },
   ],

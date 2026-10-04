@@ -83,6 +83,8 @@ export default {
     { id: "ropeL", kind: "rope" },
     { id: "ball", kind: "sphere", radius: 0.22 },
   ],
+  // 動力重演:只推主動件;flywheel 靠摩擦定位,由接觸帶動
+  replay: { free: { flywheel: { hold: true } }, expect: [{ part: "flywheel", label: "主動件走完一輪後 flywheel 的位置" }] },
   driver: { part: "beam", type: "rotation", cycle: [-SWING, SWING] },
   target: "flywheel",
   view: { direction: [0.03, 0.05, 1] },
@@ -113,6 +115,7 @@ export default {
     };
   },
   waivers: [
+    { check: "replay", parts: ["flywheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 flywheel 的位置」預期 flywheel 在主動量 0.98 時已轉 -86°,實際轉了 -39°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["flywheel", "pawl"], reason: "棘爪落在飛輪側面棘齒上的位置依時序演出;爪尖伸進齒 0.08" },
   ],
 };

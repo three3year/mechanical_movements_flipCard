@@ -49,6 +49,8 @@ export default {
       ],
     },
   ],
+  // 動力重演:只推主動件;crown 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { crown: { spring: -1, gravity: false } }, expect: [{ part: "crown", label: "主動件走完一輪後 crown 的位置" }] },
   driver: { part: "verge", type: "rotation", cycle: [-SWING, SWING] },
   target: "crown", // 冠狀輪(擒縱輪)
   view: { direction: [0.08, 0.18, 1] },
@@ -56,6 +58,7 @@ export default {
     return { parts: { verge: { angle: swing(v, -SWING, SWING) }, crown: { angle: wheelAngle(v) } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["crown"], reason: "未修:動力重演不成立——「主動件走完一輪後 crown 的位置」預期 crown 在主動量 1.54 時已轉 -24°,實際轉了 11°。模型的擒縱是依擺動的相位演出的:重演裡給擒縱輪一個固定的力矩後,掣子(叉瓦)沒有照一擺放一齒那樣擋住、放行(輪一路轉走,或被卡住不動)。掣子與輪齒的外形、位置要重做成真的擋得住(列入待確認清單)" },
     { check: "interference", parts: ["crown", "verge"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算掣子板與冠狀輪的齒的接觸;重疊 0.10(96 個取樣中 88 個)。列入待確認清單的動力重演名單" },
   ],
 };

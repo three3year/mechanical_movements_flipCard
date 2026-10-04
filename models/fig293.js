@@ -66,6 +66,8 @@ export default {
     { id: "labelB", kind: "group", center: [A[0] + 0.15, A[1] - 0.6, 0.5], label: "B", labelOffset: [0.25, 0, 0] },
     { id: "labelD", kind: "group", center: [-1.3, -0.75, 0.5], label: "D", labelOffset: [-0.2, 0.3, 0] },
   ],
+  // 動力重演:只推主動件;wheel 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { wheel: { spring: -1, gravity: false } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
   driver: { part: "staffA", type: "rotation", cycle: [-SWING, SWING], initial: SWING },
   target: "wheel", // 擒縱輪
   view: { direction: [0.05, 0.35, 1] },
@@ -74,6 +76,7 @@ export default {
     return { parts: { staffA: { angle: d.balance }, wheel: { angle: d.wheel } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheel 的位置」預期 wheel 在主動量 8.73 時已轉 -20°,實際轉了 -7120°。模型的擒縱是依擺動的相位演出的:重演裡給擒縱輪一個固定的力矩後,掣子(叉瓦)沒有照一擺放一齒那樣擋住、放行(輪一路轉走,或被卡住不動)。掣子與輪齒的外形、位置要重做成真的擋得住(列入待確認清單)" },
     { check: "interference", parts: ["wheel", "staffA"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擺輪心軸上的缺口與輪齒的接觸;重疊 0.09(96 個取樣中 6 個)。列入待確認清單的動力重演名單" },
   ],
 };

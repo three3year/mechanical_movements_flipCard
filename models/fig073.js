@@ -76,6 +76,8 @@ export default {
     { id: "support", kind: "box", center: [-3.0, -2.95, 0], size: [1.3, 0.8, 0.6] },
     { id: "labelC", kind: "group", center: [-1.85, 0.75, 0.2], label: "C" },
   ],
+  // 動力重演:只推主動件;a 靠摩擦定位,由接觸帶動
+  replay: { from: 0, to: -6.283185307179586, free: { a: { hold: true } }, expect: [{ part: "a", label: "主動件走完一輪後 a 的位置" }] },
   driver: { part: "d", type: "rotation", speed: -0.9 },
   target: "a", // 每圈被推一齒的棘輪 A
   view: { direction: [0.06, 0.05, 1] },
@@ -89,6 +91,7 @@ export default {
     };
   },
   waivers: [
+    { check: "replay", parts: ["a"], reason: "未修:動力重演不成立——「主動件走完一輪後 a 的位置」預期 a 在主動量 -6.28 時已轉 -30°,實際轉了 -316°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["d", "springC"], reason: "彈簧 B 從 C 下方通過、把 C 壓進齒的過程以正弦曲線演出,不逐點算接觸;兩根彈簧條(都畫成圓條)交會時最多重疊 0.05(96 個取樣中 10 個)" },
   ],
 };

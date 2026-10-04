@@ -63,6 +63,8 @@ export default {
     { id: "labelA", kind: "group", center: [0.45, STAFF_Y - 0.3, R], label: "A", labelOffset: [0.2, 0, 0.3] },
     { id: "labelB", kind: "group", center: [-0.45, STAFF_Y - 0.3, -R], label: "B", labelOffset: [-0.2, 0, 0.3] },
   ],
+  // 動力重演:只推主動件;crownD 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { crownD: { spring: 1, gravity: false } }, expect: [{ part: "crownD", label: "主動件走完一輪後 crownD 的位置" }] },
   driver: { part: "balanceC", type: "rotation", cycle: [-SWING, SWING] },
   target: "crownD", // 冠狀輪(擒縱輪)
   view: { direction: [0.08, 0.15, 1] },
@@ -71,6 +73,7 @@ export default {
     return { parts: { balanceC: { angle: b.angle }, crownD: { angle: b.crown } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["crownD"], reason: "未修:動力重演不成立——「主動件走完一輪後 crownD 的位置」預期 crownD 在主動量 1.40 時已轉 24°,實際沒動。模型的擒縱是依擺動的相位演出的:重演裡給擒縱輪一個固定的力矩後,掣子(叉瓦)沒有照一擺放一齒那樣擋住、放行(輪一路轉走,或被卡住不動)。掣子與輪齒的外形、位置要重做成真的擋得住(列入待確認清單)" },
     { check: "interference", parts: ["crownD", "balanceC"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擺輪心軸上的掣子與冠狀輪的齒的接觸;重疊 0.10(96 個取樣中 88 個)。列入待確認清單的動力重演名單" },
   ],
 };

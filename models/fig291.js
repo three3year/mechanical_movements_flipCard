@@ -81,6 +81,8 @@ export default {
     { id: "labelI", kind: "group", center: [B[0] - 0.95, B[1] + 0.2, 0], label: "i", labelOffset: [0, 0.25, 0.3] },
     { id: "labelA2", kind: "group", center: BAL, label: "a", labelOffset: [-0.25, 0.65, 0.3] },
   ],
+  // 動力重演:只推主動件;wheelB 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { wheelB: { spring: -1, gravity: false } }, expect: [{ part: "wheelB", label: "主動件走完一輪後 wheelB 的位置" }] },
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheelB", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
@@ -89,6 +91,7 @@ export default {
     return { parts: { balance: { angle: c.balance }, detentA: { angle: -c.lift }, wheelB: { angle: c.wheel } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["wheelB"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheelB 的位置」預期 wheelB 在主動量 7.68 時已轉 -24°,實際轉了 -93973°。模型的擒縱是依擺動的相位演出的:重演裡給擒縱輪一個固定的力矩後,掣子(叉瓦)沒有照一擺放一齒那樣擋住、放行(輪一路轉走,或被卡住不動)。掣子與輪齒的外形、位置要重做成真的擋得住(列入待確認清單)" },
     { check: "unsupported", parts: ["detentA"], reason: "天文鐘擒縱的接觸都是瞬間的(擺輪經過時撥開掣子、放過的輪齒給擺輪一次衝擊);模型依相位演出,零件的外形沒有畫到真的互相碰到(差 0.08)。要補得重排擺輪、掣子與擒縱輪的相對位置(列入待確認清單)" },
     { check: "unsupported", parts: ["wheelB"], reason: "天文鐘擒縱的接觸都是瞬間的(擺輪經過時撥開掣子、放過的輪齒給擺輪一次衝擊);模型依相位演出,零件的外形沒有畫到真的互相碰到(差 0.25)。要補得重排擺輪、掣子與擒縱輪的相對位置(列入待確認清單)" },
   ],

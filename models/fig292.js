@@ -60,6 +60,8 @@ export default {
     { id: "labelA", kind: "group", center: [0.1, -1.1, 0.3], label: "A", labelOffset: [-0.35, -0.2, 0] },
     { id: "labelB", kind: "group", center: [1.65, 0.05, -0.3], label: "B", labelOffset: [0.3, 0, 0.6] },
   ],
+  // 動力重演:只推主動件;wheel 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { wheel: { spring: -1, gravity: false } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
   driver: { part: "anchor", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.25, 0.12, 1], fit: ["anchor"] },

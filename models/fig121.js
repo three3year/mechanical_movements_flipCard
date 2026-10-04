@@ -58,6 +58,8 @@ export default {
     { id: "clickR", kind: "plate", shape: shape(clickOutline(-1), [circle(0.07).reverse()]), thickness: 0.1, arrow: false, posed: true },
     { id: "rod", kind: "link", width: 0.24, thickness: 0.1 },
   ],
+  // 動力重演:只推主動件;cog 靠摩擦定位,由接觸帶動
+  replay: { free: { cog: { hold: true } }, expect: [{ part: "cog", label: "主動件走完一輪後 cog 的位置" }] },
   driver: { part: "disc", type: "rotation", cycle: [0, SWING] },
   target: "cog", // 間歇旋轉的棘輪
   states: {
@@ -93,5 +95,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["cog"], reason: "未修:動力重演不成立——「主動件走完一輪後 cog 的位置」預期 cog 在主動量 1.05 時已轉 -30°,實際沒動。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
+  ],
 };
 

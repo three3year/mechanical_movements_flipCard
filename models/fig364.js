@@ -54,6 +54,8 @@ export default {
       ],
     },
   ],
+  // 動力重演:只推主動件;big 靠摩擦定位,由接觸帶動
+  replay: { from: 0, to: -6.283185307179586, free: { big: { hold: true } }, expect: [{ part: "big", label: "主動件走完一輪後 big 的位置" }] },
   driver: { part: "small", type: "rotation", speed: -0.8 },
   target: "big", // 間歇轉動的大輪
   view: { direction: [0.03, 0.12, 1] },
@@ -61,6 +63,7 @@ export default {
     return { parts: { small: { angle: theta }, big: { angle: bigAngle(theta) } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["big"], reason: "未修:動力重演不成立——「主動件走完一輪後 big 的位置」預期 big 在主動量 -6.28 時已轉 -120°,實際轉了 115°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["small", "big"], reason: "摩擦傳動的小輪壓在大輪的渦形凸條上:小輪的位置依渦線的半徑算,輪緣伸進凸條 0.07(96 個取樣中 87 個)" },
   ],
 };

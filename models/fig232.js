@@ -72,6 +72,8 @@ export default {
     { id: "leverB", kind: "plate", shape: shape(thickLine([[0, 0], [4.0, 0]], 0.36), [circle(0.12).reverse()]), thickness: 0.1, center: [0, 0, 0.58], arrow: false, label: "B", labelOffset: [3.0, 0.1, 0] },
     { id: "link", kind: "link", width: 0.16, thickness: 0.06, stretch: true },
   ],
+  // 動力重演:只推主動件;wheel 靠摩擦定位,由接觸帶動
+  replay: { free: { wheel: { hold: true } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
   driver: { part: "leverB", type: "rotation", cycle: [LOW, HIGH] },
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
@@ -94,6 +96,7 @@ export default {
     };
   },
   waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheel 的位置」預期 wheel 在主動量 0.87 時已轉 -18°,實際沒動。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["wheel", "pawlC"], reason: "棘爪 C 的抬起、落下依槓桿的行程演出,不逐點算爪尖落在齒上的位置;推齒與滑過齒頂時爪尖伸進齒 0.11(96 個取樣中 40 個)" },
   ],
 };

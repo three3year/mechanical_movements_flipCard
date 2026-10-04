@@ -131,6 +131,8 @@ export default {
     { id: "rod", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "frame", kind: "group", pieces: [{ kind: "plate", shape: shape(circle(0.24), []), thickness: 0.3, at: [F.pivot[0], F.pivot[1], 0.6] }] },
   ],
+  // 動力重演:只推主動件;shaft 靠摩擦定位,由接觸帶動
+  replay: { from: 0, to: 6.283185307179586, free: { shaft: { hold: true } }, expect: [{ part: "shaft", label: "主動件走完一輪後 shaft 的位置" }] },
   driver: { part: "drive", type: "rotation", speed: 1.2 },
 
   target: "shaft", // 自動來回反轉的軸(連桿只是撥動離合器的中間件)
@@ -161,6 +163,7 @@ export default {
     };
   },
   waivers: [
+    { check: "replay", parts: ["shaft"], reason: "未修:動力重演不成立——「主動件走完一輪後 shaft 的位置」預期 shaft 在主動量 6.28 時已轉 347°,實際轉了 169°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "unsupported", parts: ["rod"], reason: "E 上的凸柱推 G、G 經連桿推 F、F 撥動離合器 D 這一串是依時序演出的:凸柱與 G、F 與離合器之間沒有畫出相碰的實體。原圖這部分是示意畫法,看不出深度配置;要補就得重排整組槓桿的位置(列入待確認清單)" },
     { check: "unsupported", parts: ["crankG"], reason: "E 上的凸柱推 G、G 經連桿推 F、F 撥動離合器 D 這一串是依時序演出的:凸柱與 G、F 與離合器之間沒有畫出相碰的實體。原圖這部分是示意畫法,看不出深度配置;要補就得重排整組槓桿的位置(列入待確認清單)" },
     { check: "unsupported", parts: ["leverF"], reason: "E 上的凸柱推 G、G 經連桿推 F、F 撥動離合器 D 這一串是依時序演出的:凸柱與 G、F 與離合器之間沒有畫出相碰的實體。原圖這部分是示意畫法,看不出深度配置;要補就得重排整組槓桿的位置(列入待確認清單)" },

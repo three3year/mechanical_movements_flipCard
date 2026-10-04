@@ -69,6 +69,8 @@ export default {
     { id: "pawlUp", kind: "plate", shape: pawl(PAWL.up), thickness: 0.08, arrow: false },
     { id: "pawlDown", kind: "plate", shape: pawl(PAWL.down), thickness: 0.06, arrow: false },
   ],
+  // 動力重演:只推主動件;bar 靠摩擦定位,由接觸帶動
+  replay: { free: { bar: { slide: [1,0,0], hold: true } }, expect: [{ part: "bar", label: "主動件走完一輪後 bar 的位置" }] },
   driver: { part: "lever", type: "rotation", cycle: [S, -S] },
 
   target: "bar",
@@ -94,4 +96,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["bar"], reason: "未修:動力重演不成立——「主動件走完一輪後 bar 的位置」預期 bar 在主動量 1.12 時已移 0.61,實際移了 2.40(停位差 3.01)。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
+  ],
 };

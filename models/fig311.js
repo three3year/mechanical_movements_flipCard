@@ -75,6 +75,8 @@ export default {
     { id: "labelD", kind: "group", center: [-1.6, 2.1, 0], label: "E", labelOffset: [-0.3, 0.2, 0.3] },
     { id: "labelE", kind: "group", center: [1.6, 2.1, 0], label: "D", labelOffset: [0.4, -0.1, 0.3] },
   ],
+  // 動力重演:只推主動件;wheel 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { wheel: { spring: 1, gravity: false } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
@@ -83,6 +85,7 @@ export default {
     return { parts: { pendulum: { angle: d.pendulum }, armR: { angle: d.right }, armL: { angle: -d.left }, wheel: { angle: d.wheel } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheel 的位置」預期 wheel 在主動量 0.21 時已轉 120°,實際轉了 12763°。模型的擒縱是依擺動的相位演出的:重演裡給擒縱輪一個固定的力矩後,掣子(叉瓦)沒有照一擺放一齒那樣擋住、放行(輪一路轉走,或被卡住不動)。掣子與輪齒的外形、位置要重做成真的擋得住(列入待確認清單)" },
     { check: "interference", parts: ["wheel", "pendulum"], reason: "擺桿在擒縱輪軸的後端前方擺過,與軸端重疊 0.04(96 個取樣中 46 個);軸端應再短一點" },
     { check: "unsupported", parts: ["armR"], reason: "擒縱的接觸是瞬間的(輪齒落在掣子上、滑過衝擊面);模型依相位演出,零件的外形沒有畫到真的互相碰到(差 0.09)。要補得重排擺軸、掣子與擒縱輪的相對位置(列入待確認清單)" },
     { check: "unsupported", parts: ["armL"], reason: "擒縱的接觸是瞬間的(輪齒落在掣子上、滑過衝擊面);模型依相位演出,零件的外形沒有畫到真的互相碰到(差 0.09)。要補得重排擺軸、掣子與擒縱輪的相對位置(列入待確認清單)" },

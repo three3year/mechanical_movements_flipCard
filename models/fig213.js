@@ -69,6 +69,8 @@ export default {
       ],
     },
   ],
+  // 動力重演:只推主動件;upper 靠摩擦定位,由接觸帶動
+  replay: { free: { upper: { hold: true } }, expect: [{ part: "upper", label: "主動件走完一輪後 upper 的位置" }] },
   driver: { part: "lower", type: "rotation", range: [-LIMIT, LIMIT] },
   target: "upper",
   view: { direction: [0.06, 0.05, 1] },

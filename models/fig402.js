@@ -51,6 +51,8 @@ export default {
     { id: "labelA", kind: "group", center: P, label: "A", labelOffset: [0.65, -0.05, 0.3] },
     { id: "wheel", kind: "group", center: WHEEL, spin: 0.7, pieces: [{ kind: "plate", shape: { ...ratchetShape({ teeth: N, outer: 0.7, inner: 0.55, dir: -1 }), holes: [circle(0.08).reverse()] }, thickness: 0.1 }, { kind: "box", size: [0.12, 0.12, 0.12], at: [0.45, 0, 0.06], accent: true }] },
   ],
+  // 動力重演:只推主動件;bal1、bal2 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { bal1: { hold: true }, bal2: { hold: true } }, expect: [{ part: "bal1", label: "主動件走完一輪後 bal1 的位置" }, { part: "bal2", label: "主動件走完一輪後 bal2 的位置" }] },
   driver: { part: "lever", type: "rotation", cycle: [-SWING, SWING] },
   targets: ["bal1", "bal2"], // 一正一反的兩個擺輪
   view: { direction: [0.03, 0.05, 1] },

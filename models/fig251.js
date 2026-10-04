@@ -69,6 +69,8 @@ export default {
     },
     { id: "rope", kind: "rope" },
   ],
+  // 動力重演:只推主動件;weight 靠摩擦定位,由接觸帶動
+  replay: { free: { weight: { slide: [0,1,0], hold: true } }, expect: [{ part: "weight", label: "主動件走完一輪後 weight 的位置" }] },
   driver: { part: "pin", grips: ["armL", "armR"], type: "translation", direction: [0, 1, 0], cycle: [0, HEIGHT] },
 
   target: "weight",

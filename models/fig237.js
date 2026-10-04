@@ -67,6 +67,8 @@ export default {
     },
     { id: "pawl", kind: "box", size: [0.22, 0.6, 0.4] },
   ],
+  // 動力重演:只推主動件;wheel 靠摩擦定位,由接觸帶動
+  replay: { free: { wheel: { hold: true } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
   driver: { part: "arm", type: "rotation", cycle: [FROM, TO] },
 
   target: "wheel",
@@ -85,6 +87,7 @@ export default {
     };
   },
   waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheel 的位置」預期 wheel 在主動量 1.05 時已轉 -30°,實際轉了 2°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["wheel", "pawl"], reason: "棘爪的抬起與落下依臂的行程演出,不逐點算爪底落在鋸齒上的位置;爪底伸進齒 0.12" },
   ],
 };

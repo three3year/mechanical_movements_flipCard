@@ -68,6 +68,8 @@ export default {
     { id: "labelB", kind: "group", center: [LEVER[0] - 0.85, LEVER[1] - 1.1, 0], label: "B", labelOffset: [-0.2, -0.25, 0.3] },
     { id: "labelC", kind: "group", center: [BAL[0] - 0.62, BAL[1] + 0.15, 0], label: "C", labelOffset: [-0.25, 0.25, 0.3] },
   ],
+  // 動力重演:只推主動件;wheel 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { wheel: { spring: -1, gravity: false } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
@@ -76,6 +78,7 @@ export default {
     return { parts: { balance: { angle: l.balance }, lever: { angle: l.lever }, wheel: { angle: l.wheel } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheel 的位置」預期 wheel 在主動量 9.77 時已轉 -24°,實際沒動。模型的擒縱是依擺動的相位演出的:重演裡給擒縱輪一個固定的力矩後,掣子(叉瓦)沒有照一擺放一齒那樣擋住、放行(輪一路轉走,或被卡住不動)。掣子與輪齒的外形、位置要重做成真的擋得住(列入待確認清單)" },
     { check: "interference", parts: ["balance", "lever"], reason: "槓桿的叉口套著擺輪圓盤上的銷:叉口與圓盤在圖上畫在同一層,重疊 0.04" },
     { check: "interference", parts: ["wheel", "lever"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算槓桿的掣子與輪上的衝擊塊的接觸;重疊 0.09(96 個取樣中 10 個)。列入待確認清單的動力重演名單" },
   ],

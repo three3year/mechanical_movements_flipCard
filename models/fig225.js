@@ -59,6 +59,8 @@ export default {
     { id: "pawl", kind: "plate", shape: shape([[-0.15, 0.12], [PAWL * 0.5, 0.22], [PAWL, 0.06], [PAWL + 0.02, -0.08], [PAWL * 0.5, -0.06], [-0.15, -0.12]]), thickness: 0.1, arrow: false },
     { id: "stand", kind: "group", pieces: [{ kind: "plate", shape: shape([[-0.5, -0.35], [0.5, -0.35], [0.3, 0.05], [-0.3, 0.05]]), thickness: 0.3, at: [PIVOT[0], PIVOT[1] - 0.05, 0] }, { kind: "plate", shape: shape(rect(2.2, 0.12, PIVOT[0], PIVOT[1] - 0.46)), thickness: 0.5 }] },
   ],
+  // 動力重演:只推主動件;wheel 靠摩擦定位,由接觸帶動
+  replay: { free: { wheel: { hold: true } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
   driver: { part: "lever", type: "rotation", cycle: [FROM, -FROM] },
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
@@ -74,4 +76,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheel 的位置」預期 wheel 在主動量 0.31 時已轉 30°,實際沒動。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
+  ],
 };

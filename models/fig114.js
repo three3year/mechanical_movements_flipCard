@@ -71,6 +71,8 @@ export default {
       ],
     },
   ],
+  // 動力重演:只推主動件;frame 靠摩擦定位,由接觸帶動
+  replay: { from: 0, to: 6.283185307179586, free: { frame: { slide: [1,0,0], hold: true } }, expect: [{ part: "frame", label: "主動件走完一輪後 frame 的位置" }] },
   driver: { part: "pinion", type: "rotation", speed: 1.2 },
   target: "frame", // 往復直線運動的框架
   view: { direction: [0.06, 0.05, 1] },

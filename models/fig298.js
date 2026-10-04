@@ -71,6 +71,8 @@ export default {
       pieces: [{ kind: "cylinder", radius: 0.06, length: 0.6 }],
     },
   ],
+  // 動力重演:只推主動件;crown 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { crown: { spring: 1, gravity: false } }, expect: [{ part: "crown", label: "主動件走完一輪後 crown 的位置" }] },
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
   target: "crown", // 冠狀輪(擒縱輪)
   view: { direction: [0.15, 0.3, 1] },
@@ -79,6 +81,7 @@ export default {
     return { parts: { balance: { angle: r.balance }, crown: { angle: r.crown }, contrate: { angle: r.contrate } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["crown"], reason: "未修:動力重演不成立——「主動件走完一輪後 crown 的位置」預期 crown 在主動量 3.84 時已轉 28°,實際轉了 -44°。模型的擒縱是依擺動的相位演出的:重演裡給擒縱輪一個固定的力矩後,掣子(叉瓦)沒有照一擺放一齒那樣擋住、放行(輪一路轉走,或被卡住不動)。掣子與輪齒的外形、位置要重做成真的擋得住(列入待確認清單)" },
     { check: "interference", parts: ["balance", "crown"], reason: "擒縱的接觸依擺動的相位演出(每擺一次放過半齒),沒有逐點算叉瓦與冠狀輪齒的接觸;重疊 0.05(96 個取樣中 11 個)。列入待確認清單" },
     { check: "interference", parts: ["crown", "contrate"], reason: "簡化齒形:冠狀輪的小齒輪與端面齒輪的方塊齒齒側重疊 0.07" },
   ],

@@ -74,6 +74,8 @@ export default {
     { id: "labelD", kind: "group", center: [-1.15, -0.85, 0], label: "D", labelOffset: [-0.3, 0, 0.3] },
     { id: "labelE", kind: "group", center: [1.15, -0.85, 0], label: "E", labelOffset: [0.3, 0.2, 0.3] },
   ],
+  // 動力重演:只推主動件;wheel 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { wheel: { spring: 1, gravity: false } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
   driver: { part: "pendulum", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel", // 擒縱輪
   view: { direction: [0.03, 0.04, 1] },
@@ -82,6 +84,7 @@ export default {
     return { parts: { pendulum: { angle: g.pendulum }, armA: { angle: g.right }, armB: { angle: -g.left }, wheel: { angle: g.wheel } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheel 的位置」預期 wheel 在主動量 0.21 時已轉 120°,實際轉了 7°。模型的擒縱是依擺動的相位演出的:重演裡給擒縱輪一個固定的力矩後,掣子(叉瓦)沒有照一擺放一齒那樣擋住、放行(輪一路轉走,或被卡住不動)。掣子與輪齒的外形、位置要重做成真的擋得住(列入待確認清單)" },
     { check: "interference", parts: ["pendulum", "wheel"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擺與輪齒的接觸;重疊 0.11(96 個取樣中 37 個)。列入待確認清單的動力重演名單" },
     { check: "interference", parts: ["armB", "wheel"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算重力臂的掣子與輪齒的接觸;重疊 0.09(96 個取樣中 57 個)。列入待確認清單的動力重演名單" },
     { check: "interference", parts: ["armA", "wheel"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算重力臂的掣子與輪齒的接觸;重疊 0.10(96 個取樣中 55 個)。列入待確認清單的動力重演名單" },

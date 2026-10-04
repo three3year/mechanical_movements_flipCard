@@ -81,6 +81,8 @@ export default {
       ],
     },
   ],
+  // 動力重演:只推主動件;bar、lever 靠摩擦定位,由接觸帶動
+  replay: { from: 0.2672535417116317, to: 6.5504388488912175, free: { bar: { hold: true }, lever: { hold: true } }, expect: [{ part: "bar", label: "主動件走完一輪後 bar 的位置" }, { part: "lever", label: "主動件走完一輪後 lever 的位置" }] },
   driver: {
     part: "wheel",
     type: "rotation",

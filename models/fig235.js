@@ -53,6 +53,8 @@ export default {
     { id: "pawl", kind: "plate", shape: hook, thickness: 0.12, arrow: false },
     { id: "post", kind: "cylinder", center: PIVOT, radius: 0.07, length: 0.4 }, // 臂的固定樞軸(推斷)
   ],
+  // 動力重演:只推主動件;star 靠摩擦定位,由接觸帶動
+  replay: { free: { star: { hold: true } }, expect: [{ part: "star", label: "主動件走完一輪後 star 的位置" }] },
   driver: { part: "arm", type: "rotation", cycle: [FROM, TO] },
   target: "star",
   view: { direction: [0.06, 0.05, 1] },
@@ -69,6 +71,7 @@ export default {
     };
   },
   waivers: [
+    { check: "replay", parts: ["star"], reason: "未修:動力重演不成立——「主動件走完一輪後 star 的位置」預期 star 在主動量 0.84 時已轉 60°,實際轉了 -21°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["star", "click"], reason: "止回的彎彈簧畫成固定的形狀(沒有演出它被齒頂開再彈回),星形輪轉動時齒角掃過它的末端,重疊 0.13" },
   ],
 };

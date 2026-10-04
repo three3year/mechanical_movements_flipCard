@@ -46,6 +46,8 @@ export default {
     { id: "tagA1", kind: "group", center: [-R, ROD_Y - 0.1, 0.35], pieces: [], arrow: false, label: "A" },
     { id: "tagA2", kind: "group", center: [R, ROD_Y - 0.1, 0.35], pieces: [], arrow: false, label: "A" },
   ],
+  // 動力重演:只推主動件;wheel 受固定的力矩(發條或重錘),由擒縱件擋住、放行
+  replay: { free: { wheel: { spring: -1, gravity: false } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
   driver: { part: "verge", type: "rotation", cycle: [-SWING, SWING] },
   target: "wheel",
   view: { direction: [0.35, 0.55, 1] },

@@ -73,6 +73,8 @@ export default {
     },
     { id: "pawl", kind: "plate", shape: shape(thickLine([[0, 0], [-0.5, 0.25]], 0.08), [circle(0.03).reverse()]), thickness: 0.1, arrow: false },
   ],
+  // 動力重演:只推主動件;rack 靠摩擦定位,由接觸帶動
+  replay: { free: { rack: { slide: [0,1,0], hold: true } }, expect: [{ part: "rack", label: "主動件走完一輪後 rack 的位置" }] },
   driver: { part: "eccentric", type: "rotation", range: RANGE, initial: 0 },
   target: "rack", // 一齒一齒被頂上去的棘齒桿
   view: { direction: [0.06, 0.05, 1] },
@@ -84,6 +86,7 @@ export default {
     return { parts: { rack: { position: [0, h - 0.2, 0] }, eccentric: { angle: theta }, strap: { position: disc }, pawl: { position: c, angle: 0 } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["rack"], reason: "未修:動力重演不成立——「主動件走完一輪後 rack 的位置」預期 rack 在主動量 62.83 時已移 2.20,實際移了 0.50(停位差 2.70)。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["rack", "pawl"], reason: "棘爪推棘齒的過程依時序演出(每圈推上一齒),棘爪尖與齒重疊 0.10(96 個取樣中 30 個)" },
   ],
 };

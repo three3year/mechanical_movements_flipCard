@@ -79,6 +79,8 @@ export default {
       ],
     },
   ],
+  // 動力重演:只推主動件;pinion 靠摩擦定位,由接觸帶動
+  replay: { from: 0, to: 6.283185307179586, free: { pinion: { hold: true } }, expect: [{ part: "pinion", label: "主動件走完一輪後 pinion 的位置" }] },
   driver: { part: "wheel", type: "rotation" },
   target: "pinion",
   view: { direction: [0.06, 0.05, 1] },
@@ -86,6 +88,7 @@ export default {
     return { parts: { wheel: { angle: theta }, pinion: { angle: intermittent(theta).pinion } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["pinion"], reason: "未修:動力重演不成立——「主動件走完一輪後 pinion 的位置」預期 pinion 在主動量 6.28 時已轉 -360°,實際轉了 -433°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
     { check: "interference", parts: ["wheel", "pinion"], reason: "簡化齒形:節曲線半徑變化的輪以折線近似排齒,半徑轉折處齒頂與小齒輪的齒重疊 0.13(96 個取樣中 44 個);轉速比依節曲線半徑計算,不受影響" },
   ],
 };

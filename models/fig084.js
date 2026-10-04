@@ -74,6 +74,8 @@ export default {
     { id: "axle", kind: "cylinder", radius: 0.1, length: 0.7, center: [0, 0, -0.2] }, // 凸輪的固定軸(原圖沒畫,推斷)
   ],
   // 凸輪順時針轉(轉角為負),在四圈的範圍內往返
+  // 動力重演:只推主動件;frame 靠摩擦定位,由接觸帶動
+  replay: { free: { frame: { slide: [1,0,0], hold: true } }, expect: [{ part: "frame", label: "主動件走完一輪後 frame 的位置" }] },
   driver: { part: "cam", type: "rotation", range: [-4 * TAU, 0], initial: 0 },
   target: "frame", // 被一齒一齒推動的雙齒條框架 B
   states: {
@@ -93,4 +95,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["frame"], reason: "未修:動力重演不成立——「主動件走完一輪後 frame 的位置」預期 frame 在主動量 0.00 時已移 1.28,實際移了 2.65(停位差 1.37)。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
+  ],
 };

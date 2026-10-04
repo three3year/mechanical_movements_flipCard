@@ -153,6 +153,8 @@ export default {
     { id: "spring", kind: "rod", radius: 0.045 },
     { id: "springSeat", kind: "cylinder", center: [...SPRING.anchor, Z], radius: 0.09, length: 0.24, pieces: [{ kind: "box", size: [0.3, 0.14, 0.24], at: [0, -0.14, 0] }] },
   ],
+  // 動力重演:只推主動件;hook、bar、pawlC 靠摩擦定位,由接觸帶動
+  replay: { from: 0.19158955198028665, to: 6.474774859159873, free: { hook: { hold: true }, bar: { hold: true }, pawlC: { hold: true } }, expect: [{ part: "hook", label: "主動件走完一輪後 hook 的位置" }, { part: "bar", label: "主動件走完一輪後 bar 的位置" }, { part: "pawlC", label: "主動件走完一輪後 pawlC 的位置" }] },
   driver: {
     part: "wheel",
     type: "rotation",
@@ -175,4 +177,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["pawlC"], reason: "未修:動力重演不成立——「主動件走完一輪後 pawlC 的位置」預期 pawlC 在主動量 6.47 時已轉 0°,實際轉了 -20°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
+  ],
 };
