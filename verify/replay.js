@@ -128,6 +128,8 @@ export function replay(def) {
     if (free.hold) joint.configureMotorVelocity(0, HOLD * body.mass());
     entry.load = free.spring ? free.spring * SPRING * GRAVITY * body.mass() : 0;
   }
+  // 要傳事件佇列,引擎才會呼叫下面的過濾函式(不傳的話 ignore 與樞軸兩端的免碰撞都不會生效)
+  const events = new RAPIER.EventQueue(false);
   const hooks = {
     filterContactPair: (c1, c2) => {
       const a = world.getCollider(c1).partId;
@@ -156,7 +158,7 @@ export function replay(def) {
       entry.body.setNextKinematicTranslation(t.position);
       entry.body.setNextKinematicRotation(q.copy(t.quaternion).multiply(entry.startInverse));
     }
-    world.step(undefined, hooks);
+    world.step(events, hooks);
     // 自由零件繞自己的軸累計轉了多少
     for (const entry of bodies.values()) {
       if (!entry.free || entry.slide) continue;
@@ -168,6 +170,12 @@ export function replay(def) {
     }
   };
 
+  // 除錯用:這個自由零件正碰著哪些零件
+  const touching = (entry) => {
+    const ids = new Set();
+    for (let i = 0; i < entry.body.numColliders(); i++) world.contactPairsWith(entry.body.collider(i), (other) => ids.add(other.partId));
+    return ids.size ? `〔碰 ${[...ids].join("、")}〕` : "";
+  };
   const findings = [];
   try {
     for (let i = 0; i < SETTLE / DT; i++) step(from);
@@ -178,7 +186,7 @@ export function replay(def) {
       const value = from + ((to - from) * i) / steps;
       step(value);
       // 除錯:設環境變數 REPLAY_TRACE 時,每半秒印出各自由零件的位置與累計轉角
-      if (process.env.REPLAY_TRACE && i % 120 === 0) console.log(value.toFixed(2), [...bodies].filter(([, e]) => e.free).map(([id, e]) => `${id} ${[e.body.translation().x, e.body.translation().y].map((x) => x.toFixed(2))} ${deg(e.turned)}`).join(" | "));
+      if (process.env.REPLAY_TRACE && i % 120 === 0) console.log(value.toFixed(2), [...bodies].filter(([, e]) => e.free).map(([id, e]) => `${id} ${[e.body.translation().x, e.body.translation().y].map((x) => x.toFixed(2))} ${deg(e.turned)}${touching(e)}`).join(" | "));
       while (pending.length && (pending[0].at - value) * Math.sign(to - from) <= 1e-12) {
         const finding = compare(def, bodies, pending.shift(), from, state);
         if (finding) findings.push(finding);

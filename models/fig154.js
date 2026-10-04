@@ -75,6 +75,17 @@ export default {
   ],
   driver: { part: "disc", type: "rotation", speed: -0.8 },
   target: "weight",
+  // 動力重演:只推圓盤;搖臂繞樞軸自由擺動,重物經繩把它往回拉(以彈簧代表),回到擋銷為止
+  replay: {
+    from: 0,
+    to: -TAU / 4,
+    free: { crank: { spring: -1, limits: [0, 1.2], gravity: false } },
+    ignore: [["crank", "stands"]], // 樞軸與擋銷由樞軸約束與 limits 代表
+    expect: [
+      { at: -0.6, part: "crank", label: "凸柱把下臂壓到最低,重物被拉起", quote: "凸柱依序撥動" },
+      { at: -1.3, part: "crank", label: "凸柱滑過後重物把搖臂拉回原位" },
+    ],
+  },
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const { swing, top, y } = lift(-v);

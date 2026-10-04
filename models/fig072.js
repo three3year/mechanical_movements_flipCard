@@ -97,6 +97,16 @@ export default {
     },
   ],
   driver: { part: "wiper", type: "rotation", speed: -1.0 },
+  // 動力重演:只推推板輪;錘子繞支座自由擺動,靠自重落下
+  replay: {
+    from: 0,
+    to: -PERIOD,
+    free: { hammer: {} },
+    expect: [
+      { at: -(SLIP.at - 0.08), part: "hammer", label: "推板把錘子頂到最高", quote: "每轉一圈把錘子抬起四次" },
+      { at: -(SLIP.at + DROP + 0.15), part: "hammer", label: "推板滑脫後錘子落回" },
+    ],
+  },
   target: "hammer", // 被抬起又落下的錘子 A
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
