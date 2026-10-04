@@ -5,7 +5,7 @@ import { ratchetShape, circle } from "./shapes.js";
 import { chainOver } from "./chain-over-sprocket.js";
 
 const TEETH = 16;
-const PINS = 2.3;
+const PINS = 2.27; // 鏈帶的內緣貼著輪齒的齒頂
 const chain = chainOver({ pins: PINS, left: [-3.05, -2.4, 0], right: [3.1, -1.25, 0] });
 
 export const travel = chain.travel;
@@ -24,6 +24,7 @@ export default {
       markSize: 0.11,
       spin: 2.1,
     },
+    { id: "shaft", kind: "cylinder", radius: 0.14, length: 0.6 }, // 輪的固定軸(推斷)
     { id: "chain", kind: "chain", style: "toothed", pitch: (TAU * PINS) / TEETH, width: 0.36, offset: 0.12 },
   ],
   driver: { part: "wheel", type: "rotation" },

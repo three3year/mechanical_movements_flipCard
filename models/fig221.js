@@ -65,7 +65,7 @@ export default {
         { kind: "plate", shape: { outline, holes: [circle(0.1).reverse()] }, thickness: 0.2, mark: [-0.3, -1.3], markSize: 0.08 },
         { kind: "plate", shape: ring(0.1), thickness: 0.04, at: [0, 0, -0.6] },
         { kind: "plate", shape: ring(-0.1), thickness: 0.04, at: [0, 0, -0.6] },
-        { kind: "cylinder", radius: 0.14, inner: 0.06, length: 0.5 },
+        { kind: "cylinder", radius: 0.14, inner: 0.06, length: 0.4 },
       ],
     },
     gear("pinionB", b, { label: "B", labelOffset: [0, 0.75, 0.3], pieces: [{ kind: "cylinder", radius: 0.07, length: 0.9, at: [0, 0, -0.1] }] }),
@@ -74,7 +74,7 @@ export default {
     { id: "frame", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "tagG", kind: "group", pieces: [], arrow: false, label: "g" },
     { id: "tagH", kind: "group", pieces: [], arrow: false, label: "h" },
-    { id: "pivotD", kind: "group", label: "D", labelOffset: [-0.3, 0, 0.3], pieces: [{ kind: "cylinder", radius: 0.1, length: 0.7 }] },
+    { id: "pivotD", kind: "group", label: "D", labelOffset: [-0.3, 0, 0.3], pieces: [{ kind: "cylinder", radius: 0.1, length: 0.5, at: [0, 0, 0.1] }] }, // 樞軸只往前伸,後面那層的齒輪 B 從它後方繞過
   ],
   driver: { part: "gearC", type: "rotation" },
   target: "gearA",

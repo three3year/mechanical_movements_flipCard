@@ -51,6 +51,7 @@ export default {
       ],
     },
     { id: "pawl", kind: "plate", shape: hook, thickness: 0.12, arrow: false },
+    { id: "post", kind: "cylinder", center: PIVOT, radius: 0.07, length: 0.4 }, // 臂的固定樞軸(推斷)
   ],
   driver: { part: "arm", type: "rotation", cycle: [FROM, TO] },
   target: "star",
@@ -62,10 +63,13 @@ export default {
       parts: {
         arm: { angle: arm },
         star: { angle: star },
-        pawl: { position: [pin[0], pin[1], 0.15], angle: arm - yieldAngle },
+        pawl: { position: [pin[0], pin[1], 0.12], angle: arm - yieldAngle }, // 撥爪貼著臂的前面
       },
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["star", "click"], reason: "止回的彎彈簧畫成固定的形狀(沒有演出它被齒頂開再彈回),星形輪轉動時齒角掃過它的末端,重疊 0.13" },
+  ],
 };
 

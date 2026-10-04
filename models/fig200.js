@@ -45,4 +45,7 @@ export default {
       readouts: [{ label: "軸(下輪)/套筒(上輪)轉速", value: (UPPER.radius / LOWER.radius).toFixed(2) }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["drive", "upper"], reason: "簡化齒形:梯形齒的齒頂互相擦到 0.04" },
+  ],
 };

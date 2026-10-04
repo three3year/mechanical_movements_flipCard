@@ -34,9 +34,9 @@ const roller = (id, sign) => ({
   axis: axisOf(sign),
   spin: radius(HALF) + 0.1,
   pieces: [
-    { kind: "lathe", profile },
+    { kind: "lathe", profile: [[0, -HALF], ...profile, [0, HALF]] }, // 剖面從軸線畫起,是實心的雙曲面體
     // 一端的凸緣與兩端的軸頭
-    { kind: "cylinder", radius: radius(HALF) + 0.05, length: 0.12, at: [0, 0, sign * (HALF - 0.1)], mark: true },
+    { kind: "cylinder", radius: radius(HALF) - 0.12, length: 0.12, at: [0, 0, sign * (HALF - 0.1)], mark: true },
     { kind: "cylinder", radius: 0.12, length: 6.4 },
   ],
 });

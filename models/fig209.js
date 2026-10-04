@@ -94,4 +94,7 @@ export default {
     const { right } = pair(theta);
     return { parts: { left: { angle: theta }, right: { angle: right } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["left", "right"], reason: "右輪的角進出左輪的叉形卡榫(帶過光面滾動的那一段)時,與叉齒重疊 0.10(96 個取樣中 10 個);兩輪的轉角是依節曲線的滾動關係算的,沒有另外算卡榫的接觸" },
+  ],
 };

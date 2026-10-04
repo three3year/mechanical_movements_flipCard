@@ -49,7 +49,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape([[-0.38, 0], [0.38, 0], [0.2, ARM], [-0.2, ARM]]), thickness: 0.12 },
         { kind: "plate", shape: shape([[0, -0.25], [0, 0.25], [SLOT_X + 0.3, 0.17], [SLOT_X + 0.3, -0.17]]), thickness: 0.12 },
-        { kind: "plate", shape: shape(stadium(1.2, 0.48).outline.map(([x, y]) => [x + SLOT_X - 0.75, y]), [stadium(0.95, 0.16).outline.map(([x, y]) => [x + SLOT_X - 0.62, y]).reverse()]), thickness: 0.12 },
+        { kind: "plate", shape: shape(stadium(1.2, 0.62).outline.map(([x, y]) => [x + SLOT_X - 0.75, y]), [stadium(0.95, 0.32).outline.map(([x, y]) => [x + SLOT_X - 0.62, y]).reverse()]), thickness: 0.12 },
         { kind: "cylinder", radius: 0.55, inner: 0.15, length: 0.3 },
       ],
     },

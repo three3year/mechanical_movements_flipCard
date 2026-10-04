@@ -52,4 +52,8 @@ export default {
     const { upper, lower } = rolls(theta);
     return { parts: { worm: { angle: theta }, upper: { angle: upper }, lower: { angle: lower } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["worm", "lower"], reason: "簡化齒形:蝸桿畫成圓柱加螺紋、兩個蝸輪是直齒,齒頂伸進蝸桿的芯 0.05" },
+    { check: "interference", parts: ["worm", "upper"], reason: "簡化齒形:蝸桿畫成圓柱加螺紋、兩個蝸輪是直齒,齒頂伸進蝸桿的芯 0.05" },
+  ],
 };

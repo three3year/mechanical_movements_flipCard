@@ -16,7 +16,7 @@ const Z = 0.1 + PIN.length * 0.6 + RP; // 小齒輪軸的高度(在輪面之上)
 /** 輪轉 theta、小齒輪在 ring:小齒輪的轉角(繞 +x)與轉速比 */
 export function pinion(theta, ring) {
   const ratio = RINGS[ring] / SLOTS;
-  return { angle: -theta * ratio, ratio };
+  return { angle: -theta * ratio + Math.PI / SLOTS, ratio }; // 相位:輪上的銷落在小齒輪的槽裡(不是頂在齒條上)
 }
 export const rings = RINGS;
 

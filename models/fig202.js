@@ -49,4 +49,7 @@ export default {
   pose(theta) {
     return { parts: { worm: { angle: theta }, wheel: { angle: Math.PI / N / 2 + wheelAngle(theta) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "worm"], reason: "簡化齒形:沙漏形蝸桿畫成旋轉體(沒有刻出螺紋的齒槽),蝸輪的齒伸進它的表面 0.13;實物的齒是落在螺紋槽裡" },
+  ],
 };

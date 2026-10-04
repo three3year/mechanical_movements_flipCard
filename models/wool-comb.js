@@ -128,7 +128,7 @@ export function woolCombModel(figure) {
     parts.unshift(
       { id: "wheelF", kind: "plate", shape: shape(fOutline, [circle(0.2).reverse()]), thickness: 0.18, hub: 0.32, spin: RF, label: "F", labelOffset: [0.7, -0.3, 0.3] },
       { id: "shaftH", kind: "cylinder", radius: 0.2, length: 0.9, arrow: false, label: "H", labelOffset: [0, 0.35, 0.3] },
-      { id: "catch", kind: "group", arrow: false, label: "G", labelOffset: [-0.6, 0.35, 0], pieces: [{ kind: "plate", shape: G_SHAPE, thickness: 0.12 }, { kind: "cylinder", radius: 0.2, inner: 0.08, length: 0.25 }] },
+      { id: "catch", kind: "group", arrow: false, label: "G", labelOffset: [-0.6, 0.35, 0], pieces: [{ kind: "plate", shape: G_SHAPE, thickness: 0.12 }, { kind: "cylinder", radius: 0.2, inner: 0.08, length: 0.25 }, { kind: "cylinder", radius: 0.08, length: 0.5, at: [tipG[0] - pivotG[0], tipG[1] - pivotG[1], -0.27] }] }, // 爪尖的銷往後伸進 F 的凹槽(G 在槓桿前面,F 在後面)
     );
   }
   return {
@@ -137,6 +137,7 @@ export function woolCombModel(figure) {
     driver: cam
       ? { part: "cam", type: "rotation", speed: 0.8 }
       : { type: "virtual", label: "凸輪轉了", mode: "progress", range: [0, 1], unit: "圈", speed: 0.15 },
+    ...(cam ? {} : { powered: ["lever"] }), // 第 218 種沒畫凸輪:槓桿直接受(沒畫出來的)凸輪推動
     target: cam ? "lever" : "wheelF", // 第 217 種:凸輪帶動的槓桿;第 218 種:槓桿經卡榫帶動的凹槽輪 F(連著滾軸)
     view: { direction: [0.06, 0.05, 1] },
     pose(v) {

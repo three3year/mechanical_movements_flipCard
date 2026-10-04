@@ -54,9 +54,22 @@ export default {
   figure: 232,
   parts: [
     { id: "wheel", kind: "plate", shape: wheelShape, thickness: 0.2, hub: 0.3, mark: [-1.4, -0.6], markSize: 0.09, spin: R + 0.2 },
-    { id: "plateA", kind: "group", arrow: false, label: "A", labelOffset: [-0.15, 1.6, 0.3], pieces: [{ kind: "plate", shape: plateA, thickness: 0.1, at: [0, 0, 0.2] }] },
-    { id: "pawlC", kind: "plate", shape: cShape, thickness: 0.1, arrow: false, label: "C", labelOffset: [1.3, -0.55, 0.3] },
-    { id: "leverB", kind: "plate", shape: shape(thickLine([[0, 0], [4.0, 0]], 0.36), [circle(0.12).reverse()]), thickness: 0.1, center: [0, 0, 0.4], arrow: false, label: "B", labelOffset: [3.0, 0.1, 0] },
+    { id: "plateA", kind: "group", arrow: false, label: "A", labelOffset: [-0.15, 1.6, 0.3], pieces: [{ kind: "plate", shape: plateA, thickness: 0.1, at: [0, 0, 0.18] }] },
+    {
+      id: "pawlC",
+      kind: "plate",
+      shape: cShape,
+      thickness: 0.1,
+      arrow: false,
+      label: "C",
+      labelOffset: [1.3, -0.55, 0.3],
+      // 爪尖的齒往後伸到齒輪那一層;掛連桿的銷往前伸到連桿(由後往前:齒輪、板 A、棘爪 C、連桿、槓桿 B)
+      pieces: [
+        { kind: "cylinder", radius: 0.07, length: 0.36, at: [cArc[13][0], cArc[13][1], -0.18] },
+        { kind: "cylinder", radius: 0.06, length: 0.14, at: [C_PIN[0] - C_PIVOT[0], C_PIN[1] - C_PIVOT[1], 0.11] },
+      ],
+    },
+    { id: "leverB", kind: "plate", shape: shape(thickLine([[0, 0], [4.0, 0]], 0.36), [circle(0.12).reverse()]), thickness: 0.1, center: [0, 0, 0.58], arrow: false, label: "B", labelOffset: [3.0, 0.1, 0] },
     { id: "link", kind: "link", width: 0.16, thickness: 0.06, stretch: true },
   ],
   driver: { part: "leverB", type: "rotation", cycle: [LOW, HIGH] },
@@ -73,12 +86,15 @@ export default {
       parts: {
         wheel: { angle: wheel + PITCH / 2 },
         plateA: { angle: a },
-        pawlC: { position: [pivot[0], pivot[1], 0.32], angle: cAngle },
+        pawlC: { position: [pivot[0], pivot[1], 0.3], angle: cAngle },
         leverB: { angle: b },
         link: { from: [bPin[0], bPin[1], 0.5], to: [cPinNow[0], cPinNow[1], 0.5] },
       },
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "pawlC"], reason: "棘爪 C 的抬起、落下依槓桿的行程演出,不逐點算爪尖落在齒上的位置;推齒與滑過齒頂時爪尖伸進齒 0.11(96 個取樣中 40 個)" },
+  ],
 };
 

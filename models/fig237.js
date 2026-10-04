@@ -62,7 +62,7 @@ export default {
       arrow: false,
       pieces: [
         { kind: "cylinder", radius: 0.3, length: 0.18, at: [0, 0, 1.0] },
-        { kind: "cylinder", radius: 0.06, length: 3.2, axis: [1, 0, 0], at: [1.4, 0, 1.12] },
+        { kind: "cylinder", radius: 0.06, length: R + 0.09, axis: [1, 0, 0], at: [(R - 0.31) / 2, 0, 1.12] }, // 臂的端面頂著棘爪(棘爪掛在臂端,可上下滑)
       ],
     },
     { id: "pawl", kind: "box", size: [0.22, 0.6, 0.4] },
@@ -84,4 +84,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "pawl"], reason: "棘爪的抬起與落下依臂的行程演出,不逐點算爪底落在鋸齒上的位置;爪底伸進齒 0.12" },
+  ],
 };

@@ -34,7 +34,8 @@ const crank = (id, center, len, angle, z, shaftZ) => ({
 
 export default {
   figure: 231,
-  parts: [crank("driver", O1, A, START, 0.3, -1.3), crank("follower", O2, B, Q0, 0, 1.3), { id: "link", kind: "link", width: 0.3, thickness: 0.1 }],
+  // 主動曲柄在後、軸往後伸;從動曲柄在前、軸往前伸;連桿夾在中間(兩根軸不同心,曲柄才不會掃過對方的軸)
+  parts: [crank("driver", O1, A, START, 0, -1.3), crank("follower", O2, B, Q0, 0.3, 1.3), { id: "link", kind: "link", width: 0.3, thickness: 0.1 }],
   driver: { part: "driver", type: "rotation" },
   target: "follower",
   view: { direction: [0.3, 0.7, 1] },

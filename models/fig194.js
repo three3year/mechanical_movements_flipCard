@@ -46,7 +46,7 @@ export default {
         ...pins,
       ],
     },
-    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.25, web: false, center: [0, 0, 0.2], pieces: [{ kind: "cylinder", radius: 0.08, length: 0.9 }] },
+    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.25, web: false, center: [0, 0, 0.36], pieces: [{ kind: "cylinder", radius: 0.08, length: 0.5, at: [0, 0, 0.3] }] }, // 小齒輪的軸只往前伸(它沿輪面內外移動,不穿過輪板)
   ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
   target: "wheel",
@@ -56,9 +56,12 @@ export default {
     return {
       parts: {
         wheel: { angle: wheel },
-        pinion: { position: [0, y, 0.2], angle: path.phase(NP) + pinion },
+        pinion: { position: [0, y, 0.36], angle: path.phase(NP) + pinion },
       },
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "pinion"], reason: "簡化齒形:輪面上的銷畫成方塊、小齒輪是梯形齒,小齒輪繞過銷圈兩端時齒側擦到銷 0.05(96 個取樣中 16 個)" },
+  ],
 };

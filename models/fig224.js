@@ -87,8 +87,11 @@ export default {
     const parts = { pinionD: { angle: alpha }, wheelC: { angle: c } };
     for (let i = 0; i < ARMS; i++) {
       const phi = (i * TAU) / ARMS;
-      parts[`arm${i}`] = { position: [...polar(stud, phi).slice(0, 2), 0.1], angle: phi };
+      parts[`arm${i}`] = { position: [...polar(stud, phi).slice(0, 2), 0.3], angle: phi }; // 臂在輪面的前面,只有凸柱伸進輪上的槽
     }
     return { parts, readouts: [{ label: "皮帶輪直徑", value: (2 * (rim + 0.1)).toFixed(2) }] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheelC", "pinionD"], reason: "簡化齒形:梯形齒的齒頂互相擦到 0.05" },
+  ],
 };

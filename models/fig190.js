@@ -89,7 +89,7 @@ export default {
       pieces: [
         { kind: "worm", radius: 0.1, length: 1.3, pitch: PITCH, thread: 0.04 },
         // 槓桿右臂底下的肩:螺桿上升時由它頂起槓桿
-        { kind: "cylinder", radius: 0.16, length: 0.06, at: [0, 0, -0.08], accent: true },
+        { kind: "cylinder", radius: 0.11, length: 0.06, at: [0, 0, -0.08], accent: true },
         // 手柄在槓桿最高處之上,轉動時不掃過槓桿與支柱
         { kind: "cylinder", radius: 0.06, length: 0.6, at: [0, 0, 0.85] },
         { kind: "box", size: [1.4, 0.15, 0.12], at: [0.55, 0, 1.1] },

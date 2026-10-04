@@ -52,5 +52,8 @@ export default {
   pose(v) {
     return { parts: { verge: { angle: swing(v, -SWING, SWING) }, wheel: { angle: wheelAngle(v) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "verge"], reason: "擒縱的時序是演出來的:冠狀輪每擺一次前進半齒,沒有逐點算掣子板與齒的接觸;掣子板擋住齒時伸進齒 0.15(列入待確認清單的動力重演名單)" },
+  ],
 };
 

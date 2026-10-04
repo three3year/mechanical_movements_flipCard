@@ -179,3 +179,12 @@ test("螺桿的螺紋轉在螺帽(沒畫出螺孔的方塊)裡不算干涉;螺�
   const across = model([screw, nut], (v) => ({ screw: { angle: v * 6 }, nut: { position: [0, v * 0.3, 0] } }));
   assert.equal(of(verifyModel(across, { checks: ["interference"] }), "interference").length, 1);
 });
+
+test("方桿沿自己的長軸在導座(沒畫出方孔的方塊)裡滑動不算干涉;橫著掃過導座仍算", () => {
+  const rod = { id: "rod", kind: "box", size: [3, 0.16, 0.16], center: [0, 0, 0] };
+  const guide = { id: "guide", kind: "box", size: [0.3, 0.4, 0.4], center: [1, 0, 0] };
+  const sliding = model([rod, guide], (v) => ({ rod: { position: [v, 0, 0] } }), { driver: { part: "rod", type: "translation", direction: [1, 0, 0], range: [0, 1] } });
+  assert.equal(interference(sliding).length, 0);
+  const across = model([rod, guide], (v) => ({ rod: { position: [0, v * 0.3 - 0.15, 0] } }), { driver: { part: "rod", type: "translation", direction: [0, 1, 0], range: [0, 1] } });
+  assert.equal(interference(across).length, 1);
+});

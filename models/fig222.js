@@ -51,7 +51,7 @@ export default {
     { id: "link", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "frame", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "envelope", kind: "plate", shape: { outline: circle(ECC + C.radius + 0.1), holes: [circle(ECC + C.radius + 0.085).reverse()] }, thickness: 0.01, center: [0, 0, -0.3] },
-    { id: "pivot", kind: "cylinder", center: [...E.slice(0, 2), 0.2], radius: 0.12, length: 0.3 },
+    { id: "pivot", kind: "cylinder", center: [...E.slice(0, 2), 0.08], radius: 0.12, length: 0.26 }, // 樞軸不伸到連桿那一層
   ],
   driver: { part: "gearC", type: "rotation" },
   target: "gearA", // 得到不規則轉動的那一輪
@@ -64,8 +64,8 @@ export default {
         gearC: { position: t.cc, angle: C0 + theta },
         gearB: { position: t.b, angle: B0 + t.thetaB - T0.thetaB },
         gearA: { angle: A0 + t.thetaA - T0.thetaA },
-        link: { from: [t.b[0], t.b[1], 0.25], to: [t.cc[0], t.cc[1], 0.25] },
-        frame: { from: [A.center[0], A.center[1], 0.25], to: [t.b[0], t.b[1], 0.25] },
+        link: { from: [t.b[0], t.b[1], 0.29], to: [t.cc[0], t.cc[1], 0.29] },
+        frame: { from: [A.center[0], A.center[1], 0.29], to: [t.b[0], t.b[1], 0.29] },
       },
       readouts: [],
     };

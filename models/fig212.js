@@ -79,5 +79,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheelA", "wheelB"], reason: "簡化齒形:兩輪的節曲線分段(每段半徑不同),換段的瞬間兩邊的齒頂重疊 0.20(96 個取樣中 12 個);實物在換段處把齒修短" },
+  ],
 };
 

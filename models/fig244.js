@@ -39,11 +39,12 @@ export default {
       pieces: [
         { kind: "plate", shape: lever, thickness: 0.3 },
         // 上方木塊與兩根夾緊螺絲
-        { kind: "plate", shape: shape(rect(0.7, 0.2, 0, DRUM + 0.11)), thickness: 0.46 },
-        { kind: "cylinder", axis: [0, 1, 0], radius: 0.05, length: 1.6, at: [-0.45, 0.1, 0] },
-        { kind: "cylinder", axis: [0, 1, 0], radius: 0.05, length: 1.6, at: [0.45, 0.1, 0] },
-        { kind: "box", size: [0.18, 0.12, 0.18], at: [-0.45, 0.9, 0] },
-        { kind: "box", size: [0.18, 0.12, 0.18], at: [0.45, 0.9, 0] },
+        // 兩根夾緊螺絲在輪的前後兩側(不穿過輪),上方木塊橫跨輪寬
+        { kind: "plate", shape: shape(rect(0.7, 0.2, 0, DRUM + 0.11)), thickness: 0.9 },
+        { kind: "cylinder", axis: [0, 1, 0], radius: 0.05, length: 1.6, at: [-0.3, 0.1, 0.36] },
+        { kind: "cylinder", axis: [0, 1, 0], radius: 0.05, length: 1.6, at: [0.3, 0.1, -0.36] },
+        { kind: "box", size: [0.18, 0.12, 0.18], at: [-0.3, 0.9, 0.36] },
+        { kind: "box", size: [0.18, 0.12, 0.18], at: [0.3, 0.9, -0.36] },
         // 下方:一條帶上繫著一串木塊,包住輪的下半圈
         ...Array.from({ length: 7 }, (_, i) => {
           const a = deg(-180 + 12 + i * 26);
@@ -59,8 +60,8 @@ export default {
       id: "stops",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.42, 0.26, 0.3], at: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 0.95 + 0.43, 0] },
-        { kind: "box", size: [0.42, 0.26, 0.3], at: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 0.95 - 0.43, 0] },
+        { kind: "box", size: [0.42, 0.26, 0.3], at: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 0.95 + 0.56, 0] },
+        { kind: "box", size: [0.42, 0.26, 0.3], at: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 0.95 - 0.56, 0] },
       ],
     },
     { id: "labelC1", kind: "group", center: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 1.38, 0], label: "C'", labelOffset: [0.5, 0.05, 0.2] },
@@ -93,4 +94,8 @@ export default {
     corners.forEach(([x, z], i) => (paths[`string${i}`] = { points: [hook, [pan[0] + x, pan[1] + 0.04, z]], closed: false }));
     return { parts: { drumA: { angle }, leverD: { angle: tilt }, pan: { position: pan } }, paths, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["leverD", "string1"], reason: "秤盤的吊繩繫在槓桿端:繩頭穿進槓桿的板 0.03(繫點在板內、不在板面上)" },
+    { check: "interference", parts: ["leverD", "string0"], reason: "秤盤的吊繩繫在槓桿端:繩頭穿進槓桿的板 0.03(繫點在板內、不在板面上)" },
+  ],
 };

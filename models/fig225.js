@@ -52,7 +52,7 @@ export default {
       center: PIVOT,
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0], [0, LEVER]], 0.22)), thickness: 0.12, at: [0, 0, 0.1] },
+        { kind: "plate", shape: shape(thickLine([[0, 0], [0, LEVER]], 0.22)), thickness: 0.12, at: [0, 0, 0.27] }, // 槓桿在棘爪的前面(棘爪貼著棘輪的前面)
         { kind: "cylinder", radius: 0.14, inner: 0.06, length: 0.3 },
       ],
     },
@@ -69,7 +69,7 @@ export default {
       parts: {
         wheel: { angle: wheel },
         lever: { angle: psi },
-        pawl: { position: [t[0], t[1], 0.25], angle: Math.atan2(tip[1] - t[1], tip[0] - t[0]) },
+        pawl: { position: [t[0], t[1], 0.16], angle: Math.atan2(tip[1] - t[1], tip[0] - t[0]) },
       },
       readouts: [],
     };

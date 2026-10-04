@@ -9,7 +9,7 @@ const PITCH = (TAU * R) / N;
 const WORM = { radius: 0.2, length: 0.9 };
 const XS = [-1.6, 1.6];
 const HANDS = [1, -1];
-const Y = R + WORM.radius - 0.04;
+const Y = R + WORM.radius + 0.04; // 蝸輪的齒只伸進螺紋,不碰蝸桿的芯
 
 // 局部角 at 處螺紋的軸向位置(相對該段蝸桿中心):z = −L/2 + hand·a·節距/2π
 const crest = (theta, at, hand) => -WORM.length / 2 + hand * ((at - theta) / TAU) * PITCH;

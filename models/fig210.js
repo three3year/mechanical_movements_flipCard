@@ -59,7 +59,8 @@ export default {
     {
       id: "guides",
       kind: "group",
-      pieces: [ROD.top, ROD.bottom].map((y) => ({ kind: "box", size: [0.55, 0.3, 0.35], at: [X_ROD, y, 0] })),
+      // 每個導座是夾著桿的兩塊(桿從中間滑過)
+      pieces: [ROD.top, ROD.bottom].flatMap((y) => [-1, 1].map((s) => ({ kind: "box", size: [0.14, 0.3, 0.35], at: [X_ROD + s * 0.2, y, 0] }))),
     },
   ],
   driver: { part: "arm", type: "rotation", cycle: [FROM, TO], initial: -FROM },

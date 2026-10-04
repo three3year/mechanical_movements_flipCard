@@ -54,7 +54,7 @@ export default {
         ...Array.from({ length: PINS }, (_, i) => ({ kind: "cylinder", radius: 0.065, length: 0.55, at: [X0 + i * PITCH, 0, 0.0], accent: i === 0 })),
       ],
     },
-    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.22, web: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.8 }] },
+    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.22, web: false, hub: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.5, at: [0, 0, 0.1] }] }, // 軸不往後穿過機架板(小齒輪沿齒條內外移動)
   ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
   target: "frame",
@@ -69,4 +69,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "pinion"], reason: "簡化齒形:小齒輪與機架上那圈齒條的梯形齒互相擦到 0.04(96 個取樣中 41 個)" },
+  ],
 };

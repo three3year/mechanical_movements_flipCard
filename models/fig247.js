@@ -63,10 +63,14 @@ export default {
       parts: {
         rod: { position: [0, s.rod + 0.6, 0] },
         weight: { position: [0, s.weight, 0], visible: s.shown },
-        catch: { position: [CATCH[0], s.rod + CATCH[1], 0.1], angle: s.catchAngle },
-        plunger: { position: [-0.05, s.rod - 0.75 + s.push, 0.1] },
+        catch: { position: [CATCH[0], s.rod + CATCH[1], 0.22], angle: s.catchAngle }, // 卡榫與柱塞畫在桿的前面(實物是在空心桿裡)
+        plunger: { position: [-0.05, s.rod - 0.75 + s.push, 0.22] },
       },
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["seabed", "plunger"], reason: "觸底時柱塞被海底往上頂的量依進程演出;柱塞的底板陷進海底 0.06(96 個取樣中 33 個)" },
+    { check: "interference", parts: ["catch", "plunger"], reason: "柱塞頂開卡榫的過程依進程演出,不逐點算接觸;卡榫的尾端與柱塞重疊 0.08(96 個取樣中 25 個)" },
+  ],
 };

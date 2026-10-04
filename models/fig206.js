@@ -54,7 +54,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(thickLine([[E0[0] - P[0], E0[1] - P[1]], [0, 0], [HANDLE[0] - P[0], HANDLE[1] - P[1]]], 0.28)), thickness: 0.12, at: [0, 0, 0.3] },
         { kind: "cylinder", radius: 0.3, inner: 0.14, length: 0.4, at: [0, 0, 0.3] },
-        { kind: "cylinder", radius: 0.14, length: 0.5, at: [E0[0] - P[0], E0[1] - P[1], 0.3] },
+        { kind: "cylinder", radius: 0.14, length: 1.0, at: [E0[0] - P[0], E0[1] - P[1], 0.1] }, // 掛銷前後都伸出:左爪掛在棘輪前面、右爪掛在後面,兩爪互不相碰
       ],
     },
     pawl("pawlLeft", "left", -1),
@@ -65,14 +65,15 @@ export default {
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const psi = swingAt(v, SWING / 2, -SWING / 2);
-    const pin = [...pinAt(psi).slice(0, 2), 0.2];
-    const at = (w) => [...tip(w, psi).slice(0, 2), 0.2];
+    const pin = pinAt(psi).slice(0, 2);
+    const at = (w) => tip(w, psi);
+    const layer = { left: 0.17, right: -0.17 };
     return {
       parts: {
         lever: { angle: psi },
         wheel: { angle: wheelAngle(v) },
-        pawlLeft: { position: pin, angle: Math.atan2(at("left")[1] - pin[1], at("left")[0] - pin[0]) },
-        pawlRight: { position: pin, angle: Math.atan2(at("right")[1] - pin[1], at("right")[0] - pin[0]) },
+        pawlLeft: { position: [...pin, layer.left], angle: Math.atan2(at("left")[1] - pin[1], at("left")[0] - pin[0]) },
+        pawlRight: { position: [...pin, layer.right], angle: Math.atan2(at("right")[1] - pin[1], at("right")[0] - pin[0]) },
       },
       readouts: [],
     };

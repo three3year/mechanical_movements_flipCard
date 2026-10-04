@@ -58,4 +58,7 @@ export default {
     const { angle } = pinion(theta);
     return { parts: { wheel: { angle: theta }, pinion: { angle: Math.PI / 2 + Math.PI / NP + angle } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "pinion"], reason: "簡化齒形:節曲線半徑變化的輪以折線近似排齒,半徑轉折處齒頂與小齒輪的齒重疊 0.13(96 個取樣中 15 個)" },
+  ],
 };

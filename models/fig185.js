@@ -121,9 +121,12 @@ export default {
         blockRod: { from: z(g.block, 0.2), to: z(lower, 0.2) },
         valveRod: { position: z(upper, 0.23) },
         handle: { angle: handleAngle(LIFT[state]) },
-        hanger: { from: z(add(HANDLE.pivot, polar(HANDLE.arm, handleAngle(LIFT[state]))), 0.66), to: z(aF, 0.66) },
+        hanger: { from: z(add(HANDLE.pivot, polar(HANDLE.arm, handleAngle(LIFT[state]))), 0.8), to: z(aF, 0.8) },
       },
       readouts: [],
     };
   },
+  waivers: [
+    { check: "unsupported", parts: ["hanger"], reason: "吊桿(從手柄到連桿的一端)畫在最前面一層,它兩端的銷沒有畫出來;吊桿只把連桿吊在手柄選定的高度,不傳遞閥的運動" },
+  ],
 };

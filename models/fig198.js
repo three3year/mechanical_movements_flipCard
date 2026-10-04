@@ -67,7 +67,7 @@ export default {
     { id: "rodTop", kind: "link", width: 0.1, thickness: 0.06, stretch: true },
     { id: "rodBottom", kind: "link", width: 0.1, thickness: 0.06, stretch: true },
     { id: "bar", kind: "link", width: 0.22, thickness: 0.06, stretch: true },
-    { id: "pinion", kind: "gear", center: [...PINION, 0], teeth: NP, radius: RP, width: 0.22, web: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.8 }] },
+    { id: "pinion", kind: "gear", center: [...PINION, 0], teeth: NP, radius: RP, width: 0.22, web: false, hub: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.35, at: [0, 0, 0.075] }] }, // 軸短:不往後穿過托架與機架板,也不碰前面的桿
     ...ROLLERS.map(([x, y], i) => ({ id: `roller${i}`, kind: "group", center: [x, y, -0.35], spin: ROLLER, pieces: [{ kind: "cylinder", radius: ROLLER, inner: 0.06, length: 0.2, mark: true }], arrow: i === 0 || i === 2 })),
   ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
@@ -90,4 +90,7 @@ export default {
     ROLLERS.forEach(([, , side], i) => (parts[`roller${i}`] = { angle: (side * frame) / ROLLER }));
     return { parts, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["carrier", "pinion"], reason: "簡化齒形:小齒輪繞過齒條端頭時齒頂擦到托架上的齒 0.04(96 個取樣中 2 個)" },
+  ],
 };

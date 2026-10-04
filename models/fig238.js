@@ -29,6 +29,7 @@ const frame = shape(
 export default {
   figure: 238,
   parts: [
+    { id: "post", kind: "cylinder", center: A, radius: 0.09, length: 0.5 }, // 框架的固定樞軸(推斷)
     { id: "wheelD", kind: "plate", center: D, shape: star, thickness: 0.16, mark: [0.45, 0], markSize: 0.06, spin: 0.7, label: "D", labelOffset: [-0.1, 0.12, 0.3] },
     {
       id: "frame",
@@ -37,7 +38,7 @@ export default {
       arrow: false,
       label: "A",
       labelOffset: [0.45, 0, 0.3],
-      pieces: [{ kind: "plate", shape: frame, thickness: 0.12, at: [0, 0, -0.2] }, { kind: "cylinder", radius: 0.22, inner: 0.1, length: 0.3 }],
+      pieces: [{ kind: "plate", shape: frame, thickness: 0.12, at: [0, 0, -0.15] }, { kind: "cylinder", radius: 0.22, inner: 0.1, length: 0.3 }],
     },
     { id: "tagB", kind: "group", center: [-1.2, 0.55, 0.2], pieces: [], arrow: false, label: "B" },
     { id: "tagC", kind: "group", center: [0.05, 1.65, 0.2], pieces: [], arrow: false, label: "C" },

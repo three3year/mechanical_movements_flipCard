@@ -17,9 +17,16 @@ export function buildSolid(part) {
   object.traverse((o) => {
     if (!o.isMesh || o.material === MARK || o.userData.engraving) return;
     const hulls = convexPieces(o.geometry);
-    if (hulls.length) meshes.push({ mesh: o, hulls, axle: axleOf(o.geometry), radius: o.geometry.userData.tube?.radius ?? o.geometry.userData.thread?.radius ?? o.geometry.parameters?.radius ?? Math.max(o.geometry.parameters?.radiusTop ?? 0, o.geometry.parameters?.radiusBottom ?? 0) });
+    if (hulls.length) meshes.push({ mesh: o, hulls, axle: axleOf(o.geometry), radius: o.geometry.userData.tube?.radius ?? o.geometry.userData.thread?.radius ?? barRadius(o.geometry) ?? o.geometry.parameters?.radius ?? Math.max(o.geometry.parameters?.radiusTop ?? 0, o.geometry.parameters?.radiusBottom ?? 0) });
   });
   return { object, meshes };
+}
+
+// 方桿當成軸時的「半徑」:截面較寬那一邊的一半(兩根都是軸時,細的那根才可能裝在對方的孔裡)
+function barRadius(geometry) {
+  if (geometry.type !== "BoxGeometry") return undefined;
+  const dims = [geometry.parameters.width, geometry.parameters.height, geometry.parameters.depth].sort((a, b) => a - b);
+  return dims[1] / 2;
 }
 
 // 圓柱(軸、銷、輪轂、軸眼)的軸線——網格局部座標的兩個端面中心;球是球心(兩個端點相同);其餘回傳 null。
@@ -29,6 +36,15 @@ function axleOf(geometry) {
   if (geometry.type === "SphereGeometry") return [new THREE.Vector3(), new THREE.Vector3()];
   const tube = geometry.userData.tube ?? geometry.userData.thread; // 空心圓柱(繪圖層的 ring)、螺桿的螺紋:軸線沿局部 Z
   if (tube) return [new THREE.Vector3(0, 0, tube.length / 2), new THREE.Vector3(0, 0, -tube.length / 2)];
+  // 長條的方桿(長度至少是寬、厚的三倍):沿自己的長軸在沒畫出來的方孔裡滑動的導桿,軸線是它的長軸
+  if (geometry.type === "BoxGeometry") {
+    const { width, height, depth } = geometry.parameters;
+    const dims = [width, height, depth];
+    const long = dims.indexOf(Math.max(...dims));
+    if (dims.some((d, i) => i !== long && d * 3 > dims[long])) return null;
+    const end = new THREE.Vector3().setComponent(long, dims[long] / 2);
+    return [end, end.clone().negate()];
+  }
   if (geometry.type !== "CylinderGeometry") return null;
   const pos = geometry.attributes.position;
   const n = geometry.parameters.radialSegments;

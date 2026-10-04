@@ -52,7 +52,7 @@ export default {
     { id: "tracerB", kind: "lathe", profile: [[0, -0.18], [0.06, -0.08], [0.07, 0.2], [0, 0.2]], label: "B", labelOffset: [-0.35, 0, 0.2] },
     { id: "pencilA", kind: "group", label: "A", labelOffset: [-0.2, 0.4, 0.3], pieces: [
       { kind: "lathe", profile: [[0, -0.2], [0.05, -0.1], [0.07, 0.35], [0, 0.35]] },
-      { kind: "box", size: [0.42, 0.26, 0.2], at: [0.45, 0.2, 0.05], angle: 0.42 },
+      { kind: "box", size: [0.42, 0.26, 0.2], at: [0.45, 0.2, 0.2], angle: 0.42 },
     ] },
   ],
   // grips 留空:描跡針沿任意路徑走(數值微分拖動,不需要 direction);鉛筆 A 是目標件,不當抓取處

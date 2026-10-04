@@ -278,16 +278,24 @@ function measure(scene, a, b, prediction, tolerance) {
   scene.contacts(a, b, prediction, (pa, pb, d, n) => {
     if (gap == null || d < gap) gap = d;
     if (d >= 0) return;
-    if (pa.axle || pb.axle) {
+    // 圓的軸(圓柱、球、螺紋);長條方桿另外算(它只當導桿,不當鉸接軸)
+    const ra = pa.axle && !pa.axle.bar ? pa.axle : null;
+    const rb = pb.axle && !pb.axle.bar ? pb.axle : null;
+    if (ra || rb) {
       // 兩塊都是圓柱時,只有細的那個可能是裝在對方孔裡的軸
       const fits = [];
-      if (pa.axle && !(pb.axle && pb.axle.radius < pa.axle.radius)) fits.push([pa, b]);
-      if (pb.axle && !(pa.axle && pa.axle.radius < pb.axle.radius)) fits.push([pb, a]);
+      if (ra && !(rb && rb.radius < ra.radius)) fits.push([pa, b]);
+      if (rb && !(ra && ra.radius < rb.radius)) fits.push([pb, a]);
       pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}` });
     } else if (d < solid) {
       // 鉸接處的軸眼:某根軸(任一方的圓柱)的軸線同時穿過這兩塊,而且那根軸是裝在孔裡的鉸接軸,
       // 那麼這兩塊在軸周圍的重疊是鉸接處互相套著的軸眼(連桿端頭疊在槓桿上),和軸本身一樣等走完再判斷
+      // 長條方桿伸進對方:可能是在沒畫出來的方孔裡滑動的導桿(軸線始終是同一條才算),同樣等走完再判斷
       const fits = d < -tolerance ? knuckles(scene, a, b, pa, pb) : [];
+      if (d < -tolerance) {
+        if (pa.axle?.bar) fits.push([pa, b]);
+        if (pb.axle?.bar) fits.push([pb, a]);
+      }
       if (fits.length) pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}` });
       else {
         solid = d;
@@ -303,7 +311,7 @@ function knuckles(scene, a, b, pa, pb) {
   const fits = [];
   for (const [owner, other] of [[a, b], [b, a]]) {
     for (const axle of owner.pieces) {
-      if (!axle.axle || axle.axle.from.distanceTo(axle.axle.to) < 1e-6) continue;
+      if (!axle.axle || axle.axle.bar || axle.axle.from.distanceTo(axle.axle.to) < 1e-6) continue;
       if (scene.lineHits(axle.axle, pa) && scene.lineHits(axle.axle, pb)) fits.push([axle, other]);
     }
   }

@@ -68,4 +68,7 @@ export default {
   pose(theta) {
     return { parts: { crown: { angle: theta }, pinion: { angle: pinionAngle(theta) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["crown", "pinion"], reason: "簡化齒形:冠狀齒輪的齒畫成方塊,與小齒輪的梯形齒在齒側重疊 0.16;嚙合關係(齒數比、轉向)不受影響" },
+  ],
 };

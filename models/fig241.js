@@ -47,5 +47,9 @@ export default {
   pose(theta) {
     return { parts: { small: { angle: theta }, wheelA: { angle: wheelA(theta) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheelA", "small"], reason: "小輪上的鉤每圈推棘輪一齒,推的過程依時序演出,不逐點算鉤與齒的接觸;鉤尖伸進齒 0.11" },
+    { check: "interference", parts: ["wheelA", "click"], reason: "止回爪畫成固定的形狀(沒有演出它被齒頂開再落回),棘輪轉動時齒掃過它的末端,重疊 0.15" },
+  ],
 };
 
