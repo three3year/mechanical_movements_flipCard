@@ -149,7 +149,8 @@ test("第 76 種:大輪每轉一圈,凸柱 D 撞擊撥爪一次,棘輪 A 轉動�
   for (const a of back) close(a, back[0], "撥爪回落與等待時 A 不動");
 });
 
-import fig65, { indexing, studStep } from "../models/fig065.js";
+import fig65, { indexing, studStep, tappetAt, studAt } from "../models/fig065.js";
+import { penetrationDepth } from "../models/contact.js";
 import { cAngle as c68, notchStep } from "../models/fig068.js";
 import { aAngle as a69, toothStep } from "../models/fig069.js";
 import { aAngle as a70, step as step70 } from "../models/fig070.js";
@@ -173,6 +174,15 @@ test("第 65 種:撥爪 A 每轉一圈撥動 D 一個凸柱的距離;撥動時�
   assert.ok(indexing(0.2).swing > 0.5, "撥動時槓桿擺開");
   assert.equal(indexing(2).swing, 0, "其餘時間槓桿擋住凸柱");
   assert.ok(turned(fig65, "c", 0, 1) !== 0);
+});
+
+test("第 65 種:撥爪是用側邊擋住凸柱推著它走,沒有插進凸柱", () => {
+  for (const c of sweep(0.35, 20, 0.05)) {
+    const { d } = indexing(c);
+    assert.ok(d > indexing(0).d, "撥動中 D 已經被推動");
+    assert.ok(penetrationDepth(tappetAt(c), studAt(d)) < 0.01, `c = ${c.toFixed(2)} 時撥爪沒有穿入凸柱`);
+    assert.ok(penetrationDepth(tappetAt(c), studAt(d - 0.02)) > 0, `c = ${c.toFixed(2)} 時撥爪貼著凸柱`);
+  }
 });
 
 test("第 68 種:驅動輪 B 每轉一圈,C 轉動一個凹槽的距離,其餘時間被 B 的圓周鎖住", () => {
@@ -205,16 +215,23 @@ test("第 74 種:缺齒式斜齒輪 C 使 A、B 間歇地、朝相反方向轉�
   assert.ok(fig74.parts.find((p) => p.id === "c").toothed.length === 16, "C 只有一半有齒");
 });
 
-import { motion as motion73, toothStep as step73 } from "../models/fig073.js";
+import { motion as motion73, toothStep as step73, contactAt as contact73 } from "../models/fig073.js";
 import { wheelAngle as wheel77, swing as swing77 } from "../models/fig077.js";
 import { wheelAngle as wheel78, swing as swing78 } from "../models/fig078.js";
 import { wheelAngle as wheel79, stroke as stroke79 } from "../models/fig079.js";
 import { barHeight, swing as swing80 } from "../models/fig080.js";
 
-test("第 73 種:D 每轉一圈,彈簧 B 把 C 壓進 A 的一齒,使 A 轉過一齒;其餘時間 C 擋住 A", () => {
+test("第 73 種:D 每轉一圈,B 從 C 底下經過、被壓進 A 的一齒,A 被 D 帶著走一齒;B 離開 C 後彈回,A 停住", () => {
   assertIndexing((d) => motion73(d).a, step73, "第 73 種");
-  const pressed = sweep(2 * Math.PI, 360).map((d) => motion73(d).press);
-  assert.ok(Math.max(...pressed) > 0.9 && pressed.filter((p) => p === 0).length > 200, "C 只在 B 通過時被壓下");
+  const flex = sweep(2 * Math.PI, 360).map((d) => motion73(d).flex);
+  assert.ok(Math.max(...flex) > 0.1 && flex.filter((f) => f === 0).length > 200, "B 只在經過 C 時被往內壓");
+  // A 被 B 鎖在 D 上:被帶著走的時候轉得和 D 一樣快,不會被甩得比 D 快
+  const h = (2 * Math.PI) / 720;
+  for (const d of sweep(2 * Math.PI, 720)) {
+    const ratio = (motion73(d).a - motion73(d + h).a) / h;
+    assert.ok(ratio < 1.05, `d = ${d.toFixed(2)} 時 A 轉得比 D 快(${ratio.toFixed(2)} 倍)`);
+  }
+  for (const d of sweep(2 * Math.PI, 180)) assert.ok(penetrationDepth(contact73(d).nose, contact73(d).ratchet) < 0.005, `d = ${d.toFixed(2)} 時 B 的爪沒有穿進 A 的齒`);
 });
 
 // 雙作用棘爪:每一程(往與返)從動件都前進,而且朝同一方向

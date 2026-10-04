@@ -4,23 +4,66 @@
 // 槓桿得以擺動、放開凸柱;撥爪一離開,槓桿又被推回下一根凸柱前方。主動件是 C(順時針)。
 import { TAU, deg, polar } from "./kit.js";
 import { arcPoints, circle, shape } from "./shapes.js";
-import { indexStep } from "./jumps.js";
+import { circlePolygon, placeOutline, polygonsOverlap } from "./contact.js";
 
 // C 的輪身加厚到槓桿那一層(槓桿左端靠在 C 的圓周上),撥爪貼在 C 的前面、從槓桿前方掃過(原圖只有正面,深度是推斷)
 const C = { center: [-1.6, 0, 0.1], radius: 1.55 };
-const D = { center: [1.5, 0, 0], radius: 1.5, studs: 10, studR: 1.2 };
-const TAPPET = { length: 2.05, at: deg(12) };
-const WINDOW = { from: 0, span: deg(26) };
+const D = { center: [1.5, 0, 0], radius: 1.5, studs: 10, studR: 1.2, stud: 0.11 };
+// 撥爪的長度取成:側邊擋住凸柱推到爪尖滑脫時,D 剛好轉過一格(凸柱從水平線上方 15° 推到下方 21°)
+const TAPPET = { length: 1.835, at: deg(12) };
 const STEP = TAU / D.studs;
-const D0 = deg(160);
+const D0 = deg(165);
 const LEVER = { pivot: [0.05, -1.68, 0.25], tilt: deg(7) };
 const NOTCH = deg(-61); // C 上凹槽的局部角(撥爪撥動時正對槓桿左端)
 
+const tappetOutline = [[0, 0.24], ...arcPoints(0.24, Math.PI / 2, (3 * Math.PI) / 2), [0, -0.24], [TAPPET.length, -0.06], [TAPPET.length + 0.08, 0.04], [TAPPET.length, 0.1]];
+
+/** C 順時針轉過 c 時的撥爪、D 的轉角為 d 時被撥的那根凸柱(世界座標,2D) */
+export const tappetAt = (c) => placeOutline(tappetOutline, C.center, TAPPET.at - c);
+export const studAt = (d) => {
+  const [x, y] = polar(D.studR, d);
+  return circlePolygon([D.center[0] + x, D.center[1] + y], D.stud, 24);
+};
+
+// 撥爪掃下來,側邊碰到凸柱後擋著它一起走:C 每轉一小步,D 轉到凸柱剛好不被撥爪穿入的位置,
+// 直到爪尖從凸柱滑脫。逐步算出這段 D 被推了多少(C 每 0.25° 一格);WINDOW 是碰到到滑脫的那段 C 轉角
+const { WINDOW, PUSHED } = (() => {
+  const dc = deg(0.25);
+  const hits = (c, th) => polygonsOverlap(tappetAt(c), studAt(D0 + th));
+  const pushed = [0];
+  let th = 0;
+  let from = null;
+  for (let c = -deg(30); c < deg(60); c += dc) {
+    if (hits(c, th)) {
+      let lo = th;
+      let hi = th + deg(1);
+      while (hits(c, hi)) hi += deg(1);
+      for (let k = 0; k < 30; k++) {
+        const mid = (lo + hi) / 2;
+        if (hits(c, mid)) lo = mid;
+        else hi = mid;
+      }
+      th = hi;
+      from ??= c - dc;
+      pushed.push(th);
+    } else if (from !== null) break;
+  }
+  return { WINDOW: { from, span: (pushed.length - 1) * dc }, PUSHED: pushed };
+})();
+
+// 撥進 u 時 D 被推了多少;爪尖滑脫後由槓桿把 D 定在整一格(與推到的位置差不到 0.2°)
+function pushedBy(u) {
+  if (u >= WINDOW.span) return STEP;
+  const x = (u / WINDOW.span) * (PUSHED.length - 1);
+  const i = Math.floor(x);
+  return PUSHED[i] + (PUSHED[i + 1] - PUSHED[i]) * (x - i);
+}
+
 /** C 順時針轉過 c:D 的轉角(逆時針)與槓桿擺動的比例 */
 export function indexing(c) {
-  const d = D0 + indexStep(c, { ...WINDOW, step: STEP });
   const k = Math.floor((c - WINDOW.from) / TAU);
   const u = c - WINDOW.from - k * TAU;
+  const d = D0 + k * STEP + pushedBy(u);
   const swing = u < WINDOW.span ? Math.sin((Math.PI * u) / WINDOW.span) : 0;
   return { d, swing };
 }
@@ -64,7 +107,7 @@ export default {
       pieces: [
         {
           kind: "plate",
-          shape: shape([[0, 0.24], ...arcPoints(0.24, Math.PI / 2, (3 * Math.PI) / 2), [0, -0.24], [TAPPET.length, -0.06], [TAPPET.length + 0.08, 0.04], [TAPPET.length, 0.1]]),
+          shape: shape(tappetOutline),
           thickness: 0.1,
           at: [0, 0, 0.27],
           angle: TAPPET.at,
@@ -86,7 +129,7 @@ export default {
       spin: D.radius,
       pieces: Array.from({ length: D.studs }, (_, i) => ({
         kind: "cylinder",
-        radius: 0.11,
+        radius: D.stud,
         length: 0.5,
         at: [...polar(D.studR, (i * TAU) / D.studs).slice(0, 2), 0.3],
         accent: i === 0,
@@ -116,8 +159,5 @@ export default {
     };
   },
   waivers: [
-    { check: "replay", parts: ["d"], reason: "未修:動力重演不成立——「C 轉一圈,撥爪把 D 撥過一根凸柱的距離」預期 d 在主動量 -6.39 時已轉 36°,實際轉了 20°()。重演中撥爪只把 D 推了一半,槓桿被推開後沒有回到下一根凸柱前方;槓桿與凹槽、凸柱的相對位置要重做(列入待確認清單)" },
-    { check: "interference", parts: ["c", "lever"], reason: "槓桿左端落進 C 的凹槽再被推出的擺動以正弦曲線演出,不是逐點算接觸;進出凹槽時端頭與槽口邊最多重疊 0.09(96 個取樣中 6 個)。鎖住與放開的時機正確" },
-    { check: "interference", parts: ["c", "d"], reason: "撥爪撥凸柱的過程以平順的起停曲線演出,不是逐點算接觸;撥動中爪尖與凸柱最多重疊 0.12(96 個取樣中 2 個)。撥動的起訖位置與「每圈一格」的關係正確" },
-  ],
+    { check: "interference", parts: ["c", "lever"], reason: "槓桿左端落進 C 的凹槽再被推出的擺動以正弦曲線演出,不是逐點算接觸;進出凹槽時端頭與槽口邊最多重疊 0.09(96 個取樣中 6 個)。鎖住與放開的時機正確" },  ],
 };
