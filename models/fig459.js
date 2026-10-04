@@ -37,7 +37,18 @@ const wormWheel = (id, at) => ({
     { kind: "cylinder", radius: 0.05, length: 0.8, at: [0, 0, -0.2] },
   ],
 });
-const bucketPart = (id) => ({ id, kind: "lathe", axis: Y, profile: [[0.18, -0.22], [0.23, 0.22], [0.2, 0.22], [0.15, -0.18], [0, -0.18], [0, -0.22]], arrow: false, pieces: [{ kind: "box", size: [0.48, 0.03, 0.03], at: [0, 0.28, 0] }] });
+// 桶身加提把(橫樑與兩根立耳):繩繫在提把的中央
+const bucketPart = (id) => ({
+  id,
+  kind: "group",
+  arrow: false,
+  pieces: [
+    { kind: "lathe", axis: Y, profile: [[0.18, -0.22], [0.23, 0.22], [0.2, 0.22], [0.15, -0.18], [0, -0.18], [0, -0.22]] },
+    { kind: "box", size: [0.48, 0.03, 0.03], at: [0, 0.28, 0] },
+    { kind: "box", size: [0.03, 0.1, 0.03], at: [-0.215, 0.245, 0] },
+    { kind: "box", size: [0.03, 0.1, 0.03], at: [0.215, 0.245, 0] },
+  ],
+});
 
 export default {
   figure: 459,
@@ -67,7 +78,7 @@ export default {
       ],
     },
     // 軸與蝸桿(裝在搖臂上,可以左右偏一點)
-    { id: "worm", kind: "group", axis: Y, arrow: false, pieces: [{ kind: "cylinder", radius: 0.06, length: 2.0, at: [0, 0, 0.6] }, { kind: "worm", radius: 0.14, length: 0.7, pitch: 0.12, thread: 0.05 }] },
+    { id: "worm", kind: "group", axis: Y, arrow: false, pieces: [{ kind: "cylinder", radius: 0.06, length: 2.5, at: [0, 0, 0.85] }, { kind: "worm", radius: 0.14, length: 0.7, pitch: 0.12, thread: 0.05 }] },
     wormWheel("wheelL", WHEELS[0]),
     wormWheel("wheelR", WHEELS[1]),
     { id: "tappet", kind: "plate", shape: shape([[-0.95, 0.12], [0, 0], [0.95, 0.12], [0.9, 0.18], [0, 0.06], [-0.9, 0.18]]), thickness: 0.12, arrow: false, pieces: [{ kind: "box", size: [0.05, 0.45, 0.05], at: [0, 0.22, 0] }] },
@@ -91,7 +102,7 @@ export default {
     const xR = WHEELS[1][0] + DRUM_R;
     const hang = (x, y) => [[x, WHEELS[0][1], -0.25], [x, y + 0.28, -0.25]];
     const parts = {
-      windmill: { angle: w },
+      windmill: { angle: w, position: [SHAFT_X + shift, 2.95, 0] }, // 風車裝在蝸桿軸的頂端,跟著軸一起偏
       worm: { position: wormAt, rotation: quatMul(quatFromZ(Y), quatAxisAngle([0, 0, 1], w)) },
       wheelL: { angle: l.drum },
       wheelR: { angle: -l.drum },
@@ -113,13 +124,5 @@ export default {
     { check: "interference", parts: ["tappet", "ropeR"], reason: "繩的端頭繫在撥桿上:繩頭伸進撥桿的板 0.06" },
     { check: "interference", parts: ["tappet", "ropeL"], reason: "繩的端頭繫在撥桿上:繩頭伸進撥桿的板 0.06" },
     { check: "interference", parts: ["worm", "wheelL"], reason: "簡化齒形:蝸桿畫成圓柱加螺紋、蝸輪是直齒,齒頂伸進蝸桿的芯 0.09" },
-    { check: "unsupported", parts: ["ropeR"], reason: "未修:右繩與鼓輪之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["ropeL"], reason: "未修:左繩與鼓輪之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["bucketR"], reason: "未修:右桶與吊著它的繩之間差 0.04(列入待確認清單)" },
-    { check: "unsupported", parts: ["bucketL"], reason: "未修:左桶與吊著它的繩之間差 0.19(列入待確認清單)" },
-    { check: "unsupported", parts: ["wheelR"], reason: "未修:右蝸輪與蝸桿之間沒有接上(蝸桿未被帶動)(列入待確認清單)" },
-    { check: "unsupported", parts: ["wheelL"], reason: "未修:左蝸輪與蝸桿之間沒有接上(蝸桿未被帶動)(列入待確認清單)" },
-    { check: "unsupported", parts: ["worm"], reason: "未修:蝸桿與風車的軸之間少畫了相連的軸(差 0.36)(列入待確認清單)" },
-    { check: "unsupported", parts: ["windmill"], reason: "未修:風車的軸沒有畫出支座(離最近的實體 0.17)(列入待確認清單)" },
   ],
 };

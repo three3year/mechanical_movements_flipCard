@@ -54,6 +54,7 @@ export default {
         { kind: "box", size: [0.06, 0.6, 0.6], at: [-0.3, -0.48, 0] },
         { kind: "box", size: [0.06, 0.6, 0.6], at: [0.3, -0.48, 0] },
         { kind: "plate", shape: shape(thickLine([[0.18, 0.8], [0.18, PIVOT[1]]], 0.14), [circle(0.05, 0.18, PIVOT[1]).reverse()]), thickness: 0.2, at: [-0.18, 0, -0.25] },
+        { kind: "cylinder", radius: 0.045, length: 0.5, at: [0, PIVOT[1], -0.1] }, // 搖樑的樞軸銷
       ],
     },
     { id: "beam", kind: "plate", shape: shape(thickLine([[-BEAM - 0.1, 0], [BEAM + 0.5, 0]], 0.14), [circle(0.05).reverse()]), thickness: 0.1, center: PIVOT, arrow: false },
@@ -78,7 +79,7 @@ export default {
     const flows = [];
     t.forEach(({ end, y }, k) => {
       const x = BELLOWS_X[k];
-      parts[`link${k}`] = { from: [end[0], end[1], 0.15], to: [x, y, 0.15] };
+      parts[`link${k}`] = { from: [end[0], end[1], 0.1], to: [x, y, 0.1] };
       parts[`top${k}`] = { position: [x, y, 0] };
       paths[`fold${k}L`] = { points: folds(x, y, -1), closed: false };
       paths[`fold${k}R`] = { points: folds(x, y, 1), closed: false };
@@ -96,14 +97,5 @@ export default {
     { check: "interference", parts: ["works", "top1"], reason: "未修:風箱頂板壓到最低時碰到箱體,重疊 0.10(96 個取樣中 30 個)(列入待確認清單)" },
     { check: "interference", parts: ["works", "delivery1"], reason: "簡化畫法:出氣閥的閥瓣坐在閥座上,重疊 0.06" },
     { check: "interference", parts: ["works", "delivery0"], reason: "簡化畫法:出氣閥的閥瓣坐在閥座上,重疊 0.06" },
-    { check: "unsupported", parts: ["fold1R"], reason: "未修:風箱的摺邊(畫成線)與頂板之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["fold1L"], reason: "未修:風箱的摺邊(畫成線)與頂板之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["fold0R"], reason: "未修:風箱的摺邊(畫成線)與頂板之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["fold0L"], reason: "未修:風箱的摺邊(畫成線)與頂板之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["top1"], reason: "未修:風箱的頂板與連桿之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["top0"], reason: "未修:風箱的頂板與連桿之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["link1"], reason: "未修:連桿與搖樑之間差 0.04(前後不同層)(列入待確認清單)" },
-    { check: "unsupported", parts: ["link0"], reason: "未修:連桿與搖樑之間差 0.04(前後不同層)(列入待確認清單)" },
-    { check: "unsupported", parts: ["beam"], reason: "未修:搖樑的樞軸沒有畫出支座(離最近的實體 0.04)(列入待確認清單)" },
   ],
 };

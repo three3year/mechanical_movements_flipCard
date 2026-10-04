@@ -10,7 +10,7 @@ import { shape, rect, thickLine } from "./shapes.js";
 
 const BASE = { y0: -1.7, y1: -1.0 };
 const RAM = { r: 0.32, top: 0.55 }; // 固定的柱塞
-const CYL = { r: 0.42, len: 2.0 }; // 滑動的圓筒(內半徑、長)
+const CYL = { r: 0.42, len: 1.6 }; // 滑動的圓筒(內半徑、長)
 export const LIFT = 0.9; // 圓筒最多升起
 export const SWING = [deg(70), deg(30)]; // 手柄:上 → 下(壓)
 const PER = 0.05; // 每壓一下升起
@@ -66,6 +66,7 @@ export default {
       { id: "release", label: "開閥放下" },
     ],
   },
+  powered: ["cylinder"], // 外力來源:圓筒是被泵進來的水頂起的(液壓傳動,沒有實體相連)
   driver: { part: "handle", type: "rotation", cycle: SWING },
   target: "cylinder",
   view: { direction: [0.15, 0.1, 1] },
@@ -88,7 +89,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["base", "handle"], reason: "簡化畫法:手柄壓到底時碰到底座上的支柱,重疊 0.04(121 個取樣中 54 個)" },
-    { check: "interference", parts: ["base", "cylinder"], reason: "未修:油缸降到最低時伸進底座,重疊 0.31(列入待確認清單)" },
-    { check: "unsupported", parts: ["cylinder"], reason: "未修:油缸與底座之間差 0.23,沒有畫出相連的實體(列入待確認清單)" },
   ],
 };

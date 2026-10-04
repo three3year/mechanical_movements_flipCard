@@ -41,7 +41,7 @@ export default {
         { kind: "plate", shape: shape(thickLine([[-1.45, -1.0], [-1.45, MERCURY + 0.15]], 0.06)), thickness: 0.8 },
         { kind: "plate", shape: shape(rect(0.3, 0.9, VALVE.x, -1.0)), thickness: 0.3 },
         { kind: "plate", shape: shape(thickLine([[-1.75, 0.0], [-2.3, 0.0]], 0.25)), thickness: 0.3 },
-        { kind: "box", size: [0.06, 0.5, 0.06], at: [PIVOT[0], PIVOT[1] + 0.25, 0] },
+        { kind: "box", size: [0.06, 0.5, 0.06], at: [PIVOT[0], PIVOT[1] + 0.25, 0.24] }, // 吊架在槓桿的背面
       ],
     },
     { id: "labelE", kind: "group", pieces: [], label: "E", labelOffset: [VALVE.x + 0.35, -1.25, 0.5] },
@@ -71,8 +71,8 @@ export default {
     return {
       parts: {
         cup: { position: [cupTop[0], cupBottom, 0] },
-        valve: { position: [valveTop[0], valveBottom, 0.1] },
-        lever: { position: PIVOT, angle: -tilt },
+        valve: { position: [valveTop[0], valveBottom, 0.16] },
+        lever: { position: [PIVOT[0], PIVOT[1], 0.3], angle: -tilt },
         rodH: { from: leverEnd(-ARM_CUP), to: cupTop },
         rodD: { from: leverEnd(ARM_VALVE), to: valveTop },
       },
@@ -84,10 +84,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["casing", "lever"], reason: "接合處的簡化畫法:槓桿鉸接在外殼的支柱上,重疊 0.04" },
     { check: "interference", parts: ["casing", "valve"], reason: "簡化畫法:閥瓣坐在外殼的閥座上,重疊 0.16" },
-    { check: "unsupported", parts: ["rodD"], reason: "未修:桿 D 與槓桿之間少畫了相連的銷(差 0.59)(列入待確認清單)" },
-    { check: "unsupported", parts: ["lever"], reason: "未修:槓桿與浮筒的桿之間差 0.24,少畫了相連的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["valve"], reason: "未修:閥與槓桿之間少畫了相連的桿(差 0.33)(列入待確認清單)" },
   ],
 };

@@ -39,7 +39,7 @@ export default {
       pieces: [
         // 左岸、V 形的渠、右岸與槓桿的座
         { kind: "plate", shape: shape([[-3.0, 0.3], [-1.25, 0.3], [-0.2, -1.15], [0.9, -1.15], [1.6, 0.3], [3.0, 0.3], [3.0, -1.6], [-3.0, -1.6]]), thickness: 1.4 },
-        { kind: "box", size: [0.3, 1.0, 0.3], at: [LEVER_PIVOT[0], LEVER_PIVOT[1] - 0.55, 0] },
+        { kind: "box", size: [0.3, 1.0, 0.44], at: [LEVER_PIVOT[0], LEVER_PIVOT[1] - 0.55, 0] }, // 支柱頂著槓桿的背面
         { kind: "box", size: [0.25, 0.15, 0.6], at: [PIVOT[0], PIVOT[1] - 0.12, 0] },
       ],
     },
@@ -83,7 +83,7 @@ export default {
       parts: {
         scoop: { position: PIVOT, angle: s.beta },
         scoopWater: { position: [...along(SCOOP - 0.45).slice(0, 2), 0], angle: s.beta, level: rising || inWater ? 1 : 0 },
-        lever: { position: LEVER_PIVOT, angle: at - Math.PI },
+        lever: { position: [LEVER_PIVOT[0], LEVER_PIVOT[1], 0.27], angle: at - Math.PI },
         pitman: { from: [s.L[0], s.L[1], 0.35], to: [s.S[0], s.S[1], 0.35] },
       },
       flows,
@@ -91,10 +91,7 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["banks", "lever"], reason: "未修:槓桿與岸上的支柱畫在同一層,重疊 0.15(列入待確認清單)" },
     { check: "interference", parts: ["banks", "scoop"], reason: "未修:戽斗擺到岸邊時伸進岸壁,重疊 0.25(列入待確認清單)" },
-    { check: "unsupported", parts: ["pitman"], reason: "未修:連桿與槓桿之間差 0.23,少畫了相連的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["scoop"], reason: "未修:戽斗與吊著它的桿之間沒有接上(差 0.80)(列入待確認清單)" },
   ],
 };
 

@@ -52,7 +52,7 @@ export default {
       labelOffset: [-0.35, -0.3, 0.4],
       spin: 0.45,
       pieces: [
-        { kind: "cylinder", radius: 0.08, length: 0.8 },
+        { kind: "cylinder", radius: 0.08, length: 0.6, at: [0, 0, -0.1] }, // 軸只到曲柄的背面(泵桿從曲柄前面掃過軸心)
         { kind: "plate", shape: shape([[0, -0.1], [-CRANK_R, -0.1], [-CRANK_R, 0.1], [0, 0.1]]), thickness: 0.06, at: [0, 0, 0.3] },
         { kind: "pulley", style: "spoked", radius: 0.42, width: 0.08, at: [0, 0, -0.3] },
       ],
@@ -74,6 +74,7 @@ export default {
       ],
     },
   ],
+  powered: ["piston"], // 外力來源:錘的活塞是被泵壓進來的空氣推動的,沒有實體相連
   driver: { part: "shaftE", type: "rotation" },
   target: "piston",
   view: { direction: [0.08, 0.08, 1] },
@@ -98,8 +99,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["shaftE", "pumpRod"], reason: "未修:泵桿每圈有一小段掃過軸 E,重疊 0.08(96 個取樣中 5 個)(列入待確認清單)" },
-    { check: "unsupported", parts: ["piston"], reason: "未修:活塞沒有標成外力來源(受蒸汽推動),也沒有實體連回主動件(列入待確認清單)" },
-    { check: "unsupported", parts: ["pumpPiston"], reason: "未修:泵的活塞與泵桿之間差 0.03(列入待確認清單)" },
+    { check: "unsupported", parts: ["pumpPiston"], reason: "泵桿畫在剖面的前面一層:桿的下端與泵的活塞之間差 0.03(活塞銷沒有畫出來)" },
   ],
 };

@@ -36,8 +36,8 @@ export default {
       pieces: [
         { kind: "box", size: [6.5, 0.2, 2.0], at: [0.3, GROUND - 0.1, 0] },
         // 叉形柱
-        { kind: "plate", shape: shape(thickLine([[PIVOT[0] + 0.05, GROUND], [PIVOT[0], PIVOT[1] - 0.1], [PIVOT[0] - 0.12, PIVOT[1] + 0.25]], 0.16)), thickness: 0.18 },
-        { kind: "plate", shape: shape(thickLine([[PIVOT[0], PIVOT[1] - 0.1], [PIVOT[0] + 0.15, PIVOT[1] + 0.25]], 0.12)), thickness: 0.18 },
+        { kind: "plate", shape: shape(thickLine([[PIVOT[0] + 0.05, GROUND], [PIVOT[0], PIVOT[1] - 0.1], [PIVOT[0] - 0.12, PIVOT[1] + 0.25]], 0.16)), thickness: 0.18, at: [0, 0, -0.16] }, // 支架在桿的後面
+        { kind: "plate", shape: shape(thickLine([[PIVOT[0], PIVOT[1] - 0.1], [PIVOT[0] + 0.15, PIVOT[1] + 0.25]], 0.12)), thickness: 0.18, at: [0, 0, -0.16] },
         // 井口(井欄)與井壁
         { kind: "cylinder", radius: 0.65, inner: 0.55, length: 0.2, axis: [0, 1, 0], at: [PIVOT[0] - LONG * Math.cos((SWING[0] + SWING[1]) / 2), GROUND + 0.05, 0] },
       ],
@@ -52,7 +52,8 @@ export default {
       pieces: [{ kind: "box", size: [0.45, 0.35, 0.35], at: [SHORT - 0.1, -0.1, 0] }],
     },
     { id: "rope", kind: "rope", radius: 0.015 },
-    { id: "bucket", kind: "lathe", axis: [0, 1, 0], profile: [[0.22, -0.25], [0.27, 0.25], [0.24, 0.25], [0.19, -0.21], [0, -0.21], [0, -0.25]], pieces: [{ kind: "box", size: [0.56, 0.03, 0.03], at: [0, 0.32, 0] }] },
+    // 桶身加提把(橫樑與兩根立耳):繩繫在提把的中央
+    { id: "bucket", kind: "group", pieces: [{ kind: "lathe", axis: [0, 1, 0], profile: [[0.22, -0.25], [0.27, 0.25], [0.24, 0.25], [0.19, -0.21], [0, -0.21], [0, -0.25]] }, { kind: "box", size: [0.56, 0.03, 0.03], at: [0, 0.32, 0] }, { kind: "box", size: [0.03, 0.12, 0.03], at: [-0.255, 0.275, 0] }, { kind: "box", size: [0.03, 0.12, 0.03], at: [0.255, 0.275, 0] }] },
     { id: "water", kind: "fill", fluid: "water", shape: "cylinder", size: [0.42, 0.4, 0], level: 0 },
   ],
   driver: { part: "pole", type: "rotation", cycle: SWING },
@@ -78,7 +79,5 @@ export default {
   waivers: [
     { check: "interference", parts: ["ground", "rope"], reason: "繩垂進井裡:井口沒有畫出來,繩穿過地面 0.37(96 個取樣中 5 個)" },
     { check: "interference", parts: ["ground", "bucket"], reason: "水桶放到井裡:井在地面以下,井口沒有畫出來,桶與地面重疊 0.35(96 個取樣中 20 個)" },
-    { check: "interference", parts: ["ground", "pole"], reason: "未修:桿與地面的支架畫在同一層,重疊 0.14;支架應在桿的後面(列入待確認清單)" },
-    { check: "unsupported", parts: ["bucket"], reason: "未修:水桶與吊著它的繩之間差 0.23,繩頭沒有接到桶上(列入待確認清單)" },
   ],
 };

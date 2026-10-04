@@ -53,7 +53,7 @@ export default {
       spin: 0.9,
       pieces: [
         { kind: "cylinder", radius: 0.07, length: 2.0, at: [0, 0, -0.6] },
-        { kind: "bevel", radius: RB * 0.5 + 0.2, height: 0.22, axis: [0, 0, 1], at: [0, 0, 0.15] },
+        { kind: "bevel", radius: RB - 0.02, height: 0.22, axis: [0, 0, 1], at: [0, 0, 0.3] }, // 軸 A 的斜齒輪與上下兩個輪 b、g 的輪緣相貼
         { kind: "box", size: [0.08, 0.5, 0.08], at: [0, -0.25, -1.55] },
         { kind: "cylinder", radius: 0.06, length: 0.3, axis: [1, 0, 0], at: [0.12, -0.5, -1.55], accent: true },
       ],
@@ -110,11 +110,4 @@ export default {
       ],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["wheelD"], reason: "未修:輪 D 與帶動它的輪之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["shaftMN"], reason: "未修:軸 MN 與它上面的輪之間差 0.05(列入待確認清單)" },
-    { check: "unsupported", parts: ["wheelF"], reason: "未修:周轉輪系各輪之間前後錯開的量太大,齒面沒有相貼(差 0.40)(列入待確認清單)" },
-    { check: "unsupported", parts: ["wheelG"], reason: "未修:周轉輪系各輪之間前後錯開的量太大,齒面沒有相貼(差 0.30)(列入待確認清單)" },
-    { check: "unsupported", parts: ["wheelB"], reason: "未修:周轉輪系各輪之間前後錯開的量太大,齒面沒有相貼(差 0.30)(列入待確認清單)" },
-  ],
 };

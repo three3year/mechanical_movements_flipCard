@@ -17,7 +17,18 @@ export function buckets(v) {
   return { left: at, right: TOP + BOTTOM - at, leftFull: !forward, rightFull: forward };
 }
 
-const bucketPart = (id) => ({ id, kind: "lathe", axis: [0, 1, 0], profile: [[0.2, -0.25], [0.25, 0.25], [0.22, 0.25], [0.17, -0.21], [0, -0.21], [0, -0.25]], arrow: false, pieces: [{ kind: "box", size: [0.52, 0.03, 0.03], at: [0, 0.32, 0] }] });
+// 桶身加提把(橫樑與兩根立耳):繩繫在提把的中央
+const bucketPart = (id) => ({
+  id,
+  kind: "group",
+  arrow: false,
+  pieces: [
+    { kind: "lathe", axis: [0, 1, 0], profile: [[0.2, -0.25], [0.25, 0.25], [0.22, 0.25], [0.17, -0.21], [0, -0.21], [0, -0.25]] },
+    { kind: "box", size: [0.52, 0.03, 0.03], at: [0, 0.32, 0] },
+    { kind: "box", size: [0.03, 0.12, 0.03], at: [-0.235, 0.275, 0] },
+    { kind: "box", size: [0.03, 0.12, 0.03], at: [0.235, 0.275, 0] },
+  ],
+});
 
 export default {
   figure: 458,
@@ -72,9 +83,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["house", "pulley"], reason: "簡化畫法:滑輪的輻條轉過吊架時擦到 0.05(96 個取樣中 32 個)" },
-    { check: "unsupported", parts: ["rope"], reason: "未修:繩與滑輪之間差 0.22(列入待確認清單)" },
-    { check: "unsupported", parts: ["bucketR"], reason: "未修:右桶與吊著它的繩之間差 0.12(列入待確認清單)" },
-    { check: "unsupported", parts: ["bucketL"], reason: "未修:左桶與吊著它的繩之間差 0.12(列入待確認清單)" },
-    { check: "unsupported", parts: ["pulley"], reason: "未修:滑輪與繩之間沒有貼上(差 0.55)(列入待確認清單)" },
   ],
 };

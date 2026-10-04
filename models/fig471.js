@@ -51,7 +51,7 @@ export default {
       spin: R + 0.12,
       pieces: [
         { kind: "plate", shape: shape([[0, -0.12], [R, -0.08], [R, 0.08], [0, 0.12]]), thickness: 0.08, at: [0, 0, 0.15] },
-        { kind: "cylinder", radius: 0.08, length: 1.1, at: [0, 0, -0.2] },
+        { kind: "cylinder", radius: 0.08, length: 0.8, at: [0, 0, -0.35] }, // 曲柄軸只往後伸(連桿從曲柄前面掃過軸心)
         { kind: "cylinder", radius: 0.05, length: 0.25, at: [R, 0, 0.22] },
       ],
     },
@@ -83,6 +83,7 @@ export default {
       ],
     },
   ],
+  powered: ["hammer"], // 外力來源:錘(活塞)是被汽缸裡的空氣墊帶動的,和汽缸之間沒有實體相連
   driver: { part: "crank", type: "rotation" },
   target: "hammer",
   view: { direction: [0.1, 0.08, 1] },
@@ -105,10 +106,5 @@ export default {
       ],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["crank", "rodD"], reason: "未修:連桿每圈有一小段掃過曲柄軸,重疊 0.08(96 個取樣中 13 個);曲柄軸應只往後伸(列入待確認清單)" },
-    { check: "unsupported", parts: ["hammer"], reason: "未修:錘頭與活塞桿之間差 0.08,少畫了相連的實體(列入待確認清單)" },
-    { check: "unsupported", parts: ["cylinder"], reason: "未修:汽缸與機架之間差 0.23,沒有畫出相連的實體(列入待確認清單)" },
-  ],
 };
 
