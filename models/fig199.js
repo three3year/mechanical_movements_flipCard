@@ -88,5 +88,8 @@ export default {
     ROLLERS.forEach(([, , side], i) => (parts[`roller${i}`] = { angle: (side * x) / ROLLER }));
     return { parts, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "pinion"], reason: "簡化齒形:燈籠小齒輪的銷繞過機架上齒條的端頭時擦到齒 0.06(96 個取樣中 12 個)" },
+  ],
 };
 

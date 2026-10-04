@@ -41,6 +41,12 @@ export default {
   figure: 321,
   parts: [
     {
+      id: "arbor",
+      kind: "cylinder",
+      radius: 0.06,
+      length: 0.9, // 各輪共用的固定心軸(推斷)
+    },
+    {
       id: "wheelG",
       kind: "group",
       spin: 2.15,
@@ -109,4 +115,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["clickT", "frame"], reason: "止回爪的軸眼比機架上的樞軸銷小(軸眼畫得小),銷伸進爪 0.08" },
+    { check: "interference", parts: ["bigRatchet", "springS2"], reason: "彈簧的一端扣在大棘輪上:彈簧的端圈伸進棘輪 0.07" },
+    { check: "interference", parts: ["bigRatchet", "springS"], reason: "彈簧的一端扣在大棘輪上:彈簧的端圈伸進棘輪 0.07" },
+  ],
 };

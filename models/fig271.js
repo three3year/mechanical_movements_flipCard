@@ -49,9 +49,9 @@ export default {
       kind: "group",
       pieces: [
         { kind: "box", size: [6.0, 0.12, 0.8], at: [0.3, -1.25, 0] },
-        { kind: "box", size: [0.9, 0.7, 0.6], at: [-1.3, -0.85, 0] },
-        { kind: "box", size: [0.9, 0.7, 0.6], at: [1.3, -0.85, 0] },
-        { kind: "box", size: [0.3, 1.9, 0.3], at: [P[0] + 0.1, -0.3, -0.2] },
+        { kind: "box", size: [0.9, 0.7, 0.6], at: [-1.3, -0.91, 0] },
+        { kind: "box", size: [0.9, 0.7, 0.6], at: [1.3, -0.91, 0] },
+        { kind: "box", size: [0.3, 1.9, 0.3], at: [P[0] + 0.1, -0.3, -0.36] }, // 槓桿的立柱在長桿的後面
       ],
     },
     { id: "bar", kind: "plate", shape: bar, thickness: 0.4, arrow: false },
@@ -67,7 +67,7 @@ export default {
       ],
     },
     { id: "pawlUp", kind: "plate", shape: pawl(PAWL.up), thickness: 0.08, arrow: false },
-    { id: "pawlDown", kind: "plate", shape: pawl(PAWL.down), thickness: 0.08, arrow: false },
+    { id: "pawlDown", kind: "plate", shape: pawl(PAWL.down), thickness: 0.06, arrow: false },
   ],
   driver: { part: "lever", type: "rotation", cycle: [S, -S] },
 
@@ -81,7 +81,7 @@ export default {
       const a = attach(which, psi);
       const dy = BAR_Y + 0.05 - a[1];
       const ang = Math.asin(Math.max(-1, Math.min(1, -dy / len)));
-      return { position: [a[0], a[1], which === "up" ? 0.42 : 0.3], angle: ang };
+      return { position: [a[0], a[1], which === "up" ? 0.42 : 0.22], angle: ang }; // 兩支爪夾在槓桿的前後兩面
     };
     return {
       parts: {

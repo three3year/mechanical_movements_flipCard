@@ -55,4 +55,7 @@ export default {
   pose(v) {
     return { parts: { verge: { angle: swing(v, -SWING, SWING) }, crown: { angle: wheelAngle(v) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["crown", "verge"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算掣子板與冠狀輪的齒的接觸;重疊 0.10(96 個取樣中 88 個)。列入待確認清單的動力重演名單" },
+  ],
 };

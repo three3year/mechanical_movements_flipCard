@@ -104,5 +104,8 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["gearE", "gearD"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.12(取下 D 的軸、D 繞行的狀態)" },
+  ],
 };
 

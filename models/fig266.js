@@ -36,13 +36,13 @@ export default {
       kind: "cylinder",
       axis: X,
       radius: 0.1,
-      length: 5.6,
+      length: 6.2, // 夠長:曲柄在固定座的外側,轉動時不掃過它
       pieces: [
         { kind: "worm", radius: 0.26, length: 1.9, pitch: P1, thread: 0.08, at: [0, 0, -1.9] },
         { kind: "worm", radius: 0.26, length: 2.0, pitch: P2, thread: 0.08, at: [0, 0, 1.1] },
         // 曲柄:臂與握把
-        { kind: "box", size: [0.08, 0.5, 0.08], at: [0, 0.25, -2.75] },
-        { kind: "cylinder", radius: 0.05, length: 0.35, at: [0, 0.5, -2.9], accent: true },
+        { kind: "box", size: [0.08, 0.5, 0.08], at: [0, 0.25, -3.0] },
+        { kind: "cylinder", radius: 0.05, length: 0.35, at: [0, 0.5, -3.15], accent: true },
       ],
     },
     { id: "bearing", kind: "group", pieces: [{ kind: "box", size: [0.45, 1.05, 0.6], at: [0, -0.05, 0] }, { kind: "box", size: [1.1, 0.12, 0.9], at: [0, -0.5, 0] }] },

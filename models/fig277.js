@@ -64,7 +64,7 @@ export default {
     },
     { id: "pawl", kind: "link", width: 0.13, thickness: 0.08, label: "a", labelOffset: [0.3, -0.1, 0.3] },
     { id: "springC", kind: "spring", coils: 6, radius: 0.08, wire: 0.02, label: "c", labelOffset: [0.15, 0.25, 0.3] },
-    { id: "frame", kind: "box", center: [BACK + 0.12, 0.3, -0.35], size: [0.2, 3.0, 0.2] },
+    { id: "frame", kind: "box", center: [BACK + 0.3, 0.3, -0.35], size: [0.2, 3.0, 0.2] }, // 在轉輪背面棘齒的後面
   ],
   driver: { part: "hammer", type: "rotation", cycle: [0, COCK] },
   target: "cylinder", // 每扳一次轉一格的轉輪
@@ -87,4 +87,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["pawl", "springC"], reason: "小彈簧的端頭抵在爪身上:彈簧的端圈伸進爪 0.05" },
+    { check: "interference", parts: ["cylinder", "pawl"], reason: "爪推轉輪背面棘齒的過程依擊錘的行程演出,不逐點算爪尖與齒的接觸;爪尖伸進棘齒 0.12" },
+  ],
 };

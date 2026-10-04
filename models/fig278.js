@@ -109,4 +109,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["platform", "pawlR"], reason: "防墜爪收在平台側柱的開口裡(繩斷時才彈出);開口沒有畫出來,爪與側柱重疊 0.09" },
+    { check: "interference", parts: ["platform", "pawlL"], reason: "防墜爪收在平台側柱的開口裡(繩斷時才彈出);開口沒有畫出來,爪與側柱重疊 0.09" },
+  ],
 };

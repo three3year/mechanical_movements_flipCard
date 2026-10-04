@@ -13,7 +13,7 @@ const ROLLER = 0.28;
 const XC = -0.55; // 滾子所在的位置(固定)
 const X0 = -0.2; // 主動量 0 時錐體中心的位置
 export const RANGE = [0, 4 * TAU];
-const NUT = 2.2; // 螺帽 E 的位置
+const NUT = 2.85; // 螺帽 E 的位置(在錐體走到最右時小端的外側)
 
 /** 錐體中心在 x 時,位置 xp 的錐面半徑 */
 const coneRadius = (cx, xp) => {
@@ -63,7 +63,7 @@ export function coneRoller(figure, view) {
           { kind: "plate", shape: { outline: [[NUT - 0.55, -2.25], [NUT + 0.55, -2.25], [NUT + 0.14, -1.6], [NUT + 0.14, -0.3], [NUT - 0.14, -0.3], [NUT - 0.14, -1.6]], holes: [] }, thickness: 0.4 },
           { kind: "cylinder", axis: X, radius: 0.3, length: 0.35, at: [NUT, 0, 0] },
           // 滾子的直立導架(重物壓著)
-          { kind: "box", size: [0.12, 2.9, 0.12], at: [XC, 2.2, -0.42] },
+          { kind: "box", size: [0.12, 1.5, 0.12], at: [XC, 2.85, -0.42] }, // 導桿只在錐體掃過的範圍之上
           { kind: "box", size: [0.45, 0.12, 0.6], at: [XC, 3.5, -0.2] },
         ],
         label: "E",
@@ -74,7 +74,7 @@ export function coneRoller(figure, view) {
         kind: "worm",
         axis: X,
         radius: 0.13,
-        length: 3.0,
+        length: 4.4,
         pitch: PITCH,
         thread: 0.04,
         label: "D",
@@ -87,7 +87,7 @@ export function coneRoller(figure, view) {
         kind: "cylinder",
         axis: X,
         radius: ROLLER,
-        length: 0.22,
+        length: 0.1, // 滾子窄:錐面有斜度,寬的滾子邊緣會陷進錐面
         mark: true,
         spin: ROLLER,
         label: "C",

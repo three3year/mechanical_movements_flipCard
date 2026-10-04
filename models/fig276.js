@@ -59,4 +59,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["cam", "rod"], reason: "桿的位置是以凸輪與滾子的接觸算的;桿端的方塊比滾子寬,凸輪的凸部擦到方塊的角 0.06(96 個取樣中 74 個)" },
+    { check: "interference", parts: ["rod", "rollerL"], reason: "滾子裝在桿端的叉口裡;叉口沒有畫出來(桿端畫成實心方塊),滾子與方塊重疊 0.16" },
+    { check: "interference", parts: ["rod", "rollerR"], reason: "滾子裝在桿端的叉口裡;叉口沒有畫出來(桿端畫成實心方塊),滾子與方塊重疊 0.16" },
+  ],
 };

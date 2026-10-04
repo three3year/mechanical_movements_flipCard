@@ -70,4 +70,7 @@ export default {
     const b = balance(v);
     return { parts: { balanceC: { angle: b.angle }, crownD: { angle: b.crown } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["crownD", "balanceC"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擺輪心軸上的掣子與冠狀輪的齒的接觸;重疊 0.10(96 個取樣中 88 個)。列入待確認清單的動力重演名單" },
+  ],
 };

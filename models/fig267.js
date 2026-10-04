@@ -75,4 +75,10 @@ export default {
     }
     return { parts, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["arm3", "spring3"], reason: "彈簧的端頭扣在臂上:彈簧鋼絲的端圈伸進臂的板 0.04" },
+    { check: "interference", parts: ["arm2", "spring2"], reason: "彈簧的端頭扣在臂上:彈簧鋼絲的端圈伸進臂的板 0.04" },
+    { check: "interference", parts: ["arm1", "spring1"], reason: "彈簧的端頭扣在臂上:彈簧鋼絲的端圈伸進臂的板 0.04" },
+    { check: "interference", parts: ["arm0", "spring0"], reason: "彈簧的端頭扣在臂上:彈簧鋼絲的端圈伸進臂的板 0.04" },
+  ],
 };

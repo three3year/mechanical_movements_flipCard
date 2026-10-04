@@ -64,7 +64,7 @@ export default {
       arrow: false,
       pieces: [
         // 有長槽的直立桿(沿局部 +x)
-        { kind: "plate", shape: shape(rect(TOP + 0.4, 0.42, TOP / 2 - 0.1, 0), [rect(2.2, 0.2, 1.65 + 0.6, 0).reverse()]), thickness: 0.14, at: [0, 0, 0.12] },
+        { kind: "plate", shape: shape(rect(TOP + 0.4, 0.42, TOP / 2 - 0.1, 0), [rect(2.2, 0.2, 1.65 + 0.6, 0).reverse()]), thickness: 0.14, at: [0, 0, 0.19] }, // 桿頂貼著繩所在的那一層
         { kind: "cylinder", radius: 0.12, length: 0.5 },
       ],
     },
@@ -96,4 +96,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["sector", "rack"], reason: "簡化齒形:扇形齒與齒條的梯形齒齒側互相擦到 0.06" },
+  ],
 };

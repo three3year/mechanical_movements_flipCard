@@ -69,4 +69,7 @@ export default {
     const t = threeLeg(v);
     return { parts: { pendulum: { angle: t.pendulum }, wheel: { angle: t.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["pendulum", "wheel"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擺上的掣子與輪齒的接觸;重疊 0.15(96 個取樣中 62 個)。列入待確認清單的動力重演名單" },
+  ],
 };

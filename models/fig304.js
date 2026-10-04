@@ -67,4 +67,7 @@ export default {
     const p = pinWheel(v);
     return { parts: { anchor: { angle: p.anchor }, wheel: { angle: p.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "anchor"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擒縱叉的掣子與輪齒的接觸;重疊 0.07(96 個取樣中 16 個)。列入待確認清單的動力重演名單" },
+  ],
 };

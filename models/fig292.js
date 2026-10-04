@@ -66,4 +66,7 @@ export default {
   pose(v) {
     return { parts: { anchor: { angle: swing(v, -SWING, SWING) }, wheel: { angle: wheelAngle(v) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "anchor"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擒縱叉與輪上的銷的接觸;重疊 0.12(96 個取樣中 92 個)。列入待確認清單的動力重演名單" },
+  ],
 };

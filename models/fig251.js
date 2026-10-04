@@ -80,7 +80,7 @@ export default {
     return {
       parts: {
         armL: { position: pin, angle: -h.open },
-        armR: { position: pin, angle: h.open },
+        armR: { position: [pin[0], pin[1], pin[2] + 0.1], angle: h.open }, // 兩支鉗臂前後錯開一層,交叉處互不相碰
         pin: { position: pin },
         weight: { position: [0, top, 0] },
       },
@@ -88,4 +88,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "armL"], reason: "鉗臂上端被楔形槽夾攏的過程是以槽壁的斜率算的;臂端的圓角擦到槽壁 0.04(96 個取樣中 11 個)" },
+  ],
 };

@@ -5,7 +5,7 @@ import { ratchetShape, circle } from "./shapes.js";
 import { chainOver } from "./chain-over-sprocket.js";
 
 const TEETH = 16;
-const PINS = 2.27; // 鏈帶的內緣貼著輪齒的齒頂
+const PINS = 2.3;
 const chain = chainOver({ pins: PINS, left: [-3.05, -2.4, 0], right: [3.1, -1.25, 0] });
 
 export const travel = chain.travel;
@@ -16,7 +16,7 @@ export default {
     {
       id: "wheel",
       kind: "plate",
-      shape: { outline: ratchetShape({ teeth: TEETH, outer: 2.08, inner: 1.78, dir: 1 }).outline, holes: [circle(0.15).reverse()] },
+      shape: { outline: ratchetShape({ teeth: TEETH, outer: 2.11, inner: 1.78, dir: 1 }).outline, holes: [circle(0.15).reverse()] },
       thickness: 0.2,
       hub: 0.35,
       circles: [0.25],

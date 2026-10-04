@@ -92,4 +92,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["rollerB", "partD"], reason: "滾子被 D 的斜臂撐開的位置是以臂的中心線算的;臂有寬度,滾子伸進臂緣 0.14(96 個取樣中 20 個)" },
+    { check: "interference", parts: ["rollerA", "partD"], reason: "滾子被 D 的斜臂撐開的位置是以臂的中心線算的;臂有寬度,滾子伸進臂緣 0.14(96 個取樣中 20 個)" },
+  ],
 };

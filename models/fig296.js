@@ -70,4 +70,7 @@ export default {
     const l = lever(v);
     return { parts: { roller: { angle: l.balance }, anchor: { angle: l.lever }, wheelA: { angle: l.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["anchor", "roller"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算叉口與圓盤上的銷的接觸;重疊 0.08。列入待確認清單的動力重演名單" },
+  ],
 };

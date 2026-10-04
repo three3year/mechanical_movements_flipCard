@@ -59,4 +59,7 @@ export default {
     const t = threeLeg(v);
     return { parts: { plate: { position: [t.plate, 0, 0] }, wheel: { angle: t.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["plate", "wheel"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擺板上的掣子與輪齒的接觸;重疊 0.13。列入待確認清單的動力重演名單" },
+  ],
 };

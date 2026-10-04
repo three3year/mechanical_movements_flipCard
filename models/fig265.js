@@ -55,14 +55,14 @@ export default {
       kind: "cylinder",
       axis: X,
       radius: ROLLER,
-      length: 0.3,
+      length: 0.1, // 滾子窄:鼓面有斜度,寬的滾子邊緣會陷進鼓面
       mark: true,
       spin: ROLLER,
       pieces: [{ kind: "cylinder", radius: 0.05, length: 0.6 }],
     },
     // 滾子的架:軸叉與一根往上的桿,沿上方的導軌橫移
     { id: "carriage", kind: "group", pieces: [{ kind: "box", size: [0.5, 0.08, 0.08], at: [0, 0, -0.3] }, { kind: "box", size: [0.1, 1.3, 0.1], at: [0, 0.65, -0.5] }] },
-    { id: "rail", kind: "box", center: [0.3, R.big + 0.95, -0.5], size: [5.2, 0.06, 0.06] },
+    { id: "rail", kind: "group", pieces: [-0.58, -0.42].map((z) => ({ kind: "box", size: [5.2, 0.06, 0.06], at: [0.3, R.big + 0.95, z] })) }, // 前後兩條導軌夾著滑座的立桿
   ],
   driver: { part: "drum", type: "rotation", speed: 2.4 },
   target: "roller", // 得到變速旋轉的滾子

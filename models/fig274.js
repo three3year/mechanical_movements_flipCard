@@ -77,4 +77,8 @@ export default {
     }
     return { parts, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["rodR", "sleeve"], reason: "連桿的下端鉸接在套筒的耳上;耳沒有畫出來,連桿端頭伸進套筒的圓柱 0.05" },
+    { check: "interference", parts: ["rodL", "sleeve"], reason: "連桿的下端鉸接在套筒的耳上;耳沒有畫出來,連桿端頭伸進套筒的圓柱 0.05" },
+  ],
 };

@@ -55,4 +55,9 @@ export default {
     const b = bloxam(v);
     return { parts: { pendulum: { angle: b.pendulum }, armR: { angle: b.right }, armL: { angle: -b.left }, wheel: { angle: b.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "pendulum"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擺桿上的銷與輪上的升舉銷的接觸;重疊 0.10(96 個取樣中 31 個)。列入待確認清單的動力重演名單" },
+    { check: "unsupported", parts: ["armR"], reason: "擒縱的接觸是瞬間的(輪齒落在掣子上、滑過衝擊面);模型依相位演出,零件的外形沒有畫到真的互相碰到(差 0.24)。要補得重排擺軸、掣子與擒縱輪的相對位置(列入待確認清單)" },
+    { check: "unsupported", parts: ["armL"], reason: "擒縱的接觸是瞬間的(輪齒落在掣子上、滑過衝擊面);模型依相位演出,零件的外形沒有畫到真的互相碰到(差 0.17)。要補得重排擺軸、掣子與擒縱輪的相對位置(列入待確認清單)" },
+  ],
 };

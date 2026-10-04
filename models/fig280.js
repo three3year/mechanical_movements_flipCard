@@ -56,8 +56,8 @@ export default {
         { kind: "box", size: [0.42, 5.2, 0.4], at: [1.2, -0.2, -0.45] },
         { kind: "box", size: [0.42, 5.2, 0.4], at: [-0.35, -0.2, -0.75] },
         { kind: "plate", shape: shape(thickLine([[-0.35, 1.6], [1.2, 2.55]], 0.3)), thickness: 0.3, at: [0, 0, -0.6] },
-        { kind: "cylinder", radius: 0.12, length: 0.9, at: [T[0], T[1], -0.25] },
-        { kind: "cylinder", radius: 0.09, length: 0.5, at: [PAWL.pivot[0], PAWL.pivot[1], 0.2] },
+        { kind: "cylinder", radius: 0.12, length: 0.9, at: [T[0], T[1], -0.24] },
+        { kind: "cylinder", radius: 0.03, length: 0.22, at: [PAWL.pivot[0], PAWL.pivot[1], 0.34] }, // 止回爪的樞軸銷(在輪緣的前面)
       ],
     },
     { id: "wheel", kind: "group", center: C, spin: RIM + 0.12, pieces: [...wheelPieces, { kind: "box", size: [0.2, 0.2, 0.46], at: [RIM + 0.02, 0, 0], accent: true }] },
@@ -68,7 +68,7 @@ export default {
       arrow: false,
       pieces: [
         // 鑄鐵塊:跨在輪緣上,兩個夾爪的凸緣扣住輪緣內側(局部 +x 朝輪外)
-        { kind: "box", size: [0.5, 0.42, 0.7], at: [0.05, 0, 0] },
+        { kind: "box", size: [0.3, 0.42, 0.5], at: [0.28, 0, 0] }, // 鐵塊的本體在輪緣外側,兩片爪跨在輪緣兩面
         { kind: "box", size: [0.12, 0.42, 0.16], at: [-0.28, 0, 0.28] },
         { kind: "box", size: [0.12, 0.42, 0.16], at: [-0.28, 0, -0.28] },
       ],
@@ -81,8 +81,8 @@ export default {
       center: T,
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0], [LONG - 0.6, 0]], 0.16), [circle(0.06).reverse()]), thickness: 0.12, at: [0, 0, 0.1] },
-        { kind: "lathe", axis: [1, 0, 0], profile: [[0.06, 0], [0.13, 0.15], [0.1, 0.6], [0, 0.65]], at: [LONG - 0.62, 0, 0.1] },
+        { kind: "plate", shape: shape(thickLine([[0, 0], [LONG - 0.6, 0]], 0.16), [circle(0.06).reverse()]), thickness: 0.12, at: [0, 0, 0.28] },
+        { kind: "lathe", axis: [1, 0, 0], profile: [[0.06, 0], [0.13, 0.15], [0.1, 0.6], [0, 0.65]], at: [LONG - 0.62, 0, 0.28] },
       ],
     },
   ],

@@ -67,4 +67,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["disc", "rod"], reason: "桿的位置是以桿端中心一點靠在斜盤面上算的;桿端面有寬度,盤面傾斜時端面的邊角伸進盤面 0.08" },
+  ],
 };

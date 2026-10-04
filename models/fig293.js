@@ -73,4 +73,7 @@ export default {
     const d = duplex(v);
     return { parts: { staffA: { angle: d.balance }, wheel: { angle: d.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "staffA"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擺輪心軸上的缺口與輪齒的接觸;重疊 0.09(96 個取樣中 6 個)。列入待確認清單的動力重演名單" },
+  ],
 };

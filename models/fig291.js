@@ -74,6 +74,7 @@ export default {
         { kind: "plate", shape: shape(thickLine([[-0.95, 0.15], [-3.05, 0.0]], 0.025)), thickness: 0.06 },
       ],
     },
+    { id: "staff", kind: "cylinder", center: BAL, radius: 0.05, length: 0.9 }, // 擺輪的心軸(固定的軸承,推斷)
     { id: "labelB", kind: "group", center: B, label: "b", labelOffset: [0.3, 0.3, 0.3] },
     { id: "labelK", kind: "group", center: [B[0] - 2.95, B[1], 0], label: "k", labelOffset: [0.05, 0.3, 0.3] },
     { id: "labelD", kind: "group", center: [B[0] - 2.2, B[1] - 0.3, 0], label: "d", labelOffset: [0.25, -0.1, 0.3] },
@@ -87,4 +88,8 @@ export default {
     const c = chronometer(v);
     return { parts: { balance: { angle: c.balance }, detentA: { angle: -c.lift }, wheelB: { angle: c.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "unsupported", parts: ["detentA"], reason: "天文鐘擒縱的接觸都是瞬間的(擺輪經過時撥開掣子、放過的輪齒給擺輪一次衝擊);模型依相位演出,零件的外形沒有畫到真的互相碰到(差 0.08)。要補得重排擺輪、掣子與擒縱輪的相對位置(列入待確認清單)" },
+    { check: "unsupported", parts: ["wheelB"], reason: "天文鐘擒縱的接觸都是瞬間的(擺輪經過時撥開掣子、放過的輪齒給擺輪一次衝擊);模型依相位演出,零件的外形沒有畫到真的互相碰到(差 0.25)。要補得重排擺輪、掣子與擒縱輪的相對位置(列入待確認清單)" },
+  ],
 };

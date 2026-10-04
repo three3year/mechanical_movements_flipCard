@@ -71,7 +71,7 @@ export default {
       width: 0.16,
       label: "B",
       labelOffset: [0, -0.15, 0.4],
-      pieces: [{ kind: "cylinder", radius: DRUM, length: 0.3, at: [0, 0, 0.2] }, { kind: "cylinder", radius: 0.07, length: 0.4, at: [0, CRANK, 0.15], accent: true }],
+      pieces: [{ kind: "cylinder", radius: DRUM, length: 0.3, at: [0, 0, 0.2] }, { kind: "cylinder", radius: 0.07, length: 0.5, at: [0, CRANK, 0.2], accent: true }],
     },
     { id: "rodC", kind: "link", width: 0.12, thickness: 0.06, label: "C", labelOffset: [0.15, 1.4, 0.3] },
     { id: "armA", kind: "link", width: 0.14, thickness: 0.08, label: "A", labelOffset: [0.3, 0.3, 0.3] },
@@ -93,7 +93,7 @@ export default {
     return {
       parts: {
         discB: { angle: theta },
-        rodC: { from: [pin[0], pin[1], 0.15], to: [joint[0], joint[1], 0.15] },
+        rodC: { from: [pin[0], pin[1], 0.4], to: [joint[0], joint[1], 0.4] }, // 連桿在鼓輪的前面,從鼓輪上方掃過
         armA: { from: [G[0], G[1], 0.05], to: [e[0], e[1], 0.05] },
         pulleyE: { position: [e[0], e[1], 0.2], angle: turn },
         weightW: { position: [XW, yW - 0.43, 0.2] },
@@ -102,4 +102,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["discB", "ropeD"], reason: "曲柄銷與捲繩的鼓輪畫在圓盤的同一面,曲柄銷每圈有一小段掃過垂下的繩(重疊 0.07,96 個取樣中 3 個);實物的鼓輪在圓盤的背面" },
+  ],
 };

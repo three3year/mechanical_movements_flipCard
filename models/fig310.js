@@ -81,4 +81,11 @@ export default {
     const g = gravity(v);
     return { parts: { pendulum: { angle: g.pendulum }, armA: { angle: g.right }, armB: { angle: -g.left }, wheel: { angle: g.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["pendulum", "wheel"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擺與輪齒的接觸;重疊 0.11(96 個取樣中 37 個)。列入待確認清單的動力重演名單" },
+    { check: "interference", parts: ["armB", "wheel"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算重力臂的掣子與輪齒的接觸;重疊 0.09(96 個取樣中 57 個)。列入待確認清單的動力重演名單" },
+    { check: "interference", parts: ["armA", "wheel"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算重力臂的掣子與輪齒的接觸;重疊 0.10(96 個取樣中 55 個)。列入待確認清單的動力重演名單" },
+    { check: "interference", parts: ["pendulum", "armB"], reason: "重力擒縱:擺推開重力臂、重力臂落回推擺的過程依相位演出;擺與臂端的方塊重疊 0.11" },
+    { check: "interference", parts: ["pendulum", "armA"], reason: "重力擒縱:擺推開重力臂、重力臂落回推擺的過程依相位演出;擺與臂端的方塊重疊 0.11" },
+  ],
 };

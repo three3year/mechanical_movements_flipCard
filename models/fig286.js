@@ -45,13 +45,14 @@ export default {
       kind: "group",
       arrow: false,
       pieces: [
-        { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 4.4, at: [ROD_X, -0.4, 0] },
-        { kind: "box", size: [0.42, 0.55, 0.42], at: [ROD_X - 0.05, 0.45, 0] },
+        // 直立桿在趾形凸輪的後面一層(凸輪從它前方轉過),升降器的臂從桿上的座往前伸
+        { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 4.4, at: [ROD_X, -0.4, -0.35] },
+        { kind: "box", size: [0.42, 0.55, 0.42], at: [ROD_X - 0.05, 0.45, -0.07] },
         // 升降器:從桿上的座往左伸出的楔形臂,下緣是一條斜直線
         { kind: "plate", shape: shape([[LIFTER.x0 - 1.4, LIFTER.y0 - 0.14], [ROD_X - 0.2, LIFTER.y0 + LIFTER.slope * (ROD_X - 0.2 - LIFTER.x0)], [ROD_X - 0.2, 0.7], [LIFTER.x0 - 1.35, LIFTER.y0 + 0.05]]), thickness: 0.3 },
       ],
     },
-    { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.5, 0.25, 0.5], at: [ROD_X, -1.6, -0.1] }, { kind: "box", size: [0.5, 0.25, 0.5], at: [ROD_X, 1.35, -0.1] }] },
+    { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.5, 0.25, 0.3], at: [ROD_X, -1.6, -0.4] }, { kind: "box", size: [0.5, 0.25, 0.24], at: [ROD_X, 1.35, -0.43] }] },
   ],
   driver: { part: "toe", type: "rotation", range: RANGE, initial: 0 },
   target: "lifter", // 被頂起的升降器

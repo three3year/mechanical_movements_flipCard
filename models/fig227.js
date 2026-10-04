@@ -36,4 +36,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "chain"], reason: "鏈輪的齒伸進鏈節之間是正常的咬合;鍊條以中心線加寬度檢查,齒尖越過中心線 0.10" },
+  ],
 };

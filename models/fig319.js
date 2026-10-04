@@ -65,4 +65,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["weightB2", "rimL"], reason: "補償擺輪的配重夾在輪緣上:輪緣穿過配重(配重上的夾口沒畫),重疊 0.15" },
+    { check: "interference", parts: ["weightB", "rimR"], reason: "補償擺輪的配重夾在輪緣上:輪緣穿過配重(配重上的夾口沒畫),重疊 0.15" },
+  ],
 };

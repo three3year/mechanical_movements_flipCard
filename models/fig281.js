@@ -42,7 +42,7 @@ export default {
       pieces: [
         { kind: "box", size: [4.6, 0.25, 0.9], at: [0, -2.45, 0] },
         { kind: "plate", shape: shape(thickLine([[-1.8, -2.3], [DISC.center[0], DISC.center[1]], [0.9, -2.3]], 0.22)), thickness: 0.2, at: [0, 0, -0.45] },
-        { kind: "plate", shape: shape(thickLine([[1.6, -2.3], [PIVOT[0], PIVOT[1]]], 0.2)), thickness: 0.2, at: [0, 0, 0.35] },
+        { kind: "plate", shape: shape(thickLine([[1.6, -2.3], [PIVOT[0], PIVOT[1]]], 0.2)), thickness: 0.2, at: [0, 0, 0.42] }, // 槓桿的支架在槓桿前面
       ],
     },
     {
@@ -70,7 +70,7 @@ export default {
         { kind: "plate", shape: shape(thickLine([[0, 0], [LEVER * Math.cos(BAR), LEVER * Math.sin(BAR)]], 0.2), [circle(0.06).reverse()]), thickness: 0.12, at: [0, 0, 0.25] },
         // 從槓桿伸到圓盤前面的銷架(原圖虛線)與銷
         { kind: "plate", shape: shape(thickLine([[1.9 * Math.cos(BAR), 1.9 * Math.sin(BAR)], [ARM, 0]], 0.12)), thickness: 0.08, at: [0, 0, 0.15] },
-        { kind: "cylinder", radius: 0.08, length: 0.35, at: [ARM, 0, 0.05], accent: true },
+        { kind: "cylinder", radius: 0.08, length: 0.2, at: [ARM, 0, 0.1], accent: true }, // 銷只伸到槽壁的高度,不陷進盤面
       ],
     },
   ],

@@ -92,4 +92,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["ballR", "springR"], reason: "彈簧穿過球上的孔、扣在球的另一側;孔沒有畫出來,彈簧的中心線穿過球 0.26" },
+    { check: "interference", parts: ["ballL", "springL"], reason: "彈簧穿過球上的孔、扣在球的另一側;孔沒有畫出來,彈簧的中心線穿過球 0.26" },
+  ],
 };

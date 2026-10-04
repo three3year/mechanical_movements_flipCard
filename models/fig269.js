@@ -27,7 +27,7 @@ export const geometry = { TOP, BOTTOM, P, R };
 // 框架座標 x = −from + (k + ½)·齒距,整段齒條的中心在 −from + 齒數·齒距 / 2。
 const rackCenter = (r) => -r.from + (r.teeth * P) / 2;
 const BACK = 0.18; // 齒條背板厚
-const RIGHT = 2.55; // 框架右側(框架座標)
+const RIGHT = 2.75; // 框架右側(框架座標)
 const LEFT = rackCenter(TOP) - (TOP.teeth * P) / 2 - 0.25;
 const YT = R + 1.2 * (P / Math.PI) + BACK; // 上齒條背板外緣
 const box = (x0, x1, y, h) => ({ kind: "box", size: [x1 - x0, h, 0.22], at: [(x0 + x1) / 2, y, 0] });
@@ -58,4 +58,7 @@ export default {
     const s = clamp(s0, ...RANGE);
     return { parts: { frame: { position: [s, 0, 0] }, gear: { angle: gear(s) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "gear"], reason: "簡化齒形:齒輪在行程兩端從一排齒條換到另一排時,齒頂擦到齒條的齒 0.13(96 個取樣中 22 個)" },
+  ],
 };

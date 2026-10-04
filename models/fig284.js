@@ -70,7 +70,7 @@ export default {
         { kind: "box", size: [0.25, 0.4, 0.25], at: [CRANK.center[0], CRANK.center[1] - 0.3, 0] },
       ],
     },
-    { id: "crank", kind: "group", center: CRANK.center, spin: CRANK.r + 0.15, pieces: [{ kind: "plate", shape: shape(thickLine([[0, 0], [CRANK.r, 0]], 0.18), [circle(0.05).reverse()]), thickness: 0.1 }, { kind: "cylinder", radius: 0.06, length: 0.3, at: [CRANK.r, 0, 0.1] }, { kind: "cylinder", radius: 0.1, length: 0.5 }] },
+    { id: "crank", kind: "group", center: CRANK.center, spin: CRANK.r + 0.15, pieces: [{ kind: "plate", shape: shape(thickLine([[0, 0], [CRANK.r, 0]], 0.18), [circle(0.05).reverse()]), thickness: 0.1 }, { kind: "cylinder", radius: 0.06, length: 0.3, at: [CRANK.r, 0, 0.1] }, { kind: "cylinder", radius: 0.1, length: 0.3, at: [0, 0, -0.25] }] }, // 曲柄軸只往後伸(連桿從曲柄前面掃過軸心)
     { id: "rod", kind: "link", width: 0.09, thickness: 0.06 },
     {
       id: "bellCrank",
@@ -131,7 +131,7 @@ export default {
         crank: { angle: theta },
         rod: { from: [f.pin[0], f.pin[1], z], to: [f.H[0], f.H[1], z] },
         bellCrank: { angle: f.beta },
-        catch: { from: [f.V[0], f.V[1], 0.2], to: [f.tip[0], f.tip[1], 0.2] },
+        catch: { from: [f.V[0], f.V[1], 0.16], to: [f.tip[0], f.tip[1], 0.16] }, // 卡榫貼著棘輪的前面
         ratchet: { angle: f.wheel },
         pinion: { angle: f.wheel },
         // 齒條齒朝下,咬在小齒輪頂上:齒條零件轉 180°

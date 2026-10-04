@@ -69,4 +69,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["weightw", "rope"], reason: "繩繫在重物頂面:繩頭伸進重物 0.04(繫點在重物內、不在頂面上)" },
+  ],
 };

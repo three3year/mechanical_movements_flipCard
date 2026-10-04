@@ -75,4 +75,8 @@ export default {
     const l = leverChrono(v);
     return { parts: { balance: { angle: l.balance }, lever: { angle: l.lever }, wheel: { angle: l.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["balance", "lever"], reason: "槓桿的叉口套著擺輪圓盤上的銷:叉口與圓盤在圖上畫在同一層,重疊 0.04" },
+    { check: "interference", parts: ["wheel", "lever"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算槓桿的掣子與輪上的衝擊塊的接觸;重疊 0.09(96 個取樣中 10 個)。列入待確認清單的動力重演名單" },
+  ],
 };

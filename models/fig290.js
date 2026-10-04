@@ -43,4 +43,7 @@ export default {
   pose(v) {
     return { parts: { frame: { angle: swing(v, -SWING, SWING) }, wheelD: { angle: wheelAngle(v) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheelD", "frame"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算框架上兩個掣子與輪齒的接觸;重疊 0.18。列入待確認清單的動力重演名單" },
+  ],
 };

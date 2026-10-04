@@ -58,4 +58,7 @@ export default {
   pose(t) {
     return { parts: { pipe: { rotation: pipeRotation(t) } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["socket", "pipe"], reason: "球接頭擺到極限時,管身的肩部碰到球窩的窩口(極限位置就是由這裡擋住的);重疊 0.06(96 個取樣中 8 個)" },
+  ],
 };

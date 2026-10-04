@@ -90,4 +90,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "pendulum"], reason: "擺擺到極限時,擺桿的上端碰到機架上的銷(重疊 0.13,96 個取樣中 6 個);擺幅是示意的大小" },
+    { check: "interference", parts: ["leverQ", "pendulum"], reason: "擺上的銷撥動槓桿 Q 的過程依相位演出,不逐點算接觸;重疊 0.07(96 個取樣中 34 個)" },
+    { check: "interference", parts: ["leverQ", "click"], reason: "槓桿 Q 與止回爪的接觸依相位演出;兩者交會時重疊 0.06(96 個取樣中 15 個)" },
+  ],
 };

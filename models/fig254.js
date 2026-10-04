@@ -40,4 +40,7 @@ export const { travel, def } = facePulley({
 });
 export default {
   ...def,
+  waivers: [
+    { check: "interference", parts: ["wheel", "strand"], reason: "環鍊的鏈環嵌在輪緣的凹窩裡是正常的咬合;鍊條以中心線加寬度檢查,越過輪緣 0.05" },
+  ],
 };

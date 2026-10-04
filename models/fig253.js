@@ -88,8 +88,8 @@ export default {
       labelOffset: [1.3, 1.3, 0.3],
       pieces: [stud(STUDS[2])],
     },
-    { id: "studD1", kind: "group", center: [0, 0, -0.25], pieces: [stud(STUDS[0])], label: "D", labelOffset: [STUD.r * Math.cos(STUDS[0]) - 0.35, STUD.r * Math.sin(STUDS[0]) - 0.25, 0.4] },
-    { id: "studD2", kind: "group", center: [0, 0, -0.25], pieces: [stud(STUDS[1])], label: "D", labelOffset: [STUD.r * Math.cos(STUDS[1]) + 0.1, STUD.r * Math.sin(STUDS[1]) + 0.35, 0.4] },
+    { id: "studD1", kind: "group", center: [0, 0, -0.04], pieces: [stud(STUDS[0])], label: "D", labelOffset: [STUD.r * Math.cos(STUDS[0]) - 0.35, STUD.r * Math.sin(STUDS[0]) - 0.25, 0.4] },
+    { id: "studD2", kind: "group", center: [0, 0, -0.04], pieces: [stud(STUDS[1])], label: "D", labelOffset: [STUD.r * Math.cos(STUDS[1]) + 0.1, STUD.r * Math.sin(STUDS[1]) + 0.35, 0.4] },
     {
       id: "flangeB",
       kind: "plate",

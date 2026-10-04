@@ -47,4 +47,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["pipeC", "nutB"], reason: "管端與螺帽的螺紋在剖面上畫成互相咬合的鋸齒輪廓,咬合處重疊 0.07" },
+  ],
 };

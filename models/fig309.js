@@ -54,4 +54,8 @@ export default {
     const m = mudge(v);
     return { parts: { pendulum: { angle: m.pendulum }, armA: { angle: m.right }, armB: { angle: -m.left }, wheel: { angle: m.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "armA"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算兩支擺臂的掣子與輪齒的接觸;重疊 0.10。列入待確認清單的動力重演名單" },
+    { check: "interference", parts: ["wheel", "armB"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算兩支擺臂的掣子與輪齒的接觸;重疊 0.10。列入待確認清單的動力重演名單" },
+  ],
 };

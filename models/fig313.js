@@ -79,4 +79,7 @@ export default {
     const c = chronometer(v);
     return { parts: { balance: { angle: c.balance }, detent: { angle: c.detent }, wheel: { angle: c.wheel } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["wheel", "detent"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算掣子與輪齒的接觸;重疊 0.05(96 個取樣中 2 個)。列入待確認清單的動力重演名單" },
+  ],
 };

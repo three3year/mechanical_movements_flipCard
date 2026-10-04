@@ -40,7 +40,7 @@ export default {
         { kind: "box", size: [0.35, 4.6, 0.6], at: [-2.65, 0.1, 0] },
         { kind: "box", size: [0.3, 1.0, 0.5], at: [XE + 0.55, AXIS_C - 0.2, 0] },
         { kind: "plate", shape: { outline: [[XE + 0.4, -2.1], [XE + 1.5, -2.1], [XE + 0.7, -0.75], [XE + 0.4, -0.75]], holes: [] }, thickness: 0.5 },
-        { kind: "box", size: [5.4, 0.12, 1.2], at: [-0.1, -2.16, 0] },
+        { kind: "box", size: [5.4, 0.12, 1.2], at: [-0.1, -2.24, 0] },
       ],
     },
     gear("shaftA", F, 1.9, "A", [1.45, 0.3, 0.3], { pieces: [{ kind: "cylinder", radius: 0.09, length: 4.6, at: [0, 0, 0.15] }], center: [XD + 0.15, AXIS_A, 0] }),

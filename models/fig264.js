@@ -60,4 +60,7 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["worm", "wheel100"], reason: "簡化齒形:蝸桿螺紋是圓管、蝸輪是直齒,齒頂伸進螺紋 0.04" },
+  ],
 };
