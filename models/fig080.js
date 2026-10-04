@@ -71,6 +71,8 @@ export default {
     { id: "pawlLeft", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "pawlRight", kind: "link", width: 0.08, thickness: 0.05 },
   ],
+  // 動力重演:只推槓桿;齒桿在導座裡靠摩擦定位,由兩個棘爪輪流推動
+  replay: { free: { bar: { slide: [0, 1, 0], hold: true } }, expect: [{ part: "bar", label: "槓桿一個來回,齒桿被推上去的距離" }] },
   driver: { part: "lever", type: "rotation", cycle: [SWING / 2, -SWING / 2] },
 
   target: "bar",
@@ -96,4 +98,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["bar"], reason: "未修:動力重演不成立——「槓桿一個來回,齒桿被推上去的距離」預期 bar 在主動量 0.63 時已移 0.59,實際移了 0.30(停位差 0.30)。模型的棘爪是照時序擺放的:重演裡輪被兩個照模型走的棘爪夾著或拖著,沒有照一齒一齒前進。棘爪要改成鉸接後靠自重或彈簧搭在齒上,爪尖與齒(凸柱)也要畫在同一層、鉤得到(列入待確認清單)" },
+  ],
 };

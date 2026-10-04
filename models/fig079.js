@@ -80,6 +80,8 @@ export default {
       labelOffset: [-0.1, 0.5, 0.2],
     },
   ],
+  // 動力重演:只推桿 B;輪靠摩擦定位,由兩根連桿端的棘爪推動
+  replay: { free: { wheel: { hold: true } }, expect: [{ part: "wheel", label: "桿 B 一個來回,輪被推過的角度" }] },
   driver: { part: "rodB", type: "translation", direction: [1, 0, 0], cycle: [B0, B0 + STROKE] },
 
   target: "wheel",
@@ -101,5 +103,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「桿 B 一個來回,輪被推過的角度」預期 wheel 在主動量 1.10 時已轉 -48°,實際轉了 -72°。模型的棘爪是照時序擺放的:重演裡輪被兩個照模型走的棘爪夾著或拖著,沒有照一齒一齒前進。棘爪要改成鉸接後靠自重或彈簧搭在齒上,爪尖與齒(凸柱)也要畫在同一層、鉤得到(列入待確認清單)" },
+  ],
 };
 

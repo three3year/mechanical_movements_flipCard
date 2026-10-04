@@ -84,6 +84,8 @@ export default {
     { id: "pawlLeft", kind: "link", width: 0.13, thickness: 0.06 },
     { id: "pawlRight", kind: "link", width: 0.11, thickness: 0.06 },
   ],
+  // 動力重演:只推槓桿;輪靠摩擦定位,由左右兩個棘爪輪流推動
+  replay: { free: { wheel: { hold: true } }, expect: [{ part: "wheel", label: "槓桿一個來回,兩個棘爪把輪推過的角度" }] },
   driver: { part: "lever", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
   target: "wheel", // 近乎連續旋轉的棘輪 A
   view: { direction: [0.06, 0.05, 1] },
@@ -102,5 +104,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「槓桿一個來回,兩個棘爪把輪推過的角度」預期 wheel 在主動量 0.56 時已轉 -11°,實際轉了 6°。模型的棘爪是照時序擺放的:重演裡輪被兩個照模型走的棘爪夾著或拖著,沒有照一齒一齒前進。棘爪要改成鉸接後靠自重或彈簧搭在齒上,爪尖與齒(凸柱)也要畫在同一層、鉤得到(列入待確認清單)" },
+  ],
 };
 

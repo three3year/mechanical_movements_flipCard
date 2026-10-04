@@ -131,9 +131,13 @@ export default {
     },
   ],
   waivers: [
+    { check: "replay", parts: ["ratchetR"], reason: "未修:動力重演不成立——「一個來回後右棘輪被棘爪推過的角度」預期 ratchetR 在主動量 1.57 時已轉 -90°,實際轉了 64°。模型的棘爪是照時序擺放的:重演裡輪被兩個照模型走的棘爪夾著或拖著,沒有照一齒一齒前進。棘爪要改成鉸接後靠自重或彈簧搭在齒上,爪尖與齒(凸柱)也要畫在同一層、鉤得到(列入待確認清單)" },
+    { check: "replay", parts: ["ratchetL"], reason: "未修:動力重演不成立——「一個來回後左棘輪被棘爪推過的角度」預期 ratchetL 在主動量 1.57 時已轉 90°,實際轉了 -593°。模型的棘爪是照時序擺放的:重演裡輪被兩個照模型走的棘爪夾著或拖著,沒有照一齒一齒前進。棘爪要改成鉸接後靠自重或彈簧搭在齒上,爪尖與齒(凸柱)也要畫在同一層、鉤得到(列入待確認清單)" },
     { check: "interference", parts: ["ratchetR", "pawlR"], reason: "棘爪的停位以爪尖一點靠在齒面上計算;爪身有寬度,爪尖旁的邊角伸進齒 0.04" },
     { check: "interference", parts: ["ratchetL", "pawlL"], reason: "棘爪的停位以爪尖一點靠在齒面上計算;爪身有寬度,爪尖旁的邊角伸進齒 0.05" },
   ],
+  // 動力重演:只推主動軸;兩個棘輪靠摩擦定位,由棘爪推動
+  replay: { free: { ratchetL: { hold: true }, ratchetR: { hold: true } }, expect: [{ part: "ratchetL", label: "一個來回後左棘輪被棘爪推過的角度" }, { part: "ratchetR", label: "一個來回後右棘輪被棘爪推過的角度" }] },
   driver: { part: "shaft", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
   target: "top",
   view: { direction: [0.05, 0.14, 1], fov: 20 },

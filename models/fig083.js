@@ -79,6 +79,8 @@ export default {
       labelOffset: [-1.2, -0.65, 1.0],
     },
   ],
+  // 動力重演:只推搖桿;輪靠摩擦定位,由桿 A 推動
+  replay: { free: { wheel: { hold: true } }, expect: [{ part: "wheel", label: "搖桿一個來回,輪被推過的角度" }] },
   driver: { part: "rock", type: "rotation", cycle: [-SWING / 2, SWING / 2] },
   target: "wheel", // 近乎連續旋轉的棘輪 D
   view: { direction: [0.05, 0.12, 1], fov: 22 },
@@ -94,5 +96,8 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「搖桿一個來回,輪被推過的角度」預期 wheel 在主動量 0.42 時已轉 -43°,實際沒動。模型的棘爪是照時序擺放的:重演裡輪被兩個照模型走的棘爪夾著或拖著,沒有照一齒一齒前進。棘爪要改成鉸接後靠自重或彈簧搭在齒上,爪尖與齒(凸柱)也要畫在同一層、鉤得到(列入待確認清單)" },
+  ],
 };
 
