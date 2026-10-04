@@ -83,6 +83,8 @@ export default {
         { kind: "box", size: [1.1, 0.5, 0.15], at: [RACK_X - 0.42 - 0.05, y, -0.31] },
       ]) },
   ],
+  // 動力重演:只推缺齒小齒輪;桿在導座裡自由上下,靠自重落下
+  replay: { from: 0, to: -2 * Math.PI, free: { stamp: { slide: [0, 1, 0], limits: [0, 3.6] } }, ignore: [["stamp", "guides"]], expect: [{ at: -5.4, part: "stamp", label: "有齒段把桿抬高" }, { at: -2 * Math.PI, part: "stamp", label: "齒脫離齒條後桿落到底" }] },
   driver: { part: "pinion", type: "rotation", speed: -0.8 }, // 自動播放時順時針轉,把桿抬起
   target: "stamp",
   view: { direction: [0.03, 0.05, 1] },
