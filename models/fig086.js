@@ -186,6 +186,8 @@ export default {
     },
     { id: "rope", kind: "rope" },
   ],
+  // 動力重演:只推軸(凸輪);輪鬆套在軸上、被泵桶的重量往回拉(以彈簧代表),制動裝置鉸在輪上靠自重搭著凸輪
+  replay: { from: 0, to: 2 * Math.PI, free: { wheel: { spring: -1, gravity: false, limits: [0, 3] }, catch: { on: "wheel" } }, ignore: [["wheel", "frame"], ["wheel", "shaft"]], expect: [{ at: LIFT * 0.8, part: "wheel", label: "凸輪的台階鉤住制動裝置,帶著輪轉", quote: "把它連同輪一起帶著轉" }, { at: 2 * Math.PI - 0.6, part: "wheel", label: "制動裝置撞到擋止被釋放,輪被泵桶拉回原位", quote: "輪便被泵桶的重量拉回原位" }] },
   driver: { part: "shaft", type: "rotation", speed: 0.8 },
 
   target: "wheel",
@@ -204,4 +206,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「凸輪的台階鉤住制動裝置,帶著輪轉」預期 wheel 在主動量 1.54 時已轉 88°,實際沒動()。加上泵桶的回拉力後,凸輪的台階鉤不住制動裝置的鉤尖,鉤尖被擠出台階,輪沒有被帶著轉;鉤與台階的形狀要重做成鉤得住的(列入待確認清單)" },
+  ],
 };

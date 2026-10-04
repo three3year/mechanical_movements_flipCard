@@ -70,6 +70,8 @@ export default {
       ],
     })),
   ],
+  // 動力重演:只推木料;兩個夾爪平放在台面上、各繞自己的螺絲自由轉動
+  replay: { free: { upper: { gravity: false }, lower: { gravity: false } }, ignore: [["upper", "bench"], ["lower", "bench"], ["upper", "screwUpper"], ["lower", "screwLower"]], expect: [{ part: "upper", label: "木料頂到內緣後上夾爪轉過來夾住" }, { part: "lower", label: "木料頂到內緣後下夾爪轉過來夾住" }] },
   driver: { part: "board", type: "translation", direction: [-1, 0, 0], range: [0, PUSH], initial: PUSH },
   targets: ["upper", "lower"], // 兩個夾爪
   view: { direction: [0.06, 0.05, 1] },

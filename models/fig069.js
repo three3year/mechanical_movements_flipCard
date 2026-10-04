@@ -130,10 +130,15 @@ export default {
       labelOffset: [-0.3, 0.55, 0.3],
     },
   ],
+  // 動力重演:只推小輪 B;輪 A 靠摩擦定位,由 B 的單齒推動
+  replay: { to: 2.446372073156856 + 2 * Math.PI, free: { a: { hold: true } }, expect: [{ part: "a", label: "B 轉一圈,單齒把 A 推過一齒", quote: "A 轉過一齒" }] },
   driver: { part: "b", type: "rotation", initial: WINDOW.from - deg(30), speed: 1.4 },
   target: "a",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     return { parts: { b: { angle: v }, a: { angle: aAngle(v) } }, readouts: [] };
   },
+  waivers: [
+    { check: "replay", parts: ["a"], reason: "未修:動力重演不成立——「B 轉一圈,單齒把 A 推過一齒」預期 a 在主動量 8.73 時已轉 -18°,實際沒動()。重演中 A 的齒尖一直被 B 的圓周卡住,單齒進來時推不動;B 的圓周在單齒兩側要有讓 A 的齒尖通過的缺口,模型沒有畫(列入待確認清單)" },
+  ],
 };

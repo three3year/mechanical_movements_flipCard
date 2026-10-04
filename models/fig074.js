@@ -51,6 +51,8 @@ export default {
     bevel("b", B, 1.2, { label: "B", labelOffset: [-0.6, 0.9, 0] }),
   ],
   // 起始時有齒的半圈朝向右前方(原圖)
+  // 動力重演:只推缺齒斜齒輪 C;A、B 靠摩擦定位,由 C 的有齒段帶動
+  replay: { to: 2.2 + 2 * Math.PI, free: { a: { hold: true }, b: { hold: true } }, expect: [{ part: "a", label: "C 轉一圈後 A 轉過的角度" }, { part: "b", label: "C 轉一圈後 B 轉過的角度" }] },
   driver: { part: "c", type: "rotation", initial: 2.2 },
   targets: ["a", "b"], // 交替得到間歇旋轉的兩輪
   view: { direction: [0.03, 0.42, 1], fov: 20 },
@@ -59,6 +61,8 @@ export default {
     return { parts: { c: { angle: theta }, a: { angle: a }, b: { angle: b } }, readouts: [] };
   },
   waivers: [
+    { check: "replay", parts: ["b"], reason: "重演中有齒段確實把輪帶著轉,但缺齒段經過時輪只靠摩擦停住,多滑了約 25°(原文沒有畫定位裝置,模型裡輪是立刻停住的)。列入待確認清單" },
+    { check: "replay", parts: ["a"], reason: "重演中有齒段確實把輪帶著轉,但缺齒段經過時輪只靠摩擦停住,多滑了約 25°(原文沒有畫定位裝置,模型裡輪是立刻停住的)。列入待確認清單" },
     { check: "interference", parts: ["c", "b"], reason: "簡化齒形:缺齒斜齒輪有齒的半圈重新咬入時,第一齒的齒頂與對方齒頂擦到 0.10(96 個取樣中 4–5 個);實物的缺齒輪會把第一齒修短。齒距與相位對得上、傳動關係正確" },
     { check: "interference", parts: ["c", "a"], reason: "簡化齒形:缺齒斜齒輪有齒的半圈重新咬入時,第一齒的齒頂與對方齒頂擦到 0.10(96 個取樣中 4–5 個);實物的缺齒輪會把第一齒修短。齒距與相位對得上、傳動關係正確" },
   ],

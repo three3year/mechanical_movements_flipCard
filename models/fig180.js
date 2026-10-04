@@ -63,6 +63,8 @@ export default {
     { id: "jaw", kind: "plate", shape: shape(JAW, [circle(0.36).reverse()]), thickness: 0.15, arrow: false },
     { id: "screw", kind: "group", arrow: false, pieces: [{ kind: "cylinder", radius: 0.34, length: 0.3, at: [0, 0, 0.15] }, ...head([0, 0, 0.34]).map((p) => ({ ...p, at: [p.at[0], p.at[1], p.at[2] + 0.25] }))] },
   ],
+  // 動力重演:只推木料;夾爪平放在台面上、繞螺絲自由轉動
+  replay: { free: { jaw: { gravity: false } }, ignore: [["jaw", "plate"], ["jaw", "screw"]], expect: [{ part: "jaw", label: "木料頂到內緣後夾爪轉過來夾住" }] },
   driver: { part: "board", type: "translation", direction: [0, 1, 0], range: [0, PUSH], initial: PUSH },
   target: "jaw",
   view: { direction: [0.06, 0.05, 1] },

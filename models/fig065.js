@@ -103,6 +103,8 @@ export default {
     },
   ],
   // C 順時針轉(轉角為負)
+  // 動力重演:只推輪 C;輪 D 靠摩擦定位,槓桿繞固定樞軸自由擺動
+  replay: { to: -0.10471975511965977 - 2 * Math.PI, free: { d: { hold: true }, lever: {} }, expect: [{ part: "d", label: "C 轉一圈,撥爪把 D 撥過一根凸柱的距離", quote: "使 D 轉過一個凸柱的距離" }] },
   driver: { part: "c", type: "rotation", speed: -1.0, initial: deg(-6) },
   target: "d", // 每圈被撥動一格的輪 D
   view: { direction: [0.06, 0.05, 1] },
@@ -114,6 +116,7 @@ export default {
     };
   },
   waivers: [
+    { check: "replay", parts: ["d"], reason: "未修:動力重演不成立——「C 轉一圈,撥爪把 D 撥過一根凸柱的距離」預期 d 在主動量 -6.39 時已轉 36°,實際轉了 20°()。重演中撥爪只把 D 推了一半,槓桿被推開後沒有回到下一根凸柱前方;槓桿與凹槽、凸柱的相對位置要重做(列入待確認清單)" },
     { check: "interference", parts: ["c", "lever"], reason: "槓桿左端落進 C 的凹槽再被推出的擺動以正弦曲線演出,不是逐點算接觸;進出凹槽時端頭與槽口邊最多重疊 0.09(96 個取樣中 6 個)。鎖住與放開的時機正確" },
     { check: "interference", parts: ["c", "d"], reason: "撥爪撥凸柱的過程以平順的起停曲線演出,不是逐點算接觸;撥動中爪尖與凸柱最多重疊 0.12(96 個取樣中 2 個)。撥動的起訖位置與「每圈一格」的關係正確" },
   ],
