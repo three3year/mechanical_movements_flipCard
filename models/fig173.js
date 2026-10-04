@@ -130,4 +130,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["disc", "screw"], reason: "螺桿轉在盤面兩端的軸承塊裡(軸承孔沒有畫出來)" },
+  ],
 };

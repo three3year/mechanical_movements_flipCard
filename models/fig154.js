@@ -1,6 +1,6 @@
 // 第 154 種:旋轉圓盤上的四根凸柱依序撥動曲柄搖臂的下臂,使它往下擺;搖臂的上臂經一根繩繞過上方的滑輪,
 // 吊著一個重物。凸柱撥動時重物被拉起,凸柱滑過後重物把搖臂拉回原位——重物做交替的直線運動。
-// 主動件是圓盤(逆時針)。撥動的時序以平順的升降表示,繩長不變。
+// 主動件是圓盤(順時針:凸柱從上方壓下臂,實物才撥得動)。搖臂的擺角由凸柱與下臂的接觸算,滑脫後重物加速落回;繩長不變。
 import { Z, TAU, deg, polar, add, dist, routeRope } from "./kit.js";
 import { placeOutline, swingUntilContact, circlePolygon, withFall } from "./contact.js";
 import { shape, circle, stadium } from "./shapes.js";
@@ -77,13 +77,12 @@ export default {
   target: "weight",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
-    const c = v;
     const { swing, top, y } = lift(-v);
     const weightTop = [PULLEY.center[0] + PULLEY.radius, y + 0.48, 0.3];
     const rope = routeRope([{ point: [top[0], top[1], 0.3] }, { circle: { center: PULLEY.center, axis: Z, radius: PULLEY.radius, sense: -1 } }, { point: weightTop }]);
     return {
       parts: {
-        disc: { angle: c },
+        disc: { angle: v },
         crank: { angle: swing },
         pulley: { angle: -(y - WEIGHT0) / PULLEY.radius },
         weight: { position: [PULLEY.center[0] + PULLEY.radius, y, 0.3] },

@@ -15,6 +15,8 @@
 //   expect      [{ at: 主動量, part, label, quote?(原文), tolerance? }]:走到 at 時,這個零件自起點以來的
 //               轉角與位置要和模型一致
 //   ignore      [[a, b], …]:這兩個零件之間不算碰撞(已知是示意的重疊)
+// 動力重演的豁免(def.waivers 裡 check: "replay" 的項目)可以加 at:主動量,只放過該零件在那一個預期事件的問題;
+// 沒寫 at 就是該零件的每個預期事件
 // 質量、彈簧力、摩擦都用下面全書一致的預設值;固定時間步長,同樣的輸入每次結果相同。
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";

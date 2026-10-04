@@ -187,4 +187,11 @@ test("方桿沿自己的長軸在導座(沒畫出方孔的方塊)裡滑動不算
   assert.equal(interference(sliding).length, 0);
   const across = model([rod, guide], (v) => ({ rod: { position: [0, v * 0.3 - 0.15, 0] } }), { driver: { part: "rod", type: "translation", direction: [0, 1, 0], range: [0, 1] } });
   assert.equal(interference(across).length, 1);
+  // 一頭頂進實心的牆、或只從旁邊蹭到軌道:沒有整根穿過對方,不是裝在孔裡
+  const wall = { id: "wall", kind: "box", size: [1, 3, 3], center: [2.2, 0, 0] };
+  const rammed = model([rod, wall], (v) => ({ rod: { position: [v * 0.8 - 0.3, 0, 0] } }), { driver: { part: "rod", type: "translation", direction: [1, 0, 0], range: [0, 1] } });
+  assert.equal(interference(rammed).length, 1);
+  const block = { id: "block", kind: "box", size: [0.5, 0.4, 0.4], center: [0, 0.23, 0] };
+  const grazing = model([rod, block], (v) => ({ block: { position: [v, 0.23, 0] } }), { driver: { part: "block", type: "translation", direction: [1, 0, 0], range: [0, 1] } });
+  assert.equal(interference(grazing).length, 1);
 });

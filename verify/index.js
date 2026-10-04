@@ -278,9 +278,10 @@ function measure(scene, a, b, prediction, tolerance) {
   scene.contacts(a, b, prediction, (pa, pb, d, n) => {
     if (gap == null || d < gap) gap = d;
     if (d >= 0) return;
-    // 圓的軸(圓柱、球、螺紋);長條方桿另外算(它只當導桿,不當鉸接軸)
-    const ra = pa.axle && !pa.axle.bar ? pa.axle : null;
-    const rb = pb.axle && !pb.axle.bar ? pb.axle : null;
+    // 圓的軸(圓柱、球、螺紋);長條方桿另外算(它只當導桿,不當鉸接軸)。
+    // 螺紋與方桿要整根穿過對方那一塊才可能是裝在孔裡:只從旁邊蹭到、或一頭頂進去的不算
+    const ra = pa.axle && !pa.axle.bar && !(pa.axle.thread && !scene.passesThrough(pa.axle, b)) ? pa.axle : null;
+    const rb = pb.axle && !pb.axle.bar && !(pb.axle.thread && !scene.passesThrough(pb.axle, a)) ? pb.axle : null;
     if (ra || rb) {
       // 兩塊都是圓柱時,只有細的那個可能是裝在對方孔裡的軸
       const fits = [];
@@ -293,8 +294,8 @@ function measure(scene, a, b, prediction, tolerance) {
       // 長條方桿伸進對方:可能是在沒畫出來的方孔裡滑動的導桿(軸線始終是同一條才算),同樣等走完再判斷
       const fits = d < -tolerance ? knuckles(scene, a, b, pa, pb) : [];
       if (d < -tolerance) {
-        if (pa.axle?.bar) fits.push([pa, b]);
-        if (pb.axle?.bar) fits.push([pb, a]);
+        if (pa.axle?.bar && scene.passesThrough(pa.axle, b)) fits.push([pa, b]);
+        if (pb.axle?.bar && scene.passesThrough(pb.axle, a)) fits.push([pb, a]);
       }
       if (fits.length) pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}` });
       else {

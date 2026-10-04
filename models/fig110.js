@@ -83,4 +83,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["roller", "spindle"], reason: "心軸的撥臂伸進滾子的螺紋 0.10:撥臂的尖端嵌在螺紋之間的螺旋槽裡,由螺紋帶著橫移(螺紋畫成細線,沒有畫出槽)" },
+  ],
 };

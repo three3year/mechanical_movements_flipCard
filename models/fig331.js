@@ -75,6 +75,6 @@ export default {
     return { parts: { crank: { angle: y.theta }, yokeA: { position: [0, y.head, 0] }, ...cyl.parts }, flows: cyl.flows, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["frame", "pipe"], reason: "蒸汽管貼著機架的立柱走:管與立柱在圖上重疊 0.05(管應在立柱的前面一點)" },
+    { check: "interference", parts: ["frame", "pipe"], reason: "未修:蒸汽管貼著機架的立柱走:管與立柱在圖上重疊 0.05(管應在立柱的前面一點)(列入待確認清單)" },
   ],
 };

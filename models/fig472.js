@@ -99,6 +99,6 @@ export default {
     };
   },
   waivers: [
-    { check: "unsupported", parts: ["pumpPiston"], reason: "泵桿畫在剖面的前面一層:桿的下端與泵的活塞之間差 0.03(活塞銷沒有畫出來)" },
+    { check: "unsupported", parts: ["pumpPiston"], reason: "未修:泵桿畫在剖面的前面一層:桿的下端與泵的活塞之間差 0.03(活塞銷沒有畫出來)(列入待確認清單)" },
   ],
 };

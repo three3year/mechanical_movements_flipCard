@@ -41,4 +41,7 @@ export default {
   pose(angle) {
     return { parts: { nut: { position: [0, nutHeight(angle), 0], angle } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["bolt", "nut"], reason: "螺帽轉在螺栓上:螺栓的螺紋咬進螺帽孔壁 0.04,是螺紋嚙合(螺帽的孔畫成光孔)" },
+  ],
 };

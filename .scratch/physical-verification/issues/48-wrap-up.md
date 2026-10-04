@@ -26,4 +26,5 @@
 - 專案說明(CLAUDE.md)加上「改動或新增模型後要跑實體驗證」與指令;手動驗證清單的「看得到相連 / 不穿透」抽查改為指向 `npm run verify`。
 - 移除 `tools/scan-overlap.mjs`、`tools/scan-isolated.mjs`;`tools/scan-models.mjs`(瞬移、沒有目標件)保留;新增 `tools/audit.mjs`(對照原文用的動作摘要)。
 - 第二輪(2026-10-04):1019 項「待確認」豁免全部移除、逐項處理(約 150 張改了模型,其餘改寫成具體原因);全書豁免 1037 → 571 項(355 → 222 張),其中 60 項(31 張)是確定存在但未修的問題(原因以「未修:」開頭)。新增兩條判定規則(螺紋轉在螺孔裡、長條方桿在導座裡滑動)與動力重演豁免的 `at`。動力重演的宣告仍未補(本票第二個勾選項仍未達成)。
-- 待確認清單:`.scratch/physical-verification/pending.md`(依圖號排序)。全書豁免清單:`.scratch/physical-verification/waivers.md`(1037 項;清單太長,不貼在本票,最新內容以 `npm run verify -- --waivers` 為準)。
+- 第二輪的 code review 之後:螺紋 / 方桿的規則收緊為「整根穿過對方才算裝在孔裡」(原本會放過一頭頂進實心零件、從旁邊蹭到的情形),因此多出 21 項逐張寫的豁免;5 項原本沒標「未修:」的實體問題(第 185、298、331、458、472 種)補標。現在全書 592 項豁免(234 張),其中未修 65 項(36 張)。
+- 待確認清單:`.scratch/physical-verification/pending.md`(依圖號排序)。全書豁免清單:`.scratch/physical-verification/waivers.md`(592 項;清單太長,不貼在本票,最新內容以 `npm run verify -- --waivers` 為準)。

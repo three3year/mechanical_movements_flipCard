@@ -54,4 +54,10 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["guides", "rodD"], reason: "桿端在導座的方孔裡滑動,行程一端桿端縮在導座裡面(方孔沒有畫出來)" },
+    { check: "interference", parts: ["guides", "rodC"], reason: "桿端在導座的方孔裡滑動,行程一端桿端縮在導座裡面(方孔沒有畫出來)" },
+    { check: "interference", parts: ["guides", "rodB"], reason: "桿端在導座的方孔裡滑動,行程一端桿端縮在導座裡面(方孔沒有畫出來)" },
+    { check: "interference", parts: ["guides", "rodA"], reason: "桿端在導座的方孔裡滑動,行程一端桿端縮在導座裡面(方孔沒有畫出來)" },
+  ],
 };

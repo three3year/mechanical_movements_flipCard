@@ -77,7 +77,7 @@ export default {
     return { parts: { balance: { angle: r.balance }, crown: { angle: r.crown }, contrate: { angle: r.contrate } }, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["balance", "crown"], reason: "擺輪心軸與冠狀輪心軸在圖上畫成相交(重疊 0.09);實物的冠狀輪心軸止於擺輪心軸之前,由一個沒畫出來的軸承座托住" },
+    { check: "interference", parts: ["balance", "crown"], reason: "未修:擺輪心軸與冠狀輪心軸在圖上畫成相交(重疊 0.09);實物的冠狀輪心軸止於擺輪心軸之前,由一個沒畫出來的軸承座托住(列入待確認清單)" },
     { check: "interference", parts: ["crown", "contrate"], reason: "簡化齒形:冠狀輪的小齒輪與端面齒輪的方塊齒齒側重疊 0.07" },
   ],
 };

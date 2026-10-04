@@ -102,4 +102,9 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["blank_equal", "frame"], reason: "螺桿胚的端頭伸進機架橫樑 0.11:端頭裝在橫樑的軸承孔裡(孔沒有畫出來)" },
+    { check: "interference", parts: ["blank_double", "frame"], reason: "螺桿胚的端頭伸進機架橫樑 0.11:端頭裝在橫樑的軸承孔裡(孔沒有畫出來)" },
+    { check: "interference", parts: ["lead", "frame"], reason: "螺桿的端頭伸進機架橫樑 0.11:端頭裝在橫樑的軸承孔裡(孔沒有畫出來)" },
+  ],
 };

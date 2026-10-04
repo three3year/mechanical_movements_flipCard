@@ -82,6 +82,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["house", "pulley"], reason: "簡化畫法:滑輪的輻條轉過吊架時擦到 0.05(96 個取樣中 32 個)" },
+    { check: "interference", parts: ["house", "pulley"], reason: "未修:滑輪的輻條轉過吊架時擦到 0.05(96 個取樣中 32 個);吊架應離輪面遠一點(列入待確認清單)" },
   ],
 };

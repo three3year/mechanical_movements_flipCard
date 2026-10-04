@@ -127,6 +127,6 @@ export default {
     };
   },
   waivers: [
-    { check: "unsupported", parts: ["hanger"], reason: "吊桿(從手柄到連桿的一端)畫在最前面一層,它兩端的銷沒有畫出來;吊桿只把連桿吊在手柄選定的高度,不傳遞閥的運動" },
+    { check: "unsupported", parts: ["hanger"], reason: "未修:吊桿(從手柄到連桿的一端)畫在最前面一層,它兩端的銷沒有畫出來;吊桿只把連桿吊在手柄選定的高度,不傳遞閥的運動(列入待確認清單)" },
   ],
 };

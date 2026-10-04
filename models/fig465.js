@@ -80,6 +80,8 @@ export default {
     return { parts, flows, readouts: [{ label: "出水", value: forward ? "右邊的泵" : "左邊的泵" }] };
   },
   waivers: [
+    { check: "interference", parts: ["frame", "valve1"], reason: "閥片的鉸接端與底板相貼處重疊 0.04(簡化畫法)" },
+    { check: "interference", parts: ["frame", "valve0"], reason: "閥片的鉸接端與底板相貼處重疊 0.04(簡化畫法)" },
     { check: "interference", parts: ["beam", "rod1"], reason: "接合處的簡化畫法:活塞桿的頂端鉸接在搖樑上,桿端伸進樑 0.07" },
     { check: "interference", parts: ["beam", "rod0"], reason: "接合處的簡化畫法:活塞桿的頂端鉸接在搖樑上,桿端伸進樑 0.07" },
     { check: "interference", parts: ["frame", "barrel1"], reason: "簡化畫法:泵筒立在底座上,筒底嵌進底座 0.50(底座應再低一點)" },

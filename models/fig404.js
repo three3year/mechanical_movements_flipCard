@@ -63,4 +63,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "screw"], reason: "螺絲旋在直桿的螺孔裡;旋到底時螺紋的端頭進到直桿裡面(螺孔沒有畫出來)" },
+  ],
 };

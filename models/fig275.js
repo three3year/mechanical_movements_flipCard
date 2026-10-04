@@ -25,4 +25,7 @@ export default {
     // 齒條零件的局部 x 沿齒條,齒朝局部 +y:轉 −90° 讓齒條沿世界 y、齒朝 +x
     return { parts: { worm: { angle: clamp(theta, ...RANGE) }, rack: { position: [0.12, 0.2 + rack(theta), 0], angle: -Math.PI / 2 } }, readouts: [] };
   },
+  waivers: [
+    { check: "interference", parts: ["worm", "rack"], reason: "蝸桿的螺紋嚙進齒條的齒 0.16(簡化齒形:螺紋與齒各自畫成實體)" },
+  ],
 };

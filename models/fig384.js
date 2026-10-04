@@ -61,4 +61,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["arm", "wheel"], reason: "小輪旋在臂的螺紋上;行程盡頭小輪走到螺紋的端頭,螺紋的端頭在輪轂裡面(螺孔沒有畫出來)" },
+  ],
 };

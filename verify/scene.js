@@ -96,7 +96,7 @@ export class Scene {
         if (key !== m.scaleKey) {
           for (const piece of m.pieces ?? []) this.world.removeCollider(piece.collider, false);
           m.pieces = m.hulls.map((hull) => makePiece(this.world, hull, tmpS)).filter(Boolean);
-          if (m.axle) for (const piece of m.pieces) piece.axle = { from: new THREE.Vector3(), to: new THREE.Vector3(), radius: m.radius, bar: m.mesh.geometry.type === "BoxGeometry" };
+          if (m.axle) for (const piece of m.pieces) piece.axle = { from: new THREE.Vector3(), to: new THREE.Vector3(), radius: m.radius, bar: m.mesh.geometry.type === "BoxGeometry", thread: !!m.mesh.geometry.userData.thread };
           m.scaleKey = key;
         }
         for (const piece of m.pieces) {
@@ -194,6 +194,11 @@ export class Scene {
     tmpV.subVectors(axle.to, axle.from).normalize();
     tmpP.copy(axle.from).addScaledVector(tmpV, -100);
     return piece.collider.castRay(new RAPIER.Ray(tmpP, tmpV), 200, true) >= 0;
+  }
+
+  /** 軸(導桿、螺桿)是不是整根穿過這個零件:軸線穿過它的某一塊,而且兩個端點都露在它外面 */
+  passesThrough(axle, part) {
+    return part.pieces.some((piece) => this.lineHits(axle, piece)) && !part.pieces.some((piece) => piece.collider.containsPoint(axle.from) || piece.collider.containsPoint(axle.to));
   }
 
   dispose() {

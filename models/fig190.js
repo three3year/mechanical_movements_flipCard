@@ -111,4 +111,7 @@ export default {
       readouts: [],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["bench", "screw"], reason: "螺桿旋在台面的螺孔裡,下端停在台面裡面(螺孔沒有畫出來)" },
+  ],
 };

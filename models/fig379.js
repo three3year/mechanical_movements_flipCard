@@ -56,6 +56,7 @@ export default {
     };
   },
   waivers: [
+    { check: "interference", parts: ["frame", "screw"], reason: "進給螺桿旋在機架的螺孔裡,行程中螺紋的端頭進到機架裡面(螺孔沒有畫出來)" },
     { check: "interference", parts: ["frame", "work"], reason: "未修:工件走到行程端時碰到機架,重疊 0.12(96 個取樣中 26 個)(列入待確認清單)" },
   ],
 };

@@ -97,6 +97,7 @@ export default {
     };
   },
   waivers: [
+    { check: "interference", parts: ["frame", "rack"], reason: "齒條的背條嵌在底座的導槽裡滑動(導槽沒有畫出來)" },
     { check: "interference", parts: ["sector", "rack"], reason: "簡化齒形:扇形齒與齒條的梯形齒齒側互相擦到 0.06" },
   ],
 };

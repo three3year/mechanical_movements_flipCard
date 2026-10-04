@@ -63,4 +63,7 @@ export default {
       ],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["base", "shaft"], reason: "螺桿旋在固定座的螺孔裡;行程盡頭螺紋的端頭進到座裡面(螺孔沒有畫出來)" },
+  ],
 };
