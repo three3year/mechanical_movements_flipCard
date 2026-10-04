@@ -53,10 +53,10 @@ export default {
         { kind: "box", size: [0.5, 0.3, 0.4], at: [E[0] - 0.4, E[1], -0.1] },
         { kind: "box", size: [5.6, 0.15, 0.9], at: [0.2, -2.55, 0] },
         { kind: "cylinder", radius: 0.14, length: 0.4, at: G },
-        { kind: "cylinder", radius: 0.14, length: 0.6, at: K },
+        { kind: "cylinder", radius: 0.14, length: 0.4, at: [K[0], K[1], -0.15] }, // 曲柄軸只往後伸(連桿從曲柄前面掃過軸心)
       ],
     },
-    { id: "pipe", ...steamPipe(CYL) },
+    { id: "pipe", ...steamPipe(CYL), center: [0, 0, -0.45] }, // 蒸汽管走在後面一層(曲柄從它前方轉過)
     ...cylinderParts(CYL),
     { id: "pillarA", kind: "link", width: 0.24, thickness: 0.1, label: "A", labelOffset: [0.3, 1.6, 0.3] },
     { id: "beam", kind: "plate", shape: shape(thickLine([[0, 0], [2 * HALF, 0]], 0.36), [circle(0.12).reverse()]), thickness: 0.14, arrow: false },
@@ -78,7 +78,7 @@ export default {
         pillarA: { from: z(G, 0), to: z(g.R, 0) },
         beam: { position: z(g.C, 0.15), angle: Math.atan2(g.R[1] - g.C[1], g.R[0] - g.C[0]) },
         radiusB: { from: z(E, 0.3), to: z(g.mid, 0.3) },
-        conRod: { from: z(g.pin, 0.35), to: z(g.M, 0.35) },
+        conRod: { from: z(g.pin, 0.25), to: z(g.M, 0.25) },
         crank: { angle: g.theta },
         pistonRod: { position: [g.C[0], g.C[1] - PISTON_ROD / 2, 0.08] },
         ...cyl.parts,
@@ -88,9 +88,7 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["pipe", "crank"], reason: "未修:曲柄銷每圈有一小段掃過蒸汽管,重疊 0.13(96 個取樣中 16 個);蒸汽管應繞到曲柄的後面(列入待確認清單)" },
+    { check: "interference", parts: ["pipe", "cylinder"], reason: "蒸汽管接在汽缸的側面:管端伸進汽缸壁 0.06" },
     { check: "interference", parts: ["beam", "pistonRod"], reason: "接合處的簡化畫法:活塞桿的頂端鉸接在樑端,桿端伸進樑的板 0.04" },
-    { check: "unsupported", parts: ["crank"], reason: "未修:曲柄與連桿之間少畫了相連的銷(前後不同層)(列入待確認清單)" },
-    { check: "unsupported", parts: ["conRod"], reason: "未修:連桿與樑端之間差 0.06,少畫了相連的銷(列入待確認清單)" },
   ],
 };

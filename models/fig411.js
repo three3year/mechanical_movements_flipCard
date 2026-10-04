@@ -147,8 +147,9 @@ export default {
       label: "B",
       labelOffset: [0.35, -APEX - 0.55, PENCIL_Z],
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0.1], [0, -APEX - 0.35]], 0.07)), thickness: 0.05, at: [0, 0, PENCIL_Z + 0.03] },
-        { kind: "box", size: [0.3, 0.3, 0.12], at: [0, -APEX - 0.45, PENCIL_Z] },
+        // 擺錘在鉛筆的高度(鼓輪的前面),不垂到車架底下碰到地面
+        { kind: "plate", shape: shape(thickLine([[0, 0.1], [0, -APEX + 0.1]], 0.07)), thickness: 0.05, at: [0, 0, PENCIL_Z + 0.03] },
+        { kind: "box", size: [0.3, 0.3, 0.12], at: [0, -APEX - 0.02, PENCIL_Z] },
         // 鉛筆(朝鼓輪)
         { kind: "cylinder", radius: 0.035, length: PENCIL_Z - DRUM.radius, at: [0, -APEX, (PENCIL_Z + DRUM.radius) / 2], accent: true },
       ],
@@ -191,7 +192,6 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["ground", "drum"], reason: "簡化畫法:鼓輪壓在地面上滾,鼓面陷進地面 0.04(96 個取樣中 8 個)" },
-    { check: "interference", parts: ["ground", "pendulum"], reason: "未修:擺錘擺到低處時碰到地面,重疊 0.23(96 個取樣中 42 個);擺應短一點或車架高一點(列入待確認清單)" },
     { check: "interference", parts: ["frame", "frontWheels"], reason: "簡化畫法:車輪的輻條轉過車架的橫桿時擦到 0.09(96 個取樣中 13 個)" },
     { check: "interference", parts: ["frame", "rearWheels"], reason: "簡化畫法:車輪的輻條轉過車架的橫桿時擦到 0.09(96 個取樣中 10 個)" },
   ],

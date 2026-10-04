@@ -73,7 +73,7 @@ export default {
       parts: {
         drum: { angle: theta },
         pulley: { position: [0, y, z], angle: 0 },
-        weight: { position: [0, y - PULLEY - 0.15, z] },
+        weight: { position: [0, y - PULLEY - 0.06, z] },
       },
       paths: { rope: { points: route.points, closed: false, phase: 0 } },
       readouts: [],
@@ -82,6 +82,5 @@ export default {
   waivers: [
     { check: "interference", parts: ["frame", "guideR"], reason: "接合處的簡化畫法:導輪套在機架的銷上;導輪隨繩上下略為移動,銷與輪的孔重疊 0.20" },
     { check: "interference", parts: ["frame", "guideL"], reason: "接合處的簡化畫法:導輪套在機架的銷上;導輪隨繩上下略為移動,銷與輪的孔重疊 0.20" },
-    { check: "unsupported", parts: ["weight"], reason: "未修:重物與吊著它的繩之間差 0.06,繩頭沒有接到重物上(列入待確認清單)" },
   ],
 };

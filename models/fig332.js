@@ -21,7 +21,7 @@ export default {
     {
       id: "lever",
       kind: "plate",
-      center: [-1.85, -2.0, 0],
+      center: [-1.85, -2.0, 0.65], // 側槓桿在汽缸的前面(不從汽缸底下穿過)
       shape: { ...shape(thickLine([[0, 0], [3.6, 0]], 0.42)), holes: [circle(0.12).reverse()] },
       thickness: 0.12,
       arrow: false,
@@ -34,7 +34,7 @@ export default {
     { id: "parallelBar", kind: "link", width: 0.1, thickness: 0.06 },
     { id: "linkEF", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "linkDC", kind: "link", width: 0.08, thickness: 0.05 },
-    { id: "crossheadE", kind: "group", pieces: [{ kind: "box", size: [0.4, 0.3, 0.3] }, { kind: "box", size: [0.1, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] }], label: "E", labelOffset: [0.35, 0.2, 0.3] },
+    { id: "crossheadE", kind: "group", pieces: [{ kind: "box", size: [0.4, 0.3, 1.5] }, { kind: "box", size: [0.1, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] }], label: "E", labelOffset: [0.35, 0.2, 0.3] },
     { id: "labelC", kind: "group", center: [-1.3, 0.85, 0], label: "C", labelOffset: [-0.3, 0, 0.3] },
     { id: "labelD", kind: "group", center: [-1.3, 1.8, 0], label: "D", labelOffset: [-0.3, 0, 0.3] },
     { id: "labelF", kind: "group", center: [X, 0.85, 0], label: "F", labelOffset: [0.4, 0, 0.3] },
@@ -50,7 +50,7 @@ export default {
     return {
       parts: {
         lever: { angle: m.psi },
-        sideRod: { from: z(m.S, 0.2), to: z(m.E, 0.2) },
+        sideRod: { from: z(m.S, 0.65), to: z(m.E, 0.65) },
         radiusBar: { from: z([-1.3, 0.85], 0.3), to: z(m.F, 0.3) },
         parallelBar: { from: z(m.D, 0.3), to: z(m.E, 0.3) },
         linkEF: { from: z(m.E, 0.36), to: z(m.F, 0.36) },
@@ -62,10 +62,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["lever"], reason: "未修:槓桿與帶動它的側桿之間差 0.07,少畫了相連的銷(列入待確認清單)" },
-    { check: "interference", parts: ["frame", "lever"], reason: "未修:槓桿擺到最低時碰到底板,重疊 0.06(96 個取樣中 10 個)(列入待確認清單)" },
-    { check: "interference", parts: ["cylinder", "lever"], reason: "未修:槓桿擺動時掃過汽缸的下端,重疊 0.06(96 個取樣中 43 個);槓桿應在汽缸的前面一層(列入待確認清單)" },
-    { check: "interference", parts: ["piston", "sideRod"], reason: "未修:側桿在圖上落在汽缸的範圍內,與活塞重疊 0.28;實物的側桿在汽缸的前後兩側,深度配置要重排(列入待確認清單)" },
-  ],
 };

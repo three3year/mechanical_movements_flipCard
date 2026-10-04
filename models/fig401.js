@@ -8,7 +8,7 @@ import { shape, circle, rect, thickLine } from "./shapes.js";
 
 const R = 0.45; // 手腕在擋止處時離軸心的距離
 const SLIDE = 0.3; // 滑塊可以往前移的距離
-const PEDAL = { pivot: [3.0, -3.0, 0], length: 2.6 };
+const PEDAL = { pivot: [3.0, -3.0, 0.21], length: 2.6 }; // 踏板與連桿同一層(連桿在飛輪前面)
 const ROD = 3.0;
 
 /** 飛輪轉 theta(逆時針)→ 手腕離軸心的距離(滑塊的位置)與位置 */
@@ -45,6 +45,7 @@ export default {
     { id: "slider", kind: "box", size: [0.4, 0.22, 0.12], label: "A", labelOffset: [-0.35, 0.2, 0.3] },
     { id: "springB", kind: "spring", coils: 5, radius: 0.06, wire: 0.015, label: "B", labelOffset: [0.25, -0.2, 0.3] },
     { id: "rod", kind: "link", width: 0.08, thickness: 0.05 },
+    { id: "pedalPost", kind: "cylinder", center: PEDAL.pivot, radius: 0.04, length: 0.5 }, // 踏板的固定樞軸(推斷)
     { id: "treadle", kind: "group", center: PEDAL.pivot, arrow: false, pieces: [{ kind: "plate", shape: shape(thickLine([[0, 0], [-PEDAL.length - 0.3, 0]], 0.1)), thickness: 0.08 }, { kind: "cylinder", radius: 0.08, length: 0.3 }] },
   ],
   driver: { part: "flywheel", type: "rotation" },
@@ -65,7 +66,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["treadle"], reason: "未修:踏板沒有畫出樞軸的支座(離最近的實體 0.15)(列入待確認清單)" },
-  ],
 };

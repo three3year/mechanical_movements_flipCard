@@ -37,7 +37,7 @@ export default {
     // 先前用同一儀器畫好的會聚線(延長都會到會聚點)
     ...LINES.map((_, k) => ({ id: `line${k + 1}`, kind: "trace" })),
     // 葉片:上緣(局部 y = 0)是畫線邊,通過接頭
-    { id: "blade", kind: "plate", shape: shape(rect(BLADE, 0.3, BLADE / 2 + 0.3, -0.15)), thickness: 0.06, arrow: false },
+    { id: "blade", kind: "plate", shape: shape(rect(BLADE, 0.3, BLADE / 2 + 0.3, -0.15)), thickness: 0.1, arrow: false },
     // 兩條腿:背面(局部 y = 0)通過接頭,靠著銷
     { id: "legA", kind: "plate", shape: shape(rect(3.9, 0.26, 2.05, -0.13)), thickness: 0.06, arrow: false },
     { id: "legB", kind: "plate", shape: shape(rect(3.9, 0.26, 2.05, 0.13)), thickness: 0.06, arrow: false },
@@ -65,7 +65,7 @@ export default {
     const along = (d) => [J[0] + d * Math.cos(angle), J[1] + d * Math.sin(angle), 0.01];
     return {
       parts: {
-        blade: { position: at(0), angle },
+        blade: { position: at(0.02), angle },
         legA: { position: at(0.06), angle: angle + LEGS[0] },
         legB: { position: at(0.06), angle: angle + LEGS[1] },
         joint: { position: at(0), angle },
@@ -80,7 +80,6 @@ export default {
   waivers: [
     { check: "interference", parts: ["pins", "legA"], reason: "接合處的簡化畫法:腳以長孔套在銷上滑動,長孔沒有畫出來,重疊 0.08" },
     { check: "interference", parts: ["pins", "legB"], reason: "接合處的簡化畫法:腳以長孔套在銷上滑動,長孔沒有畫出來,重疊 0.08" },
-    { check: "unsupported", parts: ["blade"], reason: "未修:刀片與夾著它的臂之間差 0.04(列入待確認清單)" },
   ],
 };
 

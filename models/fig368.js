@@ -20,7 +20,7 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [4.8, 0.12, 0.6], at: [0.2, 0.15, -0.3] },
+        { kind: "box", size: [4.8, 0.12, 0.6], at: [0.2, 0.15, -0.45] }, // 橫樑在齒條的後面
         { kind: "box", size: [0.15, 3.0, 0.15], at: [1.15, -1.2, -0.4] },
         { kind: "box", size: [3.2, 0.12, 1.4], at: [-0.2, -2.75, 0] },
       ],
@@ -98,6 +98,5 @@ export default {
   waivers: [
     { check: "interference", parts: ["spur", "rack"], reason: "簡化齒形:正齒輪與齒條的梯形齒齒側重疊 0.08(96 個取樣中 55 個)" },
     { check: "interference", parts: ["gears", "rack"], reason: "簡化齒形:齒輪與齒條的梯形齒齒側重疊 0.12" },
-    { check: "interference", parts: ["frame", "rack"], reason: "未修:齒條與機架的橫樑畫在同一層,重疊 0.10;橫樑應在齒條的後面(列入待確認清單)" },
   ],
 };

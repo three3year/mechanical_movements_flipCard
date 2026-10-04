@@ -18,7 +18,7 @@ export default {
       kind: "group",
       pieces: [
         { kind: "box", size: [3.6, 0.3, 0.3], at: [0, TRUNNION[1], -0.6] },
-        { kind: "box", size: [1.2, 0.3, 0.6], at: [CRANK[0], CRANK[1] - 0.5, -0.3] },
+        { kind: "box", size: [1.2, 0.3, 0.6], at: [CRANK[0], CRANK[1] - 0.72, -0.3] }, // 底座在曲柄銷最低處的下方
         { kind: "cylinder", radius: 0.2, length: 1.6, at: TRUNNION },
       ],
     },
@@ -46,7 +46,6 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["pistonRod", "crank"], reason: "接合處的簡化畫法:活塞桿的端頭套在曲柄銷上,桿端與曲柄的輪轂重疊 0.05(96 個取樣中 17 個)" },
-    { check: "interference", parts: ["frame", "pistonRod"], reason: "未修:活塞桿的端頭轉到最低時碰到機架的底座,重疊 0.10(96 個取樣中 23 個)(列入待確認清單)" },
     { check: "interference", parts: ["frame", "cylinder"], reason: "簡化畫法:擺動汽缸的耳軸座畫成機架的橫樑,汽缸與橫樑重疊 0.18" },
   ],
 };

@@ -21,7 +21,10 @@ export function snyder(theta) {
 }
 
 // 溝槽:碟面上兩條凸起的邊(溝槽 1 沿碟片局部 x 偏 30°、溝槽 2 與它垂直,滑塊在兩邊之間)
-const groove = (angle) => ({ kind: "plate", shape: shape(rect(2 * R - 0.3, 0.42), [rect(2 * R - 0.45, 0.24).reverse()]), thickness: 0.08, at: [0, 0, 0.1], angle });
+// 一道溝槽:兩側的槽壁,在兩道溝交會的中心處斷開(滑塊才能從一道溝穿過另一道溝)
+const WALL = R - 0.15 - 0.3;
+const groove = (angle) =>
+  [1, -1].flatMap((sx) => [1, -1].map((sy) => ({ kind: "plate", shape: shape(rect(WALL, 0.09, sx * (0.3 + WALL / 2), sy * 0.165)), thickness: 0.08, at: [0, 0, 0.1], angle })));
 
 export default {
   figure: 348,
@@ -34,8 +37,8 @@ export default {
       labelOffset: [-1.1, -0.3, 0.3],
       pieces: [
         { kind: "plate", shape: shape(circle(R), [circle(0.12).reverse()]), thickness: 0.12 },
-        groove(deg(30)),
-        groove(deg(120)),
+        ...groove(deg(30)),
+        ...groove(deg(120)),
         { kind: "box", size: [0.2, 0.2, 0.15], at: [R - 0.2, 0, 0.08], accent: true },
       ],
     },
@@ -54,19 +57,11 @@ export default {
     return {
       parts: {
         diskA: { angle: theta },
-        sliderC1: { position: z(s.c1, 0.34), angle: theta + deg(30) },
-        sliderC2: { position: z(s.c2, 0.34), angle: theta + deg(120) },
+        sliderC1: { position: z(s.c1, 0.13), angle: theta + deg(30) },
+        sliderC2: { position: z(s.c2, 0.13), angle: theta + deg(120) },
         barB: { position: [s.mid[0], s.mid[1], 0] },
       },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["barB", "sliderC2"], reason: "接合處的簡化畫法:滑塊上的銷穿在桿 B 的孔裡,滑塊與桿面重疊 0.03" },
-    { check: "interference", parts: ["barB", "sliderC1"], reason: "接合處的簡化畫法:滑塊上的銷穿在桿 B 的孔裡,滑塊與桿面重疊 0.03" },
-    { check: "unsupported", parts: ["sliderC2"], reason: "未修:滑塊 C 與桿 B 之間差 0.13(前後不同層),少畫了相連的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["sliderC1"], reason: "未修:滑塊 C 與桿 B 之間差 0.13(前後不同層),少畫了相連的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["barB"], reason: "未修:桿 B 與圓盤 A 上的銷之間差 0.04(前後不同層)(列入待確認清單)" },
-    { check: "unsupported", parts: ["diskA"], reason: "未修:圓盤 A 的軸沒有畫出支座(離最近的實體 0.04)(列入待確認清單)" },
-  ],
 };

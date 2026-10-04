@@ -65,7 +65,7 @@ export default {
     return {
       parts: {
         crank: { angle: u.theta },
-        rod: { from: z(u.pin, 0.35), to: z(u.P, 0.35) },
+        rod: { from: z(u.pin, 0.29), to: z(u.P, 0.29) },
         radiusL: { from: z(watt.O1, 0.15), to: z(u.B, 0.15) },
         radiusR: { from: z(watt.O2, 0.15), to: z(u.R, 0.15) },
         vibrating: { position: z(u.B, 0.22), angle: Math.atan2(u.R[1] - u.B[1], u.R[0] - u.B[0]) },
@@ -80,7 +80,5 @@ export default {
     { check: "interference", parts: ["radiusR", "pistonRod"], reason: "接合處的簡化畫法:半徑桿的端頭鉸接在活塞桿上,軸眼與桿重疊 0.04" },
     { check: "interference", parts: ["piston", "pistonRod"], reason: "接合處的簡化畫法:活塞桿的下端伸進活塞 0.11(桿與活塞一起走,桿另外隨平行運動略為擺動)" },
     { check: "interference", parts: ["frame", "crank"], reason: "簡化畫法:曲柄軸的軸承座畫成機架橫樑上的一塊,曲柄的軸頸與橫樑重疊 0.15" },
-    { check: "unsupported", parts: ["rod"], reason: "未修:連桿與十字頭之間差 0.03,少畫了相連的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["crank"], reason: "未修:曲柄與連桿之間少畫了相連的銷(前後不同層)(列入待確認清單)" },
   ],
 };

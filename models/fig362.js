@@ -39,7 +39,7 @@ export default {
         { kind: "cylinder", axis: X, radius: 0.08, length: 4.4, at: [0.1, UP_Y, 0] },
         { kind: "cylinder", axis: X, radius: 0.85, length: 1.25, at: [-0.5, UP_Y, 0] },
         // 右端往下的銷,插進下方圓筒的溝槽
-        { kind: "cylinder", axis: Y, radius: 0.06, length: 0.75, at: [LOW.center[0], UP_Y - 0.4, 0] },
+        { kind: "cylinder", axis: Y, radius: 0.06, length: 1.25, at: [LOW.center[0], UP_Y - 0.65, 0] }, // 從動銷往下伸進圓筒上的溝槽
       ],
     },
     {
@@ -63,7 +63,4 @@ export default {
   pose(theta) {
     return { parts: { cylinder: { angle: theta }, upper: { position: [traverse(theta), 0, 0] } }, readouts: [] };
   },
-  waivers: [
-    { check: "unsupported", parts: ["upper"], reason: "未修:上方的零件與帶動它的零件之間少畫了相連的軸(差 0.42)(列入待確認清單)" },
-  ],
 };

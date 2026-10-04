@@ -37,7 +37,7 @@ export default {
         // 固定溝槽 D(左邊的支架)
         { kind: "plate", shape: { ...shape(rect(1.3, 0.45, -1.25, F[1])), holes: [rect(1.0, 0.16, -1.25, F[1]).reverse()] }, thickness: 0.14, at: [0, 0, -0.05] },
         { kind: "box", size: [1.4, 0.12, 0.2], at: [-0.3, F[1] + 0.3, -0.2] },
-        { kind: "cylinder", radius: 0.1, length: 0.4, at: F },
+        { kind: "cylinder", radius: 0.1, length: 0.14, at: [F[0], F[1], 0.2] }, // 固定樞軸 F 只在半徑桿那一層(活塞桿的頂端從它後面通過)
         { kind: "box", size: [3.2, 0.15, 0.8], at: [0.55, -2.15, 0] },
       ],
     },
@@ -65,7 +65,7 @@ export default {
         crank: { angle: r.theta },
         rod: { from: z(r.pin, 0.32), to: z(r.C, 0.32) },
         pistonRod: { position: z(r.C, 0.05) },
-        barBC: { from: z(r.B, 0.18), to: z(r.C, 0.18) },
+        barBC: { from: z(r.B, 0.08), to: z(r.C, 0.08) },
         radiusFA: { from: z(r.A, 0.24), to: z(F, 0.24) },
         sliderB: { position: z(r.B, 0.05) },
         ...cyl.parts,
@@ -76,8 +76,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["rod", "radiusFA"], reason: "接合處的簡化畫法:兩根連桿的端頭在同一個接點相疊,軸眼互相重疊 0.04" },
-    { check: "interference", parts: ["barBC", "radiusFA"], reason: "接合處的簡化畫法:兩根連桿的端頭在同一個接點相疊,軸眼互相重疊 0.04" },
-    { check: "interference", parts: ["frame", "barBC"], reason: "接合處的簡化畫法:連桿 BC 的端頭經過機架上的固定銷時,軸眼與銷重疊 0.09(96 個取樣中 30 個)" },
-    { check: "interference", parts: ["frame", "pistonRod"], reason: "未修:活塞桿的頂端上行時掃過機架上的固定銷,重疊 0.14(96 個取樣中 40 個);固定銷應只伸到連桿那一層(列入待確認清單)" },
   ],
 };

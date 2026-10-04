@@ -39,6 +39,7 @@ export default {
     },
     { id: "work", kind: "box", size: [1.2, 0.18, 0.8] },
   ],
+  powered: ["screw"], // 外力來源:進給螺桿是操作的人另外轉動的(模型把它和鑽頭的轉動連在同一個主動量上)
   driver: { part: "drill", type: "rotation", range: [0, MAX], initial: 0 },
   target: "work", // 被頂向鑽頭的工件
   view: { direction: [0.08, 0.06, 1] },
@@ -56,7 +57,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["frame", "work"], reason: "未修:工件走到行程端時碰到機架,重疊 0.12(96 個取樣中 26 個)(列入待確認清單)" },
-    { check: "unsupported", parts: ["work"], reason: "未修:工件與推它的螺桿之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["screw"], reason: "未修:螺桿與帶動它的零件之間少畫了相連的軸(列入待確認清單)" },
   ],
 };

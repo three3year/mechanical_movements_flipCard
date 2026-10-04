@@ -48,7 +48,7 @@ export default {
         { kind: "box", size: [0.22, 4.0, 0.22], at: [0, -2.3, -0.2] },
       ],
     },
-    { id: "guides", kind: "group", pieces: [{ kind: "box", size: [0.9, 0.3, 0.5], at: [0, 2.0, -0.1] }, { kind: "box", size: [0.9, 0.3, 0.5], at: [0, -2.3, -0.1] }] },
+    { id: "guides", kind: "group", pieces: [{ kind: "box", size: [0.9, 0.3, 0.4], at: [0, 2.0, -0.05] }, { kind: "box", size: [0.9, 0.3, 0.4], at: [0, -2.3, -0.05] }] }, // 導座在曲柄輪盤的前面
   ],
   driver: { part: "crank", type: "rotation", initial: Math.PI / 2 },
   target: "crosshead", // 等速往復的十字頭
@@ -58,7 +58,6 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["crosshead", "guides"], reason: "十字頭走到行程頂端時碰到導座,重疊 0.14(96 個取樣中 5 個);行程是示意的大小" },
-    { check: "interference", parts: ["crank", "guides"], reason: "未修:曲柄的輪盤與導座畫在同一層,重疊 0.08;導座應在輪盤的前面(列入待確認清單)" },
     { check: "interference", parts: ["crank", "crosshead"], reason: "接合處的簡化畫法:曲柄銷在十字頭的橫槽裡滑動,銷與槽壁(畫成圓條)重疊 0.13" },
   ],
 };

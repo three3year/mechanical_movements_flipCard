@@ -34,7 +34,7 @@ export default {
         { kind: "plate", shape: shape([[WHEEL[0] - 0.9, -2.4], [WHEEL[0] + 0.9, -2.4], [WHEEL[0] + 0.15, WHEEL[1]], [WHEEL[0] - 0.15, WHEEL[1]]]), thickness: 0.2, at: [0, 0, -0.35] },
         { kind: "box", size: [2.3, 0.2, 0.6], at: [WHEEL[0], -2.45, -0.2] },
         { kind: "plate", shape: shape([[-3.2, -2.45], [-1.6, -2.45], [-1.75, -1.6], [-1.6, -1.45], [-3.2, -1.45], [-3.05, -1.6]]), thickness: 0.8 },
-        { kind: "box", size: [0.35, 1.4, 0.4], at: [PIVOT[0], -0.75, -0.3] },
+        { kind: "box", size: [0.35, 1.4, 0.4], at: [PIVOT[0], -0.75, -0.42] }, // 支柱在錘柄的後面
       ],
     },
     { id: "wheel", kind: "plate", center: WHEEL, shape: star, thickness: 0.2, hub: 0.25, mark: [0.6, 0], markSize: 0.07, spin: 0.85 },
@@ -58,7 +58,6 @@ export default {
     return { parts: { wheel: { angle: b }, hammer: { angle: -hammer(-b) } }, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["wheel", "hammer"], reason: "未修:凸輪抬起錘柄尾端的過程依時序演出,凸輪的凸部與錘柄重疊 0.25;應改成由接觸算(動力重演名單)(列入待確認清單)" },
-    { check: "interference", parts: ["frame", "hammer"], reason: "未修:錘柄與機架的立柱畫在同一層,重疊 0.10;立柱應在錘柄的後面(列入待確認清單)" },
+    { check: "interference", parts: ["wheel", "hammer"], reason: "未修:推板輪壓下錘柄尾端的過程依時序演出,推板與錘柄重疊 0.25。照原圖的配置(尾端在輪的左側)與原圖箭頭(順時針),推板在這一側是往上走的,壓不下尾端——原文、箭頭與配置三者對不上,要改成由接觸算得先決定以哪一個為準(列入待確認清單)" },
   ],
 };

@@ -42,7 +42,8 @@ export default {
       ],
     },
     // 連桿與末端的棘爪(隨方框平移)
-    { id: "rod", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: shape(thickLine([[0, 0], [1.6, 0], [2.3, WHEEL.r - 0.6 + 0.12]], 0.1)), thickness: 0.06 }] },
+    { id: "rod", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: shape(thickLine([[0, 0], [1.6, 0], [2.3, WHEEL.r - 0.6 + 0.05]], 0.1)), thickness: 0.06 }] },
+    { id: "axle", kind: "cylinder", center: WHEEL.center, radius: 0.09, length: 0.6 }, // 輪的固定軸(推斷)
     { id: "wheel", kind: "group", center: WHEEL.center, spin: WHEEL.r, pieces: [{ kind: "plate", shape: { ...ratchetShape({ teeth: 30, outer: WHEEL.r, inner: WHEEL.r - 0.15, dir: 1 }), holes: [circle(0.1).reverse()] }, thickness: 0.15, circles: [0.8] }, { kind: "box", size: [0.15, 0.15, 0.2], at: [WHEEL.r - 0.4, 0, 0], accent: true }] },
   ],
   driver: { part: "cam", type: "rotation", speed: -0.8 },
@@ -55,7 +56,7 @@ export default {
       parts: {
         cam: { angle: theta },
         yoke: { position: [yokeX, 0, 0] },
-        rod: { position: [CAM.center[0] + A + 0.85 + yokeX, 0, 0.2] },
+        rod: { position: [CAM.center[0] + A + 0.85 + yokeX, 0, 0.13] },
         wheel: { angle: i.wheel },
       },
       readouts: [],
@@ -63,6 +64,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["cam", "yoke"], reason: "接合處的簡化畫法:凸輪在叉形框裡轉;框與凸輪前後錯開的量不夠,重疊 0.14" },
-    { check: "unsupported", parts: ["wheel"], reason: "未修:輪沒有畫出支撐的軸(離最近的實體 0.07)(列入待確認清單)" },
   ],
 };

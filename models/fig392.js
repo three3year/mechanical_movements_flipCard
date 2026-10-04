@@ -27,8 +27,8 @@ export default {
         { kind: "plate", shape: shape(rect(4.4, 0.3, 0, 0.25), [rect(0.25, 0.32, 0, 0.25).reverse()]), thickness: 0.8 },
         { kind: "box", size: [0.12, 2.6, 0.12], at: [-0.35, 1.7, 0] },
         { kind: "box", size: [0.12, 2.6, 0.12], at: [0.35, 1.7, 0] },
-        { kind: "box", size: [0.12, 1.6, 0.12], at: [-0.35, -0.7, 0] },
-        { kind: "box", size: [0.12, 1.6, 0.12], at: [0.35, -0.7, 0] },
+        { kind: "box", size: [0.12, 1.3, 0.12], at: [-0.35, -0.55, 0] }, // 下段導軌止於曲柄輪的上方
+        { kind: "box", size: [0.12, 1.3, 0.12], at: [0.35, -0.55, 0] },
         { kind: "box", size: [2.6, 0.18, 0.3], at: [1.0, HANG + 0.1, 0] },
       ],
     },
@@ -45,7 +45,7 @@ export default {
     },
     { id: "rod", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "blade", kind: "group", arrow: false, pieces: [{ kind: "box", size: [0.08, BLADE, 0.02], at: [0, BLADE / 2, 0] }, ...Array.from({ length: 16 }, (_, i) => ({ kind: "box", size: [0.05, 0.05, 0.02], at: [-0.05, 0.1 + i * 0.16, 0], angle: 0.8 }))] },
-    { id: "spring", kind: "spring", coils: 9, radius: 0.1, wire: 0.02 },
+    { id: "spring", kind: "spring", coils: 9, radius: 0.05, wire: 0.02 },
   ],
   driver: { part: "crank", type: "rotation" },
   target: "blade",
@@ -57,15 +57,12 @@ export default {
         crank: { angle: theta },
         rod: { from: [g.pin[0], g.pin[1], 0.15], to: [0, g.low, 0.15] },
         blade: { position: [0, g.low, 0.05] },
-        spring: { from: [0, HANG, 0.05], to: [0, g.top, 0.05] },
+        spring: { from: [0, HANG, 0.05], to: [0, g.top - 0.05, 0.05] },
       },
       readouts: [],
     };
   },
   waivers: [
-    { check: "interference", parts: ["frame", "spring"], reason: "彈簧的上端掛在機架的橫樑上:端圈伸進橫樑 0.04(96 個取樣中 38 個)" },
     { check: "interference", parts: ["frame", "blade"], reason: "簡化畫法:鋸條穿過台面上的鋸縫(鋸縫沒畫),鋸條與台面重疊 0.18" },
-    { check: "interference", parts: ["frame", "crank"], reason: "未修:曲柄轉到下方時掃過機架的立柱,重疊 0.09(列入待確認清單)" },
-    { check: "unsupported", parts: ["spring"], reason: "未修:彈簧的上端與機架之間差 0.04(列入待確認清單)" },
   ],
 };

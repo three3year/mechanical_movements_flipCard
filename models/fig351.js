@@ -77,7 +77,11 @@ export default {
       ],
     },
     // 導槽在桿的左側,整個行程裡桿都在兩個導槽之間
-    { id: "guides", kind: "group", pieces: [{ kind: "box", size: [0.15, 0.6, 0.6], at: [-1.15, 2.4, -0.2] }, { kind: "box", size: [0.15, 0.6, 0.6], at: [-1.15, 0.3, -0.2] }] },
+    { id: "guides", kind: "group", // 兩個導座各是一塊背板加左側的擋塊(右側是小齒輪;凸塊貼著背板與擋塊上下通過)
+      pieces: [1.05, 1.85].flatMap((y) => [
+        { kind: "box", size: [0.15, 0.5, 0.5], at: [RACK_X - 0.42 - 0.52, y, 0] },
+        { kind: "box", size: [1.1, 0.5, 0.15], at: [RACK_X - 0.42 - 0.05, y, -0.31] },
+      ]) },
   ],
   driver: { part: "pinion", type: "rotation", speed: -0.8 }, // 自動播放時順時針轉,把桿抬起
   target: "stamp",
@@ -89,6 +93,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["pinion", "stamp"], reason: "搗桿被缺齒小齒輪抬起的過程依時序演出,不逐點算齒與凸塊的接觸;重疊 0.07(96 個取樣中 14 個)" },
-    { check: "interference", parts: ["stamp", "guides"], reason: "未修:搗桿上的凸塊升到最高時伸進導座,重疊 0.32(96 個取樣中 33 個);導座應讓出凸塊的行程(列入待確認清單)" },
   ],
 };

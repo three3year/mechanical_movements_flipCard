@@ -48,8 +48,9 @@ export default {
         { kind: "box", size: [0.34, 0.36, 0.1], at: [0, -2.25, -0.13] },
         { kind: "cylinder", radius: 0.06, length: 0.5, at: PIVOT },
         // 曲柄軸的軸承柱(在擺桿後面)
-        { kind: "box", size: [0.26, 1.95, 0.14], at: [CRANK.center[0], CRANK.center[1] - 0.975, -0.24] },
-        { kind: "cylinder", radius: 0.14, length: 0.2, at: [CRANK.center[0], CRANK.center[1], -0.2] },
+        // 曲柄整個在擺桿的後面:只有曲柄銷往前伸進擺桿的槽(曲柄軸不穿過擺桿擺動的那一層)
+        { kind: "box", size: [0.26, 1.95, 0.14], at: [CRANK.center[0], CRANK.center[1] - 0.975, -0.6] },
+        { kind: "cylinder", radius: 0.14, length: 0.2, at: [CRANK.center[0], CRANK.center[1], -0.55] },
         // 滑桿的導軌(在滑桿後面)
         { kind: "box", size: [5.4, 0.12, 0.3], at: [-0.2, BAR_Y + 0.3, -0.3] },
       ],
@@ -60,9 +61,9 @@ export default {
       center: CRANK.center,
       spin: CRANK.r + 0.2,
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0], [CRANK.r, 0]], 0.22), [circle(0.06).reverse()]), thickness: 0.1, at: [0, 0, 0.25] },
-        { kind: "cylinder", radius: 0.2, length: 0.4, at: [0, 0, 0.15] },
-        { kind: "cylinder", radius: 0.07, length: 0.4, at: [CRANK.r, 0, 0.15], accent: true },
+        { kind: "plate", shape: shape(thickLine([[0, 0], [CRANK.r, 0]], 0.22), [circle(0.06).reverse()]), thickness: 0.1, at: [0, 0, -0.25] },
+        { kind: "cylinder", radius: 0.2, length: 0.15, at: [0, 0, -0.38] },
+        { kind: "cylinder", radius: 0.07, length: 0.4, at: [CRANK.r, 0, -0.05], accent: true },
       ],
     },
     {
@@ -109,6 +110,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["crank", "lever"], reason: "未修:槓桿擺動時掃過曲柄的輪轂,重疊 0.10(96 個取樣中 58 個);槓桿應在曲柄的另一層(列入待確認清單)" },
+    { check: "interference", parts: ["crank", "lever"], reason: "曲柄銷在擺桿的弧形槽裡滑動;槽的兩壁畫成折線,銷在行程兩端擦到槽壁 0.12(96 個取樣中 13 個)" },
   ],
 };

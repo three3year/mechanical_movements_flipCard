@@ -79,6 +79,7 @@ export default {
     flap("suction", 0.18),
     flap("delivery", 0.14),
   ],
+  powered: ["ram"], // 外力來源:柱塞是被泵打進來的水頂起的(液壓傳動,沒有實體相連)
   driver: { part: "handle", grips: ["plunger"], type: "rotation", cycle: SWING },
   target: "ram",
   view: { direction: [0.08, 0.08, 1] },
@@ -109,6 +110,5 @@ export default {
     { check: "interference", parts: ["pump", "frame"], reason: "簡化畫法:泵筒嵌在機架裡,重疊 0.40" },
     { check: "interference", parts: ["ramCylinder", "ram"], reason: "簡化畫法:柱塞頂端的壓板降到最低時貼著缸口,重疊 0.08(96 個取樣中 75 個)" },
     { check: "interference", parts: ["ramCylinder", "frame"], reason: "簡化畫法:液壓缸嵌在機架裡,重疊 0.08" },
-    { check: "unsupported", parts: ["ram"], reason: "未修:柱塞與推動它的水之間沒有標成外力來源(虛擬主動件),也沒有實體相連(列入待確認清單)" },
   ],
 };

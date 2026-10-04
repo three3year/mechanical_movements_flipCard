@@ -43,6 +43,12 @@ export default {
       ],
     },
     {
+      id: "axle",
+      kind: "cylinder",
+      radius: 0.09,
+      length: 1.1, // 葉輪的軸(軸承在外殼兩側,推斷)
+    },
+    {
       id: "fan",
       kind: "group",
       spin: FAN + 0.1,
@@ -75,6 +81,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["casing", "outlet"], reason: "簡化畫法:出風口接在外殼上,接口處重疊 0.12" },
-    { check: "unsupported", parts: ["fan"], reason: "未修:風扇的葉輪沒有畫出軸(離最近的實體 0.05)(列入待確認清單)" },
   ],
 };

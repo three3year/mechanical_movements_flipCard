@@ -15,7 +15,7 @@ const PISTON_ROD = 2.0;
 export default {
   figure: 338,
   parts: [
-    { id: "pivot", kind: "group", pieces: [{ kind: "cylinder", radius: 0.1, length: 0.4, at: watt.O2 }] },
+    { id: "pivot", kind: "group", pieces: [{ kind: "cylinder", radius: 0.1, length: 0.4, at: watt.O2 }, { kind: "cylinder", radius: 0.2, length: 0.5, at: watt.O1 }] }, // 樑的樞軸也是固定的軸(支座沒畫,推斷)
     {
       id: "beam",
       kind: "plate",
@@ -38,17 +38,12 @@ export default {
     return {
       parts: {
         beam: { angle: psi },
-        radiusBar: { from: [watt.O2[0], watt.O2[1], 0.15], to: [R[0], R[1], 0.15] },
-        short: { from: [R[0], R[1], 0.22], to: [P[0], P[1], 0.22] }, // 短連桿從 R 經過樑端 B 延伸到 P
-        pistonRod: { position: [P[0], P[1] - PISTON_ROD / 2, 0.28] },
+        // 由後往前:活塞桿與樑同層(掛在短連桿的背面)、短連桿貼著樑的前面、半徑桿再往前一層
+        radiusBar: { from: [watt.O2[0], watt.O2[1], 0.17], to: [R[0], R[1], 0.17] },
+        short: { from: [R[0], R[1], 0.1], to: [P[0], P[1], 0.1] }, // 短連桿從 R 經過樑端 B 延伸到 P
+        pistonRod: { position: [P[0], P[1] - PISTON_ROD / 2, 0.03] },
       },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["pistonRod"], reason: "未修:活塞桿頂端與平行運動的連桿之間少畫了十字頭的銷(前後不同層)(列入待確認清單)" },
-    { check: "unsupported", parts: ["short"], reason: "未修:短連桿與樑之間差 0.13,少畫了相連的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["radiusBar"], reason: "未修:半徑桿與樑上的連桿之間少畫了相連的銷,前後各層之間有空隙(列入待確認清單)" },
-    { check: "unsupported", parts: ["beam"], reason: "未修:樑的樞軸沒有畫出支座(離最近的實體 0.13)(列入待確認清單)" },
-  ],
 };

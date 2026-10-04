@@ -27,13 +27,13 @@ export default {
     },
     { id: "pipe", ...steamPipe(CYL) },
     ...cylinderParts(CYL),
-    { id: "lever", kind: "plate", center: [-2.0, -2.1, 0], shape: { ...shape(thickLine([[0, 0], [4.4, 0]], 0.42)), holes: [circle(0.12).reverse()] }, thickness: 0.12, arrow: false, pieces: [{ kind: "cylinder", radius: 0.32, length: 0.25 }] },
+    { id: "lever", kind: "plate", center: [-2.0, -2.1, 0.7], shape: { ...shape(thickLine([[0, 0], [4.4, 0]], 0.42)), holes: [circle(0.12).reverse()] }, thickness: 0.12, arrow: false, pieces: [{ kind: "cylinder", radius: 0.32, length: 0.25 }] },
     { id: "sideRod", kind: "link", width: 0.1, thickness: 0.06 },
     { id: "radiusArm", kind: "link", width: 0.12, thickness: 0.06, label: "F", labelOffset: [-0.2, 0.3, 0.3] },
     { id: "parallelBar", kind: "link", width: 0.1, thickness: 0.06 },
     { id: "linkEF", kind: "link", width: 0.08, thickness: 0.05 },
     { id: "linkDC", kind: "link", width: 0.08, thickness: 0.05 },
-    { id: "crosshead", kind: "group", pieces: [{ kind: "box", size: [0.4, 0.3, 0.3] }, { kind: "box", size: [0.1, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] }] },
+    { id: "crosshead", kind: "group", pieces: [{ kind: "box", size: [0.4, 0.3, 1.5] }, { kind: "box", size: [0.1, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] }] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.25 },
@@ -46,7 +46,7 @@ export default {
     return {
       parts: {
         lever: { angle: m.psi },
-        sideRod: { from: z(m.S, 0.2), to: z(m.E, 0.2) },
+        sideRod: { from: z(m.S, 0.7), to: z(m.E, 0.7) }, // 側槓桿與側桿在汽缸的前面一層,十字頭橫跨到那一層
         radiusArm: { from: z(ROCK, 0.3), to: z(m.F, 0.3) },
         parallelBar: { from: z(m.D, 0.3), to: z(m.E, 0.3) },
         linkEF: { from: z(m.E, 0.36), to: z(m.F, 0.36) },
@@ -58,9 +58,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["lever"], reason: "未修:槓桿與帶動它的側桿之間差 0.07,少畫了相連的銷(列入待確認清單)" },
-    { check: "interference", parts: ["cylinder", "lever"], reason: "未修:槓桿擺動時掃過汽缸的下端,重疊 0.06(96 個取樣中 38 個);槓桿應在汽缸的前面一層(列入待確認清單)" },
-    { check: "interference", parts: ["pipe", "sideRod"], reason: "未修:側桿的下端與蒸汽管畫在同一層,重疊 0.10;蒸汽管應在側桿的後面(列入待確認清單)" },
-  ],
 };

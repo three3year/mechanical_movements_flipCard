@@ -31,14 +31,14 @@ export default {
       id: "table",
       kind: "group",
       pieces: [
-        { kind: "box", size: [3.6, 0.2, 1.8], at: [0, -1.35, 0] },
+        { kind: "box", size: [3.6, 0.2, 1.4], at: [0, -1.35, 0] }, // 桌面比兩根側連桿的間距窄:側連桿從桌面前後兩側通過
         { kind: "box", size: [0.2, 1.3, 0.2], at: [-1.6, -2.1, 0.7] },
         { kind: "box", size: [0.2, 1.3, 0.2], at: [1.6, -2.1, 0.7] },
         { kind: "box", size: [0.2, 1.3, 0.2], at: [-1.6, -2.1, -0.7] },
         { kind: "box", size: [0.2, 1.3, 0.2], at: [1.6, -2.1, -0.7] },
         // 汽缸頂上的開槽導件(倒 U 形)
         { kind: "plate", shape: shape(thickLine([[-0.35, CYL.top + 0.15], [-0.35, CYL.top + 2.9], [0, CYL.top + 3.15], [0.35, CYL.top + 2.9], [0.35, CYL.top + 0.15]], 0.12)), thickness: 0.2 },
-        { kind: "cylinder", radius: 0.14, length: 2 * SIDE + 0.6, at: CRANK },
+        { kind: "cylinder", radius: 0.14, length: 2 * SIDE + 0.1, at: CRANK }, // 曲柄軸只到前後兩片曲柄臂(側連桿在臂的外側,不掃過軸)
       ],
     },
     { id: "pipe", ...steamPipe(CYL) },
@@ -78,8 +78,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["table", "sideRodBack"], reason: "未修:後側的側桿畫在台腳的範圍內,重疊 0.18;側桿應在台腳的外側(列入待確認清單)" },
-    { check: "interference", parts: ["table", "sideRod"], reason: "未修:前側的側桿畫在台腳的範圍內,重疊 0.18;側桿應在台腳的外側(列入待確認清單)" },
     { check: "interference", parts: ["table", "cylinder"], reason: "簡化畫法:汽缸的底座嵌在台面裡,重疊 0.07" },
   ],
 };

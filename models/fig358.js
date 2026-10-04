@@ -38,10 +38,11 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [9.5, 0.12, 0.3], at: [2.6, 1.35, -0.5] },
-        { kind: "box", size: [9.5, 0.12, 0.3], at: [2.6, -0.75, -0.5] },
+        // 兩條導軌在均力圓錐輪的後面;右邊的軸承座在軸的後面(托架從它前方通過)
+        { kind: "box", size: [9.5, 0.12, 0.3], at: [2.6, 1.35, -1.1] },
+        { kind: "box", size: [9.5, 0.12, 0.3], at: [2.6, -0.75, -1.1] },
         { kind: "box", size: [0.25, 1.4, 0.4], at: [-2.2, -0.55, 0] },
-        { kind: "box", size: [0.25, 1.4, 0.4], at: [0.85, -0.55, 0] },
+        { kind: "box", size: [0.25, 0.9, 1.0], at: [0.85, -0.3, -0.6] },
       ],
     },
     {
@@ -85,8 +86,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["frame", "carriage"], reason: "未修:滑座走到行程端時碰到機架的立柱,重疊 0.20(96 個取樣中 8 個)(列入待確認清單)" },
-    { check: "interference", parts: ["frame", "fusee"], reason: "未修:均力圓錐輪的大端伸到機架的底樑,重疊 0.16;底樑應再低一點(列入待確認清單)" },
-  ],
 };

@@ -50,7 +50,16 @@ export function camOutline(samples = 144) {
 export default {
   figure: 400,
   parts: [
-    { id: "bed", kind: "group", pieces: [{ kind: "box", size: [4.6, 0.1, 1.0], at: [0, 0.32, -0.1] }] },
+    // 台面在進料齒的位置開了口(進料齒與桿 A 的叉口從開口升上來):左半塊台面加開口前後的兩條邊
+    {
+      id: "bed",
+      kind: "group",
+      pieces: [
+        { kind: "box", size: [2.6, 0.1, 1.0], at: [-1.0, 0.32, -0.1] },
+        { kind: "box", size: [2.2, 0.1, 0.3], at: [1.4, 0.32, -0.45] },
+        { kind: "box", size: [2.2, 0.1, 0.2], at: [1.4, 0.32, 0.35] },
+      ],
+    },
     {
       id: "barA",
       kind: "group",
@@ -96,9 +105,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["bed", "pinB"], reason: "未修:銷 B 移動時掃過床台,重疊 0.08(96 個取樣中 40 個)(列入待確認清單)" },
-    { check: "interference", parts: ["bed", "barB"], reason: "未修:桿 B 擺動時掃過床台,重疊 0.10(96 個取樣中 62 個)(列入待確認清單)" },
     { check: "interference", parts: ["barA", "pinB"], reason: "接合處的簡化畫法:桿 A 套在銷 B 上,軸眼與銷重疊 0.10" },
-    { check: "interference", parts: ["bed", "barA"], reason: "未修:桿 A 的下端伸進床台 0.26;床台上讓桿通過的槽沒有畫出來(列入待確認清單)" },
   ],
 };

@@ -29,9 +29,9 @@ export default {
       kind: "group",
       pieces: [
         // C 形架:上橫樑、右立柱、下方的軸承臂
-        { kind: "plate", shape: shape(thickLine([[-1.4, 2.15], [1.45, 2.15], [1.45, -0.6], [-0.25, -0.6]], 0.22)), thickness: 0.35, at: [0, 0, -0.5] },
+        { kind: "plate", shape: shape(thickLine([[-1.4, 2.15], [1.45, 2.15], [1.45, -0.6], [-0.25, -0.6]], 0.22)), thickness: 0.35, at: [0, 0, -1.05] }, // 機架的板在大齒輪的後面
         { kind: "box", size: [0.6, 0.18, 0.5], at: [0, -0.6, 0] },
-        { kind: "box", size: [0.6, 0.18, 0.5], at: [0, 2.05, 0] },
+        { kind: "box", size: [0.4, 0.18, 0.5], at: [0, 2.05, 0] },
         // 上方槓桿的支柱
         { kind: "box", size: [0.12, 1.1, 0.12], at: [-1.4, 2.65, -0.3] },
       ],
@@ -102,6 +102,5 @@ export default {
     { check: "interference", parts: ["rodToTreadle", "treadle"], reason: "接合處的簡化畫法:拉桿的下端鉸接在踏板上,軸眼互相重疊 0.06" },
     { check: "interference", parts: ["bigGear", "spindle"], reason: "簡化畫法:鑽軸上的小齒輪以一根方條示意,與大齒輪的軸重疊 0.06" },
     { check: "interference", parts: ["frame", "spindle"], reason: "接合處的簡化畫法:鑽軸穿過機架上的軸承塊;鑽軸隨狀態上下移動,軸承孔沒有畫出來,重疊 0.25" },
-    { check: "interference", parts: ["frame", "bigGear"], reason: "未修:踏板抬起的狀態下大齒輪的輪緣與機架的板重疊 0.26;機架應在大齒輪的後面(列入待確認清單)" },
   ],
 };

@@ -29,7 +29,8 @@ export default {
       kind: "group",
       pieces: [
         // 三腳架
-        { kind: "plate", shape: shape(thickLine([[-3.9, -1.75], [PIVOT[0], PIVOT[1] + 0.1], [-2.1, -1.75]], 0.1)), thickness: 0.1 },
+        { kind: "plate", shape: shape(thickLine([[-3.9, -1.75], [PIVOT[0], PIVOT[1] + 0.1], [-2.1, -1.75]], 0.1)), thickness: 0.1, at: [0, 0, -0.3] }, // 三腳架的前兩腳在擺的後面(擺錘從它前方擺過)
+        { kind: "cylinder", radius: 0.055, length: 0.5, at: [PIVOT[0], PIVOT[1], -0.1] },
         { kind: "box", size: [0.08, 3.9, 0.08], at: [PIVOT[0], 0.25, -0.5], angle: 0 },
         // 跨過樹幹的門形架
         { kind: "plate", shape: shape(thickLine([[-0.6, -1.75], [-0.6, 1.25], [2.6, 1.25], [2.6, -1.75]], 0.18)), thickness: 0.2, at: [0, 0, -0.7] },
@@ -74,16 +75,13 @@ export default {
     return {
       parts: {
         pendulum: { angle: s.angle },
-        saw: { position: [sawX, s.saw, 0] },
-        rod: { from: [s.bob[0], s.bob[1] + 0.3, 0.2], to: [sawX - 1.25, s.saw + 0.35, 0.2] },
+        saw: { position: [sawX, s.saw, 0.13] },
+        rod: { from: [s.bob[0], s.bob[1] + 0.3, 0.2], to: [sawX - 1.25, s.saw + 0.7, 0.2] },
       },
       readouts: [],
     };
   },
   waivers: [
-    { check: "interference", parts: ["log", "rod"], reason: "未修:推桿的端頭伸到木頭的範圍,重疊 0.22(96 個取樣中 6 個)(列入待確認清單)" },
     { check: "interference", parts: ["log", "saw"], reason: "鋸片鋸進木頭是這個機構的作用:鋸片與木頭重疊 0.81 是鋸口(木頭上的鋸縫沒有畫出來)" },
-    { check: "interference", parts: ["frame", "pendulum"], reason: "未修:擺錘擺動時掃過機架的板,重疊 0.20(96 個取樣中 64 個);擺應在機架的前面一層(列入待確認清單)" },
-    { check: "unsupported", parts: ["saw"], reason: "未修:鋸與帶動它的桿之間差 0.09,少畫了相連的銷(列入待確認清單)" },
   ],
 };

@@ -36,8 +36,10 @@ export default {
       kind: "group",
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape(rect(2.4, 3.0), [rect(1.9, 2.5).reverse()]), thickness: 0.12, at: [0, 0.6, -0.05] },
-        { kind: "plate", shape: shape(rect(1.9, 2.5)), thickness: 0.03, at: [0, 0.6, -0.06] },
+        // 鏡框以一段托架架在立柱的前面(立柱在鏡子背後;鏡子前後傾時下緣不會掃到立柱與底座)
+        { kind: "plate", shape: shape(rect(2.4, 3.0), [rect(1.9, 2.5).reverse()]), thickness: 0.12, at: [0, 0.6, 0.6] },
+        { kind: "plate", shape: shape(rect(1.9, 2.5)), thickness: 0.03, at: [0, 0.6, 0.59] },
+        { kind: "box", size: [0.16, 0.1, 0.5], at: [0, 0, 0.3] },
         { kind: "cylinder", axis: [1, 0, 0], radius: 0.09, length: 0.25, at: [0, 0, 0] },
       ],
     },
@@ -66,7 +68,7 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["base", "mirror"], reason: "未修:鏡子降到低位時下緣碰到底座,重疊 0.15(288 個取樣中 47 個)(列入待確認清單)" },
-    { check: "interference", parts: ["stem", "mirror"], reason: "未修:鏡子降到低位時與立柱重疊 0.14;鏡架應在立柱的前面(列入待確認清單)" },
+    { check: "interference", parts: ["base", "mirror"], reason: "未修:鏡子降到最低又往後仰到底時,鏡框的下緣碰到底座,重疊 0.18(288 個取樣中 14 個)(列入待確認清單)" },
+    { check: "interference", parts: ["stem", "mirror"], reason: "未修:鏡子降到最低又往後仰時,鏡框的下緣擦到立柱,重疊 0.05;降低的位置應再高一點(列入待確認清單)" },
   ],
 };

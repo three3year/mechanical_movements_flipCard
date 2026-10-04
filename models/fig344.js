@@ -17,9 +17,11 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [3.6, 0.3, 0.3], at: [0, TRUNNION[1], -0.6] },
-        { kind: "box", size: [3.6, 0.3, 0.3], at: [0, CRANK[1], -0.6] },
-        { kind: "cylinder", radius: 0.22, length: 1.6, at: [TRUNNION[0], TRUNNION[1], 0] },
+        // 耳軸是汽缸前後兩側各一根短軸(不穿過汽缸中心);機架的橫樑在後面
+        { kind: "box", size: [3.6, 0.3, 0.3], at: [0, TRUNNION[1], -0.87] },
+        { kind: "box", size: [3.6, 0.3, 0.3], at: [0, CRANK[1], -0.87] },
+        { kind: "cylinder", radius: 0.22, length: 0.3, at: [TRUNNION[0], TRUNNION[1], -0.87] },
+        { kind: "cylinder", radius: 0.22, length: 0.3, at: [TRUNNION[0], TRUNNION[1], 0.87] },
       ],
     },
     ...engine.parts,
@@ -30,9 +32,9 @@ export default {
       spin: R + 0.2,
       pieces: [
         { kind: "plate", shape: shape(thickLine([[0, 0], [R, 0]], 0.3), [circle(0.08).reverse()]), thickness: 0.12, at: [0, 0, 0.35] },
-        { kind: "cylinder", radius: 0.2, length: 0.4, at: [0, 0, 0.2] },
+        { kind: "cylinder", radius: 0.2, length: 0.36, at: [0, 0, 0.22] },
         { kind: "cylinder", radius: 0.08, length: 0.4, at: [R, 0, 0.35], accent: true },
-        { kind: "cylinder", radius: 0.12, length: 1.4, at: [0, 0, -0.4] },
+        { kind: "cylinder", radius: 0.12, length: 1.0, at: [0, 0, -0.6] }, // 曲柄軸只往後伸(活塞桿的上端從前面掃過軸心)
       ],
     },
   ],
@@ -45,10 +47,4 @@ export default {
     const e = engine.pose(theta);
     return { parts: { ...e.parts, crank: { angle: theta } }, readouts: [] };
   },
-  waivers: [
-    { check: "interference", parts: ["frame", "pistonRod"], reason: "未修:機架的立柱畫在汽缸中心線上,活塞桿與它重疊 0.26;立柱應在汽缸的前後兩側(列入待確認清單)" },
-    { check: "interference", parts: ["frame", "piston"], reason: "未修:機架的立柱畫在汽缸中心線上,活塞經過時與它重疊 0.31;立柱應在汽缸的前後兩側(列入待確認清單)" },
-    { check: "interference", parts: ["pistonRod", "crank"], reason: "未修:活塞桿的上端每圈有一小段掃過曲柄軸,重疊 0.15(96 個取樣中 17 個);曲柄軸應只往後伸(列入待確認清單)" },
-    { check: "interference", parts: ["frame", "cylinder"], reason: "簡化畫法:擺動汽缸的耳軸座畫成機架的橫樑,汽缸與橫樑重疊 0.20" },
-  ],
 };

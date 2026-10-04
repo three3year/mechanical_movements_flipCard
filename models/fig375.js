@@ -31,7 +31,7 @@ export default {
       pieces: [
         { kind: "box", size: [0.2, 4.4, 0.4], at: [-2.2, 0.1, -0.2] },
         { kind: "box", size: [0.2, 4.4, 0.4], at: [2.2, 0.1, -0.2] },
-        { kind: "box", size: [4.6, 0.2, 0.5], at: [0, 1.45, -0.2] },
+        { kind: "box", size: [4.6, 0.2, 0.5], at: [0, 1.45, -1.15] }, // 橫樑在主動斜齒輪的後面
         // 環形鍋盆
         { kind: "lathe", axis: Y, profile: [[0.35, FLOOR - 0.3], [2.1, FLOOR - 0.3], [2.25, FLOOR + 0.25], [2.05, FLOOR + 0.25], [1.95, FLOOR], [0.55, FLOOR], [0.45, FLOOR + 0.25], [0.35, FLOOR + 0.25]] },
       ],
@@ -76,8 +76,4 @@ export default {
     };
     return { parts: { drive: { angle: a }, shaft: { angle: r.shaft }, runnerR: runner(1), runnerL: runner(-1) }, readouts: [] };
   },
-  waivers: [
-    { check: "interference", parts: ["frame", "shaft"], reason: "簡化畫法:軸的軸承座畫成機架的橫樑,軸頸與橫樑重疊 0.10" },
-    { check: "interference", parts: ["frame", "drive"], reason: "未修:主動輪的輪緣伸到機架的橫樑,重疊 0.27;橫樑應在輪的後面(列入待確認清單)" },
-  ],
 };

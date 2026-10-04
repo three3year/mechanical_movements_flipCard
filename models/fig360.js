@@ -39,7 +39,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(thickLine([[-2.3, -2.6], [-0.6, 2.3], [1.1, -2.6]], 0.2)), thickness: 0.2, at: [0, 0, -0.5] },
         { kind: "box", size: [4.6, 0.2, 0.8], at: [0, -2.7, -0.3] },
-        { kind: "box", size: [0.25, 2.4, 0.4], at: [DRUM.center[0], -1.5, -0.45] },
+        { kind: "box", size: [0.25, 2.4, 0.4], at: [DRUM.center[0], -1.5, -0.6] }, // 立柱在飛輪的後面
       ],
     },
     {
@@ -89,7 +89,7 @@ export default {
   pose(v) {
     const b = beam(v);
     // 右端弧形頭的繩:從弧頭最右的切點垂下,繞到鼓輪左側
-    const rightTop = [PIVOT[0] + ARC + 0.12, PIVOT[1] + (ARC + 0.12) * b.psi, 0.25];
+    const rightTop = [PIVOT[0] + ARC + 0.12, PIVOT[1] + (ARC + 0.12) * b.psi, 0.1]; // 繩的上端繫在樑端的弧形頭上
     const leftTop = [PIVOT[0] - ARC - 0.12, PIVOT[1] - (ARC + 0.12) * b.psi, 0.1];
     const rope = [rightTop, [DRUM.center[0] - DRUM.r, DRUM.center[1] + 0.1, 0.25], [DRUM.center[0] - DRUM.r * 0.7, DRUM.center[1] - DRUM.r * 0.7, 0.25]];
     // 棘爪:銷在鼓輪上,從抬起的位置順時針垂下、停在碰到棘輪的齒面處
@@ -114,10 +114,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["flywheel", "pawl"], reason: "棘爪落在飛輪側面棘齒上的位置依時序演出;爪尖伸進齒 0.08" },
-    { check: "interference", parts: ["frame", "flywheel"], reason: "未修:飛輪的輪緣與機架的立柱畫在同一層,重疊 0.13;立柱應在飛輪的後面(列入待確認清單)" },
-    { check: "unsupported", parts: ["ropeR"], reason: "未修:右繩與鼓輪之間差 0.13(列入待確認清單)" },
-    { check: "unsupported", parts: ["pawl"], reason: "未修:棘爪與鼓輪之間少畫了樞軸銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["drum"], reason: "未修:鼓輪與踏板的繩之間沒有接上(列入待確認清單)" },
-    { check: "unsupported", parts: ["flywheel"], reason: "未修:飛輪與帶動它的鼓輪之間少畫了相連的軸(差 0.15)(列入待確認清單)" },
   ],
 };

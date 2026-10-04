@@ -95,9 +95,9 @@ export default {
     };
   },
   waivers: [
+    { check: "interference", parts: ["shaftB", "valveD"], reason: "未修:軸 B 傾斜時,它上面的輪 A 的輪緣掃過閥桿 D,重疊 0.22(96 個取樣中 45 個);閥桿應在輪的範圍之外(原圖的前後配置看不出來)(列入待確認清單)" },
     { check: "interference", parts: ["valveD", "leverN"], reason: "接合處的簡化畫法:槓桿 N 的端頭鉸接在閥桿 D 上,軸眼與桿重疊 0.04" },
     { check: "interference", parts: ["shaftB", "leverN"], reason: "軸 B 上的凸輪撥動槓桿 N 的過程依時序演出;凸輪與槓桿端重疊 0.08(96 個取樣中 23 個)" },
-    { check: "interference", parts: ["shaftB", "valveD"], reason: "未修:軸 B 上的凸輪頂閥桿 D 的過程依時序演出,凸輪與閥桿重疊 0.22(96 個取樣中 45 個);應改成由接觸算(列入待確認清單)" },
     { check: "interference", parts: ["base", "frameH"], reason: "簡化畫法:框架 H 的腳嵌在底座的塊裡,重疊 0.16" },
   ],
 };

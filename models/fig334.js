@@ -21,7 +21,7 @@ export function rack(psi0) {
 export default {
   figure: 334,
   parts: [
-    { id: "frame", kind: "group", pieces: [{ kind: "box", size: [0.3, 0.5, 0.4], at: [F[0], F[1] - 0.35, -0.2] }, { kind: "box", size: [5.6, 0.12, 0.6], at: [0.3, -1.85, -0.3] }] },
+    { id: "frame", kind: "group", pieces: [{ kind: "box", size: [0.3, 0.5, 0.4], at: [F[0], F[1] - 0.35, -0.45] }, { kind: "box", size: [5.6, 0.12, 0.6], at: [0.3, -1.85, -0.5] }] }, // 立柱與底板都在樑、扇形齒、齒條的後面
     {
       id: "beam",
       kind: "group",
@@ -62,8 +62,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["rackB", "rollerA"], reason: "簡化畫法:導輪貼著齒條的背面滾,輪緣與齒條背面重疊 0.03" },
-    { check: "interference", parts: ["frame", "rackB"], reason: "未修:齒條 B 的下端伸進底板 0.08;底板應再低一點(列入待確認清單)" },
-    { check: "interference", parts: ["frame", "sectorC"], reason: "未修:扇形齒 C 擺動時下緣掃過底板,重疊 0.08(96 個取樣中 80 個);底板應再低一點(列入待確認清單)" },
-    { check: "interference", parts: ["frame", "beam"], reason: "未修:樑與機架的立柱畫在同一層,重疊 0.18;立柱應在樑的後面(列入待確認清單)" },
   ],
 };

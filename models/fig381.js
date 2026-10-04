@@ -43,7 +43,7 @@ export default {
         { kind: "plate", shape: shape(rect(0.4, 1.0, 0, 2.75)), thickness: 0.1 },
       ],
     },
-    { id: "board", kind: "plate", shape: shape(rect(5.0, 2 * BOARD, 0.6, 0)), thickness: 0.2, center: [0, 0, 0.1] },
+    { id: "board", kind: "plate", shape: shape(rect(4.4, 2 * BOARD, 0.9, 0)), thickness: 0.2, center: [0, 0, 0.1] }, // 木料的左端止於兩個夾頰收窄到木料寬度的地方
     // 楔塊(局部:右端內側在原點,往左伸 WEDGE_L;外側斜面與夾頰平行)
     { id: "wedgeUp", kind: "plate", shape: shape([[-WEDGE_L, 0], [0, 0], [0, WEDGE_W], [-WEDGE_L, WEDGE_W - WEDGE_L * T]]), thickness: 0.22, arrow: false },
     { id: "wedgeDown", kind: "plate", shape: shape([[-WEDGE_L, 0], [-WEDGE_L, -(WEDGE_W - WEDGE_L * T)], [0, -WEDGE_W], [0, 0]]), thickness: 0.22, arrow: false },
@@ -62,7 +62,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["bed", "board"], reason: "未修:木板與床台的擋塊重疊 0.14;擋塊應貼著木板的邊緣(列入待確認清單)" },
-  ],
 };

@@ -38,7 +38,7 @@ export default {
       kind: "group",
       spin: R,
       pieces: [
-        { kind: "plate", shape: shape(circle(R + 0.15), [circle(R - 0.1).reverse()]), thickness: 0.6 },
+        { kind: "plate", shape: shape(circle(R + 0.15), [circle(R - 0.1).reverse()]), thickness: 1.2 }, // 輪面夠寬:四隻蹄都踩在輪緣的內面上
         ...Array.from({ length: 16 }, (_, i) => ({ kind: "sphere", radius: 0.05, at: [(R + 0.03) * Math.cos((i * TAU) / 16), (R + 0.03) * Math.sin((i * TAU) / 16), 0.31] })),
         ...grid,
         { kind: "cylinder", radius: 0.32, length: 0.8, mark: true },
@@ -63,7 +63,13 @@ export default {
     const leg = (x, phase) => {
       const top = [H[0] + x, H[1] - 0.1, 0.45 + (phase > 0 ? 0.08 : -0.08)];
       const swing = deg(22) * t.stride * (phase > 0 ? 1 : -1);
-      const len = 0.75;
+      // 腿長固定:取擺動範圍內蹄剛好碰得到輪緣內面的最短距離(前後腿離輪心的距離不同,長度也不同)
+      const reach = (s) => {
+        const d = [Math.sin(s), -Math.cos(s)];
+        const along = top[0] * d[0] + top[1] * d[1];
+        return -along + Math.sqrt(along * along - (top[0] ** 2 + top[1] ** 2 - (R - 0.15) ** 2));
+      };
+      const len = Math.min(reach(-deg(22)), reach(0), reach(deg(22)));
       return { from: top, to: [top[0] + len * Math.sin(swing), top[1] - len * Math.cos(swing), top[2]] };
     };
     return {
@@ -77,8 +83,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "unsupported", parts: ["legFB"], reason: "未修:後腿與機身之間差 0.11(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
-    { check: "unsupported", parts: ["legFF"], reason: "未修:前腿與機身之間差 0.19(前後不同層),少畫了鉸接的銷(列入待確認清單)" },
-  ],
 };
