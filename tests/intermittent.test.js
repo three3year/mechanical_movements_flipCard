@@ -53,7 +53,7 @@ import { penetrationDepth as depth63 } from "../models/contact.js";
 import { hollowAt as hollow64, period as period64 } from "../models/fig064.js";
 import { hollowAt as hollow66 } from "../models/fig066.js";
 import { hollowAt as hollow67, centerOfMass } from "../models/fig067.js";
-import { register, pitch as pitch76 } from "../models/fig076.js";
+import { register, pitch as pitch76, contactAt as contact76 } from "../models/fig076.js";
 import { wormWheel, WHEEL_TEETH } from "../models/worm-jump.js";
 import { falling } from "../models/jumps.js";
 
@@ -145,8 +145,19 @@ test("第 67 種:擺錘 E 的重心被推到頂端後翻落到下方", () => {
 test("第 76 種:大輪每轉一圈,凸柱 D 撞擊撥爪一次,棘輪 A 轉動一齒;撥爪回落時 A 不動", () => {
   close(register(2 * Math.PI).a - register(0).a, pitch76, "一圈一齒");
   close(register(5 * 2 * Math.PI).a - register(0).a, 5 * pitch76);
-  const back = sweep(2 * Math.PI * 0.9, 20, 2 * Math.PI * 0.11).map((v) => register(v).a);
+  const presses = sweep(2 * Math.PI, 720).map((w) => register(w).press);
+  assert.ok(Math.min(...presses) < -0.3, "凸柱把撥爪右端壓下");
+  assert.ok(presses.filter((p) => p === 0).length > 600, "其餘時間撥爪靠在擋銷下");
+  const back = sweep(2 * Math.PI * 0.95, 20, 2 * Math.PI * 0.16).map((v) => register(v).a);
   for (const a of back) close(a, back[0], "撥爪回落與等待時 A 不動");
+});
+
+test("第 76 種:凸柱、撥爪、B 的鉤與 A 的齒都靠接觸,互不穿入", () => {
+  for (const w of sweep(2 * Math.PI, 360)) {
+    const { stud, lever, hook, teeth } = contact76(w);
+    assert.ok(penetrationDepth(lever, stud) < 0.005, `w = ${w.toFixed(2)} 時凸柱穿進撥爪`);
+    for (const t of teeth) assert.ok(penetrationDepth(hook, t) < 0.01, `w = ${w.toFixed(2)} 時 B 的鉤穿進 A 的齒`);
+  }
 });
 
 import fig65, { indexing, studStep, tappetAt, studAt } from "../models/fig065.js";
@@ -216,10 +227,10 @@ test("第 74 種:缺齒式斜齒輪 C 使 A、B 間歇地、朝相反方向轉�
 });
 
 import { motion as motion73, toothStep as step73, contactAt as contact73 } from "../models/fig073.js";
-import { wheelAngle as wheel77, swing as swing77 } from "../models/fig077.js";
+import { wheelAngle as wheel77, swing as swing77, studPitch as pitch77, contactAt as contact77 } from "../models/fig077.js";
 import { wheelAngle as wheel78, swing as swing78 } from "../models/fig078.js";
 import { wheelAngle as wheel79, stroke as stroke79 } from "../models/fig079.js";
-import { barHeight, swing as swing80 } from "../models/fig080.js";
+import { barHeight, swing as swing80, pitch as pitch80, contactAt as contact80 } from "../models/fig080.js";
 
 test("第 73 種:D 每轉一圈,B 從 C 底下經過、被壓進 A 的一齒,A 被 D 帶著走一齒;B 離開 C 後彈回,A 停住", () => {
   assertIndexing((d) => motion73(d).a, step73, "第 73 種");
@@ -249,6 +260,14 @@ function assertBothStrokes(fn, span, label) {
 test("第 77 種:兩根交替作動的棘爪使輪 B 幾乎連續地(逆時針)旋轉", () => {
   assertBothStrokes(wheel77, swing77, "第 77 種");
   assert.ok(wheel77(swing77 * 4) > 0, "逆時針");
+  close(wheel77(2 * swing77 * 3) - wheel77(0), 3 * 2 * pitch77, "槓桿每個來回推過兩根凸柱(每程一根)");
+});
+
+test("第 77 種:棘爪的 U 形鉤套住凸柱推,退回時從凸柱上滑過,不穿入凸柱", () => {
+  for (const v of sweep(4 * swing77, 240)) {
+    const { hooks, studs } = contact77(v);
+    for (const h of hooks) for (const o of studs) assert.ok(penetrationDepth(h, o) < 0.005, `v = ${v.toFixed(3)} 時鉤穿進凸柱`);
+  }
 });
 
 test("第 78 種:第 77 種的變形,棘輪 A 幾乎連續地(順時針)旋轉", () => {
@@ -264,12 +283,20 @@ test("第 79 種:桿 B 往復,兩支振動臂上的棘爪使輪 A 幾乎連續�
 test("第 80 種:槓桿 C 振動,兩根鉤形棘爪交替把槽形齒條桿 A 往上提", () => {
   assertBothStrokes(barHeight, swing80, "第 80 種");
   assert.ok(barHeight(swing80 * 4) > 0, "往上");
+  close(barHeight(2 * swing80 * 3) - barHeight(0), 3 * 2 * pitch80, "槓桿每個來回提起兩個齒距(每程一齒)");
+});
+
+test("第 80 種:鉤子從齒的下緣往上提,退回時沿斜面滑過,不穿進齒", () => {
+  for (const v of sweep(4 * swing80, 240)) {
+    const { hooks, bar } = contact80(v);
+    for (const h of hooks) for (const o of bar) assert.ok(penetrationDepth(h, o) < 0.005, `v = ${v.toFixed(3)} 時鉤穿進齒條桿`);
+  }
 });
 
 import { hammerLift } from "../models/fig072.js";
 import { rackRise, stroke as stroke81, engagedSpan } from "../models/fig081.js";
 import { wheelAngle as wheel82, swing as swing82 } from "../models/fig082.js";
-import { wheelAngle as wheel83, swing as swing83 } from "../models/fig083.js";
+import { wheelAngle as wheel83, swing as swing83, toothAngle as tooth83, lifts as lifts83 } from "../models/fig083.js";
 import { frameShift } from "../models/fig084.js";
 import { rodLift } from "../models/fig085.js";
 
@@ -304,6 +331,16 @@ test("第 82 種:兩個踏板交替踩下,振動臂上的棘爪使棘輪 A 近�
 
 test("第 83 種:兩塊齒向相反的弧形板交替作用,使輪 D 近乎連續地旋轉", () => {
   assertBothStrokes(wheel83, swing83, "第 83 種");
+  close(wheel83(2 * swing83 * 3) - wheel83(0), 3 * 2 * tooth83, "搖臂軸每個來回推過兩齒(每程一齒)");
+});
+
+test("第 83 種:推的那塊板嵌在齒縫裡,另一塊被 D 的齒背頂起滑過(應加彈簧使其上抬)", () => {
+  const push = sweep(swing83 * 0.9, 40, swing83 * 0.1).map((v) => lifts83(v));
+  assert.ok(Math.max(...push.map((l) => l.front)) < 0.02, "前板推的時候嵌著");
+  assert.ok(Math.max(...push.map((l) => l.back)) > 0.15, "後板被頂起滑過 D 的齒");
+  const back = sweep(swing83 * 1.9, 40, swing83 * 1.1).map((v) => lifts83(v));
+  assert.ok(Math.max(...back.map((l) => l.back)) < 0.02, "後板推的時候嵌著");
+  assert.ok(Math.max(...back.map((l) => l.front)) > 0.15, "前板被頂起滑過");
 });
 
 test("第 84 種:抬起 A 時框架被推向左方,降下 A 時推向右方,置中時凸輪不作用", () => {
