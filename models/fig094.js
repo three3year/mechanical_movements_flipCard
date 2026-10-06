@@ -3,11 +3,14 @@
 // 曲柄的長度(螺栓離中心的距離)因此改變。主動件是後板(螺旋板)。
 import { TAU, deg } from "./kit.js";
 import { shape, circle, stadium } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const R = 2.2;
 const SPIRAL = { r0: 0.55, pitch: 0.42 }; // 螺旋:半徑 = r0 + pitch·(角度/2π)
 const SLOT = deg(-120); // 螺栓所在的那道放射槽(原圖左下)
 const RANGE = { min: 0.75, max: 1.95 };
+const RIM = 0.16; // 後板露在前板外的一圈
+const STUD = 0.2; // 中心固定柱的半徑
 
 // 後板轉 t 時,螺旋溝經過放射槽處的局部角 φ = SLOT − t,螺栓就在那裡:半徑 = r0 + pitch·φ/2π。
 // 主動量的範圍讓半徑留在放射槽之內。
@@ -44,22 +47,33 @@ export default {
       id: "spiralPlate",
       kind: "group",
       center: [0, 0, -0.18],
-      spin: R,
+      spin: R + RIM,
       pieces: [
-        { kind: "plate", shape: shape(circle(R), [circle(0.25).reverse()]), thickness: 0.14 },
+        // 後板比前板大一圈,露出的外緣上有記號(轉動的後板大半被前板擋住)
+        { kind: "plate", shape: shape(circle(R + RIM), [circle(STUD + 0.01).reverse()]), thickness: 0.14, mark: [R + RIM / 2, 0], markSize: 0.06 },
         { kind: "tube", points: spiralPoints.map(([x, y]) => [x, y, 0.08]), radius: 0.045 },
         { kind: "tube", points: spiralPoints.map(([x, y]) => [x * 1.0 + 0.16 * Math.cos(Math.atan2(y, x)), y + 0.16 * Math.sin(Math.atan2(y, x)), 0.08]), radius: 0.045 },
-        { kind: "cylinder", radius: 0.25, length: 0.6 },
+        { kind: "cylinder", radius: 0.38, inner: STUD + 0.01, length: 0.4, at: [0, 0, -0.27] }, // 後板的轂,轉在中心的固定柱上
       ],
     },
     {
       id: "slotPlate",
       kind: "plate",
       center: [0, 0, 0.05],
-      shape: shape(circle(R), [circle(0.45).reverse(), ...slots.map((s) => s.reverse())]),
+      shape: shape(circle(R), [circle(STUD).reverse(), ...slots.map((s) => s.reverse())]),
       thickness: 0.1,
       circles: [0.45],
       arrow: false,
+    },
+    {
+      // 中心的固定柱(推斷,原圖只畫出中心的圓):前板套在柱上不動,後板繞柱轉;柱頭的螺帽壓住前板
+      id: "stud",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: STUD, length: 1.15, at: [0, 0, -0.4] },
+        { kind: "cylinder", radius: 0.32, length: 0.1, at: [0, 0, 0.15] },
+        ...pedestal({ at: [0, 0], z: -0.85, bore: STUD - 0.01, floor: -R - 0.6, depth: 0.2 }), // 柱的後端立在支座上
+      ],
     },
     { id: "bolt", kind: "cylinder", radius: 0.12, length: 0.35, center: [0, 0, 0.125] }, // 螺栓的下端坐在螺旋凸條上,不穿過後板
   ],

@@ -2,6 +2,7 @@
 // 曲柄(盤)轉一圈,軛往返一次,行程是曲柄半徑的兩倍,位移是正弦的。主動件是曲柄。
 import { polar } from "./kit.js";
 import { shape, circle, stadium } from "./shapes.js";
+import { pedestal, squareGuide } from "./supports.js";
 
 const R = 1.15; // 曲柄半徑
 const START = 0.15; // 原圖:曲柄銷在右側、略高
@@ -35,8 +36,21 @@ export default {
       arrow: false,
       pieces: [
         { kind: "plate", shape: shape(stadium(SLOT.length + 0.5, SLOT.width + 0.38).outline.map(([x, y]) => [x - (SLOT.length + 0.5) / 2, y]), [stadium(SLOT.length, SLOT.width).outline.map(([x, y]) => [x - SLOT.length / 2, y]).reverse()]), thickness: 0.2 },
-        { kind: "cylinder", radius: 0.16, length: 2.5, axis: [0, 1, 0], at: [0, -1.7, -0.08] },
+        { kind: "cylinder", radius: 0.16, length: 3.95, axis: [0, 1, 0], at: [0, -0.45 - 3.95 / 2, -0.08] },
         { kind: "cylinder", radius: 0.16, length: 0.9, axis: [0, 1, 0], at: [0, 0.9, -0.08] },
+      ],
+    },
+    {
+      // 下方桿的兩個固定導座(推斷,原圖沒畫):軸套由旁邊的柱子托著;軛上下 ±R,桿始終穿過兩個軸套
+      id: "guides",
+      kind: "group",
+      pieces: [
+        ...[-1.95, -2.95].flatMap((y) => [
+          { kind: "cylinder", axis: [0, 1, 0], radius: 0.3, inner: 0.17, length: 0.25, at: [0, y, 0.17] },
+          { kind: "box", size: [0.95, 0.16, 0.16], at: [0.72, y, 0.17] },
+        ]),
+        { kind: "box", size: [0.22, 1.5, 0.22], at: [1.2, -2.5, 0.17] },
+        ...pedestal({ at: [0, 0], z: -0.7, bore: 0.16, floor: -3.4 }), // 曲柄軸的軸承座,在曲柄盤後面
       ],
     },
   ],

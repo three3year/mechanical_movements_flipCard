@@ -7,6 +7,7 @@
 // 不能每次都取離 0° 最近的解——兩個解在圓盤轉半圈附近交會,那樣臂會在兩側之間跳 30°。
 import { TAU, deg, polar, rot2, wrap } from "./kit.js";
 import { shape, circle, arcPoints } from "./shapes.js";
+import { pedestal, squareGuide } from "./supports.js";
 
 const DISC = { center: [0, 0, 0], radius: 2.0, pin: 0.62 };
 const PIVOT = [3.15, -0.45, 0];
@@ -78,6 +79,7 @@ export default {
         { kind: "plate", shape: shape(circle(DISC.radius), [circle(0.12).reverse()]), thickness: 0.1, at: [0, 0, -0.25] },
         { kind: "cylinder", radius: 0.12, length: 0.55, at: [...polar(DISC.pin, START).slice(0, 2), 0], accent: true },
         { kind: "cylinder", radius: 0.2, length: 0.3, at: [0, 0, -0.1] },
+        { kind: "cylinder", radius: 0.12, length: 0.8, at: [0, 0, -0.6] }, // 圓盤的軸,往後伸進軸承座
       ],
     },
     {
@@ -92,7 +94,28 @@ export default {
         { kind: "cylinder", radius: 0.38, inner: 0.24, length: 0.3 },
       ],
     },
+    {
+      // 振動臂的樞軸銷與托著它的支座(推斷,原圖只畫出樞軸的圓);支座在臂的後面
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.23, length: 0.75, at: [PIVOT[0], PIVOT[1], -0.15] },
+        { kind: "box", size: [0.7, 2.6, 0.2], at: [PIVOT[0], PIVOT[1] - 1.2, -0.42] },
+        { kind: "box", size: [1.4, 0.2, 0.6], at: [PIVOT[0], PIVOT[1] - 2.5, -0.42] },
+        ...pedestal({ at: [0, 0], z: -0.8, bore: 0.13, floor: PIVOT[1] - 2.6 }), // 圓盤軸的軸承座,在圓盤後面
+      ],
+    },
   ],
+  // 動力重演:只推圓盤;振動臂鉸在樞軸銷上,由溝槽兩側被曲柄銷推著擺(不靠重力)
+  replay: {
+    free: { arm: { gravity: false } },
+    expect: [
+      { at: Math.PI / 2, part: "arm", label: "圓盤轉四分之一圈時臂的位置", quote: "曲柄銷在振動臂上所切出的一條無端(環形)溝槽內作動" },
+      { at: Math.PI, part: "arm", label: "圓盤轉半圈時臂的位置" },
+      { at: (3 * Math.PI) / 2, part: "arm", label: "圓盤轉四分之三圈時臂的位置" },
+      { at: 2 * Math.PI, part: "arm", label: "圓盤轉一圈,臂回到原處" },
+    ],
+  },
   driver: { part: "disc", type: "rotation" },
 
   target: "arm",

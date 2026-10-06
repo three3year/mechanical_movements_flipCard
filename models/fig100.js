@@ -4,10 +4,12 @@
 import { deg, polar } from "./kit.js";
 import { angleOf } from "./linkage.js";
 import { shape, circle, stadium } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const CRANK = { center: [-1.1, -0.35, 0], radius: 0.95 };
 const PIVOT = [1.45, 0.05, 0.3];
 const START = deg(110);
+const FLOOR = -2.2; // 底板的高度
 
 /** 曲柄轉 theta:曲柄銷位置、開槽桿(從樞軸指向銷)的方向角 */
 export function quickReturn(theta) {
@@ -27,6 +29,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(stadium(CRANK.radius, 0.62).outline, [circle(0.18).reverse()]), thickness: 0.12, angle: START },
         { kind: "cylinder", radius: 0.3, length: 0.3 },
+        { kind: "cylinder", radius: 0.15, length: 0.75, at: [0, 0, -0.45] }, // 曲柄軸,往後伸進軸承座
         { kind: "cylinder", radius: 0.2, length: 0.55, at: [...polar(CRANK.radius, START).slice(0, 2), 0.2], accent: true },
       ],
     },
@@ -43,7 +46,17 @@ export default {
         { kind: "cylinder", radius: 0.16, length: 2.1, axis: [1, 0, 0], at: [1.4, 0, 0] },
       ],
     },
-    { id: "pivot", kind: "cylinder", center: PIVOT, radius: 0.2, length: 0.45 },
+    {
+      // 開槽桿的樞軸銷與曲柄軸的軸承座(推斷,原圖只畫出兩個圓),都在後面立在同一塊底板上
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.2, length: 1.5, at: [PIVOT[0], PIVOT[1], PIVOT[2] - 0.5] },
+        ...pedestal({ at: [PIVOT[0], PIVOT[1]], z: -0.6, bore: 0.19, floor: FLOOR }),
+        ...pedestal({ at: [CRANK.center[0], CRANK.center[1]], z: -0.65, bore: 0.16, floor: FLOOR }),
+        { kind: "box", size: [3.6, 0.12, 0.5], at: [(PIVOT[0] + CRANK.center[0]) / 2, FLOOR - 0.24, -0.62] },
+      ],
+    },
   ],
   driver: { part: "crank", type: "rotation" },
   target: "lever", // 慢去快回的開槽桿

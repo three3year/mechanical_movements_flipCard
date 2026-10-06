@@ -2,6 +2,7 @@
 // 曲柄轉一圈,滑塊往返一次,行程等於曲柄半徑的兩倍。
 import { Z, deg, partPoint } from "./kit.js";
 import { sliderOnLine } from "./linkage.js";
+import { pedestal, squareGuide } from "./supports.js";
 
 const WHEEL = { center: [0, 0, 0], radius: 1.55 };
 const CRANK = 0.92; // 曲柄銷離軸心的距離
@@ -30,7 +31,10 @@ export default {
       center: WHEEL.center,
       radius: WHEEL.radius,
       width: 0.3,
-      pieces: [{ kind: "cylinder", radius: 0.09, length: 0.5, at: [CRANK * Math.cos(PIN0), CRANK * Math.sin(PIN0), 0.15] }],
+      pieces: [
+        { kind: "cylinder", radius: 0.09, length: 0.5, at: [CRANK * Math.cos(PIN0), CRANK * Math.sin(PIN0), 0.15] },
+        { kind: "cylinder", radius: 0.14, length: 0.9, at: [0, 0, -0.35] }, // 輪軸,往後伸進軸承座
+      ],
     },
     {
       id: "guide",
@@ -39,6 +43,8 @@ export default {
         rail(GUIDE.inner + GUIDE.rail / 2),
         rail(-GUIDE.inner - GUIDE.rail / 2),
         { kind: "box", size: [GUIDE.rail, 2 * (GUIDE.inner + GUIDE.rail), 0.3], at: [GUIDE.left - GUIDE.rail / 2, 0, FRONT] },
+        // 飛輪後面的軸承座(推斷,原圖只畫到輪轂)
+        ...pedestal({ at: [0, 0], z: -0.65, bore: 0.15, floor: -2.3 }),
       ],
     },
     { id: "slider", kind: "box", size: BLOCK.size, center: [0, 0, FRONT] },

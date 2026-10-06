@@ -79,14 +79,15 @@ export default {
     bevel("drive", DRIVE, { pieces: [{ kind: "cylinder", radius: 0.12, length: 1.0, at: [0, 0, -0.75] }] }),
     bevel("b", B, { pieces: [{ kind: "cylinder", radius: 0.2, length: JAW.z, at: [0, 0, JAW.z / 2] }, jaw(JAW.z, 1)], label: "B", labelOffset: [-0.3, 1.05, 0] }),
     bevel("c", C, { pieces: [{ kind: "cylinder", radius: 0.2, length: JAW.z, at: [0, 0, JAW.z / 2] }, jaw(JAW.z, 1)], label: "C", labelOffset: [0.3, 1.05, 0] }),
-    { id: "shaft", kind: "cylinder", axis: X, center: [0.9, 0, 0], radius: 0.08, length: 6.0, arrow: false },
+    // 軸上的鍵條(原文的 feather,D 在上面滑動)就是轉動的記號;D 隨軸轉,箭頭只留在軸上
+    { id: "shaft", kind: "cylinder", axis: X, center: [0.6, 0, 0], radius: 0.08, length: 6.6, mark: true, spin: 0.3, spinOffset: 0.75 },
     {
       id: "clutch",
       kind: "group",
       axis: X,
       center: [APEX[0], 0, 0],
       posed: true,
-      spin: 0.4,
+      arrow: false,
       pieces: [jaw(-0.12, -1), jaw(0.12, 1), { kind: "cylinder", radius: 0.2, length: 0.3 }],
       label: "D",
       labelOffset: [0, -0.5, 0.4],
@@ -97,6 +98,7 @@ export default {
         { kind: "cylinder", radius: 1.05, inner: 0.9, length: 0.15, at: [0, 0, -0.3] },
         ...[0, 1, 2, 3].map((i) => ({ kind: "box", size: [0.85, 0.08, 0.08], at: [0.42 * Math.cos((i * Math.PI) / 2), 0.42 * Math.sin((i * Math.PI) / 2), -0.3], angle: (i * Math.PI) / 2 })),
         { kind: "cylinder", radius: 0.09, length: 0.4, at: [-0.9, -0.37, -0.65], accent: true }, // 凸柱立在外圈的背面,不掃過小斜齒輪
+        { kind: "cylinder", radius: 0.14, length: 0.5, at: [0, 0, -0.45] }, // E 的軸,往後伸進軸承
       ],
       label: "E",
       labelOffset: [0, 1.2, 0],
@@ -129,10 +131,33 @@ export default {
       labelOffset: [-0.3, 0, 0],
     },
     { id: "rod", kind: "link", width: 0.08, thickness: 0.05 },
-    { id: "frame", kind: "group", pieces: [{ kind: "plate", shape: shape(circle(0.24), []), thickness: 0.3, at: [F.pivot[0], F.pivot[1], 0.6] }] },
+    {
+      // 機架(推斷,原圖沒畫):F、G 的樞軸銷,主軸兩端的軸承座,驅動斜齒輪與 E 的軸承
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "plate", shape: shape(circle(0.24), []), thickness: 0.3, at: [F.pivot[0], F.pivot[1], 0.6] },
+        { kind: "plate", shape: shape(circle(0.2), []), thickness: 0.3, at: [G.pivot[0], G.pivot[1], 0.6] },
+        ...[-2.45, 1.6].flatMap((x) => [
+          { kind: "cylinder", axis: X, radius: 0.24, inner: 0.09, length: 0.3, at: [x, 0, 0] },
+          { kind: "box", size: [0.3, 0.9, 0.2], at: [x, -0.65, 0] },
+        ]),
+        { kind: "cylinder", radius: 0.26, inner: 0.13, length: 0.25, at: [APEX[0], 0, -1.7] },
+        { kind: "cylinder", radius: 0.26, inner: 0.15, length: 0.2, at: [E_APEX[0], 0, -1.05] },
+      ],
+    },
   ],
-  // 動力重演:只推主動件;shaft 靠摩擦定位,由接觸帶動
-  replay: { from: 0, to: 6.283185307179586, free: { shaft: { hold: true } }, expect: [{ part: "shaft", label: "主動件走完一輪後 shaft 的位置" }] },
+  // 動力重演:只推驅動齒輪;軸靠摩擦定位,由離合器 D 帶著轉。D 的滑動、F 的倒下照時序演出(維護者決定維持現狀),
+  // 重演裡沒有東西真的把 D 撥過去,所以不成立,見豁免
+  replay: {
+    from: 0,
+    to: 2 * SPAN,
+    free: { shaft: { hold: true } },
+    expect: [
+      { at: SPAN, part: "shaft", label: "一程結束時軸轉到一端", quote: "藉此反轉軸的運動方向" },
+      { at: 2 * SPAN, part: "shaft", label: "第二程軸反轉回到原處", quote: "於是再次使運動反轉" },
+    ],
+  },
   driver: { part: "drive", type: "rotation", speed: 1.2 },
 
   target: "shaft", // 自動來回反轉的軸(連桿只是撥動離合器的中間件)
@@ -163,7 +188,7 @@ export default {
     };
   },
   waivers: [
-    { check: "replay", parts: ["shaft"], reason: "未修:動力重演不成立——「主動件走完一輪後 shaft 的位置」預期 shaft 在主動量 6.28 時已轉 347°,實際轉了 169°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
+    { check: "replay", parts: ["shaft"], reason: "待確認:動力重演不成立,刻意沒修——維護者 2026-10-04 決定第 87、186、187 種的演出傳動先不重排,這一項跟著那個決定留著。E 的凸柱推 G、G 經連桿推 F、F 撥離合器 D 這一串是照時序演出的,零件之間沒有實體相碰;重演裡 D 只隨模型的姿勢移動,軸只被 D 的摩擦帶著,反轉的時機與轉角對不上。要通過得重排整組槓桿讓它們真的相碰(推翻的建議見待確認清單最上方)" },
     { check: "unsupported", parts: ["rod"], reason: "E 上的凸柱推 G、G 經連桿推 F、F 撥動離合器 D 這一串是依時序演出的:凸柱與 G、F 與離合器之間沒有畫出相碰的實體。原圖這部分是示意畫法,看不出深度配置;要補就得重排整組槓桿的位置(列入待確認清單)" },
     { check: "unsupported", parts: ["crankG"], reason: "E 上的凸柱推 G、G 經連桿推 F、F 撥動離合器 D 這一串是依時序演出的:凸柱與 G、F 與離合器之間沒有畫出相碰的實體。原圖這部分是示意畫法,看不出深度配置;要補就得重排整組槓桿的位置(列入待確認清單)" },
     { check: "unsupported", parts: ["leverF"], reason: "E 上的凸柱推 G、G 經連桿推 F、F 撥動離合器 D 這一串是依時序演出的:凸柱與 G、F 與離合器之間沒有畫出相碰的實體。原圖這部分是示意畫法,看不出深度配置;要補就得重排整組槓桿的位置(列入待確認清單)" },

@@ -351,15 +351,43 @@ test("第 84 種:抬起 A 時框架被推向左方,降下 A 時推向右方,置�
   close(Math.abs(frameShift(2 * Math.PI * 2 + 3.5, "raised") - frameShift(2 * Math.PI + 3.5, "raised")), 0.32, "每圈推一齒");
 });
 
-import { pump, lift as lift86 } from "../models/fig086.js";
+import { pump, lift as lift86, liftAngle as liftAngle86, contactAt as contact86 } from "../models/fig086.js";
 import { reverser, leverF } from "../models/fig087.js";
-import { wheelB } from "../models/fig088.js";
+import { wheelB, contactAt as contact88 } from "../models/fig088.js";
 
-test("第 86 種:凸輪每轉一圈抓住制動裝置 B,帶輪 A 轉起、抬起繩索;到擋止處釋放,輪被泵桶拉回原位", () => {
-  close(pump(lift86 * 0.5).wheel, lift86 * 0.5, "鉤住時輪與凸輪同轉");
-  assert.equal(pump(lift86 * 0.5).hooked, true);
-  close(pump(Math.PI * 1.9).wheel, 0, "釋放後回到原位");
-  close(pump(2 * Math.PI + 0.3).wheel, pump(0.3).wheel, "每圈重複");
+test("第 86 種:凸輪「抓住」制動裝置 B 之前輪不動;抓住後「連同輪一起帶動旋轉」(與凸輪同轉,順時針)", () => {
+  const caught = sweep(lift86, 360).find((c) => pump(c).hooked);
+  assert.ok(caught > 0.2, "主動量 0 時齒還沒碰到鉤");
+  for (const c of sweep(caught - 0.02, 20)) close(pump(c).wheel, 0, "被抓住之前輪停在原位");
+  const a = caught + 0.3;
+  const b = caught + 1.0;
+  close(pump(b).wheel - pump(a).wheel, -(b - a), "鉤住時輪與凸輪同轉", 0.01);
+  assert.ok(liftAngle86 < -Math.PI / 2, `輪被帶著轉了將近 100°(實際 ${((liftAngle86 * 180) / Math.PI).toFixed(0)}°)`);
+});
+
+test("第 86 種:「制動裝置的末端撞擊到上方的靜止擋止時」被釋放,「輪則憑藉泵桶的重量而被拉回原位」——加速落回", () => {
+  const fall = sweep(lift86 + 0.9, 90, lift86).map((c) => pump(c).wheel);
+  const back = fall.findIndex((w) => Math.abs(w) < 1e-9);
+  assert.ok(back > 10, "落回有過程,不是瞬間回到原位");
+  // 憑重量落下:起步慢、越來越快——前一半的時間走不到一半的路
+  const half = fall[Math.floor(back / 2)];
+  assert.ok(Math.abs(half) > Math.abs(fall[0]) / 2, "前一半時間落下不到一半");
+  for (let i = 1; i < back; i++) assert.ok(fall[i] >= fall[i - 1] - 1e-9, "一路往原位落,不回頭");
+  close(pump(2 * Math.PI + 1).wheel, pump(1).wheel, "凸輪每轉一圈重複一次", 1e-9);
+});
+
+test("第 86 種:鉤、凸輪、擋止之間由接觸決定,任何時刻都不互相穿入", () => {
+  for (const c of sweep(2 * Math.PI, 360)) {
+    const { cam, catch: parts, stop } = contact86(c);
+    for (const p of parts) {
+      assert.ok(penetrationDepth(p, cam) < 0.01, `主動量 ${c.toFixed(2)}:B 穿進凸輪 ${penetrationDepth(p, cam).toFixed(3)}`);
+      assert.ok(penetrationDepth(p, stop) < 0.01, `主動量 ${c.toFixed(2)}:B 穿進擋止`);
+    }
+  }
+  // 釋放前一刻 B 被擋止撬開(尾端貼著擋止)
+  const { catch: atLift, stop } = contact86(lift86 - 0.01);
+  const gap = Math.min(...atLift.flatMap((p) => [...p.map((q) => edgeDistance(q, stop)), ...stop.map((q) => edgeDistance(q, p))]));
+  assert.ok(gap < 0.02, `釋放時尾端貼著擋止(差 ${gap.toFixed(3)})`);
 });
 
 test("第 87 種:軸自動反向——驅動齒輪連續轉,軸來回往復;每次反向時加重槓桿 F 倒向另一側", () => {
@@ -373,9 +401,22 @@ test("第 87 種:軸自動反向——驅動齒輪連續轉,軸來回往復;每�
   close(leverF(span * (1 - 1e-6)), 0, "一程結束時 F 被推到垂直", 1e-3);
 });
 
-test("第 88 種:凸輪 A 連續旋轉,輪 B 每圈被帶著轉半圈、其餘半圈靜止", () => {
-  close(wheelB(2 * Math.PI) - wheelB(0), Math.PI, "每圈半圈");
-  const rest = sweep(2 * Math.PI - 0.05, 20, Math.PI + 0.05).map(wheelB);
-  for (const r of rest) close(r, rest[0], "後半圈靜止");
-  close(wheelB(1) - wheelB(0.5), 0.5, "前半圈與凸輪同轉");
+test("第 88 種:凸輪 A 連續旋轉,輪 B「保持靜止,直到凸輪完成其旋轉」——每圈被推半圈、其餘時間靜止(照原圖順時針)", () => {
+  close(wheelB(2 * Math.PI) - wheelB(0), -Math.PI, "每圈半圈", 1e-9);
+  close(wheelB(4 * Math.PI + 1) - wheelB(2 * Math.PI + 1), -Math.PI, "每圈重複", 1e-9);
+  const angles = sweep(2 * Math.PI, 360).map(wheelB);
+  const still = angles.filter((b, i) => i > 0 && Math.abs(b - angles[i - 1]) < 1e-9).length;
+  assert.ok(still > 120, `一圈裡有一大段 B 不動(${still} / 360)`);
+  for (let i = 1; i < angles.length; i++) assert.ok(angles[i] <= angles[i - 1] + 1e-9, "B 只往凸輪推的方向轉,不倒退");
+});
+
+test("第 88 種:B 只在凸輪的台階碰到擋止時才轉,擋止與凸輪不互相穿入", () => {
+  for (const c of sweep(2 * Math.PI, 720)) {
+    const { cam, stops } = contact88(c);
+    const depth = Math.max(...stops.map((s) => penetrationDepth(s, cam)));
+    assert.ok(depth < 0.01, `主動量 ${c.toFixed(3)}:擋止穿進凸輪 ${depth.toFixed(3)}`);
+    const moving = Math.abs(wheelB(c + 0.004) - wheelB(c)) > 1e-6;
+    const gap = Math.min(...stops.flatMap((s) => s.map((p) => edgeDistance(p, cam))));
+    if (moving) assert.ok(gap < 0.02, `主動量 ${c.toFixed(3)}:B 在轉,但沒有擋止碰著凸輪(差 ${gap.toFixed(3)})`);
+  }
 });

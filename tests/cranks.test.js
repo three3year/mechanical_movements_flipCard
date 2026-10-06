@@ -64,6 +64,19 @@ test("第 96 種:任何轉角下桿端滾子都貼著凸輪輪廓", () => {
   }
 });
 
+test("第 96 種:水平的桿回程靠套在桿上的彈簧壓回凸輪——桿被推得越遠彈簧壓得越短,始終是壓縮的", () => {
+  const spring = (a) => {
+    const { from, to } = fig96.pose(a).parts.spring;
+    return to[0] - from[0];
+  };
+  const x = (a) => fig96.pose(a).parts.rod.position[0];
+  for (const a of sweep(2 * Math.PI, 40)) {
+    assert.ok(spring(a) > 0.1, `轉角 ${a.toFixed(2)}:彈簧被壓到底`);
+    close(spring(a) + x(a), spring(0) + x(0), `轉角 ${a.toFixed(2)}:彈簧的一端跟著桿走、另一端頂在導套上`, 1e-9);
+  }
+  assert.ok(spring(Math.PI) < spring(0), "桿被推到最遠時彈簧最短");
+});
+
 import { eccentric, throwRadius as e89 } from "../models/fig089.js";
 import { scotch, throwRadius as e90 } from "../models/fig090.js";
 import { frame as frame91, width as width91 } from "../models/fig091.js";
@@ -131,6 +144,21 @@ test("第 99 種:圓盤上的螺旋導引器使進給滑座每轉一圈移動一
   close(feed(0) - feed(2 * Math.PI), pitch99);
   const [lo, hi] = fig99.driver.range;
   assert.ok(feed(lo) > feed(hi), "在範圍內滑座從外往內移動");
+});
+
+test("第 99 種:滑座的銷卡在螺旋凸條相鄰兩圈之間,由凸條推著走(不是坐在凸條上)", () => {
+  const disc = fig99.parts.find((p) => p.id === "disc");
+  const ridge = disc.pieces.find((p) => p.kind === "tube");
+  const pin = fig99.parts.find((p) => p.id === "slide").pieces.find((p) => p.kind === "cylinder" && !p.inner);
+  const [lo, hi] = fig99.driver.range;
+  for (const t of sweep(hi, 60, lo)) {
+    // 銷在圓盤正下方;換到圓盤的座標裡,量它離最近一段凸條的距離
+    const [x, y] = [0, -feed(t)];
+    const [u, v] = [x * Math.cos(-t) - y * Math.sin(-t), x * Math.sin(-t) + y * Math.cos(-t)];
+    const near = Math.min(...ridge.points.map(([px, py]) => Math.hypot(px - u, py - v)));
+    assert.ok(near > pin.radius + ridge.radius - 0.005, `t=${t.toFixed(2)}:銷壓進凸條`);
+    assert.ok(near < pin.radius + ridge.radius + 0.03, `t=${t.toFixed(2)}:銷沒碰著凸條(差 ${(near - pin.radius - ridge.radius).toFixed(3)})`);
+  }
 });
 
 test("第 100 種:快速回程——開槽桿往兩個方向擺動所花的曲柄轉角不同", () => {
