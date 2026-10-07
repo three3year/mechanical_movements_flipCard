@@ -115,8 +115,8 @@ test("第 478 種:Ray 疏水器:管裡是水時管子短、閥門開;是蒸汽�
     assert.ok(s.plunger >= s.end - 1e-12, "管端不會穿過柱塞");
     // 由接觸算:加重的肘節槓桿 D 鉸在固定的支點上,下臂的左側面貼著柱塞右端的下緣
     const a = s.lever;
-    const corner = [s.plunger + 1.2 - m478.PIVOT[0], -0.1 - m478.PIVOT[1]];
-    close(-corner[0] * Math.cos(a) - corner[1] * Math.sin(a), 0.04, "下臂的側面貼著柱塞端", 1e-6);
+    const corner = [s.plunger + m478.PLUNGER - m478.PIVOT[0], -m478.PLUNGER_R - m478.PIVOT[1]];
+    close(-corner[0] * Math.cos(a) - corner[1] * Math.sin(a), m478.ARM_W / 2, "下臂的側面貼著柱塞端", 1e-6);
   }
   assert.ok(m478.trap(1).lever > m478.trap(0).lever, "管子膨脹時柱塞把槓桿推回(重球抬起)");
 });

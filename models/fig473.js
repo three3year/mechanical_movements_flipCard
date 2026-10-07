@@ -86,6 +86,4 @@ export default {
       readouts: [{ label: "倒扣的桶", value: b.rising ? "被提起:裡面變稀薄,氣體經下方的閥上來" : "下降:空氣經頂上的閥排出" }],
     };
   },
-  waivers: [
-  ],
 };

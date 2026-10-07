@@ -5,15 +5,17 @@
 // 棘輪照原圖做成冠狀:16 個齒立在底座的環上,每齒是一段緩坡加一面直壁(轉的方向爬緩坡)。
 // 棘爪鉸在鼓的下緣、爪尖靠自重搭在齒上(由接觸算):爪尖沿緩坡被抬起,越過齒頂後加速落到下一齒的齒根;
 // 倒轉時爪尖頂在直壁上,絞盤轉不回去。
-// 動力重演做不了:棘爪的姿勢是「隨絞盤轉、又繞自己沿半徑的銷擺」的複合轉動,重演只比對繞單一固定軸的轉角
-// (預期事件比的是姿勢的 angle),棘爪擺多少比不出來;測試另外驗爪尖搭在齒面上、越過齒頂後加速落下。
+// 動力重演:棘爪的姿勢是「隨絞盤轉、又繞自己沿半徑的銷擺」的複合轉動,重演只比得出繞固定軸的轉角,
+// 而銷的方向隨絞盤轉:只有轉回整圈時銷才回到原來的方向、比得出來。所以只比轉一整圈(16 齒)之後:
+// 棘爪只靠自重,一路搭回齒上、沒有卡住或翻走;
+// 中間抬起、落下的過程由測試驗(爪尖搭在齒面上、越過齒頂後加速落下)。
 import { TAU, Y, Z, quatAxisAngle, quatMul, quatFromBasis } from "./kit.js";
 import { shape, circle } from "./shapes.js";
 
 export const DRUM_R = 0.55;
 export const TEETH = 16;
 const BASE_Y = -1.3;
-const RING_TOP = BASE_Y + 0.08; // 棘輪環的頂面
+export const RING_TOP = BASE_Y + 0.08; // 棘輪環的頂面
 export const RATCHET_R = 0.82; // 冠狀齒所在的半徑
 export const TOOTH_H = 0.12; // 齒高
 const PITCH = TAU / TEETH;
@@ -121,6 +123,13 @@ export default {
     { id: "pawl", kind: "plate", shape: shape([[0, -PAWL_W / 2], [PAWL, -PAWL_W / 2], [PAWL, PAWL_W / 2], [0, PAWL_W / 2]], [circle(0.025).reverse()]), thickness: 0.08, arrow: false },
     { id: "rope", kind: "rope", radius: 0.04 },
   ],
+  // 動力重演:棘爪鉸在鼓上(沿半徑的銷)、只靠自重搭在冠狀齒上;只比轉一整圈之後(見檔頭)
+  replay: {
+    free: { pawl: { on: "drum", pivot: [PAWL_AT, PIVOT_Y, 0], axis: [1, 0, 0] } },
+    expect: [
+      { part: "pawl", label: "絞盤轉一圈,棘爪仍搭在齒上(沒有卡住或翻走)", quote: "絞盤由連接於其下部的棘爪防止倒轉" },
+    ],
+  },
   driver: { part: "capstan", type: "rotation", speed: 0.4 },
   target: "drum", // 纜繩是路徑零件(不上目標色);標把纜繩捲進來的絞盤鼓
   view: { direction: [0.25, 0.3, 1] },
@@ -143,6 +152,4 @@ export default {
       readouts: [{ label: "收進的纜繩", value: c.hauled.toFixed(2) }],
     };
   },
-  waivers: [
-  ],
 };

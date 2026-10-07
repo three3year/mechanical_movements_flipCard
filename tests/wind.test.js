@@ -101,7 +101,7 @@ test("第 491 種:絞盤:推桿轉動絞盤收進纜繩;棘爪在底座的棘齒
   // 由接觸算:爪尖不會沉進齒面以下
   for (const t of sweep(2 * tooth, 60)) {
     const c = m491.capstan(t);
-    assert.ok(c.tip >= -1.22 + m491.toothHeight(t - (m491.PAWL * Math.cos(c.tilt)) / m491.RATCHET_R) - 1e-6, "爪尖搭在齒面上(不穿入)");
+    assert.ok(c.tip >= m491.RING_TOP + m491.toothHeight(t - (m491.PAWL * Math.cos(c.tilt)) / m491.RATCHET_R) - 1e-6, "爪尖搭在齒面上(不穿入)");
   }
 });
 
@@ -118,6 +118,11 @@ test("第 492 種:小艇脫鉤器:拉繩使槓桿上的環孔從舌片滑脫,舌
   assert.ok(slide[0] < TONGUE && slide[6] < TONGUE, "拉到一半環孔還套在舌片上");
   assert.ok(slide[12] > TONGUE, "拉到 SLIP 時環孔已滑過舌片尖端");
   assert.ok(EYE_R > TONGUE_W / 2, "舌片穿得過環孔");
+  // 環孔滑脫後,舌片被小艇的重量翻開、小艇掉下:都是加速的(每一步走得比上一步多),到底停住
+  const falls = sweep(1, 100, m492.SLIP).map((u) => m492.release(u).fall);
+  const moving = falls.map((f, i) => (i ? f - falls[i - 1] : 0)).filter((d) => d > 1e-9);
+  assert.ok(moving.length > 5 && moving.slice(0, -1).every((d, i) => i === 0 || d >= moving[i - 1] - 1e-9), "小艇加速掉下(最後一步是撞到底)");
+  close(falls[falls.length - 1], m492.DROP, "掉到底停住");
 });
 
 test("第 493 種:路易斯吊楔:吊起中央的楔子把兩邊的填塊擠緊在孔壁上,石塊隨之吊起", () => {

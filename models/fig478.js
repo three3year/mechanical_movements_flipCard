@@ -7,7 +7,7 @@
 // 槓桿 D 由接觸算:鉸在右上的支架上,重球在支點右邊,重量使下臂往左壓在柱塞的右端;柱塞往左最多推到
 // 下臂靠上擋止 c(擋止螺絲 b 穿過 c、調整這個位置)。管子膨脹把柱塞往右頂時,下臂被柱塞推回、重球抬起。
 // 管端另畫一個管口(實體),跟著管子伸縮。
-import { deg, clamp } from "./kit.js";
+import { clamp } from "./kit.js";
 import { stream } from "./flow.js";
 import { shape, circle, thickLine } from "./shapes.js";
 
@@ -18,10 +18,10 @@ export const STOP = 0.95; // 擋止讓柱塞最多推到這裡
 const SPHERE = { center: [0.85, 0, 0], r: 0.75 };
 const PIPE_R = 0.12;
 
-const PLUNGER = 1.2; // 柱塞長
+export const PLUNGER = 1.2; // 柱塞長
 export const PIVOT = [2.6, 0.55]; // 槓桿 D 的支點
-const ARM_W = 0.08; // 下臂寬
-const PLUNGER_R = 0.1;
+export const ARM_W = 0.08; // 下臂寬
+export const PLUNGER_R = 0.1;
 const ARM = 1.0; // 下臂長
 /** 柱塞右端在 x 時,壓在它上面的下臂的轉角(逆時針為正;下臂朝下往左斜,左側面貼著柱塞右端的下緣) */
 export function leverAngle(x) {

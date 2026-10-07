@@ -172,6 +172,6 @@ export default {
     { check: "interference", parts: ["upper", "disc10"], reason: "鏈式泵:鏈上的碟片與燈籠輪的橫檔、管壁逐一相貼(碟片嵌在橫檔之間、在管裡滑),重疊 0.10;鏈上零件多,維護者已同意維持現狀(待確認清單)" },
     { check: "interference", parts: ["upper", "disc9"], reason: "鏈式泵:鏈上的碟片與燈籠輪的橫檔、管壁逐一相貼(碟片嵌在橫檔之間、在管裡滑),重疊 0.09;鏈上零件多,維護者已同意維持現狀(待確認清單)" },
     { check: "interference", parts: ["upper", "disc8"], reason: "鏈式泵:鏈上的碟片與燈籠輪的橫檔、管壁逐一相貼(碟片嵌在橫檔之間、在管裡滑),重疊 0.09;鏈上零件多,維護者已同意維持現狀(待確認清單)" },
-    { check: "interference", parts: ["works", "trough"], reason: "鏈式泵:鏈上的碟片與燈籠輪的橫檔、管壁逐一相貼(碟片嵌在橫檔之間、在管裡滑),重疊 0.09;鏈上零件多,維護者已同意維持現狀(待確認清單)" },
+    { check: "interference", parts: ["works", "trough"], reason: "簡化畫法:左上的水槽擱在岸上,槽底嵌進岸 0.09(原因原本誤寫成鏈上碟片那一句;維護者已同意維持現狀,待確認清單)" },
   ],
 };

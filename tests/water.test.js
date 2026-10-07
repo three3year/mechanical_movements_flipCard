@@ -473,6 +473,26 @@ test("第 459 種:往復式升降機:風車一直朝同一方向轉,水桶一上
     prev = l;
   }
   assert.ok(flips >= 2, "風車持續轉,水桶來回好幾趟");
+  const def = m459.default;
+  for (const v of sweep(40, 400)) {
+    const w = 2 * Math.PI * v;
+    const l = m459.lift(w);
+    // 撥爪(搖臂)倒向哪邊,蝸桿軸的下端就往哪邊偏、咬上那一邊的輪:倒向左(逆時針)時咬左輪、左桶上升
+    if (Math.abs(l.beta) > m459.TILT / 2) assert.equal(Math.sign(m459.worm(l.beta).shift), -Math.sign(l.beta), "搖臂把蝸桿推向一個輪");
+    if (!l.atTop) assert.equal(l.engaged === 0, l.leftUp, "咬左輪時左桶上升,咬右輪時右桶上升");
+    // 一條繩繞過兩個滑輪的頂上:兩個滑輪一起轉
+    const parts = def.pose(v).parts;
+    close(parts.wheelL.angle, parts.wheelR.angle, "兩個滑輪同轉");
+    // 由接觸算:撥爪被水桶頂起的時候,撞銷的底恰好擱在上升水桶的提把上(原文:水桶上升時會撞擊到它)
+    if (!l.atTop && Math.abs(l.beta) < m459.TILT - 1e-6) {
+      const s = l.leftUp ? -1 : 1;
+      const pinBottom = m459.PIVOT[1] + s * m459.ARM * Math.sin(l.beta) + m459.PIN_Y - m459.PIN_R;
+      const handle = (l.leftUp ? l.left : l.right) + m459.HANDLE;
+      close(pinBottom, handle, "撞銷擱在提把上", 0.01);
+    }
+  }
+  // 單頭蝸桿配 12 齒的蝸輪:風車轉一圈,咬著的蝸輪轉 1/12 圈(繩走 1/12 圈的滑輪周長)
+  close(m459.lift(2 * Math.PI).left - m459.lift(0).left, (2 * Math.PI * m459.RATIO) * m459.DRUM_R, "風車一圈,水桶升一段", 1e-9);
 });
 
 test("第 460 種:舀水斗:槓桿經連桿把舀斗抬起,水流到鉸點倒上岸;凹槽越遠抬得越多", () => {

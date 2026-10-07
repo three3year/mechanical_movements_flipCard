@@ -12,21 +12,21 @@
 import { TAU, deg, clamp, quatFromZ, quatMul, quatAxisAngle, Y, Z } from "./kit.js";
 import { shape, rect, circle, thickLine } from "./shapes.js";
 
-const RATIO = 1 / 12; // 單頭蝸桿、12 齒的蝸輪:風車轉一圈,蝸輪轉 1/12 圈
+export const RATIO = 1 / 12; // 單頭蝸桿、12 齒的蝸輪:風車轉一圈,蝸輪轉 1/12 圈
 export const WHEELS = [[-0.55, 0.9, 0], [0.55, 0.9, 0]]; // 兩個蝸輪(軸沿 z)
 const WHEEL_R = 0.42;
-const DRUM_R = 0.3; // 蝸輪後面的滑輪
+export const DRUM_R = 0.3; // 蝸輪後面的滑輪
 const JOINT = [0, 2.5, 0]; // 蝸桿軸上端的接頭(風車軸在它上面,不擺動)
 const SHAFT_LOW = 0.42; // 蝸桿軸的下端(套在搖臂頂的軸承裡)
 const WORM_Y = 0.9;
-const PIVOT = [0, 0.15, 0]; // 撥爪的鉸點
+export const PIVOT = [0, 0.15, 0]; // 撥爪的鉸點
 const POST = SHAFT_LOW - PIVOT[1]; // 搖臂(撥爪的立柱)長
-const ARM = 1.0; // 撥爪鉸點到撞銷
-const PIN_R = 0.03;
+export const ARM = 1.0; // 撥爪鉸點到撞銷
+export const PIN_R = 0.03;
 export const TILT = deg(9); // 撥爪擺到底的角度(逆時針為正:右臂往上、立柱頂往左)
-const HANDLE = 0.295; // 水桶提把橫樑的頂離水桶中心
+export const HANDLE = 0.295; // 水桶提把橫樑的頂離水桶中心
 const ROPE_X = WHEELS[1][0] + DRUM_R; // 兩條繩垂在滑輪外側
-const PIN_Y = 0.06; // 撞銷在撥爪臂上微微翹起的高度
+export const PIN_Y = 0.06; // 撞銷在撥爪臂上微微翹起的高度
 export const TOP = PIVOT[1] + PIN_Y - PIN_R - HANDLE; // 水桶升到這裡時剛好把撥爪頂到水平
 export const BOTTOM = -2.4; // 水桶在井底(水裡)
 const STROKE = TOP - BOTTOM;
@@ -56,7 +56,9 @@ export function lift(w) {
   const left = leftUp ? rising : TOP + BOTTOM - rising;
   // 繩繞過兩個滑輪的頂上:左桶上升時滑輪順時針轉
   const drum = -(left - BOTTOM) / DRUM_R;
-  return { left, right: TOP + BOTTOM - left, leftUp, engaged: beta > 0 ? 0 : beta < 0 ? 1 : -1, beta, drum, atTop: f >= MOVE };
+  // 蝸桿咬著哪個輪(0 左、1 右):水桶上升時咬著帶它的那個輪;撥爪翻邊途中,倒過一半才算咬上另一個輪(之前是 -1)
+  const engaged = f < MOVE ? (leftUp ? 0 : 1) : beta > TILT / 2 ? 0 : beta < -TILT / 2 ? 1 : -1;
+  return { left, right: TOP + BOTTOM - left, leftUp, engaged, beta, drum, atTop: f >= MOVE };
 }
 
 /** 撥爪轉 beta → 搖臂頂(蝸桿軸下端)的橫移與蝸桿軸的傾角 */

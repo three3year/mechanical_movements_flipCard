@@ -108,6 +108,4 @@ export default {
       readouts: [{ label: "圓筒升起", value: j.rise.toFixed(2) }],
     };
   },
-  waivers: [
-  ],
 };

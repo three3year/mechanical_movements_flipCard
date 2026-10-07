@@ -30,13 +30,29 @@ export function valve(theta) {
   return { c, end, shift: end[0] + VALVE_ROD - CYL.x };
 }
 
-/** 驅動軸轉 theta → 錘頭底的高度、空氣在活塞哪一側(由滑閥的位置決定) */
+// 滑閥換向的軸角:往右越過中間(空氣改進活塞下方)與往左越過中間(改進上方)
+const crossing = (up) => {
+  const N = 720;
+  for (let i = 0; i < N; i++) {
+    const [a, b] = [valve((TAU * i) / N).shift, valve((TAU * (i + 1)) / N).shift];
+    if (up ? a <= 0 && b > 0 : a >= 0 && b < 0) return (TAU * (i + 0.5)) / N;
+  }
+  return 0;
+};
+const TO_BELOW = crossing(true);
+const TO_ABOVE = crossing(false);
+const BELOW_SPAN = (((TO_ABOVE - TO_BELOW) % TAU) + TAU) % TAU;
+const FALL = 0.2 * TAU; // 錘被壓下、加速打到砧上所佔的軸角
+
+/** 驅動軸轉 theta → 錘頭底的高度、空氣在活塞哪一側:錘的升落跟著滑閥換向的時刻 */
 export function hammer(theta) {
-  const u = (((theta / TAU) % 1) + 1) % 1;
+  const since = (at) => (((theta - at) % TAU) + TAU) % TAU;
   const below = valve(theta).shift > 0; // 滑閥偏右:空氣進活塞下方
-  // 前半圈空氣在下方、錘被頂起;後半圈換到上方,錘被壓下、加速打在砧上,停在砧上直到滑閥再換向
-  const y = below ? ANVIL_TOP + LIFT * smooth(Math.min(1, u / 0.45)) : u < 0.7 ? ANVIL_TOP + LIFT * (1 - ((u - 0.5) / 0.2) ** 2) : ANVIL_TOP;
-  return { y: Math.max(ANVIL_TOP, y), below, u };
+  // 空氣進下方時錘被頂起(由慢到快再慢,升到頂);換到上方後錘被壓下、加速打在砧上,停在砧上直到滑閥再換向
+  const y = below
+    ? ANVIL_TOP + LIFT * smooth(Math.min(1, since(TO_BELOW) / (0.9 * BELOW_SPAN)))
+    : ANVIL_TOP + LIFT * Math.max(0, 1 - (since(TO_ABOVE) / FALL) ** 2);
+  return { y, below };
 }
 
 const frame = shape([[-2.1, -2.0], [2.2, -2.0], [2.2, -1.75], [1.85, -1.6], [1.75, -0.8], [0.75, -0.8], [0.6, 0.4], [0.9, 1.0], [1.75, 1.0], [1.75, 2.5], [-0.5, 2.5], [-0.5, 1.75], [-0.15, 1.6], [-0.3, -0.6], [-1.1, -1.75], [-2.1, -1.75]]);
