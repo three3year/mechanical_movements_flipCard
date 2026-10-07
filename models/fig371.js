@@ -2,7 +2,9 @@
 // 小齒輪均勻地轉,先咬著輪緣一面的齒帶輪往一個方向轉將近一圈;開口轉到小齒輪處時,小齒輪穿過開口到輪緣的另一面,
 // 改咬另一面的齒,輪就反過來轉。主動件是小齒輪。
 // 推斷:齒數、開口的寬度;小齒輪穿過開口時沿軸向移動(原圖的方框軸承讓它能前後移)。
+// 大輪套在固定的軸上,軸立在輪後面的軸承座上;小齒輪的方框軸承由一根立柱撐著(推斷,原圖沒畫)。
 import { X, TAU, deg, smooth } from "./kit.js";
+import { pedestal } from "./supports.js";
 
 const R = 1.7; // 冠狀齒所在的半徑(輪緣中線)
 const TEETH = 60;
@@ -56,6 +58,16 @@ export default {
     },
     { id: "pinion", kind: "gear", axis: X, teeth: NP, radius: 0.3, width: 0.3, pieces: [{ kind: "cylinder", radius: 0.06, length: 1.6, at: [0, 0, -0.9] }] },
     { id: "bearing", kind: "box", size: [0.35, 0.35, 0.9], center: [-R - 1.0, 0, 0] },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.28, length: 1.0, at: [0, 0, -0.3] }, // 大輪的固定軸(輪轂套在上面轉)
+        ...pedestal({ at: [0, 0], z: -0.75, bore: 0.29, floor: -R - 0.7 }),
+        { kind: "box", size: [0.3, R + 0.7 - 0.175, 0.3], at: [-R - 1.0, -(R + 0.7 + 0.175) / 2, 0] }, // 撐著小齒輪方框軸承的立柱
+        { kind: "box", size: [0.9, 0.18, 0.9], at: [-R - 1.0, -R - 0.79, 0] },
+      ],
+    },
   ],
   driver: { part: "pinion", type: "rotation" },
   target: "wheel", // 交替換向的大輪

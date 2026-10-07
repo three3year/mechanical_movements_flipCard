@@ -2,12 +2,15 @@
 // 由螺旋彈簧做成的指示器;大輪轉動時,指示器顯示讓小車保持不動所需的力。實驗發現速度不同時指示器不變,
 // 載重不同時立刻改變。主動件是大輪(以皮帶帶動);狀態按鈕切換載重輕 / 重。
 // 推斷:指示器指針的角度與載重成正比、與轉速無關(原文的實驗結果);小車的輪被輪面帶著轉。
-import { deg } from "./kit.js";
+// 帶動大輪的皮帶繞在右下角的皮帶輪上(原圖皮帶伸出圖外;皮帶輪與它在立柱上的軸承是推斷);大輪的軸架在 A 形架的頂上。
+import { deg, Z, routeBelt } from "./kit.js";
 import { shape, circle, thickLine } from "./shapes.js";
 
 const WHEEL = { center: [-0.9, -1.0, 0], r: 1.65 };
 const CART_W = 0.22; // 小車輪半徑
 const DIAL = [1.35, 1.25, 0];
+const PULLEY = { center: [2.35, -2.25, 0.35], r: 0.5 };
+const HUB = 0.55; // 大輪軸上皮帶繞過的輪轂半徑
 export const LOADS = { light: 1, heavy: 2.4 };
 
 /** 狀態 → 指示器指針的角度(只看載重,不看大輪的轉速) */
@@ -24,6 +27,8 @@ export default {
         { kind: "plate", shape: shape(thickLine([[-3.2, -1.65], [2.6, -0.2]], 0.22)), thickness: 0.3, at: [0, 0, -0.4] },
         { kind: "box", size: [0.2, 3.4, 0.3], at: [2.3, -0.9, -0.4] },
         { kind: "box", size: [1.2, 0.15, 0.3], at: [1.75, 0.55, -0.2] },
+        // 皮帶輪的軸承環(貼在立柱前面)
+        { kind: "cylinder", radius: 0.2, inner: 0.09, length: 0.2, at: [PULLEY.center[0], PULLEY.center[1], -0.15] },
       ],
     },
     {
@@ -36,7 +41,17 @@ export default {
         ...Array.from({ length: 8 }, (_, i) => ({ kind: "box", size: [2 * WHEEL.r - 0.3, 0.07, 0.1], angle: (i * Math.PI) / 8 })),
         { kind: "cylinder", radius: 0.35, length: 0.4 },
         { kind: "cylinder", radius: 0.55, inner: 0.45, length: 0.2, at: [0, 0, 0.25] },
+        { kind: "cylinder", radius: 0.12, length: 0.6, at: [0, 0, -0.35] }, // 大輪的軸,往後伸進 A 形架頂上
+        { kind: "box", size: [0.2, 0.2, 0.32], at: [WHEEL.r - 0.08, 0, 0], accent: true }, // 輪緣上的記號
       ],
+    },
+    {
+      id: "pulley",
+      kind: "pulley",
+      center: PULLEY.center,
+      radius: PULLEY.r,
+      width: 0.18,
+      pieces: [{ kind: "cylinder", radius: 0.08, length: 0.55, at: [0, 0, -0.275] }],
     },
     {
       id: "cart",
@@ -72,11 +87,10 @@ export default {
     const hook = [WHEEL.center[0] + 0.7, top - 0.35, 0.1];
     // 彈簧:從小車右端拉到指示器下方的掛點;載重越重,彈簧被拉得越長
     const springEnd = [DIAL[0] - 0.1 + 0.15 * load, DIAL[1] - 0.8, 0.1];
-    const pulleyR = 0.5;
-    const pulleyC = [2.35, -2.25, 0];
     return {
       parts: {
         wheel: { angle: a },
+        pulley: { angle: (a * HUB) / PULLEY.r }, // 皮帶不打滑
         cartWheelL: { angle: spin },
         cartWheelR: { angle: spin },
         load: { position: [WHEEL.center[0], top, 0], scale: [1, load / 1.7 + 0.4, 1] },
@@ -85,14 +99,12 @@ export default {
       },
       paths: {
         belt: {
-          points: [
-            [WHEEL.center[0], WHEEL.center[1] + 0.55, 0.35],
-            [pulleyC[0], pulleyC[1] + pulleyR, 0.35],
-            [pulleyC[0], pulleyC[1] - pulleyR, 0.35],
-            [WHEEL.center[0], WHEEL.center[1] - 0.55, 0.35],
-          ],
+          points: routeBelt([
+            { center: [WHEEL.center[0], WHEEL.center[1], 0.35], axis: Z, radius: HUB, sense: 1 },
+            { center: PULLEY.center, axis: Z, radius: PULLEY.r, sense: 1 },
+          ]).points,
           closed: true,
-          phase: a * 0.55,
+          phase: a * HUB,
         },
       },
       readouts: [],

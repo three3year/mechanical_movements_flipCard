@@ -27,7 +27,7 @@ export default {
       id: "screw",
       kind: "group",
       axis: Y,
-      arrow: false,
+      spin: 0.3, // 進給螺桿也在轉:看得出轉向
       pieces: [
         { kind: "worm", radius: 0.12, length: 1.6, pitch: 0.12, thread: 0.04 },
         { kind: "box", size: [0.6, 0.12, 0.45], at: [0, 0, 0.85] },

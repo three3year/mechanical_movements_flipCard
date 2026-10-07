@@ -18,7 +18,7 @@ export function treadmill(p) {
 
 const treads = Array.from({ length: TREADS }, (_, i) => {
   const a = (i * TAU) / TREADS;
-  return { kind: "box", size: [0.08, 0.32, LEN], at: [(R - 0.12) * Math.cos(a), (R - 0.12) * Math.sin(a), 0], angle: a };
+  return { kind: "box", size: [0.08, 0.32, LEN], at: [(R - 0.12) * Math.cos(a), (R - 0.12) * Math.sin(a), 0], angle: a, accent: i === 0 }; // 一片踏板塗記號色
 });
 const gearTeeth = Array.from({ length: 16 }, (_, i) => {
   const a = (i * TAU) / 16;

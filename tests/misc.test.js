@@ -252,13 +252,21 @@ test("第 369 種:擺線擺:擺錘沿擺線運動(擺線的長度不變,擺錘�
   }
 });
 
-test("第 370 種:拋光鏡面:長桿有縱向與擺動運動,棘輪(鏡面)每圈間歇地轉一格", () => {
-  const ps = sweep(2 * Math.PI, 36).map((t) => m370.polish(t));
+test("第 370 種:拋光鏡面:長桿有縱向與擺動運動,棘輪(鏡面)由偏心輪帶動的制動爪推動,每圈間歇地轉一格", () => {
+  const ps = sweep(2 * Math.PI, 72).map((t) => m370.polish(t));
   const angles = ps.map((p) => p.angle);
   assert.ok(Math.max(...angles) - Math.min(...angles) > 0.2, "長桿擺動");
-  const slide = ps.map((p) => Math.hypot(p.pin[0] - p.center[0], p.pin[1] - p.center[1]));
-  assert.ok(Math.max(...slide) - Math.min(...slide) > 0.6, "長桿沿長度方向在銷上滑動");
+  const slide = ps.map((p) => Math.hypot(p.pin[0] + 0.35, p.pin[1] + 2.05));
+  assert.ok(Math.max(...slide) - Math.min(...slide) > 0.6, "長桿沿長度方向在軌道的銷上滑動");
+  ps.forEach((p) => close(Math.hypot(p.pin[0] - p.center[0], p.pin[1] - p.center[1]), 2.0, "棘輪裝在長桿上的固定位置", 1e-9));
   close(m370.polish(2 * Math.PI).ratchet - m370.polish(0).ratchet, -m370.STEP, "每圈轉一格", 1e-12);
+  // 由接觸算:一程比一齒多,爪尖先空走一段才碰上齒面;制動爪沒推的時候棘輪不動
+  const { SWEEP, SLACK, STEP } = m370.geometry;
+  assert.ok(SWEEP > STEP && SLACK > 0, "一程比一齒多一點");
+  const rel = ps.map((p) => p.rel);
+  const still = ps.filter((p, i) => i > 0 && !p.engaged && !ps[i - 1].engaged && Math.abs(rel[i] - rel[i - 1]) > 1e-12);
+  assert.equal(still.length, 0, "制動爪沒頂著齒面時,棘輪不動(間歇)");
+  assert.ok(ps.some((p) => p.engaged) && ps.some((p) => !p.engaged), "每圈有推、有停");
 });
 
 test("第 384 種:螺旋線描繪儀:小輪繞中心滾動,同時沿螺紋移動,畫出渦線", () => {
@@ -289,15 +297,25 @@ test("第 373 種:羅伯特氏裝置:指示器的讀數不隨大輪轉速改變,
   const def = m373.default;
   close(def.pose(0.5, "light").parts.needle.angle, def.pose(5, "light").parts.needle.angle, "速度不同,指示器不變");
   assert.notEqual(def.pose(1, "light").parts.needle.angle, def.pose(1, "heavy").parts.needle.angle, "重量不同,指示器改變");
+  // 帶動大輪的皮帶輪(原圖伸出圖外,補上):皮帶不打滑,皮帶輪與大輪軸上的輪轂表面速度相同
+  const [p0, p1] = [def.pose(0).parts, def.pose(1).parts];
+  close((p1.pulley.angle - p0.pulley.angle) * 0.5, (p1.wheel.angle - p0.wheel.angle) * 0.55, "皮帶不打滑", 1e-9);
 });
 
-test("第 374 種:踏板上的滾子經無端皮帶帶動軸上的偏心輪:軸轉一圈,踏板上下一次", () => {
+test("第 374 種:踏板上的滾子經無端皮帶帶動軸上的偏心輪:踏板上下一次,軸轉一圈", () => {
   const angles = sweep(2 * Math.PI, 72).map((t) => m374.treadle(t).angle);
   assert.ok(Math.max(...angles) - Math.min(...angles) > 0.3, "踏板上下擺");
   for (const t of sweep(2 * Math.PI, 12)) {
     const r = m374.treadle(t);
     close(Math.hypot(r.roller[0] - r.e[0], r.roller[1] - r.e[1]), m374.SPAN, "皮帶長度不變", 1e-9);
   }
+  // 「透過一條無端皮帶,將旋轉運動從踏板傳遞給軸」:主動件是踏板,踩下、放開一個來回,軸朝同一方向轉一圈
+  const def = m374.default;
+  assert.equal(def.driver.part, "treadle");
+  const stroke = 2 * Math.abs(m374.PEDAL[0] - m374.PEDAL[1]);
+  close(m374.shaftAngle(stroke) - m374.shaftAngle(0), 2 * Math.PI, "一個來回轉一圈", 1e-6);
+  const th = sweep(2 * stroke, 200).map(m374.shaftAngle);
+  assert.ok(th.every((t, i) => i === 0 || t >= th[i - 1] - 1e-9), "軸只朝一個方向轉");
 });
 
 test("第 375 種:滾壓輪:輪軸接在直立軸上,輪在環形鍋盆裡繞行並滾動(不打滑)", () => {
@@ -323,7 +341,12 @@ test("第 377 種:踏車:人踩在周邊的踏板上往上走,圓筒被人的重
 test("第 378 種:擺鋸:擺的運動帶著鋸框往復,鋸條一面鋸一面往下切進樹幹", () => {
   const shifts = sweep(0.2, 200).map((p) => m378.sawing(p).shift);
   assert.ok(Math.max(...shifts) > 0.5 && Math.min(...shifts) < -0.5, "鋸框往復");
-  close(m378.sawing(0).saw - m378.sawing(1).saw, m378.DEPTH, "一輪鋸進的深度");
+  close(m378.sawing(0).saw - m378.sawing(0.85).saw, m378.DEPTH, "一刀鋸進的深度");
+  close(m378.sawing(1).saw, m378.sawing(0).saw, "鋸完提回起點,下一輪接得上(不跳)", 1e-9);
+  const ys = sweep(0.85, 50).map((p) => m378.sawing(p).saw);
+  assert.ok(ys.every((y, i) => i === 0 || y <= ys[i - 1] + 1e-12), "鋸的時候一路往下");
+  // 鋸框由兩條繩吊著,繞過滑輪吊著配重:鋸框降多少,配重升多少
+  close(m378.hang(-0.5).weightTop - m378.hang(-0.3).weightTop, 0.2, "配重與鋸框反向等量移動", 1e-9);
 });
 
 test("第 379–380 種:可攜式夾鉗鑽:379 的進料螺桿與鑽頭相對、把工件往上頂;380 的鑽頭心軸穿過進料螺桿中心、往下送", () => {

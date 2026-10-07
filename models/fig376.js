@@ -1,9 +1,10 @@
 // 第 376 種:馬匹驅動的踏輪馬力裝置。馬在大輪裡面,試著沿輪的內側往上走,牠的重量讓輪一直轉;曾用來驅動渡輪的槳輪等。
 // 古時候也有讓「烤肉叉犬」在這種輪裡走、轉動烤肉叉的。主動件是虛擬的「進程」:馬已走了多遠(輪轉了幾圈)。
 // 馬留在輪的低處原地踏步(腿交替擺動),輪在牠腳下往回轉。
-// 推斷:馬的步伐與輪轉的對應;輪的輪輻依原圖畫成格子。
+// 推斷:馬的步伐與輪轉的對應;輪的輪輻依原圖畫成格子;輪套在固定的軸上,軸立在輪後面的軸承座上(原圖只畫出輪轂)。
 import { TAU, deg } from "./kit.js";
 import { shape, circle, thickLine } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const R = 2.1;
 const STEP = 0.55; // 馬每一步走過的輪面弧長
@@ -33,6 +34,14 @@ const body = shape(
 export default {
   figure: 376,
   parts: [
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.2, length: 1.1, at: [0, 0, -0.5] }, // 輪的固定軸(輪轂套在上面轉)
+        ...pedestal({ at: [0, 0], z: -1.0, bore: 0.21, floor: -R - 0.5 }),
+      ],
+    },
     {
       id: "wheel",
       kind: "group",

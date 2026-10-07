@@ -15,7 +15,8 @@ export default {
       kind: "group",
       axis: Y,
       center: [0.25, 1.9, 0],
-      arrow: false,
+      spin: 0.35, // 進料螺桿也在轉:看得出轉向
+      spinOffset: 0.3,
       pieces: [
         { kind: "worm", radius: 0.16, length: 1.5, pitch: 0.12, thread: 0.05, at: [0, 0, -0.35] },
         // 進料螺桿上的橫柄

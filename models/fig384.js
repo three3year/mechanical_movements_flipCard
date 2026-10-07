@@ -27,7 +27,7 @@ export default {
       kind: "group",
       axis: Y,
       center: [0, WHEEL, 0],
-      arrow: false,
+      spin: 0.3, // 螺紋軸繞中心尖轉:中心尖旁標轉向
       pieces: [
         // 中心尖、帶螺紋的軸
         { kind: "lathe", axis: [0, 0, 1], profile: [[0, -WHEEL], [0.04, -WHEEL + 0.12], [0.06, 0.25], [0, 0.25]], at: [0, 0, 0] },
