@@ -1,7 +1,7 @@
 // 第 243 種:透過皮帶輪與皮帶,把動力從一根水平軸傳到兩根垂直軸。中間的大皮帶輪裝在水平軸上(主動件),
 // 皮帶從它下方繞過,兩側各經一個小導輪托起,再水平地繞到左右兩根垂直軸的皮帶筒上;
 // 皮帶的回程從兩個皮帶筒的後方直接相連。
-// 推斷:皮帶回程的走法(原圖只看得到前方一股)。
+// 推斷:皮帶回程的走法(原圖只看得到前方一股);後方的牆板、垂直軸上下的軸承、導輪的銷與水平軸的軸承(原圖只畫軸與輪)。
 import { Y, Z, routeBelt, beltTravel, wheelAngle } from "./kit.js";
 
 const LEVEL = 0.25; // 前股皮帶的高度
@@ -54,13 +54,29 @@ export default {
       axis: Z,
       radius: MAIN.radius,
       width: 0.22,
-      pieces: [{ kind: "cylinder", radius: 0.08, length: 0.9, at: [0, 0, 0.35] }],
+      pieces: [{ kind: "cylinder", radius: 0.08, length: 1.9, at: [0, 0, -0.2] }], // 水平軸往後伸進牆上的軸承
     },
     guide("guideL", GUIDE_L),
     guide("guideR", GUIDE_R),
     spindle("left", DRUM_L),
     spindle("right", DRUM_R_),
     { id: "belt", kind: "belt" },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "box", size: [7.6, 4.2, 0.1], at: [0, 0.25, -1.1] }, // 後方的牆板
+        { kind: "cylinder", radius: 0.18, inner: 0.08, length: 0.3, at: [MAIN.center[0], MAIN.center[1], -0.9] }, // 水平軸的軸承
+        ...[GUIDE_L, GUIDE_R].map((g) => ({ kind: "cylinder", radius: 0.06, length: 1.6, at: [g.center[0], g.center[1], -0.3] })), // 導輪的銷
+        // 兩根垂直軸上下的軸承:軸承環由牆板伸出的橫臂托著
+        ...[DRUM_L, DRUM_R_].flatMap((d) =>
+          [1.75, -1.35].flatMap((y) => [
+            { kind: "cylinder", axis: Y, radius: 0.24, inner: 0.12, length: 0.12, at: [d.center[0], y, 0] },
+            { kind: "box", size: [0.14, 0.12, 0.85], at: [d.center[0], y, -0.66] },
+          ]),
+        ),
+      ],
+    },
   ],
   driver: { part: "main", type: "rotation" },
   targets: ["left", "right"], // 兩根垂直軸的皮帶筒

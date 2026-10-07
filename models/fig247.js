@@ -1,38 +1,91 @@
 // 第 247 種:釋放測深錘的方式。測深錘(剖面)套在桿上,由桿下端的卡榫從下方托住;桿底伸出一根可以滑動的
 // 頂桿。頂桿撞到海底時被推得相對於桿往上,把卡榫從錘的下方抽開,錘便脫落,桿不帶錘被拉上來。
 // 主動件是虛擬的「進程」:放下 → 頂桿觸底、被推上 → 錘脫落 → 收回桿;每一輪換一個新錘。
-// 推斷:卡榫與頂桿的連動方式(原圖只畫剖面);各階段所佔的進程。
+//
+// 接觸(由接觸算):頂桿被推上多少,由它的腳底碰到海底決定;頂桿上的推銷頂著卡榫的上臂,卡榫轉開多少,
+// 由推銷與上臂相碰算出;卡榫的托腳轉到錘孔以內(托不住錘)的那一刻錘才脫落,從那時起加速落到海底。
+// 推斷:卡榫與頂桿的連動方式(原圖只畫剖面:頂桿從桿底伸進桿的空腔,卡榫以銷裝在空腔裡,下端從槽口伸出托住錘);
+// 各階段所佔的進程。卡榫與頂桿畫在桿的前面(實物在空心桿裡)。
+// 動力重演不適用:原圖是剖面,錘只畫後半、卡榫與頂桿畫在桿的前面,立體裡卡榫的托腳托不到錘;
+// 錘從托腳退進錘孔那一刻起加速落到海底,由測試驗。
 import { Y, clamp, smooth } from "./kit.js";
 import { backHalf } from "./section.js";
 import { shape, rect, thickLine, circle } from "./shapes.js";
+import { placeOutline, polygonsOverlap, circlePolygon } from "./contact.js";
+import { falling } from "./jumps.js";
 
 const SEA = -2.5; // 海底
 const TOP = 0.7; // 錘心起始高度
 const BALL = 1.0;
 const HOLE = 0.22;
-const FOOT = -2.05; // 頂桿伸出時,腳底相對錘心的高度
-export const PUSH = 0.32; // 頂桿被推上的行程
-const K = 1.0; // 頂桿每推上一單位,卡榫轉的角度
+export const PUSH = 0.32; // 頂桿被推上的行程上限(頂到桿的空腔頂)
 const CATCH = [0.0, -0.52]; // 卡榫樞軸(相對錘心,在桿上)
-const CONTACT = SEA - FOOT; // 腳底碰到海底時的錘心高度
+const PLUNGER_X = -0.05;
+const PLUNGER_TOP = -0.75; // 頂桿沒被推時,頂端相對錘心的高度
+const FOOT_BOTTOM = PLUNGER_TOP - 1.36; // 頂桿腳底(底板下緣)相對錘心的高度
+const CONTACT = SEA - FOOT_BOTTOM; // 腳底碰到海底時的錘心高度
 const REST = SEA + BALL; // 錘落在海底時的錘心高度
-const P = { touch: 0.33, pushed: 0.43, fallen: 0.5, lift: 0.58, back: 0.9, gone: 0.94 };
+const P = { touch: 0.33, pushed: 0.43, lift: 0.58, back: 0.9, gone: 0.94 };
+const DROP = 0.06; // 錘落到海底所佔的進程
+
+// 卡榫(局部座標:原點在樞軸):上臂往左上斜伸,下臂往右下伸出槽口,末端的托腳托住錘的下緣
+const UPPER = [[0, 0], [-0.25, 0.55]];
+const LOWER = [[0, 0], [0.14, -0.3], [0.2, -0.48]];
+const CATCH_UPPER = thickLine(UPPER, 0.09);
+const FOOT = rect(0.24, 0.08, 0.22, -0.5);
+// 頂桿上的推銷(頂桿局部座標):在上臂的左下方,頂桿被推上時頂著上臂的左緣
+const PIN = { at: [-0.13, 0.45], r: 0.045 }; // 卡榫平時靠在推銷上(上臂的左緣貼著推銷)
+
+/** 頂桿被推上 push 時卡榫的轉角:推銷頂著上臂,卡榫順時針轉開到剛好不碰(由接觸算) */
+function catchAngleFor(push) {
+  // 推銷在卡榫座標裡的位置(兩者都裝在桿上,相對位置只差頂桿的推上量)
+  const pin = circlePolygon([PLUNGER_X + PIN.at[0] - CATCH[0], PLUNGER_TOP + PIN.at[1] + push - CATCH[1]], PIN.r, 12);
+  const hits = (a) => polygonsOverlap(placeOutline(CATCH_UPPER, [0, 0], a), pin);
+  if (!hits(0)) return 0;
+  let [lo, hi] = [0, 1.2];
+  for (let k = 0; k < 40; k++) {
+    const mid = (lo + hi) / 2;
+    if (hits(-mid)) lo = mid;
+    else hi = mid;
+  }
+  return -hi;
+}
+// 托腳最外側離錘心軸線的距離:小於錘孔半徑就托不住錘
+const footReach = (angle) => Math.max(...placeOutline(FOOT, [CATCH[0], 0], angle).map(([x]) => x));
+
+function rodAt(t) {
+  if (t < P.touch) return TOP + (CONTACT - TOP) * (t / P.touch);
+  if (t < P.pushed) return CONTACT - PUSH * ((t - P.touch) / (P.pushed - P.touch));
+  if (t < P.lift) return CONTACT - PUSH;
+  if (t < P.back) return CONTACT - PUSH + (TOP - CONTACT + PUSH) * smooth((t - P.lift) / (P.back - P.lift));
+  return TOP;
+}
+const pushAt = (rod) => clamp(SEA - (rod + FOOT_BOTTOM), 0, PUSH);
+// 錘脫落的那一刻:頂桿推著卡榫轉開,托腳退進錘孔以內(逐步往前找,再以二分法逼近)
+const T_RELEASE = (() => {
+  const free = (t) => footReach(catchAngleFor(pushAt(rodAt(t)))) < HOLE;
+  let lo = P.touch;
+  let hi = P.pushed;
+  if (!free(hi)) throw new Error("第 247 種:頂桿推到底,卡榫仍托著錘");
+  for (let k = 0; k < 50; k++) {
+    const mid = (lo + hi) / 2;
+    if (free(mid)) hi = mid;
+    else lo = mid;
+  }
+  return hi;
+})();
+const RELEASED_AT = rodAt(T_RELEASE);
 
 /** 進程 p → 桿(錘心原位)的高度、頂桿被推上的量、卡榫轉角、錘心高度與錘是否還在 */
 export function sounding(p) {
   const t = ((p % 1) + 1) % 1;
-  let rod;
-  if (t < P.touch) rod = TOP + (CONTACT - TOP) * (t / P.touch);
-  else if (t < P.pushed) rod = CONTACT - PUSH * ((t - P.touch) / (P.pushed - P.touch));
-  else if (t < P.lift) rod = CONTACT - PUSH;
-  else if (t < P.back) rod = CONTACT - PUSH + (TOP - CONTACT + PUSH) * smooth((t - P.lift) / (P.back - P.lift));
-  else rod = TOP;
-  const push = clamp(SEA - (rod + FOOT), 0, PUSH);
+  const rod = rodAt(t);
+  const push = pushAt(rod);
   let weight = rod;
-  if (t >= P.pushed) weight = CONTACT - PUSH + (REST - CONTACT + PUSH) * Math.min(1, ((t - P.pushed) / (P.fallen - P.pushed)) ** 2);
-  return { rod, push, catchAngle: -K * push, weight, attached: t < P.pushed, shown: t < P.gone };
+  if (t >= T_RELEASE) weight = RELEASED_AT + (REST - RELEASED_AT) * falling((t - T_RELEASE) / DROP);
+  return { rod, push, catchAngle: catchAngleFor(push), weight, attached: t < T_RELEASE, shown: t < P.gone };
 }
-export const geometry = { SEA, BALL, REST, FOOT };
+export const geometry = { SEA, BALL, REST, HOLE, T_RELEASE, footReach };
 
 const ballProfile = [
   [HOLE, -Math.sqrt(BALL * BALL - HOLE * HOLE)],
@@ -49,9 +102,28 @@ export default {
     { id: "seabed", kind: "box", center: [0, SEA - 0.15, 0], size: [3.6, 0.3, 1.6] },
     { id: "rod", kind: "box", size: [0.3, 3.4, 0.3] },
     { id: "weight", kind: "lathe", axis: Y, profile: ballProfile, ...backHalf(Y) },
-    { id: "catch", kind: "plate", shape: shape(thickLine([[0, 0], [0.14, -0.3], [0.2, -0.48]], 0.09), [circle(0.03).reverse()]), thickness: 0.12, arrow: false,
-      pieces: [{ kind: "plate", shape: shape(rect(0.24, 0.08, 0.22, -0.5)), thickness: 0.12 }] },
-    { id: "plunger", kind: "group", pieces: [{ kind: "box", size: [0.12, 1.3, 0.12], at: [0, -0.65, 0] }, { kind: "box", size: [0.36, 0.12, 0.36], at: [0, -1.3, 0] }] },
+    {
+      id: "catch",
+      kind: "plate",
+      shape: shape(thickLine(LOWER, 0.09), [circle(0.03).reverse()]),
+      thickness: 0.12,
+      arrow: false,
+      pieces: [
+        { kind: "plate", shape: shape(FOOT), thickness: 0.12 },
+        { kind: "plate", shape: shape(CATCH_UPPER), thickness: 0.12 },
+      ],
+    },
+    {
+      id: "plunger",
+      kind: "group",
+      pieces: [
+        { kind: "box", size: [0.12, 0.6, 0.12], at: [0, -1.0, 0] }, // 頂桿本體(頂端停在卡榫托腳的下面)
+        { kind: "box", size: [0.36, 0.12, 0.36], at: [0, -1.3, 0] },
+        { kind: "box", size: [0.05, 1.17, 0.06], at: [-0.21, -0.115, 0] }, // 從頂桿伸上去的細桿(在卡榫的左邊),頂上橫伸一小段托著推銷
+        { kind: "box", size: [0.09, 0.05, 0.06], at: [-0.18, PIN.at[1], 0] },
+        { kind: "cylinder", radius: PIN.r, length: 0.12, at: [...PIN.at, 0] },
+      ],
+    },
   ],
   powered: ["weight"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.1 },
@@ -63,14 +135,10 @@ export default {
       parts: {
         rod: { position: [0, s.rod + 0.6, 0] },
         weight: { position: [0, s.weight, 0], visible: s.shown },
-        catch: { position: [CATCH[0], s.rod + CATCH[1], 0.22], angle: s.catchAngle }, // 卡榫與柱塞畫在桿的前面(實物是在空心桿裡)
-        plunger: { position: [-0.05, s.rod - 0.75 + s.push, 0.22] },
+        catch: { position: [CATCH[0], s.rod + CATCH[1], 0.22], angle: s.catchAngle }, // 卡榫與頂桿畫在桿的前面(實物是在空心桿裡)
+        plunger: { position: [PLUNGER_X, s.rod + PLUNGER_TOP + s.push, 0.22] },
       },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["seabed", "plunger"], reason: "觸底時柱塞被海底往上頂的量依進程演出;柱塞的底板陷進海底 0.06(96 個取樣中 33 個)" },
-    { check: "interference", parts: ["catch", "plunger"], reason: "柱塞頂開卡榫的過程依進程演出,不逐點算接觸;卡榫的尾端與柱塞重疊 0.08(96 個取樣中 25 個)" },
-  ],
 };

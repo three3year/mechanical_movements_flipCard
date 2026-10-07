@@ -3,7 +3,10 @@
 // 其中一支鉤住凸柱 D,制止鼓輪,掛在繩上的東西也就停止下降。
 // 主動件是虛擬的「進程」:機械故障後鼓輪越轉越快 → 鉤子甩出 → 鉤住凸柱、鼓輪停住。
 // 推斷:鼓輪加速的過程與鉤子甩出的轉速;鉤子的形狀(依原圖)。原文另說鼓輪應加裝彈簧緩衝,原圖沒有畫,模型也不畫。
-// 進程走滿一輪(p = 1)就從頭再演一次:鼓輪與鉤子瞬間回到起始位置,那是劇情重演,不是零件瞬移。
+// 動力重演不適用:鉤子是被離心力甩出的,鼓輪(照進程轉)被鉤住後停下也是照進程演的——重演只能推主動件,
+// 擋不住它;鉤尖碰到凸柱的時刻以幾何(鉤尖離凸柱的距離)算出。
+// 進程走滿一輪(p = 1)就從頭再演一次:鼓輪與鉤子瞬間回到起始位置,那是劇情重演,不是零件瞬移
+// (鉤尖勾在凸柱後面,倒轉或收回鉤子都會撞進凸柱,做不出連續的「解開」過程)。
 import { Z, TAU, deg, smooth, routeRope, rot2 } from "./kit.js";
 import { shape, circle, thickLine } from "./shapes.js";
 
@@ -100,7 +103,7 @@ export default {
       spin: FLANGE,
       label: "B",
       labelOffset: [0.28, 0.5, 0.4],
-      pieces: [{ kind: "cylinder", radius: HUB, length: 0.6, at: [0, 0, 0.3] }],
+      pieces: [{ kind: "cylinder", radius: HUB, length: 0.6, at: [0, 0, 0.3] }, { kind: "cylinder", radius: 0.12, length: 1.0, at: [0, 0, 0.1] }], // 鼓輪與軸(軸往後穿過框架 A 的孔)
     },
     ...HOOKS.map((_, i) => ({ id: `hook${i}`, kind: "plate", shape: hookShape, thickness: 0.08, arrow: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.22 }] })),
     { id: "rope", kind: "rope" },

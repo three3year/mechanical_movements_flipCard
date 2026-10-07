@@ -1,4 +1,5 @@
 // 第十二章「接頭與器具」:斷言對應原文
+import { penetrationDepth } from "../models/contact.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, turned } from "./helpers.js";
@@ -158,6 +159,14 @@ test("第 247 種:頂桿撞到海底時被相對地推上去,把卡榫從錘下�
   const raised = m247.sounding(0.88);
   assert.ok(raised.rod > fallen.weight + 2, "桿被拉起");
   close(raised.weight, REST, "錘留在海底", 1e-9);
+  // 由接觸算:托腳退進錘孔以內的那一刻錘才脫落,之後加速落下
+  const { T_RELEASE, footReach, HOLE } = m247.geometry;
+  const before = m247.sounding(T_RELEASE - 0.005);
+  assert.ok(before.attached && footReach(before.catchAngle) >= HOLE, "托腳還在錘孔外時錘掛著");
+  const after = m247.sounding(T_RELEASE + 0.001);
+  assert.ok(!after.attached && footReach(after.catchAngle) < HOLE, "托腳退進錘孔,錘脫落");
+  const w = [0, 1, 2].map((k) => m247.sounding(T_RELEASE + 0.01 * k).weight);
+  assert.ok(w[1] - w[2] > w[0] - w[1], "錘加速落下");
 });
 
 test("第 251 種:重物被抬到夠高時,鉤 A 的上端被框架 B 的槽兩側往內壓,重物突然被釋放", () => {
@@ -176,6 +185,13 @@ test("第 251 種:重物被抬到夠高時,鉤 A 的上端被框架 B 的槽兩�
   close(m251.hook(1.5 * H).weight, 0, "鉤往下放時重物留在樁頭上");
 });
 
+test("第 251 種:放下吊繩時,合攏的鉤爪碰到凸頭被撐開、越過寬頭後合攏勾在底下(由接觸算)", () => {
+  const H = m251.HEIGHT;
+  // 下降到最後一段:鉤爪碰到凸頭的頂面,被撐開
+  const opens = sweep(0.5, 100, 2 * H - 0.5).map((v) => m251.hook(v).open);
+  assert.ok(Math.max(...opens) > 0.05, "鉤爪經過凸頭時被撐開");
+  close(m251.hook(2 * H).open, 0, "落到底時鉤爪合攏,勾在寬頭底下", 1e-9);
+});
 test("第 253 種:鼓輪轉得危險地快時,鉤子因離心力往外甩出,鉤住凸柱 D,制止鼓輪", () => {
   const { P_STOP, REACH, clearance } = m253.geometry;
   const slow = m253.check(0.2);

@@ -1,7 +1,15 @@
 // 第 254–259 種共用:裝在橫軸上的單一個皮帶輪(或鏈輪),從輪緣正面看(原圖的畫法)。
 // 這些插圖本身是靜止的器具;模型重現它被使用時的動作(推斷):皮帶(或繩、鍊條)
 // 繞過輪的後半圈,兩股往前方伸出,轉動輪子,皮帶跟著走。
+// 推斷:橫軸兩端的軸承座(原圖只畫伸出的軸頭)。
 import { X, routeRope, beltTravel } from "./kit.js";
+
+// 橫軸(沿 X)兩端的軸承座:軸承環、立柱、底板
+const bearing = (x) => [
+  { kind: "cylinder", axis: X, radius: 0.36, inner: 0.2, length: 0.3, at: [x, 0, 0] },
+  { kind: "box", size: [0.3, 2.05, 0.36], at: [x, -1.32, 0] },
+  { kind: "box", size: [0.7, 0.16, 1.1], at: [x, -2.42, 0] },
+];
 
 const REACH = [2.9, 1.5]; // 兩股的端點:上下各伸出這麼高、往前這麼遠
 
@@ -19,7 +27,7 @@ export function facePulley({ figure, wheel, seat, strand }) {
     route,
     def: {
       figure,
-      parts: [{ id: "wheel", ...wheel, axis: X, center: [0, 0, 0] }, { id: "strand", ...strand }],
+      parts: [{ id: "wheel", ...wheel, axis: X, center: [0, 0, 0] }, { id: "strand", ...strand }, { id: "bearings", kind: "group", pieces: [...bearing(-2.0), ...bearing(2.0)] }],
       driver: { part: "wheel", type: "rotation" },
       view: { direction: [0.08, 0.32, 1] },
       pose(angle) {

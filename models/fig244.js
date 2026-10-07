@@ -2,9 +2,10 @@
 // 由槓桿 D 頂部的螺絲與螺帽夾緊在輪上。槓桿 D 的末端掛秤盤 B,放入砝碼;兩個擋止 C、C' 把槓桿限制在水平附近。
 // 主動件是軸(輪 A 轉動,木塊在輪面上滑)。狀態按鈕是螺絲夾得太鬆、剛好、太緊:
 // 太鬆時摩擦不夠,槓桿被砝碼拉下靠在擋止 C 上;太緊時槓桿被帶上去頂住 C';剛好時槓桿停在水平位置(原圖)。
-// 推斷:三種夾緊程度的狀態(原文說鎖緊螺絲、加砝碼,直到槓桿呈現圖中的位置)。
+// 推斷:三種夾緊程度的狀態(原文說鎖緊螺絲、加砝碼,直到槓桿呈現圖中的位置);軸後面的軸承座、托著兩個擋止的立柱。
 import { deg, rot2 } from "./kit.js";
 import { shape, circle, rect } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const DRUM = 0.75;
 const PIVOT = [-2.1, -0.15, 0]; // 輪 A 的軸心(槓桿繞它擺)
@@ -27,7 +28,7 @@ export default {
       width: 0.5,
       label: "A",
       labelOffset: [-0.15, -0.05, 0.6],
-      pieces: [{ kind: "cylinder", radius: 0.14, length: 1.4 }],
+      pieces: [{ kind: "cylinder", radius: 0.14, length: 2.2, at: [0, 0, -0.4] }],
     },
     {
       id: "leverD",
@@ -62,6 +63,13 @@ export default {
       pieces: [
         { kind: "box", size: [0.42, 0.26, 0.3], at: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 0.95 + 0.56, 0] },
         { kind: "box", size: [0.42, 0.26, 0.3], at: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 0.95 - 0.56, 0] },
+        // 托著兩個擋止的立柱(在槓桿後面)與底板
+        { kind: "box", size: [0.2, 4.2, 0.2], at: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 0.95 - 1.6, -0.4] },
+        { kind: "box", size: [0.2, 0.2, 0.55], at: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 0.95 + 0.56, -0.22] },
+        { kind: "box", size: [0.2, 0.2, 0.55], at: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 0.95 - 0.56, -0.22] },
+        { kind: "box", size: [1.0, 0.15, 0.8], at: [PIVOT[0] + ARM - 1.05, PIVOT[1] - 3.8, -0.4] },
+        // 皮帶輪 A 的軸往後伸進軸承座
+        ...pedestal({ at: [PIVOT[0], PIVOT[1]], z: -0.9, bore: 0.14, floor: PIVOT[1] - 3.8 }),
       ],
     },
     { id: "labelC1", kind: "group", center: [PIVOT[0] + ARM - 1.05, PIVOT[1] + 1.38, 0], label: "C'", labelOffset: [0.5, 0.05, 0.2] },
@@ -90,12 +98,11 @@ export default {
     const hook = [PIVOT[0] + hx, PIVOT[1] + hy, 0];
     const pan = [hook[0], hook[1] - PAN_DROP, 0];
     const corners = [[-0.75, -0.45], [0.75, -0.45], [0.75, 0.45], [-0.75, 0.45]];
+    // 吊繩繫在環的下緣(環外面),往下分到秤盤的四角
+    const [tx, ty] = rot2([ARM, 0.75 - 0.115], tilt);
+    const tie = [PIVOT[0] + tx, PIVOT[1] + ty, 0];
     const paths = {};
-    corners.forEach(([x, z], i) => (paths[`string${i}`] = { points: [hook, [pan[0] + x, pan[1] + 0.04, z]], closed: false }));
+    corners.forEach(([x, z], i) => (paths[`string${i}`] = { points: [tie, [pan[0] + x, pan[1] + 0.04, z]], closed: false }));
     return { parts: { drumA: { angle }, leverD: { angle: tilt }, pan: { position: pan } }, paths, readouts: [] };
   },
-  waivers: [
-    { check: "interference", parts: ["leverD", "string1"], reason: "秤盤的吊繩繫在槓桿端:繩頭穿進槓桿的板 0.03(繫點在板內、不在板面上)" },
-    { check: "interference", parts: ["leverD", "string0"], reason: "秤盤的吊繩繫在槓桿端:繩頭穿進槓桿的板 0.03(繫點在板內、不在板面上)" },
-  ],
 };

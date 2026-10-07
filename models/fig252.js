@@ -1,6 +1,7 @@
 // 第 252 種:滾子 A、B 要在溝槽 C 內以相同幅度來回移動。部件 D 有兩支斜向的開槽臂(下寬上窄),
 // 兩滾子的銷各插在一支臂的槽裡;把 D 上下移動,斜槽把兩滾子同時往外推或往內拉,幅度相同、方向相反。
 // 主動件是部件 D。滾子沿溝槽滾動。
+// 推斷:D 的柄穿過下方的導套(原圖只畫到柄)。
 import { deg, clamp } from "./kit.js";
 import { shape, rect, thickLine } from "./shapes.js";
 
@@ -11,8 +12,9 @@ const Y = 1.55; // 溝槽(滾子中心)的高度
 const X0 = 0.62; // D 在中間位置時滾子離中線的距離
 // D 往下的極限:兩滾子互相碰到(原圖畫的就是兩滾子相切的位置)就不能再往下,否則滾子互相穿透。
 export const RANGE = [-(X0 - ROLL - 0.01) / T, 0.6];
-const ARM_TOP = 1.85; // D 在中間位置時臂頂的高度
+const ARM_TOP = 2.25; // D 在中間位置時臂頂的高度:D 降到最低時,槽頂的橫檔仍在滾子的銷上方
 const ARM_BOTTOM = -1.4;
+const GUIDE_Y = ARM_BOTTOM - 1.55; // 柄的導套的高度(D 在整個行程裡,柄都穿在導套裡)
 
 /** D 往上移 v → 滾子 A、B 的 x 座標 */
 export function rollers(v) {
@@ -27,9 +29,10 @@ const arm = (s) => {
   const bottom = [armX(ARM_BOTTOM, s), ARM_BOTTOM];
   const off = (p, d) => [p[0] + d * Math.cos(SLANT), p[1] + s * d * Math.sin(SLANT)];
   return [
-    { kind: "plate", shape: shape(thickLine([off(top, 0.24), off(bottom, 0.24)], 0.14)), thickness: 0.2 },
-    { kind: "plate", shape: shape(thickLine([off(top, -0.24), off(bottom, -0.24)], 0.14)), thickness: 0.2 },
-    { kind: "plate", shape: shape(thickLine([off(top, -0.31), off(top, 0.31)], 0.14)), thickness: 0.2 },
+    // 槽的兩條邊框:內緣貼著滾子的銷(銷在槽裡滑,槽寬等於銷徑)
+    { kind: "plate", shape: shape(thickLine([off(top, 0.15), off(bottom, 0.15)], 0.14)), thickness: 0.2 },
+    { kind: "plate", shape: shape(thickLine([off(top, -0.15), off(bottom, -0.15)], 0.14)), thickness: 0.2 },
+    { kind: "plate", shape: shape(thickLine([off(top, -0.22), off(top, 0.22)], 0.14)), thickness: 0.2 },
   ];
 };
 
@@ -59,6 +62,11 @@ export default {
         { kind: "plate", shape: shape(rect(0.5, 1.9, -2.6, Y - 0.1)), thickness: 0.4 },
         { kind: "plate", shape: shape(rect(4.6, 0.14, -0.05, Y + ROLL + 0.07)), thickness: 0.3, at: [0, 0, 0.18] },
         { kind: "plate", shape: shape(rect(4.6, 0.14, -0.05, Y - ROLL - 0.07)), thickness: 0.3, at: [0, 0, 0.18] },
+        // D 的柄的導套(四片板圍住柄),由立架伸下來的支臂托著(推斷:原圖只畫到 D 的柄)
+        ...[-1, 1].map((s) => ({ kind: "box", size: [0.06, 0.3, 0.26], at: [s * 0.1, GUIDE_Y, -0.15] })),
+        ...[-1, 1].map((s) => ({ kind: "box", size: [0.26, 0.3, 0.06], at: [0, GUIDE_Y, -0.15 + s * 0.1] })),
+        { kind: "box", size: [2.95, 0.14, 0.14], at: [-1.6, GUIDE_Y, -0.3] },
+        { kind: "box", size: [0.4, Y - 0.1 - 0.95 - GUIDE_Y + 0.1, 0.4], at: [-3.05, (GUIDE_Y + Y - 0.1 - 0.95) / 2 + 0.05, 0] }, // 立架左邊往下的支柱(D 的底條在它右邊)
       ],
     },
     roller("rollerA", "A", [0, 0.45, 0.4]),
@@ -73,7 +81,7 @@ export default {
         ...arm(1),
         { kind: "plate", shape: shape(rect(2 * armX(ARM_BOTTOM, 1) + 0.9, 0.3, 0, ARM_BOTTOM - 0.1)), thickness: 0.2 },
         { kind: "box", size: [0.35, 0.35, 0.3], at: [0, ARM_BOTTOM - 0.45, 0] },
-        { kind: "box", size: [0.14, 1.0, 0.14], at: [0, ARM_BOTTOM - 1.0, 0] },
+        { kind: "box", size: [0.14, 1.6, 0.14], at: [0, ARM_BOTTOM - 1.3, 0] }, // 往下的柄,穿過下方的導套
       ],
     },
   ],
@@ -92,8 +100,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["rollerB", "partD"], reason: "滾子被 D 的斜臂撐開的位置是以臂的中心線算的;臂有寬度,滾子伸進臂緣 0.14(96 個取樣中 20 個)" },
-    { check: "interference", parts: ["rollerA", "partD"], reason: "滾子被 D 的斜臂撐開的位置是以臂的中心線算的;臂有寬度,滾子伸進臂緣 0.14(96 個取樣中 20 個)" },
-  ],
 };
