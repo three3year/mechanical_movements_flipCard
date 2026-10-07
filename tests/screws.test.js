@@ -89,3 +89,38 @@ test("第 112 種:波斯鑽——螺帽沿快螺紋上下拉動,柄部交替向�
   close(drillAngle(lead112) - drillAngle(0), TAU);
   assert.ok(drillAngle(0.3) - drillAngle(0) > 0 && drillAngle(0) - drillAngle(0.3) < 0, "上拉與下推轉向相反");
 });
+
+import fig102 from "../models/fig102.js";
+import fig106 from "../models/fig106.js";
+import fig108 from "../models/fig108.js";
+
+test("第 102 種:原文要的直線運動是螺帽(主動件)自己的移動,螺栓不動,所以不標目標件", () => {
+  assert.equal(fig102.target, undefined);
+  assert.equal(fig102.targets, undefined);
+  assert.equal(fig102.pose(TAU).parts.bolt, undefined, "螺栓沒有姿勢(不動)");
+});
+
+test("第 106 種:桿上的銷伸進溝裡,溝兩側的凸條夾著它(銷底比凸條頂低)", () => {
+  const drum = fig106.parts.find((p) => p.id === "drum");
+  const ridgeTop = Math.max(...drum.pieces.filter((p) => p.kind === "tube").flatMap((p) => p.points.map(([x, y]) => Math.hypot(x, y)))) + 0.05;
+  const pin = fig106.parts.find((p) => p.id === "rod").pieces.find((p) => p.axis && p.axis[1] === 1);
+  const pinBottom = pin.at[1] - pin.length / 2;
+  assert.ok(pinBottom < ridgeTop - 0.05, "銷伸進凸條之間至少 0.05");
+});
+
+test("第 108 種:兩道反向螺旋溝的交會處互相切通——凸條不會落在另一道溝裡,尖點經過交會處時不被凸條擋住", () => {
+  const drum = fig108.parts.find((p) => p.id === "drum");
+  const tubes = drum.pieces.filter((p) => p.kind === "tube");
+  assert.ok(tubes.length > 6, "凸條在交會處斷開成多段");
+  // 尖點(圓筒局部角 180° 處)沿溝走一趟,任何時候都不碰到凸條
+  for (let i = 0; i <= 600; i++) {
+    const theta = (12 * Math.PI * i) / 600;
+    const y = slideY(theta);
+    const tipA = Math.PI - theta; // 尖點在圓筒局部座標中的角度
+    const tip = [0.8 * Math.cos(tipA), 0.8 * Math.sin(tipA), y];
+    for (const t of tubes) for (const [x, yy, z] of t.points) {
+      const d = Math.hypot(x - tip[0], yy - tip[1], z - tip[2]);
+      assert.ok(d > 0.035, `主動量 ${theta.toFixed(2)} 時尖點碰到凸條`);
+    }
+  }
+});
