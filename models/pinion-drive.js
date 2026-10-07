@@ -9,7 +9,8 @@
  */
 export function pinionDrive({ fixed, floor }) {
   return {
-    part: { id: "driveShaft", kind: "link", width: 0.07, thickness: 0.07, pins: false },
+    // 小齒輪沿直線移動,到固定端的距離會變:驅動軸做成可伸縮的(花鍵軸套在套管裡),兩端各一個萬向接頭
+    part: { id: "driveShaft", kind: "link", width: 0.07, thickness: 0.07, pins: false, stretch: true },
     joint: { id: "joint", kind: "sphere", radius: 0.11 }, // 小齒輪端的萬向接頭
     pieces: [
       { kind: "sphere", radius: 0.13, at: fixed },
