@@ -1,6 +1,8 @@
 // 第 133 種:簡單的壓印運動。轉動小齒輪軸上的手搖曲柄,小齒輪帶動齒扇形段繞下方的樞軸轉,
 // 扇形段上靠近樞軸的銷經一根連桿把壓板往上推(壓板在兩根立柱間上下移動)。主動件是手搖曲柄。
+// 小齒輪軸往後伸進右立柱上的軸承;扇形段的樞軸往後伸進底板上的軸承座(原圖畫出了軸心,軸承是推斷)。
 import { deg, polar, add } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { meshAngle } from "./gears.js";
 import { shape, circle } from "./shapes.js";
 
@@ -36,6 +38,7 @@ export default {
         { kind: "cylinder", radius: 0.12, length: 0.5, at: [0, 0, 0.2] },
         { kind: "box", size: [1.4, 0.12, 0.1], at: [0.7, 0, 0.4] },
         { kind: "cylinder", radius: 0.1, length: 0.5, at: [1.4, 0, 0.6] },
+        { kind: "cylinder", radius: 0.12, length: 0.55, at: [0, 0, -0.25] }, // 軸:往後伸進立柱上的軸承
       ],
     },
     {
@@ -47,6 +50,7 @@ export default {
         { kind: "gear", teeth: SECTOR.teeth, radius: SECTOR.radius, span: [deg(10), deg(88)], width: 0.2 },
         { kind: "plate", shape: shape(circle(0.42), [circle(0.2).reverse()]), thickness: 0.3 },
         { kind: "cylinder", radius: 0.12, length: 0.45, at: [...polar(PIN.r, PIN.at).slice(0, 2), 0.15] },
+        { kind: "cylinder", radius: 0.2, length: 0.75, at: [0, 0, -0.3] }, // 樞軸:往後伸進軸承座
       ],
     },
     { id: "rod", kind: "link", width: 0.14, thickness: 0.08 },
@@ -63,6 +67,8 @@ export default {
         { kind: "box", size: [0.3, 5.8, 0.4], at: [0.85, -0.7, -0.5] },
         { kind: "box", size: [3.6, 0.35, 0.6], at: [-0.55, 2.35, -0.5] },
         { kind: "box", size: [4.6, 0.1, 0.8], at: [0, -3.6, 0] }, // 底板在扇形段擺到最低處的下方
+        { kind: "cylinder", radius: 0.26, inner: 0.12, length: 0.12, at: [PINION.center[0], PINION.center[1], -0.24] }, // 小齒輪軸的軸承(釘在右立柱上)
+        ...pedestal({ at: [PIVOT[0], PIVOT[1]], z: -0.55, bore: 0.2, floor: -3.55 }),
       ],
     },
   ],

@@ -1,6 +1,8 @@
 // 第 131 種:圓盤上的曲柄銷在開槽臂的槽內作動;開槽臂與下方的齒扇形段是一體,繞扇形段的樞軸擺動。
 // 圓盤轉動時臂(連同扇形段)來回擺,扇形段帶動底部的齒條往復直線運動。主動件是圓盤。
+// 圓盤的軸與扇形段的樞軸銷都往後伸進一塊立板的軸承(原圖畫出了軸心與樞軸,立板是推斷)。
 import { deg, polar, add } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { angleOf } from "./linkage.js";
 import { rackOffset, circularPitch } from "./gears.js";
 import { shape, circle, stadium } from "./shapes.js";
@@ -36,6 +38,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(circle(DISC.radius), [circle(0.12).reverse()]), thickness: 0.1, at: [0, 0, -0.2], circles: [0.38] },
         { kind: "cylinder", radius: 0.14, length: 0.6, at: [...polar(DISC.pin, START).slice(0, 2), 0], accent: true },
+        { kind: "cylinder", radius: 0.12, length: 1.1, at: [0, 0, -0.65] }, // 軸:往後伸進軸承
       ],
     },
     {
@@ -53,6 +56,7 @@ export default {
           at: [0, 0, 0.12],
         },
         { kind: "cylinder", radius: 0.32, inner: 0.15, length: 0.35 },
+        { kind: "cylinder", radius: 0.15, length: 0.9, at: [0, 0, -0.35] }, // 樞軸:往後伸進軸承
       ],
     },
     {
@@ -66,7 +70,12 @@ export default {
     {
       id: "guides",
       kind: "group",
-      pieces: [-3.1, 3.1].map((x) => ({ kind: "plate", shape: shape([[-0.25, -0.5], [0.25, -0.5], [0.25, 0.5], [-0.25, 0.5]], [circle(0.07, 0, 0.3).reverse(), circle(0.07, 0, -0.3).reverse()]), thickness: 0.1, at: [x, RACK.origin[1] - 0.25, 0.2] })),
+      pieces: [
+        ...[-3.1, 3.1].map((x) => ({ kind: "plate", shape: shape([[-0.25, -0.5], [0.25, -0.5], [0.25, 0.5], [-0.25, 0.5]], [circle(0.07, 0, 0.3).reverse(), circle(0.07, 0, -0.3).reverse()]), thickness: 0.1, at: [x, RACK.origin[1] - 0.25, 0.2] })),
+        // 圓盤軸與扇形段樞軸的軸承(在後面)
+        ...pedestal({ at: [DISC.center[0], DISC.center[1]], z: -1.05, bore: 0.12, floor: RACK.origin[1] - 0.8 }),
+        ...pedestal({ at: [PIVOT[0], PIVOT[1]], z: -0.65, bore: 0.15, floor: RACK.origin[1] - 0.8 }),
+      ],
     },
   ],
   driver: { part: "disc", type: "rotation" },

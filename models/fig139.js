@@ -2,7 +2,9 @@
 // 所以固定位置的小齒輪能咬齒條的上側或下側。小齒輪連續旋轉:咬上側時框架往一邊走,繞過端頭時齒條在框架內
 // 上下換邊,咬下側時框架往另一邊走——矩形框架因此往復直線運動。主動件是小齒輪。
 // 小齒輪相對齒條的運動:它的中心沿「齒條節曲線往內收一個節圓半徑」的長圓走,純滾動(同第 119 種,內咬合)。
+// 齒條兩端夾在框架上兩條直立的導條之間,只能上下滑;小齒輪的軸穿過框架的開口、往後伸進軸承座(導條、軸承座是推斷)。
 import { TAU } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { arcPoints, shape, rect } from "./shapes.js";
 import { toothedLoop, resample, cumulative, periodic, inverseOf } from "./noncircular.js";
 
@@ -77,7 +79,7 @@ const WHEEL = 0.38;
 export default {
   figure: 139,
   parts: [
-    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.3, bore: 0.08, web: false },
+    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.3, bore: 0.08, web: false, pieces: [{ kind: "cylinder", radius: 0.08, length: 1.1, at: [0, 0, -0.45] }] },
     {
       id: "rack",
       kind: "group",
@@ -90,11 +92,20 @@ export default {
         { kind: "plate", shape: shape(rect(FRAME.w, FRAME.h), [rect(FRAME.w - 0.7, FRAME.h - 0.4, 0, 0.05).reverse()]), thickness: 0.2, at: [0, 0, -0.22] }, // 框架貼著齒條的背面(齒條在框架上的導槽裡上下滑)
         { kind: "box", size: [0.9, 0.3, 0.2], at: [-FRAME.w / 2 - 0.45, 0.2, -0.25] },
         { kind: "box", size: [0.9, 0.3, 0.2], at: [FRAME.w / 2 + 0.45, 0.2, -0.25] },
+        // 兩個輪子的吊架與輪軸(在輪子後面)
+        ...[-1, 1].flatMap((side) => [
+          { kind: "box", size: [0.2, 2 * WHEEL - 0.08, 0.1], at: [side * (FRAME.w / 2 - 0.7), -FRAME.h / 2 - WHEEL + 0.04 + 0.26, -0.42] },
+          { kind: "cylinder", radius: 0.06, length: 0.36, at: [side * (FRAME.w / 2 - 0.7), -FRAME.h / 2 - WHEEL, -0.3] },
+        ]),
+        // 齒條兩端的直立導條(齒條上下滑時,兩端的半圓頂點貼著它)
+        { kind: "box", size: [0.1, 2.0, 0.22], at: [-(A + RE + 0.35) - 0.05, 0, 0] },
+        { kind: "box", size: [0.1, 2.0, 0.22], at: [A + RE + 0.35 + 0.05, 0, 0] },
       ],
     },
-    { id: "wheelL", kind: "pulley", style: "disc", radius: WHEEL, width: 0.2, arrow: false },
+    { id: "wheelL", kind: "pulley", style: "disc", radius: WHEEL, width: 0.2 }, // 兩輪同向轉,只留一個箭頭
     { id: "wheelR", kind: "pulley", style: "disc", radius: WHEEL, width: 0.2, arrow: false },
     { id: "rail", kind: "box", center: [0, -FRAME.h / 2 - 2 * WHEEL - 0.05, -0.25], size: [FRAME.w + 5, 0.1, 0.6] },
+    { id: "bearing", kind: "group", pieces: pedestal({ at: [0, 0], z: -0.85, bore: 0.08, floor: -FRAME.h / 2 - 2 * WHEEL - 0.28 }) }, // 底板墊在軌道下面
   ],
   driver: { part: "pinion", type: "rotation", speed: 1.3 },
   target: "frame",

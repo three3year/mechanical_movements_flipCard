@@ -3,7 +3,12 @@
 // 每一程結束時閥門靜止片刻,然後很快地被推越蒸氣口,直到下一程的終點。主動件是圓盤。
 // 依原圖,軸在三角形的中心;這樣的撥爪每轉一圈使框架往復三次,行程兩端速度為零,但沒有真正的靜止段
 // (原文所說的「靜止片刻」要軸在頂點才會出現,如第 91 種)。此處外觀照原圖,衝突已記在任務票上。
+// 2026-10-07 複查:試過「定寬、三重對稱、兩端有停頓」的撥爪輪廓,停頓要明顯時輪廓就凹進去(做不出來),
+// 所以維持勒洛三角形:行程兩端速度降為零,算是「靜止片刻」的瞬間版本(記在待確認清單)。
+// 框架的位置由撥爪推框架的內邊決定(動力重演:框架是上下的自由滑塊,靠自重壓在撥爪上)。
+// 上下閥桿穿在兩側立柱伸出的導套裡,圓盤的軸往後伸進軸承座(導套、立柱、軸承座是推斷)。
 import { TAU, deg, rot2 } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { arcPoints, shape, circle } from "./shapes.js";
 
 const S = 1.55; // 勒洛三角形的寬度
@@ -29,6 +34,8 @@ export function frameTop(theta) {
 export const width = S;
 
 const W = 2.1;
+const GUIDES = [2.1, -1.97]; // 上下閥桿導套的高度:框架上下 0.24 時,閥桿始終穿過導套
+const FLOOR = -2.9;
 
 export default {
   figure: 135,
@@ -39,6 +46,7 @@ export default {
       spin: 1.9,
       pieces: [
         { kind: "plate", shape: shape(circle(1.9), [circle(0.12).reverse()]), thickness: 0.08, at: [0, 0, -0.3] },
+        { kind: "cylinder", radius: 0.12, length: 0.8, at: [0, 0, -0.55] }, // 軸:往後伸進軸承座
         { kind: "plate", shape: shape(reuleaux, [[[-0.12, -0.12], [0.12, -0.12], [0.12, 0.12], [-0.12, 0.12]].reverse()]), thickness: 0.3, mark: [0, 0.5], markSize: 0.08, circles: [0.3] },
       ],
     },
@@ -54,9 +62,34 @@ export default {
         { kind: "cylinder", axis: [0, 1, 0], radius: 0.24, length: 1.0, at: [0, -1.2, 0.15] },
       ],
     },
+    {
+      id: "support",
+      kind: "group",
+      pieces: [
+        ...pedestal({ at: [0, 0], z: -0.85, bore: 0.12, floor: FLOOR }),
+        ...[-1, 1].flatMap((side) => [
+          { kind: "box", size: [0.2, 2.4 - FLOOR, 0.2], at: [side * 2.5, (2.4 + FLOOR) / 2, 0.15] },
+          { kind: "box", size: [0.8, 0.18, 0.6], at: [side * 2.5, FLOOR - 0.09, 0.15] },
+        ]),
+        ...GUIDES.flatMap((y) => [
+          { kind: "cylinder", axis: [0, 1, 0], radius: 0.36, inner: 0.24, length: 0.3, at: [0, y, 0.15] },
+          { kind: "box", size: [2.2, 0.16, 0.16], at: [-1.45, y, 0.15] },
+          { kind: "box", size: [2.2, 0.16, 0.16], at: [1.45, y, 0.15] },
+        ]),
+      ],
+    },
   ],
   driver: { part: "disc", type: "rotation", speed: 0.6 },
   target: "frame",
+  // 動力重演:只轉圓盤;框架靠自重壓在撥爪上,被撥爪的輪廓推上推下
+  replay: {
+    free: { frame: { slide: [0, 1, 0] } },
+    expect: [
+      { at: TAU / 6, part: "frame", label: "撥爪把框架推到一端", quote: "該撥爪將交替的直線運動傳遞給閥桿" },
+      { at: TAU / 3, part: "frame", label: "撥爪轉過去,框架回到另一端" },
+      { part: "frame", label: "轉完一圈(往復三次),框架回到起點" },
+    ],
+  },
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { disc: { angle: theta }, frame: { position: [0, frameY(theta), 0] } }, readouts: [] };

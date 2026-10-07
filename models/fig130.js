@@ -1,17 +1,17 @@
 // 第 130 種:裁切鐵板等用的剪具。上夾爪連著一支長臂,繞中間的樞軸轉;長臂的重量使夾爪張開,
 // 長臂左端靠在偏心的凸輪上——凸輪轉到高處把長臂頂起,右邊的上夾爪就往下閉合。主動件是凸輪(偏心輪)。
-// 長臂的轉角由「長臂下緣靠在凸輪上」的條件以二分法求出。
+// 長臂的轉角由接觸算:長臂的外形繞樞軸靠自重往下擺,停在第一次碰到凸輪的地方(2026-10-07 複查:原本把長臂下緣
+// 當成無限長的直線,凸輪頂點跑到長臂尖端外時長臂其實懸空,是演出的接觸;長臂左端也照原圖加長到蓋住凸輪)。
 // 結構推斷:原圖的下夾爪是從帶斜線的底座上長出來的支座,樞軸銷穿過支座與長臂;凸輪的圓心畫在底座上方、
 // 與底座重疊,表示凸輪的軸是架在底座(機架)上的。這裡把下夾爪的腳伸進底座、樞軸銷穿過兩件,
 // 下夾爪與長臂像剪刀一樣前後錯一層(下夾爪在後、長臂在前);底座往左延伸到凸輪下方,
 // 在凸輪後方立一個軸承座、凸輪的軸加長穿進去,讓讀者看出凸輪是裝在機架上頂著長臂的。不改凸輪與長臂的幾何。
 import { deg, polar } from "./kit.js";
-import { solve } from "./linkage.js";
+import { swingUntilContact, circlePolygon } from "./contact.js";
 import { shape, circle, arcPoints } from "./shapes.js";
 
 const PIVOT = [1.15, 0.85, 0.2];
 const CAM = { pin: [-2.15, -0.38, 0], radius: 0.62, offset: 0.4 };
-const UNDER = 0.185; // 長臂下緣在樞軸下方的距離(長臂水平時)
 
 // 凸輪中心
 const camCenter = (theta) => {
@@ -19,21 +19,14 @@ const camCenter = (theta) => {
   return [CAM.pin[0] + p[0], CAM.pin[1] + p[1]];
 };
 
-// 長臂轉 psi 時,凸輪中心到長臂下緣直線的帶符號距離(凸輪在下方為負)
-function gap(psi, c) {
-  const n = [-Math.sin(psi), Math.cos(psi)]; // 下緣直線的上法線
-  const p = [PIVOT[0] + UNDER * Math.sin(psi), PIVOT[1] - UNDER * Math.cos(psi)];
-  return (c[0] - p[0]) * n[0] + (c[1] - p[1]) * n[1];
-}
-
 /** 凸輪轉 theta:長臂(上夾爪)的轉角;左端被頂起時轉角為負(順時針),夾爪閉合 */
 export function shears(theta) {
-  const c = camCenter(theta);
-  // 長臂靠在凸輪上:凸輪中心在下緣直線下方恰好一個半徑
-  return solve((psi) => gap(psi, c), -CAM.radius, deg(-25), deg(15));
+  // 長臂靠自重逆時針擺(左端往下),停在外形第一次碰到凸輪的轉角
+  return swingUntilContact({ pivot: PIVOT, outline: upper.outline, from: deg(-30), into: 1, sweep: deg(50), steps: 50 }, [circlePolygon(camCenter(theta), CAM.radius, 48)]);
 }
 
 const upper = shape([
+  [-3.75, 0.04],
   [-3.3, 0.05],
   [-1.0, 0.25],
   [-0.15, 0.32],
@@ -46,6 +39,7 @@ const upper = shape([
   [-0.15, -0.22],
   [-1.0, -0.2],
   [-3.25, -0.18],
+  [-3.7, -0.17],
 ]);
 const lower = shape([
   [-0.05, -0.05],
@@ -102,6 +96,15 @@ export default {
   ],
   driver: { part: "cam", type: "rotation" },
   target: "arm", // 帶著上夾爪閉合的長臂
+  // 動力重演:只轉凸輪;長臂繞樞軸銷自由擺,靠自重壓在凸輪上(原文:夾爪透過長臂的重量張開)
+  replay: {
+    free: { arm: { pivot: PIVOT } },
+    expect: [
+      { at: Math.PI / 2, part: "arm", label: "凸輪轉到高處,把長臂頂起、夾爪閉合", quote: "並藉由凸輪的旋轉而閉合" },
+      { at: Math.PI, part: "arm", label: "凸輪轉離,長臂靠自重落下、夾爪張開", quote: "夾爪透過上方夾爪長臂的重量而張開" },
+      { part: "arm", label: "轉完一圈,長臂回到起點" },
+    ],
+  },
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     return { parts: { cam: { angle: theta }, arm: { angle: shears(theta) } }, readouts: [] };

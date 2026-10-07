@@ -29,7 +29,9 @@ test("第 152 種:往回轉時軌跡跟著縮回(軌跡是主動量的函式)", 
 
 import { frameX as frame128, bounds as bounds128 } from "../models/fig128.js";
 import { pulleyY, radii as radii129 } from "../models/fig129.js";
-import { shears } from "../models/fig130.js";
+import fig130, { shears } from "../models/fig130.js";
+import { placeOutline as placeOutline130, circlePolygon as circlePolygon130, penetrationDepth as penetrationDepth130, polygonsOverlap as polygonsOverlap130 } from "../models/contact.js";
+import { polar as polar130 } from "../models/kit.js";
 import { swingRack } from "../models/fig131.js";
 import { press as press132 } from "../models/fig132.js";
 import { press as press133 } from "../models/fig133.js";
@@ -59,6 +61,16 @@ test("第 130 種:剪具的夾爪靠長臂的重量張開,凸輪轉到高處時�
   const angles = sweep(TAU, 360).map(shears);
   assert.ok(Math.min(...angles) > -0.02, "閉合時剛好合攏、不交叉");
   assert.ok(Math.max(...angles) > 0.15, "張開");
+  // 由接觸算:長臂整圈都貼著凸輪(靠自重壓在上面,不懸空也不穿入)
+  const arm = fig130.parts.find((p) => p.id === "arm");
+  for (const t of sweep(TAU, 72)) {
+    const placed = placeOutline130(arm.pieces[0].shape.outline, arm.center, shears(t));
+    const cam = circlePolygon130(polar130(0.4, t + (110 * Math.PI) / 180).map((v, i) => v + [-2.15, -0.38][i] || 0).slice(0, 2), 0.62, 64);
+    assert.ok(penetrationDepth130(placed, cam) < 0.003, "長臂不穿進凸輪");
+    // 長臂逆時針是左端往下:再往下擺 0.01 rad 就會壓進凸輪(貼著,不懸空)
+    const lowered = placeOutline130(arm.pieces[0].shape.outline, arm.center, shears(t) + 0.01);
+    assert.ok(polygonsOverlap130(lowered, cam), `凸輪轉角 ${t.toFixed(2)} 時長臂懸空`);
+  }
 });
 
 test("第 131 種:圓盤上的曲柄銷使開槽臂與齒扇形段擺動,底部的齒條往復直線運動", () => {
@@ -84,7 +96,7 @@ test("第 133 種:手搖曲柄經小齒輪帶動齒扇形段,扇形段經連桿�
 import { ropeTravel, radius as r134 } from "../models/fig134.js";
 import { frameY as frame135, frameTop as top135, width as width135 } from "../models/fig135.js";
 import { rodX as rod136 } from "../models/fig136.js";
-import { arm as arm137, pitchAt as pitch137 } from "../models/fig137.js";
+import fig137, { arm as arm137, pitchAt as pitch137, rollerAngle as roller137 } from "../models/fig137.js";
 import { rodY as rod138 } from "../models/fig138.js";
 import { rackPosition, alphaPerLoop, halfStraight } from "../models/fig139.js";
 
@@ -255,4 +267,16 @@ test("第 154 種:凸柱撥動曲柄搖臂,繞過滑輪的繩把重物拉起;凸
   for (let i = 1; i < ys.length; i++) if (ys[i - 1] <= ys[0] + 1e-9 && ys[i] > ys[0] + 1e-6) ups++;
   assert.equal(ups, 4);
   assert.ok(Math.max(...ys) - Math.min(...ys) > 0.2, "重物明顯上下");
+});
+
+test("第 137 種:兩個滾子貼著偏心輪滾動——曲柄軸轉一圈,滾子轉過的弧長等於偏心輪外形一圈,轉向和偏心輪相反", () => {
+  const r = fig137.parts.find((p) => p.id === "rollerTop").radius;
+  const outline = fig137.parts.find((p) => p.id === "shaft").shape.outline;
+  let perimeter = 0;
+  for (let i = 0; i < outline.length; i++) perimeter += Math.hypot(outline[(i + 1) % outline.length][0] - outline[i][0], outline[(i + 1) % outline.length][1] - outline[i][1]);
+  for (const at of [Math.PI / 2, -Math.PI / 2]) {
+    near(-roller137(TAU, at) * r, perimeter, "滾一圈的弧長", 0.02);
+    const a = sweep(TAU, 120).map((t) => roller137(t, at));
+    for (let i = 1; i < a.length; i++) assert.ok(a[i] < a[i - 1], "偏心輪逆時針轉,滾子一直順時針轉");
+  }
 });
