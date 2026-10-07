@@ -3,9 +3,14 @@
 // 輪要順時針倒轉時,銷撞上斜切端面,桿的推力指向樞軸,轉不動,輪被擋住。
 // 左邊是端頭為圓盤的槓桿,落在兩銷之間,兩個方向都會被銷頂起(只定位、不擋)。
 // 兩者的作用方式為推斷(原文只說是兩種擋止裝置)。主動件是輪;往回轉只能轉到擋止處。
+// 接觸(由接觸算,共用 pawl-drive.js):兩個擋止都靠自重搭在銷上;被銷頂起多高、何時越過,由外形相碰算出,
+// 越過之後從當下的速度起加速落下,碰到下一根銷或輪面就停(不瞬移)。
+// 推斷:兩個擋止的樞軸銷、輪軸與後面的軸承座(原圖只畫輪轂)。
 import { TAU, deg, polar } from "./kit.js";
 import { circle, stadium, shape } from "./shapes.js";
-import { swingUntilContact, circlePolygon, dropValue, lastStop } from "./contact.js";
+import { circlePolygon, lastStop } from "./contact.js";
+import { pawlDrive } from "./pawl-drive.js";
+import { pedestal } from "./supports.js";
 
 const WHEEL = { radius: 1.75, pins: 16, pinRadius: 1.45, pin: 0.12 };
 const PERIOD = TAU / WHEEL.pins;
@@ -30,17 +35,35 @@ const pinsAt = (wheel) =>
     return circlePolygon(p, WHEEL.pin);
   });
 
-export const barAngle = (wheel) =>
-  swingUntilContact({ pivot: BAR.pivot, outline: BAR.outline, from: deg(-14), into: 1, sweep: deg(40) }, pinsAt(wheel));
+// 輪是主動件:擋止隨輪的轉角起落,每個銷距一個週期
+const LEVER_HEAD = circlePolygon(LEVER.head, LEVER.headRadius, 16);
+const drive = pawlDrive({
+  period: PERIOD,
+  samples: 360,
+  pins: () => ({ bar: BAR.pivot, lever: LEVER.pivot }),
+  wheel: { obstacles: pinsAt, angle: (w) => w },
+  pawls: {
+    bar: { outline: BAR.outline, into: 1, angle: deg(-14), limits: [deg(-30), deg(12)] },
+    lever: { outline: LEVER_HEAD, into: -1, angle: deg(14), limits: [deg(-12), deg(30)] },
+  },
+});
+export const barAngle = (wheel) => drive.at(wheel).angles.bar;
+export const leverAngle = (wheel) => drive.at(wheel).angles.lever;
 
-export const leverAngle = (wheel) =>
-  swingUntilContact(
-    { pivot: LEVER.pivot, outline: circlePolygon(LEVER.head, LEVER.headRadius, 16), from: deg(14), into: -1, sweep: deg(40) },
-    pinsAt(wheel),
-  );
-
-// 桿落進兩銷之間的那一刻,就是倒轉時被擋住的位置
-const STOP = dropValue(barAngle, PERIOD, 360);
+// 桿落進兩銷之間、落定的那一刻,就是倒轉時被擋住的位置:找轉角驟降(落下)之後第一個不再變的取樣
+const STOP = (() => {
+  const n = 720;
+  const at = (i) => barAngle((PERIOD * i) / n);
+  let start = 0;
+  let best = 0;
+  for (let i = 1; i <= n; i++) {
+    const d = at(i) - at(i - 1);
+    if (d > best) [best, start] = [d, i];
+  }
+  let i = start;
+  while (at(i + 1) - at(i) > 1e-6 && i < start + n / 4) i++; // 還在往下落(轉角增加)
+  return (PERIOD * i) / n;
+})();
 
 export const pinPolygons = pinsAt;
 export const barOutline = BAR;
@@ -65,6 +88,20 @@ export default {
       })),
     },
     {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.14, length: 0.5, at: [0, 0, -0.25] }, // 輪軸
+        ...pedestal({ at: [0, 0], z: -0.4, bore: 0.14, floor: -2.2 }),
+        { kind: "cylinder", radius: 0.065, length: 0.7, at: [...BAR.pivot, 0.05] }, // 平桿的樞軸銷
+        { kind: "cylinder", radius: 0.065, length: 0.7, at: [...LEVER.pivot, 0.05] }, // 槓桿的樞軸銷
+        { kind: "box", size: [0.3, 3.3, 0.12], at: [BAR.pivot[0] + 0.3, BAR.pivot[1] - 1.55, -0.4] },
+        { kind: "box", size: [0.5, 0.25, 0.12], at: [BAR.pivot[0] + 0.15, BAR.pivot[1], -0.4] },
+        { kind: "box", size: [0.3, 2.9, 0.12], at: [LEVER.pivot[0] - 0.3, LEVER.pivot[1] - 1.35, -0.4] },
+        { kind: "box", size: [0.5, 0.25, 0.12], at: [LEVER.pivot[0] - 0.15, LEVER.pivot[1], -0.4] },
+      ],
+    },
+    {
       id: "bar",
       kind: "plate",
       center: [...BAR.pivot, Z.stops],
@@ -77,12 +114,25 @@ export default {
       center: [...LEVER.pivot, Z.stops],
       pieces: [
         { kind: "plate", shape: stadium(Math.hypot(...LEVER.head) - 0.2, 0.26, 0.07), thickness: 0.1, angle: Math.atan2(LEVER.head[1], LEVER.head[0]) },
+        { kind: "cylinder", radius: 0.14, inner: 0.07, length: 0.14 },
         { kind: "plate", shape: shape(circle(LEVER.headRadius, ...LEVER.head), [circle(0.1, ...LEVER.head).reverse()]), thickness: 0.14 },
       ],
     },
   ],
-  // 動力重演:只推主動件;bar、lever 靠摩擦定位,由接觸帶動
-  replay: { from: 0.2672535417116317, to: 6.5504388488912175, free: { bar: { hold: true }, lever: { hold: true } }, expect: [{ part: "bar", label: "主動件走完一輪後 bar 的位置" }, { part: "lever", label: "主動件走完一輪後 lever 的位置" }] },
+  // 動力重演:只推輪;兩個擋止鉸在銷上、靠自重搭在銷上,由銷頂起、越過後落下
+  replay: {
+    from: STOP,
+    to: STOP + 2 * PERIOD,
+    seconds: 16,
+    free: { bar: {}, lever: {} },
+    expect: [
+      { at: STOP + PERIOD * 0.6, part: "bar", label: "下一根銷把平桿頂起" },
+      { at: STOP + PERIOD, part: "bar", label: "銷越過斜切端,平桿落進下一個銷間" },
+      { at: STOP + PERIOD * 0.6, part: "lever", label: "銷把槓桿的圓盤頂起" },
+      { at: STOP + 2 * PERIOD, part: "lever", label: "兩個銷距後槓桿落回原位" },
+      { at: STOP + 2 * PERIOD, part: "bar", label: "兩個銷距後平桿落回原位" },
+    ],
+  },
   driver: {
     part: "wheel",
     type: "rotation",

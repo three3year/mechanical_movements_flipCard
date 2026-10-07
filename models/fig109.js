@@ -2,7 +2,6 @@
 // 在右側另一根轉動的螺桿胚料上切出螺紋。兩根螺桿底部各有一個輪,彼此咬合;
 // 更換框架末端的輪(改變兩輪的齒數比),切出的螺距就改變:切出的螺距 = 導螺桿螺距 × 左輪轉速 ÷ 右輪轉速。
 // 刀具上方是已切出的螺紋,下方仍是光滑的胚料。主動件是左螺桿(在行程內往返)。
-// 兩根螺桿的軸上下兩端都穿進機架的橫樑(照原圖:下橫樑在兩輪下方,軸端從底下露出)。
 import { Y, TAU, screwAdvance } from "./kit.js";
 import { meshAngle } from "./gears.js";
 import { shape } from "./shapes.js";
@@ -36,7 +35,7 @@ export const lead = LEAD;
 export default {
   figure: 109,
   parts: [
-    { id: "lead", kind: "worm", axis: Y, center: [X.left, 0.05, 0], radius: 0.28, length: 3.0, pitch: LEAD, thread: 0.08, pieces: [{ kind: "cylinder", radius: 0.08, length: 4.05, at: [0, 0, -0.175] }] },
+    { id: "lead", kind: "worm", axis: Y, center: [X.left, 0.05, 0], radius: 0.28, length: 3.0, pitch: LEAD, thread: 0.08, pieces: [{ kind: "cylinder", radius: 0.08, length: 3.7 }] },
     ...Object.keys(WHEELS).map((state) => ({
       id: `blank_${state}`,
       kind: "worm",
@@ -46,7 +45,7 @@ export default {
       length: 3.0,
       pitch: (LEAD * WHEELS[state].right) / WHEELS[state].left,
       thread: 0.07,
-      pieces: [{ kind: "cylinder", radius: 0.08, length: 4.05, at: [0, 0, -0.175] }],
+      pieces: [{ kind: "cylinder", radius: 0.08, length: 3.7 }],
     })),
     { id: "sleeve", kind: "cylinder", axis: Y, center: [X.right, BOTTOM + 0.1, 0], radius: 0.29, length: 1, arrow: false },
     {
@@ -104,8 +103,8 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["blank_equal", "frame"], reason: "螺桿胚兩端的軸伸進上下兩根橫樑:軸端裝在橫樑的軸承孔裡(孔沒有畫出來)" },
-    { check: "interference", parts: ["blank_double", "frame"], reason: "螺桿胚兩端的軸伸進上下兩根橫樑:軸端裝在橫樑的軸承孔裡(孔沒有畫出來)" },
-    { check: "interference", parts: ["lead", "frame"], reason: "螺桿兩端的軸伸進上下兩根橫樑:軸端裝在橫樑的軸承孔裡(孔沒有畫出來)" },
+    { check: "interference", parts: ["blank_equal", "frame"], reason: "螺桿胚的端頭伸進機架橫樑 0.11:端頭裝在橫樑的軸承孔裡(孔沒有畫出來)" },
+    { check: "interference", parts: ["blank_double", "frame"], reason: "螺桿胚的端頭伸進機架橫樑 0.11:端頭裝在橫樑的軸承孔裡(孔沒有畫出來)" },
+    { check: "interference", parts: ["lead", "frame"], reason: "螺桿的端頭伸進機架橫樑 0.11:端頭裝在橫樑的軸承孔裡(孔沒有畫出來)" },
   ],
 };

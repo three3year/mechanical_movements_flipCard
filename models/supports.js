@@ -14,16 +14,6 @@ export function pedestal({ at: [x, y], z, bore, floor, ring = bore + 0.15, depth
   ];
 }
 
-/** 軸沿 x 的軸承座:同 pedestal,軸承環的中心在 (x, y, z),環與立柱沿 x 的厚度是 depth */
-export function pedestalX({ at: [y, z], x, bore, floor, ring = bore + 0.15, depth = 0.3 }) {
-  const top = y - ring * 0.8;
-  return [
-    { kind: "cylinder", axis: [1, 0, 0], radius: ring, inner: bore, length: depth, at: [x, y, z] },
-    { kind: "box", size: [depth, top - floor, Math.max(0.3, ring * 1.2)], at: [x, (top + floor) / 2, z] },
-    { kind: "box", size: [0.6, 0.18, Math.max(1.0, ring * 3)], at: [x, floor - 0.09, z] },
-  ];
-}
-
 /**
  * 沿 x 滑動的方桿的方形導套:四片板圍住截面 width(y 方向)× thickness(z 方向)的桿,
  * 中心在 (x, y, z),沿桿長 length;wall 是板厚。

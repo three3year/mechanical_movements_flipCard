@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { sweep } from "./helpers.js";
-import { placeOutline, polygonsOverlap } from "../models/contact.js";
+import { placeOutline, polygonsOverlap, penetrationDepth } from "../models/contact.js";
 import { ratchetObstacles } from "../models/ratchets.js";
 import fig233, { barAngle, leverAngle, pinPolygons, barOutline } from "../models/fig233.js";
 import fig240, { WHEEL, DROPS, STOP_OUTLINES, stopAngle } from "../models/fig240.js";
@@ -39,14 +39,62 @@ test("第 233 種:倒轉時被平桿擋住,只能轉回到最近的擋止處", (
     const stop = backstop(v);
     assert.ok(stop <= v + 1e-9 && v - stop < PIN_PERIOD + 1e-9, "擋止處在一個銷距之內");
   }
-  // 擋止處正是平桿落下的那一刻:落下前桿被頂得較高
+  // 擋止處正是平桿落定的那一刻:落下前桿被頂得較高
   const s = fig233.driver.initial;
-  assert.ok(barAngle(s - 0.004) < barAngle(s + 0.004) - 0.02, "落下前平桿較高(轉角較小)");
+  assert.ok(barAngle(s - 0.15 * PIN_PERIOD) < barAngle(s) - 0.05, "落下前平桿較高(轉角較小)");
+});
+
+test("第 233 種:平桿越過銷之後是加速落下(不瞬移),落到下一根銷上停住", () => {
+  const n = 400;
+  const a = sweep(PIN_PERIOD, n).map(barAngle);
+  const steps = a.slice(1).map((x, i) => x - a[i]);
+  const fall = steps.map((d, i) => [d, i]).filter(([d]) => d > 1e-4);
+  assert.ok(fall.length > 3, "落下花了好幾個取樣");
+  assert.ok(Math.max(...steps) < 0.08, "沒有一步就落到底");
+  const run = fall.map(([d]) => d);
+  assert.ok(run[run.length - 1] > run[0], "越落越快");
 });
 
 test("第 233 種:圓盤端頭的槓桿只定位、不擋,兩個方向都被銷頂起", () => {
   const angles = sweep(PIN_PERIOD, 40).map(leverAngle);
   assert.ok(Math.max(...angles) - Math.min(...angles) > 0.02);
+});
+
+test("第 225 種:搖臂振動,棘爪推棘輪間歇地轉(原文:由承載棘爪的搖臂之振動運動所產生的棘輪之間歇圓周運動)", () => {
+  const S = m225.swing;
+  const ws = sweep(4 * S, 400).map((v) => m225.ratchet(v).wheel);
+  for (let i = 1; i < ws.length; i++) assert.ok(ws[i] >= ws[i - 1] - 1e-12, "只朝一個方向(逆時針)");
+  close(m225.step, m225.pitch, "每個來回推一齒(由接觸算)", 1e-9);
+  close(m225.ratchet(2 * S).wheel - m225.ratchet(0).wheel, m225.pitch, "一個來回前進一齒", 1e-9);
+  close(m225.ratchet(2 * S).wheel, m225.ratchet(1.05 * S).wheel, "往回擺時不動", 1e-9);
+  assert.ok(m225.ratchet(0.1 * S).wheel < 1e-9, "推程開頭爪尖還沒碰到齒的直面,輪不動(空行程)");
+  const pawl = sweep(2 * S, 200, S).map((v) => m225.ratchet(v).pawl);
+  assert.ok(Math.max(...pawl) - Math.min(...pawl) > 0.08, "往回擺時棘爪被齒背頂起、越過齒尖再落下");
+  for (const v of sweep(4 * S, 160)) {
+    const { tip, teeth } = m225.contactAt(v);
+    for (const t of teeth) assert.ok(penetrationDepth(tip, t) < 1e-3, `主動量 ${v.toFixed(3)}:爪尖不穿進齒`);
+  }
+});
+
+test("第 232 種:B 抬起時 C 先抬出齒間、再帶著 A 往後越過圓周;B 下降時 C 落入齒間、帶著輪轉(由接觸算)", () => {
+  const { PITCH, SWING, LIFT_MAX } = m232.geometry;
+  const at = (v) => m232.motion(v);
+  // 原文:當搖臂 B 被抬起時,棘爪 C 會從輪的齒間被抬起,並向後越過圓周移動
+  close(at(0.5 * SWING).a, at(0).a, "B 抬起的前段 A 不動、只抬 C", 1e-9);
+  assert.ok(at(0.5 * SWING).lift > at(0).lift + 0.15, "C 被抬起");
+  close(at(SWING).lift, LIFT_MAX, "C 抬到頂(碰到 A 上的擋銷)", 1e-6);
+  assert.ok(at(SWING).a - at(0).a > PITCH, "接著帶著 A 往後越過一齒以上");
+  close(at(SWING).wheel, at(0).wheel, "抬起與往後時輪不動", 1e-12);
+  // 原文:當搖臂下降時,棘爪會再次落入兩齒之間的空隙中,並帶動輪一起轉動
+  close(at(1.5 * SWING).wheel, at(SWING).wheel, "C 還在落下時輪不動", 1e-12);
+  close(at(2 * SWING).wheel - at(0).wheel, -PITCH, "一個來回輪順時針前進一齒", 1e-9);
+  close(at(2 * SWING).a, at(0).a, "A 回到原位", 1e-9);
+  const ws = sweep(4 * SWING, 400).map((v) => at(v).wheel);
+  for (let i = 1; i < ws.length; i++) assert.ok(ws[i] <= ws[i - 1] + 1e-12, "只朝一個方向");
+  for (const v of sweep(4 * SWING, 160)) {
+    const { tip, teeth } = m232.contactAt(v);
+    for (const t of teeth) assert.ok(penetrationDepth(tip, t) < 2e-3, `主動量 ${v.toFixed(3)}:爪尖不穿進齒`);
+  }
 });
 
 test("第 240 種:棘輪逆時針轉時,三種擋止爪都靠在輪上、不穿進齒裡", () => {
@@ -90,16 +138,6 @@ for (const [def, pins] of [[fig227, 1.82], [fig228, 2.02], [fig229, 2.3]]) {
   });
 }
 
-test("第 225 種:搖臂振動,棘爪推棘輪間歇地轉:往一邊擺時推、往回擺時不動", () => {
-  const S = m225.step;
-  const span = -2 * m225.ratchet(0).psi; // 單程擺幅
-  const ws = sweep(4 * span, 400).map((v) => m225.ratchet(v).wheel);
-  for (let i = 1; i < ws.length; i++) assert.ok(ws[i] >= ws[i - 1] - 1e-12, "只朝一個方向");
-  close(S, 2 * m225.pitch, "每推一次兩齒", 1e-6);
-  close(m225.ratchet(span).wheel - m225.ratchet(0).wheel, S, "推一次前進", 1e-9);
-  close(m225.ratchet(2 * span).wheel, m225.ratchet(1.5 * span).wheel, "回程不動", 1e-12);
-});
-
 test("第 226 種:B 轉一圈,框架 A 轉一圈;移除 C 的齒輪且 D 不自轉時 E 只隨框架轉一圈,裝回後 E 多轉", () => {
   const turns = (state, key) => (m226.train(2 * Math.PI, state)[key] - m226.train(0, state)[key]) / (2 * Math.PI);
   close(turns("installed", "a"), 1, "A 一圈", 1e-3);
@@ -128,19 +166,6 @@ test("第 231 種:拖曳連桿:兩支曲柄都轉整圈,連桿長度不變,從�
   const steps = states.slice(1).map((s, i) => Math.atan2(Math.sin(s.angle - states[i].angle), Math.cos(s.angle - states[i].angle)));
   close(steps.reduce((a, b) => a + b, 0), 2 * Math.PI, "從動曲柄也轉一整圈", 1e-6);
   assert.ok(Math.max(...steps) / Math.min(...steps) > 1.3, "變速");
-});
-
-test("第 232 種:B 抬起時棘爪 C 先抬出齒間、再往後越過;B 下降時 C 落入齒間帶著輪轉", () => {
-  const { PITCH, LOOSE } = m232.geometry;
-  const span = PITCH + LOOSE;
-  const early = m232.motion(LOOSE * 0.5);
-  assert.ok(early.lift > 0 && early.a === m232.motion(0).a, "先抬起 C,A 還沒動");
-  const up = m232.motion(span);
-  close(up.lift, 1, "到頂時 C 完全抬起", 1e-9);
-  close(up.wheel, m232.motion(0).wheel, "抬起與往後時輪不動", 1e-12);
-  const down = m232.motion(2 * span);
-  close(down.wheel - m232.motion(0).wheel, -PITCH, "下降時輪前進一齒", 1e-12);
-  close(down.lift, 0, "C 落回齒間", 1e-9);
 });
 
 const monotone = (values, sign) => values.every((v, i) => i === 0 || sign * (v - values[i - 1]) >= -1e-12);

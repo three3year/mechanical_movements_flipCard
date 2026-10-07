@@ -1,7 +1,7 @@
 // 第 230 種:圓周運動轉換為圓周運動。上下兩根平行的軸,右端各一個圓盤、左端各一支曲柄;右邊一根連桿連接兩個圓盤上的
 // 銷,左邊一根連接兩支曲柄。兩對曲柄方向相差直角:一對在死點(與連桿成一直線,或在行程末端)時,另一對正好在直角位置,
 // 所以不用飛輪也能保證運動連續。主動件是上軸。
-// 推斷:兩根連桿都等於軸距、曲柄等長(平行曲柄),下軸與上軸同轉角。
+// 推斷:兩根連桿都等於軸距、曲柄等長(平行曲柄),下軸與上軸同轉角;兩根軸穿過中間的一塊立板(軸承,原圖沒畫)。
 import { polar } from "./kit.js";
 import { shape, circle, stadium } from "./shapes.js";
 
@@ -34,7 +34,14 @@ const shaft = (id, center) => ({
 
 export default {
   figure: 230,
-  parts: [shaft("upper", UPPER), shaft("lower", LOWER), { id: "rodDisc", kind: "link", width: 0.1, thickness: 0.06 }, { id: "rodCrank", kind: "link", width: 0.1, thickness: 0.06 }],
+  parts: [
+    shaft("upper", UPPER),
+    shaft("lower", LOWER),
+    { id: "rodDisc", kind: "link", width: 0.1, thickness: 0.06 },
+    { id: "rodCrank", kind: "link", width: 0.1, thickness: 0.06 },
+    // 立板:兩根軸穿過它(軸承孔沒畫出來),底下一塊底板
+    { id: "standard", kind: "group", pieces: [{ kind: "box", size: [0.9, 4.6, 0.3], at: [0, -0.3, 0] }, { kind: "box", size: [2.0, 0.15, 1.2], at: [0, -2.68, 0] }] },
+  ],
   driver: { part: "upper", type: "rotation" },
   target: "lower",
   view: { direction: [-0.7, 0.25, 1] },

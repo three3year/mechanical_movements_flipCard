@@ -1,7 +1,9 @@
 // 第 227 種:鏈條與鏈條皮帶輪。各鏈節位於不同平面(內節、外節交錯),鏈節之間留有空隙,
 // 皮帶輪的六個齒嵌進空隙。轉動皮帶輪,鍊條跟著走,一側上升、一側下降。
+// 推斷:皮帶輪的軸與後面的軸承座(原圖只畫輪轂)。
 import { chainOver } from "./chain-over-sprocket.js";
 import { polarOutline, circle } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const PINS = 1.82;
 const chain = chainOver({ pins: PINS, left: [-PINS, -4.4, 0], right: [PINS, -4.4, 0] });
@@ -26,6 +28,7 @@ export default {
       spin: 2.35,
     },
     { id: "chain", kind: "chain", style: "plate", pitch: 0.94, width: 0.36, offset: 0.2 },
+    { id: "frame", kind: "group", pieces: [{ kind: "cylinder", radius: 0.2, length: 0.6, at: [0, 0, -0.3] }, ...pedestal({ at: [0, 0], z: -0.5, bore: 0.2, floor: -4.6 })] },
   ],
   driver: { part: "wheel", type: "rotation" },
   view: { direction: [0.1, 0.06, 1] },

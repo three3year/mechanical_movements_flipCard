@@ -3,6 +3,7 @@
 import { TAU } from "./kit.js";
 import { ratchetShape, circle } from "./shapes.js";
 import { chainOver } from "./chain-over-sprocket.js";
+import { pedestal } from "./supports.js";
 
 const TEETH = 16;
 const PINS = 2.3;
@@ -24,7 +25,7 @@ export default {
       markSize: 0.11,
       spin: 2.1,
     },
-    { id: "shaft", kind: "cylinder", radius: 0.14, length: 0.6 }, // 輪的固定軸(推斷)
+    { id: "shaft", kind: "group", pieces: [{ kind: "cylinder", radius: 0.14, length: 0.7, at: [0, 0, -0.2] }, ...pedestal({ at: [0, 0], z: -0.45, bore: 0.14, floor: -3.0 })] }, // 輪的固定軸與軸承座(推斷)
     { id: "chain", kind: "chain", style: "toothed", pitch: (TAU * PINS) / TEETH, width: 0.36, offset: 0.12 },
   ],
   driver: { part: "wheel", type: "rotation" },

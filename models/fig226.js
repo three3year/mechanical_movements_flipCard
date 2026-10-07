@@ -4,6 +4,7 @@
 // 狀態「移除 C 的齒輪」:空心軸上的兩個齒輪拿掉、D 不能自轉,B 轉一圈 → A 轉一圈 → E 被帶著轉一圈。
 // 狀態「裝上 C 的齒輪」:空心軸反向轉,D 在框架裡自轉,E 在被帶著轉之外又多轉。主動件是軸 B。
 // 依原圖的配置(三組等大的傘齒輪,差速器的關係 E = 2A − C),B 轉一圈時 E 轉三圈;原文說兩圈(見票的 Comments)。
+// 推斷:軸 F 兩端與軸 B 頂上的軸承座(原圖沒畫支架,只畫軸端)。
 import { X, Z, TAU, quatAxisAngle, quatMul, quatFromZ, quatRotate } from "./kit.js";
 import { meshAngle, bevelGear, bevelContact } from "./gears.js";
 
@@ -68,6 +69,23 @@ export default {
         { kind: "box", size: [0.12, 0.12, 2.2], at: [0, 1.25, 0] },
         { kind: "box", size: [0.12, 0.12, 2.2], at: [0, -1.25, 0] },
         { kind: "cylinder", axis: X, radius: 0.07, length: 1.2, at: [-0.6, 0, 0] }, // D 的軸
+      ],
+    },
+    {
+      id: "bearings",
+      kind: "group",
+      pieces: [
+        // 軸 F 兩端的軸承座:軸承環、立柱、底板
+        ...[-2.65, 3.5].flatMap((x) => [
+          { kind: "cylinder", axis: X, radius: 0.24, inner: 0.1, length: 0.3, at: [x, 0, 0] },
+          { kind: "box", size: [0.3, 1.75, 0.3], at: [x, -1.06, 0] },
+          { kind: "box", size: [0.6, 0.15, 1.0], at: [x, -2.0, 0] },
+        ]),
+        // 軸 B 頂上的軸承:軸承環由後方立柱伸出的橫臂托著
+        { kind: "cylinder", axis: [0, 1, 0], radius: 0.22, inner: 0.1, length: 0.15, at: [2.0, 2.1, 0] },
+        { kind: "box", size: [0.16, 0.15, 1.15], at: [2.0, 2.1, -0.75] },
+        { kind: "box", size: [0.2, 4.15, 0.2], at: [2.0, 0.0, -1.35] },
+        { kind: "box", size: [0.6, 0.15, 0.6], at: [2.0, -2.0, -1.35] },
       ],
     },
   ],

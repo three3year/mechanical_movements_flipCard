@@ -1,9 +1,10 @@
 // 第 231 種:拖曳連桿運動(drag-link motion),把圓周運動從一支曲柄傳到另一支。兩根平行的軸離得很近,
 // 兩支曲柄都比軸距長,以一根連桿相連:主動曲柄轉一整圈,從動曲柄也轉一整圈,但速度時快時慢。主動件是左邊的曲柄。
-// 推斷:各桿長度依原圖比例。
+// 推斷:各桿長度依原圖比例;主動軸後端、從動軸前端的軸承座(原圖只畫軸)。
 import { polar } from "./kit.js";
 import { circleCircle } from "./linkage.js";
 import { shape, circle, stadium } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const O1 = [0, 0, 0];
 const O2 = [0.75, 0.15, 0];
@@ -35,7 +36,12 @@ const crank = (id, center, len, angle, z, shaftZ) => ({
 export default {
   figure: 231,
   // 主動曲柄在後、軸往後伸;從動曲柄在前、軸往前伸;連桿夾在中間(兩根軸不同心,曲柄才不會掃過對方的軸)
-  parts: [crank("driver", O1, A, START, 0, -1.3), crank("follower", O2, B, Q0, 0.3, 1.3), { id: "link", kind: "link", width: 0.3, thickness: 0.1 }],
+  parts: [
+    crank("driver", O1, A, START, 0, -1.3),
+    crank("follower", O2, B, Q0, 0.3, 1.3),
+    { id: "link", kind: "link", width: 0.3, thickness: 0.1 },
+    { id: "frame", kind: "group", pieces: [...pedestal({ at: O1, z: -2.2, bore: 0.1, floor: -2.0 }), ...pedestal({ at: O2, z: 2.5, bore: 0.1, floor: -2.0 })] },
+  ],
   driver: { part: "driver", type: "rotation" },
   target: "follower",
   view: { direction: [0.3, 0.7, 1] },

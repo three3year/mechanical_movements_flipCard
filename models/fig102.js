@@ -1,6 +1,5 @@
 // 第 102 種:一般的螺栓與螺帽,由圓周運動產生直線運動。轉動螺帽(右旋螺紋),
 // 螺帽每轉一圈沿螺栓前進一個螺距,往螺栓頭靠近。主動件是螺帽(在螺紋的長度內往返)。
-// 原文要的直線運動就是螺帽自己的移動,螺栓不動:只有主動件在動,不標目標件(同維護者決定的那 14 張)。
 import { Y, TAU, screwAdvance } from "./kit.js";
 import { polygon, circle, shape } from "./shapes.js";
 
@@ -37,6 +36,7 @@ export default {
     },
   ],
   driver: { part: "nut", type: "rotation", range: [0, TURNS * TAU] },
+  target: "bolt",
   view: { direction: [0.25, 0.3, 1] },
   pose(angle) {
     return { parts: { nut: { position: [0, nutHeight(angle), 0], angle } }, readouts: [] };

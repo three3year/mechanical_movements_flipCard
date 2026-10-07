@@ -1,7 +1,9 @@
 // 第 228 種:另一種類型的鏈條與皮帶輪。厚輪的輪緣上有一圈楔形凸塊,
 // 梯形鍊(兩股環節以橫檔相連)掛在輪上,橫檔卡進凸塊之間;轉動輪,鍊條跟著走。
+// 推斷:軸後端的軸承座(原圖只畫軸頭)。
 import { TAU, polar } from "./kit.js";
 import { chainOver } from "./chain-over-sprocket.js";
+import { pedestal } from "./supports.js";
 
 const R = 1.9;
 const WIDTH = 0.8;
@@ -29,6 +31,7 @@ export default {
       spin: R,
       pieces: [...lugs, { kind: "cylinder", radius: 0.22, length: 2.6, at: [0, 0, -0.2] }, { kind: "cylinder", radius: 0.32, length: 0.25, at: [0, 0, 0.5] }],
     },
+    { id: "frame", kind: "group", pieces: pedestal({ at: [0, 0], z: -1.3, bore: 0.22, floor: -4.3 }) },
     { id: "chain", kind: "chain", style: "ladder", pitch: (TAU * PINS) / LUGS, width: 0.3, span: WIDTH + 0.25 },
   ],
   driver: { part: "wheel", type: "rotation" },
