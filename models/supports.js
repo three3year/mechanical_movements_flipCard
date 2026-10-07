@@ -37,3 +37,18 @@ export function squareGuide({ at: [x, y, z], width, thickness, length = 0.3, wal
     { kind: "box", size: [length, width + 2 * wall, wall], at: [x, y, z - hz] },
   ];
 }
+
+/**
+ * 鐘錶機芯的夾板條(軸沿 z):沿 points 的一條板條,在 z;每個軸孔處一個圓凸台。
+ * 各零件的軸往後伸進凸台(孔沒畫出來)。原圖多半只畫輪與擒縱叉,夾板是推斷。
+ */
+export function plateBar({ points, z, width = 0.32, boss = 0.24, thickness = 0.1 }) {
+  const pieces = [];
+  for (let i = 0; i + 1 < points.length; i++) {
+    const [a, b] = [points[i], points[i + 1]];
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    pieces.push({ kind: "box", size: [length, width, thickness], at: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, z], angle: Math.atan2(b[1] - a[1], b[0] - a[0]) });
+  }
+  for (const p of points) pieces.push({ kind: "cylinder", radius: boss, length: thickness * 1.6, at: [p[0], p[1], z] });
+  return pieces;
+}

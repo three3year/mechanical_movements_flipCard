@@ -1,82 +1,135 @@
-// 第 293 種:雙合式擒縱(錶用),兼具正齒輪與冠狀輪的特性:輪緣上一圈立起的冠狀齒(D、c)負責衝擊,
-// 外緣的長齒(a)負責鎖住。擺輪軸 A 上帶著叉瓦 B,每次往一個方向擺時從冠狀齒接收一個衝擊;
-// 軸 A 上切有一道凹槽,每當一個冠狀齒推過叉瓦 B,輪的鎖齒就依序落進凹槽、被放走一齒。
-// 擺輪每來回一次,輪轉過一齒(原圖箭頭:輪的上緣往右)。主動件是擺輪(累計擺動)。
-// 推斷:擺幅、齒數。
-import { TAU, deg, quatFromBasis } from "./kit.js";
-import { singleBeat } from "./escapement.js";
-import { shape, circle, arcPoints } from "./shapes.js";
+// 第 293 種:雙合式擒縱(錶用),兼具正齒輪與冠狀輪的特性:輪緣外的長齒負責鎖住,輪面上一圈立起的冠狀齒(D、c)負責衝擊。
+// 擺輪軸 A 上帶著叉瓦 B,每次往一個方向擺時從冠狀齒接收一個衝擊;軸 A 上切有一道凹槽,
+// 長齒的齒尖平時靠在軸上(輪不動),凹槽轉過來時齒尖落進凹槽、被軸帶過去(解鎖),輪轉起來,冠狀齒趕上叉瓦 B、推著它走(衝擊),
+// 再落到下一個長齒靠上軸為止。擺回來時齒尖只落進凹槽一點、又被推回(不放行),叉瓦 B 從兩個冠狀齒之間掃過。擺輪每來回一次,輪轉過一齒(原圖箭頭:輪的上緣往右,順時針)。
+// 主動件是擺輪(累計擺動);目標件是擒縱輪(擒縱讓它一齒一齒地放行)。
+//
+// 由接觸算(models/escapement.js 的 escapeByContact,兩層分開算):長齒只碰軸上的滾子(凹槽),冠狀齒只碰叉瓦 B。
+// 推斷:擺幅、齒數、凹槽的大小與方位、叉瓦 B 的長度與方位(B 只伸進冠狀齒圈 0.04,擺回來時才掃得過兩齒之間;
+// 原圖 B 朝正下方,模型的 B 在擺輪居中時斜 20°,掃過冠狀齒圈的時段才排在解鎖之後;滾子伸進齒尖圓 0.06,
+// 齒尖才真的頂在滾子上);輪軸與擺輪軸裝在後面的夾板條上(原圖沒畫)。
+import { TAU, deg, swing } from "./kit.js";
+import { escapeByContact, placePoly, ccw } from "./escapement.js";
+import { shape, circle, arcPoints, rect } from "./shapes.js";
+import { plateBar } from "./supports.js";
 
 export const N = 18;
 export const PITCH = TAU / N;
 export const SWING = deg(100);
-const W = [0, -2.2, 0]; // 輪心(原圖只畫出上方一段輪緣)
-const R = 2.0;
-const A = [0.35, 0.5, 0.25]; // 擺輪軸
+const W = [0, -2.2]; // 輪心(原圖只畫出上方一段輪緣)
+const R = 2.3; // 輪緣
+const TIP = 2.5; // 長齒的齒尖
+const CROWN = { r: 2.12, offset: 0.3, size: [0.14, 0.06], height: 0.45 }; // 冠狀齒:半徑、相對長齒的位置(齒距的比例)
+const ROLL = 0.35; // 軸上的滾子
+const NOTCH = { at: deg(258), width: deg(40), depth: 0.1 }; // 凹槽(擺輪居中時的方位)
+const A = [W[0] + (TIP + ROLL - 0.06) * Math.sin(deg(10)), W[1] + (TIP + ROLL - 0.06) * Math.cos(deg(10))]; // 滾子伸進長齒的齒尖圓 0.06
+const B_LEN = 0.63; // 叉瓦 B 的尖端離輪心 2.11,伸進冠狀齒圈 0.04
+
+// 長齒:細長的尖齒,齒尖往前(順時針)略傾
+const lockTooth = (i) => {
+  const a = i * PITCH;
+  const p = (r, da) => [r * Math.cos(a + da), r * Math.sin(a + da)];
+  return [p(R - 0.05, deg(1.4)), p(TIP, deg(-0.5)), p(R - 0.05, deg(-1.9))];
+};
+const crownTooth = (i) => {
+  const a = (i + CROWN.offset) * PITCH;
+  return ccw(rect(...CROWN.size, 0, 0).map(([x, y]) => [CROWN.r * Math.cos(a) - y * Math.cos(a) - x * Math.sin(a), CROWN.r * Math.sin(a) - y * Math.sin(a) + x * Math.cos(a)]));
+};
+const teeth = [...Array.from({ length: N }, (_, i) => lockTooth(i)), ...Array.from({ length: N }, (_, i) => crownTooth(i))];
+const layers = teeth.map((_, i) => (i < N ? "lock" : "crown"));
+
+// 軸上的滾子(切一道凹槽)與叉瓦 B(相對軸 A)
+const roller = (() => {
+  const a0 = NOTCH.at - NOTCH.width / 2;
+  const a1 = NOTCH.at + NOTCH.width / 2;
+  const inner = ROLL - NOTCH.depth;
+  return [...arcPoints(ROLL, a1, a0 + TAU), [inner * Math.cos(a0), inner * Math.sin(a0)], [inner * Math.cos(a1), inner * Math.sin(a1)]];
+})();
+// 叉瓦 B 在軸上的方位:長齒被凹槽帶過去(解鎖)要轉約 64°,B 掃過冠狀齒圈的時段排在解鎖之後
+const B_AT = deg(-20); // 擺輪轉到 +20° 時 B 朝正下方
+const PALLET_B = placePoly(rect(0.07, B_LEN, 0, -B_LEN / 2 - 0.05), [0, 0], B_AT);
+
+/** 擺輪累計擺動 v → 擺輪角(居中為 0;先往衝擊的方向——逆時針——擺) */
+export const balanceAngle = (v) => swing(v, -SWING, SWING);
+export const escapement = {
+  ...escapeByContact({
+    center: W,
+    teeth,
+    layers,
+    dir: -1,
+    period: 4 * SWING,
+    pitch: PITCH,
+    samples: 1440,
+    stops: (v) => [
+      { poly: placePoly(roller, A, balanceAngle(v)), layer: "lock" },
+      { poly: placePoly(PALLET_B, A, balanceAngle(v)), layer: "crown" },
+    ],
+  }),
+  period: 4 * SWING,
+};
 
 /** 擺輪累計擺動 v → 擺輪角、輪轉角(順時針為負:上緣往右) */
 export function duplex(v) {
-  const { at, turned } = singleBeat(v, -SWING, SWING, PITCH);
-  return { balance: at, wheel: -turned };
+  return { balance: balanceAngle(v), wheel: escapement.angle(v) };
 }
 
-// 冠狀齒:立在輪面上的三角板(朝 +z),板面沿切線
-const crown = Array.from({ length: N }, (_, i) => {
-  const a = (i + 0.5) * PITCH;
-  const r = R - 0.22;
-  const t = [-Math.sin(a), Math.cos(a), 0];
-  return {
-    kind: "plate",
-    shape: shape([[-0.12, 0], [0.12, 0], [-0.02, 0.55]]),
-    thickness: 0.06,
-    at: [r * Math.cos(a), r * Math.sin(a), 0.07],
-    rotation: quatFromBasis(t, [0, 0, 1], [Math.cos(a), Math.sin(a), 0]),
-    accent: i === 0,
-  };
-});
-// 鎖齒:外緣上的長尖齒
-const lockTeeth = shape(
-  Array.from({ length: N * 3 }, (_, k) => {
-    const i = Math.floor(k / 3);
-    const a = i * PITCH;
-    if (k % 3 === 0) return [R * Math.cos(a), R * Math.sin(a)];
-    if (k % 3 === 1) return [(R + 0.32) * Math.cos(a + PITCH * 0.08), (R + 0.32) * Math.sin(a + PITCH * 0.08)];
-    return [R * Math.cos(a + PITCH * 0.25), R * Math.sin(a + PITCH * 0.25)];
-  }),
-  [arcPoints(R - 0.5, 0, TAU).slice(0, -1).reverse()],
-);
+const local = (poly) => poly.map(([x, y]) => [x - W[0], y - W[1]]).map(([x, y]) => [x, y]);
 
 export default {
   figure: 293,
   parts: [
-    { id: "wheel", kind: "group", center: W, spin: R, arrow: false, pieces: [{ kind: "plate", shape: lockTeeth, thickness: 0.12 }, ...crown] },
+    {
+      id: "wheel",
+      kind: "group",
+      center: [...W, 0],
+      spin: R,
+      arrow: false,
+      pieces: [
+        { kind: "plate", shape: shape(circle(R), [circle(R - 0.45).reverse()]), thickness: 0.12 },
+        ...Array.from({ length: N }, (_, i) => ({ kind: "plate", shape: shape(lockTooth(i)), thickness: 0.12 })),
+        ...Array.from({ length: N }, (_, i) => {
+          const a = (i + CROWN.offset) * PITCH;
+          return { kind: "box", size: [CROWN.size[1], CROWN.size[0], CROWN.height], at: [CROWN.r * Math.cos(a), CROWN.r * Math.sin(a), 0.06 + CROWN.height / 2], angle: a, accent: i === 0 };
+        }),
+        ...Array.from({ length: 3 }, (_, i) => ({ kind: "box", size: [2 * R - 0.6, 0.14, 0.1], angle: (i * Math.PI) / 3 + 0.2 })),
+        { kind: "cylinder", radius: 0.2, length: 0.2 },
+        { kind: "cylinder", radius: 0.07, length: 0.5, at: [0, 0, -0.25] }, // 輪軸,往後伸進夾板條
+      ],
+    },
     {
       id: "staffA",
       kind: "group",
-      center: A,
+      center: [...A, 0],
       spin: 0.32,
       label: "A",
       labelOffset: [-0.3, 0.3, 0.3],
       pieces: [
-        { kind: "plate", shape: shape(circle(0.3), [circle(0.1).reverse()]), thickness: 0.2 },
-        // 叉瓦 B:從軸往下伸到冠狀齒的高度
-        { kind: "plate", shape: shape([[-0.06, 0], [0.06, 0], [0.12, -0.95], [0.0, -0.97]]), thickness: 0.08, at: [0.1, -0.1, 0.25], accent: true },
+        { kind: "plate", shape: shape(roller), thickness: 0.12 }, // 軸上的滾子與凹槽(長齒那一層)
+        { kind: "cylinder", radius: 0.05, length: 1.1, at: [0, 0, 0.05] }, // 擺輪軸,往後伸進夾板條
+        { kind: "plate", shape: shape(circle(0.3), [circle(0.06).reverse()]), thickness: 0.06, at: [0, 0, 0.55] },
+        { kind: "plate", shape: shape(PALLET_B), thickness: 0.08, at: [0, 0, 0.3], accent: true }, // 叉瓦 B(冠狀齒那一層)
       ],
     },
+    { id: "frame", kind: "group", pieces: plateBar({ points: [W, A], z: -0.55, width: 0.24, boss: 0.16 }) },
     { id: "labelB", kind: "group", center: [A[0] + 0.15, A[1] - 0.6, 0.5], label: "B", labelOffset: [0.25, 0, 0] },
-    { id: "labelD", kind: "group", center: [-1.3, -0.75, 0.5], label: "D", labelOffset: [-0.2, 0.3, 0] },
+    { id: "labelD", kind: "group", center: [-1.3, -0.75, 0.6], label: "D", labelOffset: [-0.2, 0.3, 0] },
   ],
-  // 動力重演:只推主動件;wheel 受固定的力矩(發條或重錘),由擒縱件擋住、放行
-  replay: { free: { wheel: { spring: -1, gravity: false } }, expect: [{ part: "wheel", label: "主動件走完一輪後 wheel 的位置" }] },
-  driver: { part: "staffA", type: "rotation", cycle: [-SWING, SWING], initial: SWING },
-  target: "wheel", // 擒縱輪
+  // 動力重演:只推擺輪;擒縱輪受固定的力矩(發條)往順時針轉,由軸上的凹槽擋住、放行,冠狀齒推叉瓦 B
+  replay: {
+    to: 8 * SWING,
+    seconds: 60,
+    free: { wheel: { pivot: [...W, 0], spring: -1, gravity: false } },
+    ignore: [["wheel", "frame"]], // 輪軸插在夾板條的孔裡(孔沒畫出來)
+    expect: [
+      { at: 2 * SWING, part: "wheel", label: "往衝擊的方向擺一次,放走一齒", quote: "每當冠狀輪其中一齒通過衝擊叉瓦 B 之後,輪的邊緣便會依序落入該凹槽中" },
+      { at: 4 * SWING, part: "wheel", label: "擺回來不放行:擺輪來回一次,輪轉過一齒" },
+      { part: "wheel", label: "擺輪來回兩次,輪轉過兩齒" },
+    ],
+  },
+  driver: { part: "staffA", type: "rotation", cycle: [-SWING, SWING] },
+  target: "wheel", // 擒縱輪:擒縱讓它一齒一齒地放行
   view: { direction: [0.05, 0.35, 1] },
   pose(v) {
-    const d = duplex(v);
-    return { parts: { staffA: { angle: d.balance }, wheel: { angle: d.wheel } }, readouts: [] };
+    return { parts: { staffA: { angle: balanceAngle(v) }, wheel: { angle: escapement.angle(v) } }, readouts: [] };
   },
-  waivers: [
-    { check: "replay", parts: ["wheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 wheel 的位置」預期 wheel 在主動量 8.73 時已轉 -20°,實際轉了 -7120°。模型的擒縱是依擺動的相位演出的:重演裡給擒縱輪一個固定的力矩後,掣子(叉瓦)沒有照一擺放一齒那樣擋住、放行(輪一路轉走,或被卡住不動)。掣子與輪齒的外形、位置要重做成真的擋得住(列入待確認清單)" },
-    { check: "interference", parts: ["wheel", "staffA"], reason: "擒縱輪的進退依擺動的相位演出(每擺一次放過一齒),沒有逐點算擺輪心軸上的缺口與輪齒的接觸;重疊 0.09(96 個取樣中 6 個)。列入待確認清單的動力重演名單" },
-  ],
 };
