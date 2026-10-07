@@ -177,3 +177,84 @@ export function pawlDrive({ period, samples = 480, warmup = 2, pins, angles, whe
   };
   return { at, step, shapes };
 }
+
+/**
+ * 擒縱(由接觸算):輪受發條或重錘的固定力矩往 dir 轉,擋它的零件(叉瓦、掣子)照主動件走。主動量每走一小步:
+ * 叉瓦若壓進輪齒,輪被推開(往回退,或被推著往前,取推得少的那一邊);沒被壓到時輪從當下的速度起加速往 dir 轉,碰上就停
+ * (輪被放開時不是瞬移到下一個擋處)。
+ * period:主動量的一個週期(擺一個來回);obstacles(θ):輪在轉角 θ 時的齒(世界座標多邊形陣列);stops(v):擋住輪的零件;
+ * drop:自靜止轉過一個齒距所花的主動量。從 start 起空走 warmup 個週期,取之後的一個週期當作穩定的週期(每週期前進整數個齒距)。
+ * 回傳 { at(v) → 輪的轉角, step, shapes(v) }。
+ */
+export function escapeDrive({ period, samples = 720, warmup = 2, obstacles, stops, dir, pitch, start = 0, drop = 0.06 }) {
+  const dv = period / samples;
+  const acc = (2 * pitch) / (drop * period) ** 2;
+  const hits = (theta, v) => {
+    const s = stops(v);
+    return obstacles(theta).some((o) => s.some((p) => polygonsOverlap(o, p)));
+  };
+  // 從 theta 往 sign 方向轉多少才不碰(上限一個齒距;推不開回傳 Infinity)
+  const clear = (theta, v, sign) => {
+    let [lo, hi] = [0, pitch / 256];
+    while (hits(theta + sign * hi, v)) {
+      [lo, hi] = [hi, hi * 2];
+      if (hi > pitch) return Infinity;
+    }
+    for (let k = 0; k < 30; k++) {
+      const mid = (lo + hi) / 2;
+      if (hits(theta + sign * mid, v)) lo = mid;
+      else hi = mid;
+    }
+    return hi;
+  };
+  let theta = start;
+  let w = 0;
+  const advance = (v) => {
+    if (hits(theta, v)) {
+      const back = clear(theta, v, -dir);
+      const fwd = clear(theta, v, dir);
+      if (!Number.isFinite(back) && !Number.isFinite(fwd)) throw new Error(`擒縱輪在主動量 ${v.toFixed(4)} 被卡死`);
+      theta += back <= fwd ? -dir * back : dir * fwd;
+      w = 0;
+      return;
+    }
+    const next = theta + dir * (w * dv + acc * dv * dv);
+    if (!hits(next, v)) {
+      w = Math.abs(next - theta) / dv;
+      theta = next;
+      return;
+    }
+    let [lo, hi] = [0, Math.abs(next - theta)];
+    for (let k = 0; k < 30; k++) {
+      const mid = (lo + hi) / 2;
+      if (hits(theta + dir * mid, v)) hi = mid;
+      else lo = mid;
+    }
+    theta += dir * lo;
+    w = 0;
+  };
+  // 起始位置若碰到擋件,往前找一個不碰的位置
+  for (let i = 0; i < 64 && hits(theta, 0); i++) theta = start + (dir * pitch * i) / 64;
+  const traceEvery = globalThis.PAWL_TRACE;
+  for (let i = 0; i <= warmup * samples; i++) {
+    advance(i * dv);
+    if (traceEvery && i % traceEvery === 0) console.log((i * dv).toFixed(3), ((theta * 180) / Math.PI).toFixed(2));
+  }
+  const base = theta;
+  const table = [0];
+  for (let i = 1; i <= samples; i++) {
+    advance((warmup * samples + i) * dv);
+    table.push(theta - base);
+  }
+  const raw = table[samples];
+  const step = Math.round(raw / pitch) * pitch;
+  if (!traceEvery && (!step || Math.abs(raw - step) > pitch * 0.05)) throw new Error(`擒縱輪一個週期轉了 ${(raw / pitch).toFixed(2)} 齒,不是穩定的整數齒(叉瓦的位置要調)`);
+  if (step) for (let i = 0; i <= samples; i++) table[i] = (table[i] * step) / raw;
+  const at = (v) => {
+    const k = Math.floor(v / period + 1e-12);
+    const x = Math.max(0, ((v - k * period) / period) * samples);
+    const i = Math.min(samples - 1, Math.floor(x));
+    return base + k * step + table[i] + (table[i + 1] - table[i]) * (x - i);
+  };
+  return { at, step, shapes: (v) => ({ wheel: obstacles(at(v)), stops: stops(v) }) };
+}

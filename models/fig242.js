@@ -1,8 +1,9 @@
 // 第 242 種:起重機與吊升機用的煞車。煞車帶繞過煞車輪將近一圈,兩端接在右邊槓桿上離樞軸不同遠的兩根銷;
 // 把槓桿的手柄往下拉,兩根銷把帶的兩端拉向彼此(帶的路徑變長),帶就收緊在煞車輪上。主動件是槓桿。
-// 推斷:帶長不變,依兩根銷的位置算出帶包住輪的半徑(收緊時貼在輪上);槓桿可轉的範圍。
+// 推斷:帶長不變,依兩根銷的位置算出帶包住輪的半徑(收緊時貼在輪上);槓桿可轉的範圍;煞車輪的軸、槓桿的樞軸銷與後面的支座。
 import { deg, add, Z, routeRope } from "./kit.js";
 import { shape, circle, thickLine } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const DRUM = 1.75;
 const P = [2.65, -0.35, 0];
@@ -45,6 +46,16 @@ export default {
       arrow: false,
     },
     { id: "strap", kind: "rope" },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.32, length: 0.8, at: [0, 0, -0.2] }, // 煞車輪的軸
+        ...pedestal({ at: [0, 0], z: -0.75, bore: 0.32, floor: -2.6 }),
+        { kind: "cylinder", radius: 0.07, length: 0.75, at: [P[0], P[1], -0.15] }, // 槓桿的樞軸銷
+        ...pedestal({ at: [P[0], P[1]], z: -0.6, bore: 0.07, floor: -2.6 }),
+      ],
+    },
     {
       id: "lever",
       kind: "group",
