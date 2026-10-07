@@ -4,7 +4,7 @@
 // 主動件是活塞桿(上下往復)。剖面圖。
 import { Y, deg } from "./kit.js";
 import { stream } from "./flow.js";
-import { stroke, flap, barrel, pipeWalls } from "./pump.js";
+import { stroke, valveOpening, flap, barrel, pipeWalls } from "./pump.js";
 import { backHalf } from "./section.js";
 
 export const CYL = { r: 0.55, y0: -1.2, y1: 1.2 };
@@ -22,9 +22,9 @@ const delivery = [[B_X, CYL.y0 + 0.1], [B_X, CYL.y1 + 0.35], [B_X + 0.6, CYL.y1 
 
 /** 主動量 v → 活塞高度、是否往下;四個閥門(1、2 吸水,3、4 排水)哪些打開 */
 export function pump(v) {
-  const { at, forward } = stroke(v, ...STROKE);
-  const down = forward;
-  return { y: at, down, open: { 1: down, 3: down, 2: !down, 4: !down } };
+  const phase = stroke(v, ...STROKE);
+  const down = phase.forward;
+  return { y: phase.at, down, open: { 1: down, 3: down, 2: !down, 4: !down }, phase };
 }
 
 export default {
@@ -66,14 +66,15 @@ export default {
     flap("valve3", 0.22, { label: "3", labelOffset: [-0.12, -0.3, 0.3] }),
     flap("valve4", 0.22, { label: "4", labelOffset: [-0.12, 0.12, 0.3] }),
   ],
+  powered: ["valve1", "valve2", "valve3", "valve4"], // 外力來源:閥瓣是被水頂開的(流體傳動,沒有實體相連)
   driver: { part: "piston", type: "translation", direction: [0, 1, 0], cycle: STROKE },
   targets: ["valve3", "valve4"], // 兩個排水閥:活塞上下兩程輪流把水送進排水管 B
   view: { direction: [0.06, 0.06, 1] },
   pose(v) {
     const p = pump(v);
     const travel = v * 4;
-    // 閥門鉸在開口的上緣、往下垂;被水推開時往水流的方向(四個開口的水都往左流)擺
-    const valve = (k, x, y) => ({ position: [x, y + 0.11, 0.05], angle: -Math.PI / 2 - (p.open[k] ? OPEN : 0) });
+    // 閥門鉸在開口的上緣、往下垂;被水推開時往水流的方向(四個開口的水都往左流)擺,回程加速落回(pump.js 的 valveOpening)
+    const valve = (k, x, y) => ({ position: [x, y + 0.11, 0.05], angle: -Math.PI / 2 - OPEN * valveOpening(p.open[k], p.phase) });
     const flows = p.down
       ? [
           { fluid: "water", points: stream([...suction.slice(0, 2), [A_X, TOP_PORT], [0.2, TOP_PORT]].map(([x, y]) => [x, y, 0.1]), travel, { spacing: 0.18 }) },

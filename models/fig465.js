@@ -3,9 +3,9 @@
 // 推斷:兩個泵各接在樑的一邊,一邊的活塞上升時另一邊下降;兩端的球是平衡重;泵是提升泵,上行時水從出水口流出;
 // 人不畫出。
 import { deg } from "./kit.js";
-import { stroke, barrel, flap, water } from "./pump.js";
+import { stroke, valveOpening, barrel, flap, water } from "./pump.js";
 import { stream } from "./flow.js";
-import { shape, thickLine } from "./shapes.js";
+import { shape, thickLine, circle } from "./shapes.js";
 
 export const PIVOT = [0, 1.7, 0];
 const HALF = 2.1; // 樑半長
@@ -32,6 +32,7 @@ export default {
         { kind: "box", size: [3.6, 0.12, 1.2], at: [0, 0.75, 0] },
         ...[-1.6, 1.6].map((x) => ({ kind: "box", size: [0.12, 2.0, 0.12], at: [x, -0.25, 0.5] })),
         { kind: "box", size: [0.16, 1.0, 0.16], at: [0, 1.2, 0] },
+        { kind: "cylinder", radius: 0.035, length: 0.3, at: PIVOT }, // 樑的樞軸銷
         { kind: "box", size: [6.0, 0.2, 1.6], at: [0, -1.35, 0] },
       ],
     },
@@ -40,7 +41,7 @@ export default {
       id: "beam",
       kind: "plate",
       center: PIVOT,
-      shape: shape(thickLine([[-HALF, 0], [HALF, 0]], 0.12)),
+      shape: shape(thickLine([[-HALF, 0], [HALF, 0]], 0.12), [circle(0.04).reverse()]),
       thickness: 0.12,
       arrow: false,
       pieces: [
@@ -61,11 +62,13 @@ export default {
       ];
     }),
   ],
+  powered: ["valve0", "valve1"], // 外力來源:閥瓣是被水頂開的(流體傳動,沒有實體相連)
   driver: { part: "beam", type: "rotation", cycle: SWING },
   targets: ["rod0", "rod1"],
   view: { direction: [0.12, 0.1, 1] },
   pose(v) {
-    const { at, forward } = stroke(v, ...SWING);
+    const phase = stroke(v, ...SWING);
+    const { at, forward } = phase;
     const ys = pistons(at);
     const parts = { beam: { angle: at } };
     const flows = [];
@@ -74,7 +77,7 @@ export default {
       const up = k === 0 ? !forward : forward; // 樑逆時針轉時右邊的活塞上升
       parts[`rod${k}`] = { position: [x, y + ROD / 2, 0] };
       parts[`water${k}`] = water(x, BARREL.y0, Math.min(y + 0.1, SPOUT_Y + 0.05), BARREL.y1 - BARREL.y0);
-      parts[`valve${k}`] = { position: [x - 0.18, BARREL.y0 + 0.03, 0.05], angle: up ? OPEN : 0 };
+      parts[`valve${k}`] = { position: [x - 0.18, BARREL.y0 + 0.03, 0.05], angle: OPEN * valveOpening(up, phase) }; // 被水頂開、回程加速落回
       if (up) flows.push({ fluid: "water", points: stream([[x, -1.9, 0.1], [x, y - 0.2, 0.1], [x, SPOUT_Y, 0.1], [x + (k === 0 ? -0.6 : 0.6), SPOUT_Y - 0.1, 0.1], [x + (k === 0 ? -0.7 : 0.7), -1.0, 0.1]], v * 6, { spacing: 0.16 }) });
     });
     return { parts, flows, readouts: [{ label: "出水", value: forward ? "右邊的泵" : "左邊的泵" }] };

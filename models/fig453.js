@@ -5,7 +5,7 @@
 // 一個通往排水管的出水閥;風箱以一圈圈的褶與頂板表示;剖面圖。
 import { deg } from "./kit.js";
 import { stream } from "./flow.js";
-import { stroke, flap, pipeWalls } from "./pump.js";
+import { stroke, valveOpening, flap, pipeWalls } from "./pump.js";
 import { shape, rect, thickLine, circle } from "./shapes.js";
 
 const PIVOT = [0, 2.3, 0];
@@ -65,11 +65,13 @@ export default {
     ...[0, 1].map((k) => flap(`suction${k}`, 0.28)),
     ...[0, 1].map((k) => flap(`delivery${k}`, 0.22)),
   ],
+  powered: ["suction0", "suction1", "delivery0", "delivery1"], // 外力來源:閥瓣是被水頂開的(流體傳動,沒有實體相連)
   driver: { part: "beam", type: "rotation", cycle: SWING },
   targets: ["top0", "top1"], // 兩個風箱的頂板
   view: { direction: [0.05, 0.08, 1] },
   pose(v) {
-    const { at, forward } = stroke(v, ...SWING);
+    const phase = stroke(v, ...SWING);
+    const { at, forward } = phase;
     const t = tops(at);
     // 槓桿往逆時針轉(forward)時右邊的風箱被撐開、左邊的被壓縮
     const expanding = [!forward, forward];
@@ -86,8 +88,9 @@ export default {
       parts[`water${k}`] = { position: [x, BASE_TOP + 0.8, 0], level: (y - BASE_TOP - 0.05) / 1.6 };
       // 吸水閥在風箱底的外側,出水閥在靠排水管那一側
       const s = k === 0 ? -1 : 1;
-      parts[`suction${k}`] = { position: [x + s * 0.15 - 0.14, BASE_TOP, 0.1], angle: expanding[k] ? OPEN : 0 };
-      parts[`delivery${k}`] = { position: [s * 0.3, -0.5, 0.1], angle: Math.PI / 2 + (expanding[k] ? 0 : s * OPEN) }; // 被水推向中央
+      // 閥瓣被水頂開、回程加速落回閥座(pump.js 的 valveOpening)
+      parts[`suction${k}`] = { position: [x + s * 0.15 - 0.14, BASE_TOP, 0.1], angle: OPEN * valveOpening(expanding[k], phase) };
+      parts[`delivery${k}`] = { position: [s * 0.3, -0.5, 0.1], angle: Math.PI / 2 + s * OPEN * valveOpening(!expanding[k], phase) }; // 被水推向中央
       if (expanding[k]) flows.push({ fluid: "water", points: stream([[0, -1.55, 0.2], [0, -0.6, 0.2], [x, -0.6, 0.2], [x, y - 0.2, 0.2]], travel, { spacing: 0.18 }) });
       else flows.push({ fluid: "water", points: stream([[x, y - 0.2, 0.2], [x, -0.35, 0.2], [s * 0.15, -0.35, 0.2], ...DELIVERY.slice(1).map(([a, b]) => [a, b, 0.2]), [0.55, 0.6, 0.2]], travel, { spacing: 0.18 }) });
     });

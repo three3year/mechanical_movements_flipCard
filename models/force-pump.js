@@ -3,7 +3,7 @@
 // 主動件是手柄(往下壓提起活塞)。剖面圖。
 import { Y, deg } from "./kit.js";
 import { stream } from "./flow.js";
-import { lever, leverPart, stroke, flap, barrel, water, pipeWalls } from "./pump.js";
+import { lever, leverPart, stroke, valveOpening, flap, barrel, water, pipeWalls } from "./pump.js";
 import { backHalf } from "./section.js";
 import { shape, thickLine } from "./shapes.js";
 
@@ -21,12 +21,13 @@ const arm = lever(HANDLE);
 
 /** 主動量 v → 手柄角、活塞高度、是否上行、活塞在行程中的位置(0 低、1 高) */
 export function pump(v) {
-  const { at, forward } = stroke(v, ...SWING);
+  const phase = stroke(v, ...SWING);
+  const { at, forward } = phase;
   const { E, top } = arm(at);
   const hi = arm(SWING[1]).top[1] - ROD;
   const lo = arm(SWING[0]).top[1] - ROD;
   const y = top[1] - ROD;
-  return { theta: at, E, top, piston: y, up: forward, frac: (y - lo) / (hi - lo) };
+  return { theta: at, E, top, piston: y, up: forward, frac: (y - lo) / (hi - lo), phase };
 }
 
 /**
@@ -61,6 +62,7 @@ export function makeForcePump(figure, { air = false } = {}) {
             : pipeWalls(outlet, 0.2)),
           // 手柄的支柱
           { kind: "plate", shape: shape(thickLine([[X + BARREL.r + 0.07, BARREL.y1 - 0.2], [X + 0.75, 2.2], [X + 0.9, 2.55]], 0.1)), thickness: 0.15 },
+          { kind: "cylinder", radius: 0.035, length: 0.3, at: HANDLE.pivot }, // 手柄的樞軸銷
         ],
       },
       { id: "well", kind: "fill", fluid: "water", center: [X, -2.45, 0], size: [2.0, 0.5, 1.2], level: 1 },
@@ -81,6 +83,7 @@ export function makeForcePump(figure, { air = false } = {}) {
       leverPart("handle", HANDLE),
       { id: "link", kind: "link", width: 0.08, thickness: 0.05 },
     ],
+    powered: ["suctionValve", "deliveryValve"], // 外力來源:閥瓣是被水頂開的(流體傳動,沒有實體相連)
     driver: { part: "handle", type: "rotation", cycle: SWING },
     target: "piston", // 第 450、451 種:被手柄壓下去送水的活塞
     view: { direction: [0.08, 0.06, 1] },
@@ -94,8 +97,9 @@ export function makeForcePump(figure, { air = false } = {}) {
         handle: { position: HANDLE.pivot, angle: p.theta },
         link: { from: [p.E[0], p.E[1], 0.08], to: [p.top[0], p.top[1], 0.08] },
         piston: { position: [X, p.piston, 0] },
-        suctionValve: { position: [X - SUCTION.r, BARREL.y0 + 0.03, 0], angle: p.up ? OPEN : 0 },
-        deliveryValve: { position: [VALVE_X - 0.2, VALVE_Y + 0.3, 0], angle: p.up ? 0 : OPEN },
+        // 閥瓣被水頂開、回程加速落回閥座(見 pump.js 的 valveOpening)
+        suctionValve: { position: [X - SUCTION.r, BARREL.y0 + 0.03, 0], angle: OPEN * valveOpening(p.up, p.phase) },
+        deliveryValve: { position: [VALVE_X - 0.2, VALVE_Y + 0.3, 0], angle: OPEN * valveOpening(!p.up, p.phase) },
         below: water(X, BARREL.y0, p.piston - PISTON_H / 2, BARREL.y1 - BARREL.y0),
       };
       let readout = p.up ? "上行:吸水閥開、出水閥關,水湧進泵筒" : "下行:吸水閥關、出水閥開,水被往上送";

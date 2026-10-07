@@ -31,11 +31,13 @@ export function chainAt(s0) {
   return { p: polar(R, a).map((c, i) => c + BOTTOM[i]), t: [Math.sin(a), -Math.cos(a), 0] };
 }
 
+// 燈籠輪:圓盤、八根橫檔與軸(軸往後伸進支架的軸承);第一根橫檔塗記號色
 const sprocket = (center) => ({
   kind: "group",
   pieces: [
     { kind: "plate", shape: shape(circle(R * 0.85), [circle(0.06).reverse()]), thickness: 0.08 },
-    ...Array.from({ length: 8 }, (_, i) => ({ kind: "box", size: [2 * R + 0.25, 0.05, 0.05], at: [0, 0, 0], angle: (i * Math.PI) / 8 })),
+    ...Array.from({ length: 8 }, (_, i) => ({ kind: "box", size: [2 * R + 0.25, 0.05, 0.05], at: [0, 0, 0], angle: (i * Math.PI) / 8, ...(i === 0 ? { accent: true } : {}) })),
+    { kind: "cylinder", radius: 0.06, length: 0.5, at: [0, 0, -0.25] },
   ],
   center,
 });
@@ -51,6 +53,12 @@ export default {
         // 左上的岸
         { kind: "box", size: [1.2, 0.5, 1.2], at: [TUBE.x - 1.7, TUBE.y1 - 0.35, 0] },
         { kind: "box", size: [4.4, 0.2, 1.4], at: [0, BOTTOM[1] - R - 0.4, 0] },
+        // 兩個燈籠輪的支架(推斷;原圖沒畫):一根立柱從池底立起,上下各一個軸承托著輪軸
+        { kind: "box", size: [0.14, TOP[1] - BOTTOM[1] + R + 0.45, 0.12], at: [TOP[0] + R + 0.45, (TOP[1] + BOTTOM[1] - R - 0.3) / 2, -0.42] },
+        ...[TOP, BOTTOM].flatMap((c) => [
+          { kind: "box", size: [R + 0.45, 0.1, 0.12], at: [c[0] + (R + 0.45) / 2, c[1], -0.42] },
+          { kind: "cylinder", radius: 0.11, inner: 0.065, length: 0.14, at: [c[0], c[1], -0.42] },
+        ]),
       ],
     },
     // 左上的水槽(接住碟片抬上來的水):獨立成一個零件當目標件
@@ -64,7 +72,7 @@ export default {
     },
     { id: "pond", kind: "fill", fluid: "water", center: [0, (WATER + BOTTOM[1] - R - 0.3) / 2, 0], size: [4.2, WATER - BOTTOM[1] + R + 0.3, 1.3], level: 1 },
     { id: "upper", ...sprocket(TOP), spin: R + 0.2 },
-    { id: "lower", ...sprocket(BOTTOM), arrow: false },
+    { id: "lower", ...sprocket(BOTTOM), arrow: false }, // 上下兩輪同向轉,箭頭只畫在上輪
     { id: "chain", kind: "chain", radius: 0.025 },
     ...Array.from({ length: DISCS }, (_, i) => ({ id: `disc${i}`, kind: "cylinder", radius: TUBE.r - 0.02, length: 0.05, arrow: false })),
   ],

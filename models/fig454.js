@@ -3,7 +3,7 @@
 // 推斷:隔膜橫張在淺水室的頂上,中心接著活塞桿;隔膜拉起時底部的吸水閥打開,壓下時水經右邊的出水閥往上送;剖面圖。
 import { deg } from "./kit.js";
 import { stream } from "./flow.js";
-import { stroke, flap, pipeWalls } from "./pump.js";
+import { stroke, valveOpening, flap, pipeWalls } from "./pump.js";
 import { shape, rect, thickLine, circle } from "./shapes.js";
 
 const PIVOT = [-0.75, 1.55, 0];
@@ -43,6 +43,7 @@ export default {
         ...pipeWalls(OUT, 0.28),
         { kind: "plate", shape: shape(rect(0.5, 0.45, 1.55, 0.75), [rect(0.38, 0.45, 1.55, 0.75).reverse()]), thickness: 0.5 },
         { kind: "plate", shape: shape(thickLine([[-0.7, RIM + 0.1], [-0.75, PIVOT[1]]], 0.12)), thickness: 0.15, at: [0, 0, -0.2] },
+        { kind: "cylinder", radius: 0.035, length: 0.35, at: [PIVOT[0], PIVOT[1], -0.12] }, // 手柄的樞軸銷:從支柱穿過手柄
       ],
     },
     { id: "membrane", kind: "rod", radius: 0.04 },
@@ -54,11 +55,13 @@ export default {
     flap("suctionValve", 0.3),
     flap("deliveryValve", 0.36),
   ],
+  powered: ["suctionValve", "deliveryValve"], // 外力來源:閥瓣是被水頂開的(流體傳動,沒有實體相連)
   driver: { part: "handle", type: "rotation", cycle: SWING },
   target: "rod", // 隔膜是路徑零件(不上目標色),標接在隔膜中心、帶著它起落的桿
   view: { direction: [0.08, 0.08, 1] },
   pose(v) {
-    const { at, forward } = stroke(v, ...SWING);
+    const phase = stroke(v, ...SWING);
+    const { at, forward } = phase;
     // 手柄的把手在左;往下壓(逆時針轉)→ 桿頂往上 → 隔膜被拉起
     const theta = -at;
     const d = diaphragm(theta);
@@ -72,8 +75,9 @@ export default {
         handle: { position: PIVOT, angle: theta },
         link: { from: [d.E[0], d.E[1], 0.1], to: [0, d.top, 0.1] },
         rod: { position: [0, d.top - ROD / 2, 0] },
-        suctionValve: { position: [-0.15, -0.35, 0.1], angle: rising ? OPEN : 0 },
-        deliveryValve: { position: [1.37, 0.55, 0.1], angle: rising ? 0 : OPEN },
+        // 閥瓣被水頂開、回程加速落回閥座(pump.js 的 valveOpening)
+        suctionValve: { position: [-0.15, -0.35, 0.1], angle: OPEN * valveOpening(rising, phase) },
+        deliveryValve: { position: [1.37, 0.55, 0.1], angle: OPEN * valveOpening(!rising, phase) },
       },
       paths: { membrane: { points: membrane(d.center), closed: false } },
       flows,

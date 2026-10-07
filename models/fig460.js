@@ -39,7 +39,8 @@ export default {
       pieces: [
         // 左岸、V 形的渠、右岸與槓桿的座
         { kind: "plate", shape: shape([[-3.0, 0.3], [-1.25, 0.3], [-0.2, -1.15], [1.5, -1.15], [1.9, 0.3], [3.0, 0.3], [3.0, -1.6], [-3.0, -1.6]]), thickness: 1.4 },
-        { kind: "box", size: [0.3, 1.0, 0.44], at: [LEVER_PIVOT[0], LEVER_PIVOT[1] - 0.55, 0] }, // 支柱頂著槓桿的背面
+        { kind: "box", size: [0.3, 1.2, 0.44], at: [LEVER_PIVOT[0], LEVER_PIVOT[1] - 0.45, 0] }, // 支柱在槓桿的背面
+        { kind: "cylinder", radius: 0.05, length: 0.3, at: [LEVER_PIVOT[0], LEVER_PIVOT[1], 0.2] }, // 槓桿的樞軸銷:從支柱穿過槓桿
         // 鉸座:底塊在舀斗下方留出擺動的空隙,兩片耳板夾著舀斗,鉸銷穿過去
         { kind: "box", size: [0.25, 0.1, 0.8], at: [PIVOT[0], PIVOT[1] - 0.2, 0] },
         { kind: "box", size: [0.12, 0.3, 0.05], at: [PIVOT[0], PIVOT[1] - 0.1, 0.36] },

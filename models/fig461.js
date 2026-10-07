@@ -6,7 +6,7 @@
 import { deg } from "./kit.js";
 import { stroke } from "./pump.js";
 import { stream } from "./flow.js";
-import { shape, thickLine } from "./shapes.js";
+import { shape, thickLine, circle } from "./shapes.js";
 
 export const PIVOT = [0, 3.6, 0];
 const LEVELS = 6; // 箱子的層數
@@ -39,6 +39,7 @@ export default {
       pieces: [
         { kind: "box", size: [2.6, 0.12, 0.5], at: [0, PIVOT[1] + 0.3, 0] },
         { kind: "box", size: [0.12, 0.4, 0.12], at: [0, PIVOT[1] + 0.12, 0] },
+        { kind: "cylinder", radius: 0.035, length: 0.3, at: [0, PIVOT[1], -0.1] }, // 擺的樞軸銷:從吊座穿過吊桿頂的眼(推斷)
         { kind: "box", size: [6.0, 0.2, 1.4], at: [0, -1.25, 0] },
       ],
     },
@@ -50,7 +51,8 @@ export default {
       arrow: false,
       pieces: [
         // 中間的吊桿
-        { kind: "box", size: [0.08, -BOTTOM + 0.6, 0.08], at: [0, (BOTTOM - 0.6) / 2, -0.15] },
+        { kind: "box", size: [0.08, -BOTTOM + 0.6 - 0.1, 0.08], at: [0, (BOTTOM - 0.6 - 0.1) / 2, -0.15] },
+        { kind: "plate", shape: shape(circle(0.1), [circle(0.04).reverse()]), thickness: 0.08, at: [0, 0, -0.15] }, // 吊桿頂的眼
         // 交錯的管子與轉角的箱子
         ...BOXES.slice(0, -1).map((p, k) => ({ kind: "plate", shape: shape(thickLine([p, BOXES[k + 1]], 0.08)), thickness: 0.08 })),
         ...BOXES.map(([x, y]) => ({ kind: "box", size: [0.26, 0.22, 0.26], at: [x, y, 0] })),

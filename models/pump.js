@@ -26,11 +26,29 @@ export const leverPart = (id, { short, long }) => ({
   pieces: [{ kind: "sphere", radius: 0.11, at: [long, -1.0, 0] }],
 });
 
-/** 往復的主動量 v → 擺動位置與是否往 to 那一端走 */
+/** 往復的主動量 v → 擺動位置、是否往 to 那一端走、這一程走了多少(f:0–1)、第幾程(n,從 0 起) */
 export const stroke = (v, from, to) => {
-  const { at, forward } = swingPhase(v, from, to);
-  return { at, forward };
+  const { at, forward, f } = swingPhase(v, from, to);
+  return { at, forward, f, n: Math.floor(v / (Math.abs(to - from) || 1)) };
 };
+
+const VALVE_RISE = 0.2; // 一程的前 20%:閥瓣被水頂到開足
+const VALVE_FALL = 0.2; // 回程的前 20%:閥瓣落回閥座
+
+/**
+ * 瓣閥開的程度(0 關、1 開足)。open:這一程水把它推開;phase:stroke() 的結果。
+ * 被推開的閥由快到慢頂到開足;上一程開著、這一程要關的閥靠自重與倒流加速落回閥座、撞停(不瞬間闔上)。
+ * 第一程之前沒有上一程,要關的閥一開始就關著。
+ */
+export function valveOpening(open, { f, n }) {
+  if (open) {
+    const t = Math.min(1, f / VALVE_RISE);
+    return 1 - (1 - t) ** 2;
+  }
+  if (n === 0) return 0;
+  const t = Math.min(1, f / VALVE_FALL);
+  return 1 - t * t;
+}
 
 /** 瓣閥:鉸在局部原點,沿 +x 伸出 length;姿勢以 angle 開合 */
 export const flap = (id, length, extra = {}) => ({ id, kind: "plate", shape: shape(rect(length, 0.05, length / 2, 0)), thickness: 0.3, arrow: false, ...extra });

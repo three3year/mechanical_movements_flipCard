@@ -4,7 +4,7 @@
 // 推斷:竿的長端掛水桶、短端綁配重;水桶放到井裡就裝滿;拉力以「水桶重 − 配重在竿端的等效重」的正負表示。
 import { deg } from "./kit.js";
 import { stroke } from "./pump.js";
-import { shape, thickLine } from "./shapes.js";
+import { shape, thickLine, circle } from "./shapes.js";
 
 export const PIVOT = [2.0, 0.6, 0];
 export const LONG = 3.9; // 支點到掛桶端
@@ -38,6 +38,7 @@ export default {
         // 叉形柱
         { kind: "plate", shape: shape(thickLine([[PIVOT[0] + 0.05, GROUND], [PIVOT[0], PIVOT[1] - 0.1], [PIVOT[0] - 0.12, PIVOT[1] + 0.25]], 0.16)), thickness: 0.18, at: [0, 0, -0.16] }, // 支架在桿的後面
         { kind: "plate", shape: shape(thickLine([[PIVOT[0], PIVOT[1] - 0.1], [PIVOT[0] + 0.15, PIVOT[1] + 0.25]], 0.12)), thickness: 0.18, at: [0, 0, -0.16] },
+        { kind: "cylinder", radius: 0.035, length: 0.4, at: [PIVOT[0], PIVOT[1], -0.1] }, // 竿的樞軸銷:從叉形柱穿過竿(推斷)
         // 井口(井欄)與井壁
         { kind: "cylinder", radius: 0.65, inner: 0.55, length: 0.2, axis: [0, 1, 0], at: [PIVOT[0] - LONG * Math.cos((SWING[0] + SWING[1]) / 2), GROUND + 0.05, 0] },
       ],
@@ -46,7 +47,7 @@ export default {
     {
       id: "pole",
       kind: "plate",
-      shape: shape(thickLine([[-LONG, 0], [SHORT, 0]], 0.09)),
+      shape: shape(thickLine([[-LONG, 0], [SHORT, 0]], 0.09), [circle(0.04).reverse()]),
       thickness: 0.09,
       arrow: false,
       pieces: [{ kind: "box", size: [0.45, 0.35, 0.35], at: [SHORT - 0.1, -0.1, 0] }],

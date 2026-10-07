@@ -2,9 +2,11 @@
 // 以齒輪與左邊的阿基米德螺旋相連;從螺旋上方伸出一根管子,通到輪的下方。啟動時把螺旋朝與抬水相反的方向轉,
 // 把空氣往下壓進管裡,空氣在管裡上升、越過、再下降,把運動傳給水車;據說空氣的體積隨溫度增加,使機器保持運轉。
 // 至於溫度差要如何維持,原文沒有說明。
-// 主動件是右邊的水車;螺旋經齒輪跟著轉。
-// 推斷:氣泡從管口冒到水車一側的水斗下,推著水車轉;水車上的大齒輪與螺旋頂端的小齒輪 3 : 1;管路的走法依原圖。
-import { TAU, deg, polar, norm, quatFromZ, quatMul, quatAxisAngle } from "./kit.js";
+// 主動件是虛擬的「進程」:空氣推著水車已轉了幾圈(與全書其他水車相同,水車由流體推動);目標件是水車——
+// 這組裝置的目的就是「得到旋轉運動」。螺旋經齒輪跟著水車轉,一直朝「與抬水相反」的方向轉,把空氣壓進管裡。
+// 推斷:氣泡從管口冒到水車一側的水斗下,推著水車逆時針轉;水車上的大齒輪與螺旋頂端的小齒輪 3 : 1;管路的走法依原圖。
+// 螺旋做成左旋:水車逆時針轉時,螺旋的螺紋往下游走(把空氣往下壓),與原文「與抬水相反的方向」一致。
+import { TAU, deg, polar, norm } from "./kit.js";
 import { stream } from "./flow.js";
 import { shape, rect, thickLine } from "./shapes.js";
 
@@ -13,12 +15,17 @@ const SCREW = { base: [-1.45, -0.95, 0], dir: norm([2.2, 0.95, 0]), len: 2.25, r
 const BUCKETS = 14;
 const PIPE = [[-0.2, 0.5], [-0.2, 2.15], [2.65, 2.15], [2.65, -1.2], [WHEEL.center[0] + 0.45, -1.2], [WHEEL.center[0] + 0.45, -0.95]];
 
-/** 水車轉 theta(逆時針)→ 螺旋的轉角 */
+/** 水車轉 theta(逆時針)→ 螺旋繞自己的軸(朝上)的轉角 */
 export const screwAngle = (theta) => -3 * theta;
+const PITCH = 0.45;
+export const HAND = -1; // 左旋
+
+/** 螺旋轉 a 時,螺紋沿軸往上走了多少(負的是往下,把空氣往下壓):螺紋 a(z) = HAND·2πz/PITCH 轉 a 後等於往上移 −HAND·a·PITCH/2π */
+export const threadAdvance = (a) => (-HAND * a * PITCH) / TAU;
 
 const helix = Array.from({ length: 121 }, (_, i) => {
   const z = (SCREW.len * i) / 120;
-  const a = (TAU * z) / 0.45;
+  const a = (HAND * TAU * z) / PITCH;
   return [SCREW.r * Math.cos(a), SCREW.r * Math.sin(a), z];
 });
 
@@ -57,25 +64,31 @@ export default {
     {
       id: "screw",
       kind: "group",
-      arrow: false,
+      axis: SCREW.dir,
+      center: SCREW.base,
+      spin: SCREW.r + 0.12,
+      spinOffset: SCREW.len - 0.3,
       pieces: [
         { kind: "tube", points: helix, radius: 0.04 },
+        { kind: "box", size: [0.05, 0.05, SCREW.len], at: [0.07, 0, SCREW.len / 2], accent: true }, // 軸上的鍵條(記號)
         { kind: "cylinder", radius: 0.07, length: SCREW.len + 0.4, at: [0, 0, SCREW.len / 2] },
         { kind: "gear", teeth: 10, radius: 0.2, width: 0.08, at: [0, 0, SCREW.len + 0.15] },
       ],
     },
   ],
-  driver: { part: "wheel", type: "rotation", speed: 0.6 },
-  target: "screw",
+  powered: ["wheel"], // 外力來源:空氣推著水車轉
+  driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.1 },
+  target: "wheel",
   view: { direction: [0.08, 0.08, 1] },
-  pose(theta) {
+  pose(v) {
+    const theta = TAU * v;
     const travel = theta * 0.8;
     // 氣泡:沿管子越過頂上,從水車右下方冒出,沿右側往上
     const rise = [[WHEEL.center[0] + 0.45, -0.9, 0.3], [WHEEL.center[0] + 0.55, -0.2, 0.3], [WHEEL.center[0] + 0.5, 0.6, 0.3], [WHEEL.center[0] + 0.45, 0.85, 0.3]];
     return {
       parts: {
         wheel: { angle: theta },
-        screw: { position: SCREW.base, rotation: quatMul(quatFromZ(SCREW.dir), quatAxisAngle([0, 0, 1], screwAngle(theta))) },
+        screw: { angle: screwAngle(theta) },
       },
       flows: [{ fluid: "air", points: [...stream(PIPE.map(([x, y]) => [x, y, 0.35]), travel, { spacing: 0.3 }), ...stream(rise, travel, { spacing: 0.22 })] }],
       readouts: [{ label: "溫度差如何維持", value: "原文未說明" }],

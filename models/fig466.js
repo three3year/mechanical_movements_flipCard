@@ -5,7 +5,7 @@
 // 泵行程的 1/52(畫面上放大 8 倍才看得出來);讀數另外列出原文 30 : 1 的例子。剖面圖。
 import { Y, deg } from "./kit.js";
 import { stream } from "./flow.js";
-import { lever, leverPart, stroke, flap, barrel, pipeWalls } from "./pump.js";
+import { lever, leverPart, stroke, valveOpening, flap, barrel, pipeWalls } from "./pump.js";
 import { backHalf } from "./section.js";
 import { shape, rect } from "./shapes.js";
 
@@ -28,14 +28,15 @@ export const PUMP_STROKE = HI - LO;
 /** 累計主動量 v → 泵柱塞高度、是否壓下、柱塞(大)已升起多少 */
 export function press(v) {
   const span = Math.abs(SWING[1] - SWING[0]);
-  const { at, forward } = stroke(v, ...SWING);
+  const phase = stroke(v, ...SWING);
+  const { at, forward } = phase;
   const { E, top } = arm(at);
   const y = top[1] - ROD;
   // 每一次下壓把泵行程的水送進圓筒:柱塞上升 = 泵行程 × 面積比(畫面上再放大 8 倍才看得出來,見檔頭)
   const strokes = Math.floor(v / span / 2) + (forward ? 0 : (v / span) % 1);
   const ratio = (PLUNGER_D / RAM_D) ** 2;
   const rise = Math.min(RAM_TRAVEL, strokes * PUMP_STROKE * ratio * 8);
-  return { theta: at, E, top, plunger: y, down: !forward, rise };
+  return { theta: at, E, top, plunger: y, down: !forward, rise, phase };
 }
 
 export default {
@@ -79,7 +80,7 @@ export default {
     flap("suction", 0.18),
     flap("delivery", 0.14),
   ],
-  powered: ["ram"], // 外力來源:柱塞是被泵打進來的水頂起的(液壓傳動,沒有實體相連)
+  powered: ["ram", "suction", "delivery"], // 外力來源:柱塞是被泵打進來的水頂起的、閥瓣是被水頂開的(液壓傳動,沒有實體相連)
   driver: { part: "handle", grips: ["plunger"], type: "rotation", cycle: SWING },
   target: "ram",
   view: { direction: [0.08, 0.08, 1] },
@@ -94,8 +95,9 @@ export default {
         plunger: { position: [PUMP_X, p.plunger + ROD / 2, 0] },
         ram: { position: [RAM.x, ramBottom + RAM_LEN / 2, 0] },
         ramWater: { position: [RAM.x, RAM.y0 + (RAM_TRAVEL + 0.3) / 2, 0], level: (p.rise + 0.05) / (RAM_TRAVEL + 0.3) },
-        suction: { position: [PUMP_X - 0.09, PUMP.y0 + 0.02, 0.05], angle: p.down ? 0 : OPEN },
-        delivery: { position: [PUMP_X - 0.12, PUMP.y0 + 0.08, 0.05], angle: Math.PI / 2 + (p.down ? OPEN : 0) },
+        // 閥瓣被水頂開、回程加速落回閥座(pump.js 的 valveOpening)
+        suction: { position: [PUMP_X - 0.09, PUMP.y0 + 0.02, 0.05], angle: OPEN * valveOpening(!p.down, p.phase) },
+        delivery: { position: [PUMP_X - 0.12, PUMP.y0 + 0.08, 0.05], angle: Math.PI / 2 + OPEN * valveOpening(p.down, p.phase) },
       },
       flows: p.down && p.rise < RAM_TRAVEL ? [{ fluid: "water", points: stream([[PUMP_X, p.plunger - 0.2, 0.2], [PUMP_X - 0.12, PUMP.y0 + 0.15, 0.2], [0.4, PUMP.y0 + 0.15, 0.2], [0.4, RAM.y0 + 0.1, 0.2], [RAM.x + 0.3, RAM.y0 + 0.1, 0.2]], travel, { spacing: 0.15 }) }] : [],
       readouts: [
