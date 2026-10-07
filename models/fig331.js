@@ -1,9 +1,11 @@
 // 第 331 種:曲柄運動與第 93、279 種相同的引擎:曲柄手腕軸承 B 在開槽十字頭 A 裡作動,十字頭在引擎框架兩根立柱的
 // 導件 D、D 之間上下,下面接活塞桿 C。主動件是虛擬的「進程」(下方汽缸的蒸汽推動);汽缸內的蒸汽以流體示意。
-// 推斷:進汽的時機;後方的大輪是飛輪(依原圖)。
+// 推斷:進汽的時機;後方的大輪是飛輪(依原圖),裝在曲柄軸上一起轉(原本畫成不會轉的圓環)。
+// 曲柄軸往後伸,架在飛輪後面的軸承座上(原圖機架後方的斜撐在曲柄軸處交會;軸承座的樣子是推斷)。
 import { TAU } from "./kit.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
 import { shape, circle, rect, arcPoints } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const CRANK = [0, 0.9, 0];
 const R = 0.5;
@@ -30,7 +32,7 @@ export default {
         { kind: "box", size: [0.3, 5.0, 0.24], at: [1.15, -0.3, 0] }, // 立柱比橫樑薄:蒸汽管貼著立柱的前面走
         { kind: "plate", shape: shape([[-1.5, 2.2], [1.5, 2.2], [1.3, 2.75], [0.5, 3.0], [-0.5, 3.0], [-1.3, 2.75]]), thickness: 0.35 },
         { kind: "box", size: [3.2, 0.18, 0.9], at: [0, -2.85, 0] },
-        { kind: "plate", shape: shape([...arcPoints(3.2, 0, TAU).slice(0, -1)], [arcPoints(2.95, 0, TAU).slice(0, -1).reverse()]), thickness: 0.15, at: [0, CRANK[1], -0.7] },
+        ...pedestal({ at: [CRANK[0], CRANK[1]], z: -1.0, bore: 0.17, floor: -2.76 }),
       ],
     },
     { id: "labelD1", kind: "group", center: [-1.15, -1.9, 0.2], label: "D", labelOffset: [-0.35, 0, 0] },
@@ -41,11 +43,14 @@ export default {
       id: "crank",
       kind: "group",
       center: CRANK,
-      spin: R + 0.25,
+      spin: 3.0,
       label: "B",
       labelOffset: [0.25, 0.45, 0.5],
       pieces: [
         { kind: "cylinder", radius: 0.16, length: 1.15, at: [0, 0, -0.625] },
+        // 飛輪:輪緣與四根輪輻(記號在曲柄銷上)
+        { kind: "plate", shape: shape([...arcPoints(3.2, 0, TAU).slice(0, -1)], [arcPoints(2.95, 0, TAU).slice(0, -1).reverse()]), thickness: 0.15, at: [0, 0, -0.7] },
+        ...[0, 1].map((i) => ({ kind: "box", size: [6.0, 0.14, 0.1], at: [0, 0, -0.7], angle: (i * Math.PI) / 2 })),
         { kind: "plate", shape: shape([[0, -0.15], [R, -0.1], [R, 0.1], [0, 0.15]], [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, -0.2] },
         { kind: "cylinder", radius: 0.2, length: 0.35, at: [R, 0, 0.05], accent: true },
       ],

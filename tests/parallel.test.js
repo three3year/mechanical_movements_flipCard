@@ -95,6 +95,11 @@ test("第 327 種:十字頭上的滾子沿直線導桿 A、A 運行,蒸汽推動
   const heads = sweep(1, 60).map((p) => m327.engine(p));
   assert.ok(Math.max(...heads.map((h) => h.head)) - Math.min(...heads.map((h) => h.head)) > 0.95, "十字頭往復");
   steamPushes(m327.default, sweep(1, 12));
+  // 「滾子抵著直線導桿 A、A 運行」:滾子貼著導桿滾、不打滑,兩側滾子反向轉
+  const [a, b] = [m327.default.pose(0.1).parts, m327.default.pose(0.2).parts];
+  const dy = b.rollerR.position[1] - a.rollerR.position[1];
+  close((b.rollerR.angle - a.rollerR.angle) * 0.16, -dy, "右滾子轉過的弧長 = 十字頭位移", 1e-9);
+  close(b.rollerL.angle - a.rollerL.angle, -(b.rollerR.angle - a.rollerR.angle), "左右滾子反向轉", 1e-9);
 });
 
 test("第 328 種:卡特萊特平行運動:兩個相等的齒輪 C、C 反向轉,曲柄 A、A 方向相反,兩連桿傾角相等,活塞桿沿直線運動", () => {
@@ -105,6 +110,10 @@ test("第 328 種:卡特萊特平行運動:兩個相等的齒輪 C、C 反向轉
     close(c.b + c.a, m328.cartwright(0).b + m328.cartwright(0).a, "兩齒輪反向等速", 1e-9);
   }
   steamPushes(m328.default, sweep(1, 12));
+  // 後方的飛輪由右齒輪 C 經飛輪軸上的小齒輪帶動:與右齒輪反向,轉速是齒數比(16 / 8)倍
+  const [a, b] = [m328.default.pose(0.1).parts, m328.default.pose(0.15).parts];
+  close((b.flywheel.angle - a.flywheel.angle) / (b.gearR.angle - a.gearR.angle), -2, "飛輪對右齒輪的轉速比", 1e-6);
+  close(b.pinion.angle, b.flywheel.angle, "小齒輪與飛輪同軸", 1e-12);
 });
 
 test("第 329 種:B 在直徑兩倍的靜止內齒輪 D 裡滾動,B 上的手腕走直線,活塞桿保持直立", () => {
@@ -127,6 +136,8 @@ test("第 331 種:曲柄手腕 B 在開槽十字頭 A 內作動,十字頭在導�
     close(y.head, y.wrist[1], "十字頭高度等於手腕高度(開槽十字頭)", 1e-12);
   }
   steamPushes(m331.default, sweep(1, 12));
+  // 後方的飛輪裝在曲柄軸上,跟著轉
+  assert.ok(m331.default.parts.find((q) => q.id === "crank").pieces.some((q) => q.kind === "plate" && q.at?.[2] === -0.7), "飛輪是曲柄軸的一部分");
 });
 
 /** 一串點離它們的最佳直線(首尾連線)的最大偏差 */
@@ -146,15 +157,25 @@ for (const [n, m] of [[332, m332], [336, m336]]) {
   });
 }
 
-test("第 333 種:特殊的平行運動:短連桿上的一點走近似直線", () => {
-  const ps = sweep(m333.RANGE[1], 30, m333.RANGE[0]).map((v) => m333.linkage(v).P);
-  const span = dist(ps[0], ps[ps.length - 1]);
-  assert.ok(lineDeviation(ps) / span < 0.03, "偏離直線不到行程的 3%");
+test("第 333 種:特殊的平行運動(依原圖):樑由兩根桿撐著,左上端 T 與吊桿中段 J1 都走近似直線", () => {
+  const rows = sweep(m333.RANGE[1], 30, m333.RANGE[0]).map((v) => m333.linkage(v));
+  for (const key of ["T", "J1"]) {
+    const ps = rows.map((r) => r[key]);
+    const span = dist(ps[0], ps[ps.length - 1]);
+    assert.ok(span > 0.5, `${key} 有行程`);
+    assert.ok(lineDeviation(ps) / span < 0.03, `${key} 偏離直線不到行程的 3%`);
+  }
+  const hr = rows.map((r) => dist(r.H, r.R));
+  close(Math.max(...hr) - Math.min(...hr), 0, "樑是剛體(H–R 不變)", 1e-6);
 });
 
 test("第 334 種:活塞桿是一根直齒條,與樑上的扇形段咬合、背面抵著滾子 A,活塞桿走直線,位移 = 扇形段節圓弧長", () => {
   const a = m334.rack(0.1).offset - m334.rack(0).offset;
   close(Math.abs(a), 2.85 * 0.1, "齒條位移 = 節圓半徑 × 轉角", 1e-9);
+  // 弓頭 D 以鏈條吊著的抽水桿:位移 = 弓頭半徑 × 轉角,和活塞桿同向
+  const b = m334.pumpTop(0.1) - m334.pumpTop(0);
+  close(Math.abs(b), 1.35 * 0.1, "抽水桿位移 = 弓頭半徑 × 轉角", 1e-9);
+  assert.ok(Math.sign(a) === Math.sign(b), "抽水桿與活塞桿同向");
 });
 
 test("第 335 種:固定式樑式引擎的平行運動:活塞桿頭的軌跡近似直線", () => {

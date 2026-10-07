@@ -6,6 +6,7 @@ import { deg } from "./kit.js";
 import { sideLever } from "./side-lever.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
 import { shape, circle, thickLine } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const X = 1.3;
 export const motion = sideLever({ A: [-1.85, -2.0, 0], lever: 3.6, rod: 3.55, x: X, C: [-1.3, 0.85, 0], radius: 2.55, drop: 0.95, swing: deg(9), tilt: deg(3) });
@@ -15,7 +16,7 @@ const CYL = { x: X, top: 0.45, length: 1.85, radius: 0.55 };
 export default {
   figure: 332,
   parts: [
-    { id: "frame", kind: "group", pieces: [{ kind: "box", size: [0.12, 4.6, 0.3], at: [-1.3, -0.1, -0.4] }, { kind: "cylinder", radius: 0.12, length: 0.5, at: [-1.3, 0.85, 0] }, { kind: "box", size: [5.2, 0.15, 0.6], at: [0, -2.6, -0.3] }] },
+    { id: "frame", kind: "group", pieces: [{ kind: "box", size: [0.12, 4.6, 0.3], at: [-1.3, -0.1, -0.4] }, { kind: "cylinder", radius: 0.12, length: 0.5, at: [-1.3, 0.85, 0] }, { kind: "box", size: [5.2, 0.15, 0.6], at: [0, -2.6, -0.3] }, ...pedestal({ at: [-1.85, -2.0], z: 0.37, bore: 0.11, floor: -2.525, depth: 0.25 })] }, // 側槓桿樞軸 A 的支座(推斷)
     { id: "pipe", ...steamPipe(CYL) },
     ...cylinderParts(CYL),
     {
@@ -27,7 +28,7 @@ export default {
       arrow: false,
       label: "A",
       labelOffset: [0.15, 0.3, 0.3],
-      pieces: [{ kind: "cylinder", radius: 0.32, length: 0.25 }],
+      pieces: [{ kind: "cylinder", radius: 0.32, length: 0.25 }, { kind: "cylinder", radius: 0.1, length: 0.5, at: [0, 0, -0.25] }],
     },
     { id: "sideRod", kind: "link", width: 0.1, thickness: 0.06 },
     { id: "radiusBar", kind: "link", width: 0.1, thickness: 0.06 },

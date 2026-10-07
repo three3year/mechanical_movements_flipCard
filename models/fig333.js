@@ -1,65 +1,109 @@
-// 第 333 種:只在特殊情況下使用的一種平行運動。左上的長樑以左下的地面樞軸撐著(經一根斜撐),樑的中段
-// 是一個大接頭;右下的半徑桿也從地面樞軸伸上來;兩者之間的短連桿上有一點走近似直線(瓦特直線連桿)。
-// 主動件是長樑。
-// 推斷:原文沒有說明;依原圖的桿件配置,以瓦特直線連桿解釋它的作用;直線的方向是傾斜的(沿原圖的斜線)。
-import { deg, clamp, rot2 } from "./kit.js";
-import { wattLinkage } from "./parallel-motion.js";
-import { shape, thickLine } from "./shapes.js";
+// 第 333 種:只在特殊情況下使用的一種平行運動(原文沒有說明它的構造)。
+// 結構(依原圖):三角形的樑 T–H–R 不繞固定點轉,而是由兩根桿撐著——左邊的桿從地面樞軸 G1 接到樑中段的大接頭 H,
+// 右邊的桿從右下的地面樞軸 G2 接到樑的右端 R(四連桿,樑是連桿);樑左上端 T 垂下的短桿是活塞桿。
+// 接頭 H 另外垂下一根吊桿,吊桿下端 J2 由半徑桿拉向 G2;吊桿中段的接頭 J1 也走近似直線。
+// 樑擺動時,T 與 J1 都走近似直線(T 的直線向左下傾約 10°,活塞桿就沿這條線)。
+// 主動件是左邊的桿 G1–H(軸固定在地面上;原文沒有指明輸入)。
+// 推斷:原文沒有說明,構造與作用依原圖的桿件配置判讀;桿長與接點依原圖量取(原圖 1 像素 = 0.01)。
+// (原本的模型以瓦特直線連桿解釋,和原圖的桿件配置不同,已照原圖重排。)
+import { deg, clamp } from "./kit.js";
+import { circleCircle, angleOf } from "./linkage.js";
+import { shape, thickLine, circle } from "./shapes.js";
 
-const TILT = deg(-12); // 整個機構轉這麼多(原圖中直線是斜的)
-const BASE = [0.4, -0.2, 0];
-export const watt = wattLinkage({ line: 0, y1: 0.9, y2: -0.9, a: 2.8, b: 2.4, beamSide: -1 });
-export const RANGE = [deg(-12), deg(12)];
+const px = (x, y) => [x / 100 - 2.3, 2.1 - y / 100, 0];
+const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const G1 = px(70, 195);
+const G2 = px(395, 370);
+const H0 = px(245, 150);
+const R0 = px(392, 237);
+const T0 = px(85, 55);
+const J10 = px(245, 222);
+const J20 = px(252, 290);
+const LEFT = d(G1, H0);
+const RIGHT = d(G2, R0);
+const HR = d(H0, R0);
+const HANG = d(H0, J20);
+const HANG_J1 = d(H0, J10);
+const RADIUS = d(J20, G2);
+const A0 = angleOf(G1, H0);
+// T 在樑上的位置(以 H 為原點、H→R 為 +x 的局部座標)
+const B0 = angleOf(H0, R0);
+const T_LOCAL = [(T0[0] - H0[0]) * Math.cos(-B0) - (T0[1] - H0[1]) * Math.sin(-B0), (T0[0] - H0[0]) * Math.sin(-B0) + (T0[1] - H0[1]) * Math.cos(-B0)];
+export const RANGE = [A0 - deg(13.5), A0 + deg(5)];
+const near = (a, b, q) => (d(a, q) < d(b, q) ? a : b);
+const both = (c1, r1, c2, r2, q) => near(circleCircle(c1, r1, c2, r2, 1).point, circleCircle(c1, r1, c2, r2, -1).point, q);
+// 活塞桿沿 T 走的直線(行程兩端的連線方向)
+const ROD = 0.6;
 
-const place = (p) => {
-  const [x, y] = rot2([p[0], p[1]], TILT);
-  return [BASE[0] + x, BASE[1] + y, 0];
-};
-
-/** 樑轉 psi → 世界座標中的 B、R、P 與兩個地面樞軸 */
-export function linkage(psi0) {
-  const { B, R, P } = watt(clamp(psi0, ...RANGE));
-  return { B: place(B), R: place(R), P: place(P), O1: place(watt.O1), O2: place(watt.O2) };
+/** 左桿轉到 a → 樑的接頭 H、右端 R、左上端 T、樑角,吊桿下端 J2 與中段 J1 */
+export function linkage(a0) {
+  const a = clamp(a0, ...RANGE);
+  const H = [G1[0] + LEFT * Math.cos(a), G1[1] + LEFT * Math.sin(a), 0];
+  const R = both(H, HR, G2, RIGHT, R0);
+  const beam = angleOf(H, R);
+  const T = [H[0] + T_LOCAL[0] * Math.cos(beam) - T_LOCAL[1] * Math.sin(beam), H[1] + T_LOCAL[0] * Math.sin(beam) + T_LOCAL[1] * Math.cos(beam), 0];
+  const J2 = both(H, HANG, G2, RADIUS, J20);
+  const J1 = [H[0] + ((J2[0] - H[0]) * HANG_J1) / HANG, H[1] + ((J2[1] - H[1]) * HANG_J1) / HANG, 0];
+  return { a, H, R, T, beam, J1, J2 };
 }
+const ends = [linkage(RANGE[0]).T, linkage(RANGE[1]).T];
+export const LINE = angleOf(ends[0], ends[1]); // T 走的直線方向(往上)
 
-const ground = (p) => [
-  { kind: "box", size: [0.7, 0.12, 0.4], at: [p[0], p[1] - 0.22, 0] },
-  ...[0, 1, 2, 3].map((i) => ({ kind: "box", size: [0.04, 0.16, 0.3], at: [p[0] - 0.25 + i * 0.17, p[1] - 0.34, 0], angle: deg(30) })),
-  { kind: "cylinder", radius: 0.1, length: 0.4, at: p },
-];
-const O1 = place(watt.O1);
-const O2 = place(watt.O2);
+const ground = (p, pin) => ({
+  kind: "group",
+  at: p,
+  pieces: [
+    { kind: "box", size: [0.6, 0.1, 0.4], at: [0, -0.2, 0] },
+    ...[0, 1, 2, 3].map((i) => ({ kind: "box", size: [0.04, 0.14, 0.3], at: [-0.22 + i * 0.15, -0.3, 0], angle: deg(30) })),
+    { kind: "box", size: [0.12, 0.15, 0.2], at: [0, -0.1, 0] },
+    { kind: "cylinder", radius: 0.07, ...pin },
+  ],
+});
+const tl = T_LOCAL;
+const rl = [HR, 0];
 
 export default {
   figure: 333,
   parts: [
-    { id: "ground", kind: "group", pieces: [...ground(O1), ...ground(O2)] },
-    // 長樑:從左下的樞軸斜上,經過接頭 B,一直到左上方(原圖的長桿)
-    { id: "beam", kind: "plate", center: O1, shape: shape(thickLine([[-0.2, 0], [4.0, 0]], 0.16)), thickness: 0.1, arrow: false },
-    { id: "radiusBar", kind: "link", width: 0.14, thickness: 0.08 },
-    { id: "coupler", kind: "link", width: 0.14, thickness: 0.08 },
-    { id: "joint", kind: "cylinder", radius: 0.32, inner: 0.12, length: 0.25 },
-    { id: "pointP", kind: "sphere", radius: 0.1 },
+    { id: "ground", kind: "group", pieces: [ground(G1, { length: 0.4, at: [0, 0, -0.1] }), ground(G2, { length: 0.75 })] },
+    { id: "linkL", kind: "plate", center: G1, shape: { ...shape(thickLine([[0, 0], [LEFT, 0]], 0.12)), holes: [circle(0.07).reverse()] }, thickness: 0.06, arrow: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.45, at: [LEFT, 0, 0.15] }] },
+    {
+      // 三角形的樑:H 的大接頭、往右到 R、往左上到 T,下緣 T–R 一根直條
+      id: "beam",
+      kind: "plate",
+      shape: shape(thickLine([tl, [0, 0], rl], 0.16)),
+      thickness: 0.1,
+      arrow: false,
+      pieces: [
+        { kind: "plate", shape: shape(thickLine([tl, rl], 0.07)), thickness: 0.08 },
+        { kind: "cylinder", radius: 0.27, inner: 0.08, length: 0.12 },
+        { kind: "cylinder", radius: 0.06, length: 0.35, at: [rl[0], 0, 0.1] },
+        { kind: "cylinder", radius: 0.06, length: 0.3, at: [tl[0], tl[1], 0.1] },
+      ],
+    },
+    { id: "linkR", kind: "link", width: 0.12, thickness: 0.06 },
+    { id: "hanger", kind: "link", width: 0.12, thickness: 0.06 },
+    { id: "radiusBar", kind: "link", width: 0.12, thickness: 0.06 },
+    { id: "pinJ1", kind: "cylinder", radius: 0.07, length: 0.2 },
+    { id: "pistonRod", kind: "group", pieces: [{ kind: "box", size: [0.09, ROD, 0.08], at: [0, -ROD / 2, 0] }] },
   ],
-  driver: { part: "beam", type: "rotation", range: RANGE, initial: 0 },
-  target: "pointP", // 走近似直線的點
+  driver: { part: "linkL", type: "rotation", range: RANGE, initial: A0 },
+  target: "pistonRod", // 被導引走近似直線的活塞桿(掛在樑的左上端 T)
   view: { direction: [0.03, 0.05, 1] },
-  pose(psi0) {
-    const psi = clamp(psi0, ...RANGE);
-    const { B, R, P } = linkage(psi);
+  pose(a0) {
+    const m = linkage(a0);
     const z = (q, dz) => [q[0], q[1], dz];
     return {
       parts: {
-        beam: { angle: Math.atan2(B[1] - O1[1], B[0] - O1[0]) },
-        radiusBar: { from: z(O2, 0.12), to: z(R, 0.12) },
-        coupler: { from: z(B, 0.2), to: z(R, 0.2) },
-        joint: { position: z(B, 0.15) },
-        pointP: { position: z(P, 0.3) },
+        linkL: { angle: m.a, position: z(G1, -0.15) },
+        beam: { position: z(m.H, 0), angle: m.beam },
+        linkR: { from: z(G2, 0.15), to: z(m.R, 0.15) },
+        hanger: { from: z(m.H, 0.15), to: z(m.J2, 0.15) },
+        radiusBar: { from: z(m.J2, 0.28), to: z(G2, 0.28) },
+        pinJ1: { position: z(m.J1, 0.15) },
+        pistonRod: { position: z(m.T, 0.17), angle: LINE - Math.PI / 2 },
       },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["ground", "beam"], reason: "樑擺到極限位置時,端頭碰到地面上的支座,重疊 0.08(96 個取樣中 28 個);擺幅是示意的大小" },
-  ],
 };

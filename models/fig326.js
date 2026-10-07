@@ -1,6 +1,6 @@
 // 第 326 種:引導引擎活塞桿作平行(直線)運動的簡易方式。活塞桿頂端的滑塊 A 在框架立柱上的直溝槽裡上下滑動
 // (溝槽的兩面削平),連桿從滑塊接到頂上飛輪軸的曲柄。主動件是飛輪(原圖沒有畫出汽缸)。
-// 推斷:曲柄半徑、連桿長(依原圖)。
+// 推斷:曲柄半徑、連桿長(依原圖)。立柱頂上托著飛輪軸的軸承座(原圖畫了,模型原本漏掉)。
 import { TAU, deg } from "./kit.js";
 import { crankSlider } from "./vertical-engine.js";
 import { shape, rect, circle, arcPoints } from "./shapes.js";
@@ -21,7 +21,18 @@ const column = shape(
 export default {
   figure: 326,
   parts: [
-    { id: "column", kind: "plate", shape: column, thickness: 0.5, center: [0, 0, -0.3] },
+    {
+      id: "column",
+      kind: "plate",
+      shape: column,
+      thickness: 0.5,
+      center: [0, 0, -0.3],
+      pieces: [
+        // 立柱頂上的軸承座:飛輪軸穿過軸承環(原圖立柱頂的方塊)
+        { kind: "cylinder", radius: 0.38, inner: 0.23, length: 0.3, at: [0, CRANK[1], -0.05] },
+        { kind: "box", size: [0.9, 0.16, 0.3], at: [0, 1.99, -0.05] },
+      ],
+    },
     {
       id: "flywheel",
       kind: "group",

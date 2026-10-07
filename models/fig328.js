@@ -1,11 +1,14 @@
 // 第 328 種:卡特萊特博士(1787 年)的平行運動。兩個直徑與齒數相同的齒輪 C、C 互相咬合,各帶一個半徑相等的曲柄 A、A,
 // 兩曲柄方向相反;兩根連桿從曲柄銷接到活塞桿上十字頭的兩端,齒輪轉動時兩連桿的傾斜角始終相等,
 // 活塞桿 B 因此被迫沿直線運動。主動件是虛擬的「進程」(下方汽缸的蒸汽推動);汽缸內的蒸汽以流體示意。
-// 推斷:進汽的時機;後方的大輪是飛輪(依原圖)。
+// 推斷:進汽的時機。後方的大輪是飛輪:原圖右齒輪 C 的右下方有一個小齒輪,飛輪就以它的軸為中心,
+// 所以飛輪由右齒輪經這個小齒輪帶動(原本畫成不會轉的圓環)。飛輪軸的軸承座、兩個齒輪軸在橫樑上的軸承座是推斷。
+// 目標件是飛輪(這部引擎最終帶動的東西;齒輪 C、C 與曲柄在輸入這一側)。
 import { TAU, deg } from "./kit.js";
 import { meshAngle } from "./gears.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
 import { shape, circle, arcPoints } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const M = 0.11;
 const G = { teeth: 16, radius: (16 * M) / 2 }; // 0.88
@@ -16,6 +19,12 @@ const ROD = 2.4;
 const HALF = 0.55; // 十字頭半長
 const PISTON_ROD = 2.0;
 const CYL = { x: 0, top: -1.6, length: 1.6, radius: 0.42 };
+// 飛輪軸上的小齒輪,在右齒輪的右下方與它咬合
+const PIN_TEETH = 8;
+const PIN_R = (PIN_TEETH * M) / 2;
+const PIN_DIR = deg(-80);
+export const PINION = { teeth: PIN_TEETH, radius: PIN_R, center: [GR.center[0] + (G.radius + PIN_R) * Math.cos(PIN_DIR), GR.center[1] + (G.radius + PIN_R) * Math.sin(PIN_DIR), 0] };
+const FLY_R = 3.2;
 
 /** 進程 p → 兩齒輪角、兩曲柄銷、十字頭高度、活塞高度 */
 export function cartwright(p) {
@@ -33,7 +42,9 @@ export function cartwright(p) {
   return { a, b, pinL, pinR, head, piston: head - PISTON_ROD, downward: head < prev };
 }
 
-const crank = (angle) => [{ kind: "plate", shape: shape([[0, -0.13], [R, -0.09], [R, 0.09], [0, 0.13]], [circle(0.05).reverse()]), thickness: 0.08, at: [0, 0, 0.2], angle }];
+const crank = (angle) => [
+  { kind: "cylinder", radius: 0.1, length: 0.35, at: [0, 0, -0.2] }, // 齒輪軸,往後伸進橫樑上的軸承座
+  { kind: "plate", shape: shape([[0, -0.13], [R, -0.09], [R, 0.09], [0, 0.13]], [circle(0.05).reverse()]), thickness: 0.08, at: [0, 0, 0.2], angle }];
 // 右曲柄在右齒輪上的方向:讓它始終是左曲柄的鏡像(兩齒輪反向轉,這個差是常數)
 const MIRROR = Math.PI - 0 - meshAngle(GL, GR, 0);
 
@@ -46,9 +57,28 @@ export default {
       pieces: [
         { kind: "box", size: [4.6, 0.32, 0.3], at: [0, 1.3, -0.26] },
         { kind: "box", size: [2.6, 0.18, 0.8], at: [0, -3.45, 0] },
-        { kind: "plate", shape: shape([...arcPoints(3.2, 0, TAU).slice(0, -1)], [arcPoints(2.95, 0, TAU).slice(0, -1).reverse()]), thickness: 0.15, at: [GR.center[0] - 0.2, GR.center[1] - 1.3, -0.7] },
+        // 兩個齒輪軸在橫樑上的軸承座
+        ...[GL, GR].flatMap((g) => [
+          { kind: "cylinder", radius: 0.26, inner: 0.11, length: 0.25, at: [g.center[0], g.center[1], -0.26] },
+          { kind: "box", size: [0.3, g.center[1] - 0.2 - 1.46, 0.25], at: [g.center[0], (g.center[1] - 0.2 + 1.46) / 2, -0.26] },
+        ]),
+        // 飛輪軸的軸承座(在飛輪後面)
+        ...pedestal({ at: [PINION.center[0], PINION.center[1]], z: -1.0, bore: 0.15, floor: -3.36 }),
       ],
     },
+    {
+      id: "flywheel",
+      kind: "group",
+      center: PINION.center,
+      spin: FLY_R - 0.15,
+      pieces: [
+        { kind: "plate", shape: shape([...arcPoints(FLY_R, 0, TAU).slice(0, -1)], [arcPoints(FLY_R - 0.25, 0, TAU).slice(0, -1).reverse()]), thickness: 0.15, at: [0, 0, -0.7] },
+        ...[0, 1, 2].map((i) => ({ kind: "box", size: [2 * FLY_R - 0.2, 0.14, 0.1], at: [0, 0, -0.7], angle: (i * Math.PI) / 3 })),
+        { kind: "cylinder", radius: 0.15, length: 1.0, at: [0, 0, -0.5] },
+        { kind: "box", size: [0.3, 0.3, 0.17], at: [FLY_R - 0.12, 0, -0.7], accent: true },
+      ],
+    },
+    { id: "pinion", kind: "gear", center: PINION.center, teeth: PINION.teeth, radius: PINION.radius, width: 0.16, arrow: false },
     { id: "pipe", ...steamPipe(CYL) },
     ...cylinderParts(CYL),
     { id: "gearL", kind: "gear", center: GL.center, teeth: G.teeth, radius: G.radius, width: 0.16, pieces: crank(0), label: "C", labelOffset: [-0.6, 0.6, 0.3] },
@@ -61,7 +91,7 @@ export default {
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.25 },
-  targets: ["gearL", "gearR"], // 輸出的曲柄齒輪
+  target: "flywheel", // 輸出的飛輪(由右齒輪經小齒輪帶動)
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const c = cartwright(p);
@@ -71,6 +101,9 @@ export default {
         gearL: { angle: c.a },
         // 右齒輪:咬合角;它的曲柄畫成左曲柄的鏡像方向
         gearR: { angle: c.b },
+        // 飛輪與小齒輪同軸,由右齒輪帶動
+        pinion: { angle: meshAngle(GR, PINION, c.b) },
+        flywheel: { angle: meshAngle(GR, PINION, c.b) },
         rodL: { from: [c.pinL[0], c.pinL[1], 0.32], to: [-HALF, c.head, 0.32] },
         rodR: { from: [c.pinR[0], c.pinR[1], 0.32], to: [HALF, c.head, 0.32] },
         crosshead: { position: [0, c.head, 0] },
