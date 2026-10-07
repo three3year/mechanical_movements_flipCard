@@ -1,4 +1,4 @@
-// ²Ä¤Q¤T³¹¡u¾àÁa¾÷ºc¡v:Â_¨¥¹ïÀ³­ì¤å
+// ç¬¬åä¸‰ç« ã€Œæ“’ç¸±æ©Ÿæ§‹ã€:æ–·è¨€å°æ‡‰åŸæ–‡
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep } from "./helpers.js";
@@ -36,30 +36,30 @@ import * as m313 from "../models/fig313.js";
 import * as m314 from "../models/fig314.js";
 
 /**
- * ¥Ñ±µÄ²ºâªº¾àÁa(escapeByContact):Â\¤@­Ó¨Ó¦^½ü¥¿¦nÂà¹L¤@¾¦¡B¤è¦V¹ï;Â\¤@µ{(±q¤@ºİÂ\¨ì¥t¤@ºİ)Âà¹L¬ù¥b¾¦
- * (¨â­Ó¤e¥Ë¦U©ñ¤@¦¸;¾¦°±¦b­ş¸Ì¥Ñ±µÄ²¨M©w,¤e¥ËÀHÂ\ªu¶ê©·¨«¡B¦³¦^°h®É¨âµ{·|®t¤@ÂI,©Ò¥H®e³\ 0.35¡V0.65 ¾¦)
+ * ç”±æ¥è§¸ç®—çš„æ“’ç¸±(escapeByContact):æ“ºä¸€å€‹ä¾†å›è¼ªæ­£å¥½è½‰éä¸€é½’ã€æ–¹å‘å°;æ“ºä¸€ç¨‹(å¾ä¸€ç«¯æ“ºåˆ°å¦ä¸€ç«¯)è½‰éç´„åŠé½’
+ * (å…©å€‹å‰ç“¦å„æ”¾ä¸€æ¬¡;é½’åœåœ¨å“ªè£¡ç”±æ¥è§¸æ±ºå®š,å‰ç“¦éš¨æ“ºæ²¿åœ“å¼§èµ°ã€æœ‰å›é€€æ™‚å…©ç¨‹æœƒå·®ä¸€é»,æ‰€ä»¥å®¹è¨± 0.35â€“0.65 é½’)
  */
 function escapes(e, pitch, dir) {
-  close(e.step, dir * pitch, "Â\¤@­Ó¨Ó¦^,½üÂà¹L¤@¾¦", 1e-6);
+  close(e.step, dir * pitch, "æ“ºä¸€å€‹ä¾†å›,è¼ªè½‰éä¸€é½’", 1e-6);
   const w = e.angle;
-  close(w(2 * e.period) - w(0), 2 * dir * pitch, "¨â­Ó¨Ó¦^,¨â¾¦", 1e-6);
-  // ¦³ªº½ü¦bÂ\¨ìºÉÀYªº¨º¤@¨èÁÙ¦bÂà,©Ò¥H¨ú´X­Ó°_ÂI(Â\ªº¤@µ{¤À¥|¬q),¥Î³Ì±µªñ¥b¾¦ªº¨º¤@­Ó
+  close(w(2 * e.period) - w(0), 2 * dir * pitch, "å…©å€‹ä¾†å›,å…©é½’", 1e-6);
+  // æœ‰çš„è¼ªåœ¨æ“ºåˆ°ç›¡é ­çš„é‚£ä¸€åˆ»é‚„åœ¨è½‰,æ‰€ä»¥å–å¹¾å€‹èµ·é»(æ“ºçš„ä¸€ç¨‹åˆ†å››æ®µ),ç”¨æœ€æ¥è¿‘åŠé½’çš„é‚£ä¸€å€‹
   const halves = [0, 1, 2, 3].map((k) => ((w((k * e.period) / 8 + e.period / 2) - w((k * e.period) / 8)) * dir) / pitch);
   const halfway = halves.reduce((m, x) => (Math.abs(x - 0.5) < Math.abs(m - 0.5) ? x : m));
-  assert.ok(halfway > 0.35 && halfway < 0.65, `Â\¤@µ{¬ù¥b¾¦(¹ê»Ú ${halves.map((x) => x.toFixed(2)).join("¡B")} ¾¦)`);
+  assert.ok(halfway > 0.35 && halfway < 0.65, `æ“ºä¸€ç¨‹ç´„åŠé½’(å¯¦éš› ${halves.map((x) => x.toFixed(2)).join("ã€")} é½’)`);
 }
 
-/** ¥Ñ±µÄ²ºâ:e.at(v) ¸Ìªº¨â²Õ¥~§Î(¼·°Êªº¾P»P¤e¤f¡B¥Y¬W»P²Ó¼uÂ®µ¥)¦b¾ã­Ó¨Ó¦^¸Ì³£¤£¤¬¬Û¬ï¤J */
+/** ç”±æ¥è§¸ç®—:e.at(v) è£¡çš„å…©çµ„å¤–å½¢(æ’¥å‹•çš„éŠ·èˆ‡å‰å£ã€å‡¸æŸ±èˆ‡ç´°å½ˆç°§ç­‰)åœ¨æ•´å€‹ä¾†å›è£¡éƒ½ä¸äº’ç›¸ç©¿å…¥ */
 function apart(e, a, b, n = 720, eps = 2e-3) {
   const list = (x) => (Array.isArray(x[0][0]) ? x : [x]);
   for (let i = 0; i <= n; i++) {
     const v = (e.period * 2 * i) / n;
     const s = e.at(v);
-    for (const p of list(s[a])) for (const q of list(s[b])) assert.ok(penetrationDepth(p, q) < eps, `¥D°Ê¶q ${v.toFixed(3)}:${a} »P ${b} ¤¬¬Û¬ï¤J ${penetrationDepth(p, q).toFixed(4)}`);
+    for (const p of list(s[a])) for (const q of list(s[b])) assert.ok(penetrationDepth(p, q) < eps, `ä¸»å‹•é‡ ${v.toFixed(3)}:${a} èˆ‡ ${b} äº’ç›¸ç©¿å…¥ ${penetrationDepth(p, q).toFixed(4)}`);
   }
 }
 
-/** ¥Ñ±µÄ²ºâ:¤e¥Ë(´w¤l)»P½ü¾¦¦b¾ã­Ó¨Ó¦^¸Ì³£¤£¤¬¬Û¬ï¤J */
+/** ç”±æ¥è§¸ç®—:å‰ç“¦(æ£å­)èˆ‡è¼ªé½’åœ¨æ•´å€‹ä¾†å›è£¡éƒ½ä¸äº’ç›¸ç©¿å…¥ */
 function noPenetration(e, n = 360, eps = 2e-3) {
   for (let i = 0; i <= n; i++) {
     const v = (e.period * 2 * i) / n;
@@ -67,108 +67,100 @@ function noPenetration(e, n = 360, eps = 2e-3) {
     for (const [j, s] of stops.entries())
       for (const [i, t] of teeth.entries())
         if (!layers || layers[i] === stopLayers[j])
-          assert.ok(penetrationDepth(s, t) < eps, `¥D°Ê¶q ${v.toFixed(3)}:¾×¥ó¬ï¤J½ü¾¦ ${penetrationDepth(s, t).toFixed(4)}`);
+          assert.ok(penetrationDepth(s, t) < eps, `ä¸»å‹•é‡ ${v.toFixed(3)}:æ“‹ä»¶ç©¿å…¥è¼ªé½’ ${penetrationDepth(s, t).toFixed(4)}`);
   }
 }
 
-const half = (S) => 2 * S; // Â\¤@µ{ªº²Ö­pÂ\°Ê¶q
-
-/** Â\¨CÂ\¤@¦¸(¤@µ{),½ü«e¶i step;Â\§¹¤@­Ó¨Ó¦^«e¶i¨â­¿ */
-function stepsPerSwing(wheelAngle, S, step) {
-  close(wheelAngle(half(S)) - wheelAngle(0), step, "Â\¤@¦¸«e¶i¥b­Ó¾¦(©Î¤@­Ó¥Y¬W)", 1e-9);
-  close(wheelAngle(2 * half(S)) - wheelAngle(0), 2 * step, "Â\¤@­Ó¨Ó¦^«e¶i¨â­¿", 1e-9);
-}
-
-test("²Ä 288 ºØ:¦^°h¦¡¾àÁa:Â\¨CÂ\¤@¦¸©ñ¨«¥b­Ó¾¦;¤e¥Ë­±¤£»P¶b a ¦P¤ß,¾¦¸¨¦b¤e¥Ë¤W«á½ü³Q±À¦^¤@ÂI(¦^°h)", () => {
+test("ç¬¬ 288 ç¨®:å›é€€å¼æ“’ç¸±:æ“ºæ¯æ“ºä¸€æ¬¡æ”¾èµ°åŠå€‹é½’;å‰ç“¦é¢ä¸èˆ‡è»¸ a åŒå¿ƒ,é½’è½åœ¨å‰ç“¦ä¸Šå¾Œè¼ªè¢«æ¨å›ä¸€é»(å›é€€)", () => {
   const e = m288.escapement;
   assert.ok(e.period > 0);
   escapes(e, m288.PITCH, 1);
   const ws = sweep(2 * e.period, 480).map(m288.wheelAngle);
-  assert.ok(ws.slice(1).some((w, i) => w < ws[i] - 1e-4), "¦³¦^°h(½üµu¼È­ËÂà)");
+  assert.ok(ws.slice(1).some((w, i) => w < ws[i] - 1e-4), "æœ‰å›é€€(è¼ªçŸ­æš«å€’è½‰)");
   noPenetration(e);
 });
 
-test("²Ä 289 ºØ:ÀRÀ»¦¡¾àÁa:¤e¥Ë­±»P¶b a ¦P¤ß,¾¦©è¦í¤e¥Ëªº´Á¶¡½ü§¹¥şÀR¤î", () => {
+test("ç¬¬ 289 ç¨®:éœæ“Šå¼æ“’ç¸±:å‰ç“¦é¢èˆ‡è»¸ a åŒå¿ƒ,é½’æŠµä½å‰ç“¦çš„æœŸé–“è¼ªå®Œå…¨éœæ­¢", () => {
   const e = m289.escapement;
   escapes(e, m289.PITCH, 1);
   const ws = sweep(2 * e.period, 480).map(m289.wheelAngle);
-  assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-5), "±q¤£¦^°h");
+  assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-5), "å¾ä¸å›é€€");
   const still = ws.slice(1).filter((w, i) => Math.abs(w - ws[i]) < 1e-5).length;
-  assert.ok(still > 150, `Âê¦í®É§¹¥şÀR¤î(ÀR¤îªº¨ú¼Ë ${still})`);
+  assert.ok(still > 150, `é–ä½æ™‚å®Œå…¨éœæ­¢(éœæ­¢çš„å–æ¨£ ${still})`);
   noPenetration(e);
 });
 
-test("²Ä 290 ºØ:Â\¦¡¾àÁa:®Ø¬[¨CÂ\¤@¦¸,¤e¥Ë A¡BB ½ü¬y©ñ¨«¥b­Ó¾¦(½ü¨Ì­ì¹Ï½bÀY¶¶®É°wÂà)", () => {
+test("ç¬¬ 290 ç¨®:æ“ºå¼æ“’ç¸±:æ¡†æ¶æ¯æ“ºä¸€æ¬¡,å‰ç“¦ Aã€B è¼ªæµæ”¾èµ°åŠå€‹é½’(è¼ªä¾åŸåœ–ç®­é ­é †æ™‚é‡è½‰)", () => {
   escapes(m290.escapement, m290.PITCH, -1);
   noPenetration(m290.escapement);
 });
 
-test("²Ä 292 ºØ:¥Y¬W¦¡¾àÁa:¥Y¬W¥æ´À©è¦b«e¡B«á¤e¥Ë¤W;¤e¥Ë¬°¥H F ¬°¶ê¤ßªº¶ê©·,©Ò¥H¬OÀRÀ»¦¡", () => {
+test("ç¬¬ 292 ç¨®:å‡¸æŸ±å¼æ“’ç¸±:å‡¸æŸ±äº¤æ›¿æŠµåœ¨å‰ã€å¾Œå‰ç“¦ä¸Š;å‰ç“¦ç‚ºä»¥ F ç‚ºåœ“å¿ƒçš„åœ“å¼§,æ‰€ä»¥æ˜¯éœæ“Šå¼", () => {
   const e = m292.escapement;
-  close(e.step, -2 * m292.STEP, "Â\¤@­Ó¨Ó¦^,«e«á¦U©ñ¨«¤@®Ú¥Y¬W", 1e-9);
+  close(e.step, -2 * m292.STEP, "æ“ºä¸€å€‹ä¾†å›,å‰å¾Œå„æ”¾èµ°ä¸€æ ¹å‡¸æŸ±", 1e-9);
   const ws = sweep(2 * e.period, 480).map(m292.wheelAngle);
-  // ¥Y¬W¥H¦hÃä§Îªñ¦ü,¶KµÛ©·­±®É¦³ 1e-5 ©·«×ªº¼Æ­È§İ°Ê
-  assert.ok(ws.every((w, i) => i === 0 || w <= ws[i - 1] + 5e-5), "ÀRÀ»¦¡:±q¤£¦^°h");
+  // å‡¸æŸ±ä»¥å¤šé‚Šå½¢è¿‘ä¼¼,è²¼è‘—å¼§é¢æ™‚æœ‰ 1e-5 å¼§åº¦çš„æ•¸å€¼æŠ–å‹•
+  assert.ok(ws.every((w, i) => i === 0 || w <= ws[i - 1] + 5e-5), "éœæ“Šå¼:å¾ä¸å›é€€");
   const still = ws.slice(1).filter((w, i) => Math.abs(w - ws[i]) < 5e-5).length;
-  assert.ok(still > 150, `¥Y¬W©è¦í¤e¥Ë®É½ü§¹¥şÀR¤î(ÀR¤îªº¨ú¼Ë ${still})`);
+  assert.ok(still > 150, `å‡¸æŸ±æŠµä½å‰ç“¦æ™‚è¼ªå®Œå…¨éœæ­¢(éœæ­¢çš„å–æ¨£ ${still})`);
   noPenetration(e);
 });
 
-test("²Ä 297 ºØ:¿OÅ¢½ü¾àÁa:·nÁu A ¤Wªº¤e¥Ë B¡BC ½ü¬y¾×¦í¾P", () => {
+test("ç¬¬ 297 ç¨®:ç‡ˆç± è¼ªæ“’ç¸±:æ–è‡‚ A ä¸Šçš„å‰ç“¦ Bã€C è¼ªæµæ“‹ä½éŠ·", () => {
   escapes(m297.escapement, m297.PITCH, 1);
   noPenetration(m297.escapement);
 });
 
-test("²Ä 299 ºØ:¦Ñ¦¡®ÉÄÁ¾àÁa(¥ß¶b):¥ß¶b¨CÂ\¤@¦¸,«aª¬½üÂà¹L¥b­Ó¾¦", () => {
-  assert.equal(m299.N % 2, 1, "¾¦¼Æ¬°©_¼Æ,«e«á¨â°¼ªº¾¦¿ù¶}");
+test("ç¬¬ 299 ç¨®:è€å¼æ™‚é˜æ“’ç¸±(ç«‹è»¸):ç«‹è»¸æ¯æ“ºä¸€æ¬¡,å† ç‹€è¼ªè½‰éåŠå€‹é½’", () => {
+  assert.equal(m299.N % 2, 1, "é½’æ•¸ç‚ºå¥‡æ•¸,å‰å¾Œå…©å´çš„é½’éŒ¯é–‹");
   escapes(m299.escapement, m299.PITCH, 1);
   noPenetration(m299.escapement);
 });
 
-test("²Ä 291 ºØ:¤Ñ¤å¥x­p®É¾¹¾àÁa:Â\½ü©¹½bÀY¤è¦VÂ\®É¥Y¬WÀ£¹L²Ó¼uÂ®,A ¤£°Ê;Â\¦^¨Ó®É©ï°_ A »P¾×¤î d,©ñ¨«¤@¾¦", () => {
+test("ç¬¬ 291 ç¨®:å¤©æ–‡å°è¨ˆæ™‚å™¨æ“’ç¸±:æ“ºè¼ªå¾€ç®­é ­æ–¹å‘æ“ºæ™‚å‡¸æŸ±å£“éç´°å½ˆç°§,A ä¸å‹•;æ“ºå›ä¾†æ™‚æŠ¬èµ· A èˆ‡æ“‹æ­¢ d,æ”¾èµ°ä¸€é½’", () => {
   const e = m291.escapement;
   const S = m291.SWING;
-  const base = 2 * e.period; // Ã­©w¤§«áªº¤@­Ó¶g´Á
+  const base = 2 * e.period; // ç©©å®šä¹‹å¾Œçš„ä¸€å€‹é€±æœŸ
   const fwd = sweep(base + 2 * S, 200, base).map((v) => m291.chronometer(v));
-  assert.ok(fwd.every((c) => c.lift < 1e-9), "©¹½bÀY¤è¦VÂ\:A ¤£°Ê(¸Ó¥Y¬W¦b³q¹L®É·|±N¼uÂ®¤UÀ£)");
-  assert.ok(fwd.some((c) => c.flex > 0.02), "©¹½bÀY¤è¦VÂ\:²Ó¼uÂ®³QÀ£¤U¥h");
-  close(fwd[fwd.length - 1].wheel, fwd[0].wheel, "©¹½bÀY¤è¦VÂ\:½ü¤£°Ê", 1e-6);
+  assert.ok(fwd.every((c) => c.lift < 1e-9), "å¾€ç®­é ­æ–¹å‘æ“º:A ä¸å‹•(è©²å‡¸æŸ±åœ¨é€šéæ™‚æœƒå°‡å½ˆç°§ä¸‹å£“)");
+  assert.ok(fwd.some((c) => c.flex > 0.02), "å¾€ç®­é ­æ–¹å‘æ“º:ç´°å½ˆç°§è¢«å£“ä¸‹å»");
+  close(fwd[fwd.length - 1].wheel, fwd[0].wheel, "å¾€ç®­é ­æ–¹å‘æ“º:è¼ªä¸å‹•", 1e-6);
   const back = sweep(base + 4 * S, 200, base + 2 * S).map((v) => m291.chronometer(v));
-  assert.ok(back.some((c) => c.lift > 0.01), "Â\¦^¨Ó®É A ³Q©ï°_(·|±N¼uÂ®¡BA ©M¾×¤î d ¤@°_©ï°_)");
-  assert.ok(back.every((c) => c.flex < 1e-9), "Â\¦^¨Ó®É²Ó¼uÂ®³»µÛ¹_ k,¤£Ås");
-  close(back[back.length - 1].wheel - back[0].wheel, -m291.PITCH, "Â\½ü¨Ó¦^¤@¦¸,¾àÁa½üÂà¹L¤@¾¦(¶¶®É°w)", 1e-6);
-  close(e.step, -m291.PITCH, "¨C¶g´Á¤@¾¦", 1e-6);
+  assert.ok(back.some((c) => c.lift > 0.01), "æ“ºå›ä¾†æ™‚ A è¢«æŠ¬èµ·(æœƒå°‡å½ˆç°§ã€A å’Œæ“‹æ­¢ d ä¸€èµ·æŠ¬èµ·)");
+  assert.ok(back.every((c) => c.flex < 1e-9), "æ“ºå›ä¾†æ™‚ç´°å½ˆç°§é ‚è‘—é‰¤ k,ä¸å½");
+  close(back[back.length - 1].wheel - back[0].wheel, -m291.PITCH, "æ“ºè¼ªä¾†å›ä¸€æ¬¡,æ“’ç¸±è¼ªè½‰éä¸€é½’(é †æ™‚é‡)", 1e-6);
+  close(e.step, -m291.PITCH, "æ¯é€±æœŸä¸€é½’", 1e-6);
   noPenetration(e);
   apart(m291.escapement, "spring", "pin");
   apart(m291.escapement, "detent", "pin");
 });
 
-test("²Ä 293 ºØ:Âù¦X¦¡¾àÁa:¤e¥Ë B ¨C¦¸©¹¤@­Ó¤è¦VÂ\®É±µ¦¬¤@­Ó½ÄÀ»,½ü¨C¦¸©ñ¨«¤@¾¦", () => {
+test("ç¬¬ 293 ç¨®:é›™åˆå¼æ“’ç¸±:å‰ç“¦ B æ¯æ¬¡å¾€ä¸€å€‹æ–¹å‘æ“ºæ™‚æ¥æ”¶ä¸€å€‹è¡æ“Š,è¼ªæ¯æ¬¡æ”¾èµ°ä¸€é½’", () => {
   const e = m293.escapement;
   const S = m293.SWING;
-  close(e.step, -m293.PITCH, "Â\½ü¨Ó¦^¤@¦¸,½üÂà¹L¤@¾¦", 1e-9);
+  close(e.step, -m293.PITCH, "æ“ºè¼ªä¾†å›ä¸€æ¬¡,è¼ªè½‰éä¸€é½’", 1e-9);
   noPenetration(e);
   const base = 2 * e.period;
-  // ©¹½ÄÀ»ªº¤è¦VÂ\(¥ıÂ\ªº¨º¤@µ{)©ñ¨«¤@¾¦;Â\¦^¨Ó¥u¦³¾¦¦y¸¨¶i¥W¼Ñ¤@ÂI¤S³Q±À¦^
-  close(m293.duplex(base + 2 * S).wheel - m293.duplex(base).wheel, -m293.PITCH, "©¹¤@­Ó¤è¦VÂ\®É©ñ¨«¤@¾¦", 1e-6);
-  close(m293.duplex(base + 4 * S).wheel, m293.duplex(base + 2 * S).wheel, "Â\¦^¨Ó®É¤£©ñ¦æ", 1e-6);
+  // å¾€è¡æ“Šçš„æ–¹å‘æ“º(å…ˆæ“ºçš„é‚£ä¸€ç¨‹)æ”¾èµ°ä¸€é½’;æ“ºå›ä¾†åªæœ‰é½’å°–è½é€²å‡¹æ§½ä¸€é»åˆè¢«æ¨å›
+  close(m293.duplex(base + 2 * S).wheel - m293.duplex(base).wheel, -m293.PITCH, "å¾€ä¸€å€‹æ–¹å‘æ“ºæ™‚æ”¾èµ°ä¸€é½’", 1e-6);
+  close(m293.duplex(base + 4 * S).wheel, m293.duplex(base + 2 * S).wheel, "æ“ºå›ä¾†æ™‚ä¸æ”¾è¡Œ", 1e-6);
   const back = sweep(base + 4 * S, 200, base + 2 * S).map((v) => m293.duplex(v).wheel);
-  assert.ok(Math.max(...back) - Math.min(...back) < m293.PITCH * 0.25, "Â\¦^¨Ó®É¾¦¦y¥u¸¨¶i¥W¼Ñ¤@ÂI");
-  // ¤e¥Ë B ±q«aª¬¾¦±µ¦¬½ÄÀ»:½ÄÀ»¨º¤@µ{¦³¤@¬q½ü©M B ¬Û¸I
+  assert.ok(Math.max(...back) - Math.min(...back) < m293.PITCH * 0.25, "æ“ºå›ä¾†æ™‚é½’å°–åªè½é€²å‡¹æ§½ä¸€é»");
+  // å‰ç“¦ B å¾å† ç‹€é½’æ¥æ”¶è¡æ“Š:è¡æ“Šé‚£ä¸€ç¨‹æœ‰ä¸€æ®µè¼ªå’Œ B ç›¸ç¢°
   const touches = sweep(base + 2 * S, 400, base).filter((v) => {
     const { teeth, stops, layers, stopLayers } = e.at(v);
     const rot = teeth.map((t) => t.map(([x, y]) => [x * Math.cos(-1e-3) - (y + 2.2) * Math.sin(-1e-3), x * Math.sin(-1e-3) + (y + 2.2) * Math.cos(-1e-3) - 2.2]));
     return rot.some((t, i) => layers[i] === "crown" && polygonsOverlap(t, stops[stopLayers.indexOf("crown")]));
   });
-  assert.ok(touches.length > 10, `«aª¬¾¦±À¤e¥Ë B(¬Û¸Iªº¨ú¼Ë ${touches.length})`);
+  assert.ok(touches.length > 10, `å† ç‹€é½’æ¨å‰ç“¦ B(ç›¸ç¢°çš„å–æ¨£ ${touches.length})`);
 });
 
-test("²Ä 294¡V295 ºØ:¶êµ©¦¡¾àÁa(¦P¤@¾÷ºcªº¥ßÅé¹Ï»P©ñ¤j¹Ï):Â\½ü¨CÂ\¤@¦¸,¾àÁa½ü«e¶i¥b­Ó¾¦", () => {
-  for (const v of [0, 1.3, 5]) assert.deepEqual(fig294.pose(v).parts, fig295.pose(v).parts, "¨â¹Ïªº«º¶Õ¤@­P");
-  assert.notDeepEqual(fig294.view.direction, fig295.view.direction, "ªì©lµø¨¤¤£¦P");
+test("ç¬¬ 294â€“295 ç¨®:åœ“ç­’å¼æ“’ç¸±(åŒä¸€æ©Ÿæ§‹çš„ç«‹é«”åœ–èˆ‡æ”¾å¤§åœ–):æ“ºè¼ªæ¯æ“ºä¸€æ¬¡,æ“’ç¸±è¼ªå‰é€²åŠå€‹é½’", () => {
+  for (const v of [0, 1.3, 5]) assert.deepEqual(fig294.pose(v).parts, fig295.pose(v).parts, "å…©åœ–çš„å§¿å‹¢ä¸€è‡´");
+  assert.notDeepEqual(fig294.view.direction, fig295.view.direction, "åˆå§‹è¦–è§’ä¸åŒ");
   escapes(cyl.escapement, cyl.PITCH, -1);
   noPenetration(cyl.escapement);
-  // ¤e¥Ë¥æ´À¦a°±¾a©ó¶êµ©ªº¤º°¼»P¥~°¼:Â\½ü¦b¨âºİ®É,°±¦íªº¾¦¦y¤@¦¸¦b¶êµ©¸Ì¡B¤@¦¸¦b¶êµ©¥~
+  // å‰ç“¦äº¤æ›¿åœ°åœé æ–¼åœ“ç­’çš„å…§å´èˆ‡å¤–å´:æ“ºè¼ªåœ¨å…©ç«¯æ™‚,åœä½çš„é½’å°–ä¸€æ¬¡åœ¨åœ“ç­’è£¡ã€ä¸€æ¬¡åœ¨åœ“ç­’å¤–
   const S = cyl.SWING;
   const inside = (v) => {
     const { teeth } = cyl.escapement.at(v);
@@ -177,131 +169,173 @@ test("²Ä 294¡V295 ºØ:¶êµ©¦¡¾àÁa(¦P¤@¾÷ºcªº¥ßÅé¹Ï»P©ñ¤j¹Ï):Â\½ü¨CÂ\¤@¦¸,¾àÁa½ü«e¶
     return tip ? Math.hypot(tip[0] - cx, tip[1] - cy) < 0.2 : null;
   };
   const base = 2 * cyl.escapement.period;
-  assert.notEqual(inside(base), inside(base + 2 * S), "¤@¦¸°±¦b¶êµ©¥~¡B¤@¦¸°±¦b¶êµ©¤º");
+  assert.notEqual(inside(base), inside(base + 2 * S), "ä¸€æ¬¡åœåœ¨åœ“ç­’å¤–ã€ä¸€æ¬¡åœåœ¨åœ“ç­’å…§");
 });
 
-test("²Ä 296 ºØ:ºb±ì¦¡¾àÁa:Â\½üªº¾P¦b¨C¦¸Â\°Êªº¤¤³~¶i¤J¥W¼Ñ E,¼·°Êºb±ì,¤e¥Ë©ñ¨«¥b­Ó¾¦", () => {
+test("ç¬¬ 296 ç¨®:æ§“æ¡¿å¼æ“’ç¸±:æ“ºè¼ªçš„éŠ·åœ¨æ¯æ¬¡æ“ºå‹•çš„ä¸­é€”é€²å…¥å‡¹æ§½ E,æ’¥å‹•æ§“æ¡¿,å‰ç“¦æ”¾èµ°åŠå€‹é½’", () => {
   const e = m296.escapement;
   const S = m296.SWING;
   escapes(e, m296.PITCH, -1);
   noPenetration(e);
-  // ¾P¤£¦b¥W¼Ñ¸Ì®É(Â\½ü¦b¨âºİªşªñ),ºb±ì°±¦b¾×¾P¤W¤£°Ê
+  // éŠ·ä¸åœ¨å‡¹æ§½è£¡æ™‚(æ“ºè¼ªåœ¨å…©ç«¯é™„è¿‘),æ§“æ¡¿åœåœ¨æ“‹éŠ·ä¸Šä¸å‹•
   const base = 2 * e.period;
   const ends = [...sweep(base + 0.4 * S, 40, base), ...sweep(base + 2.4 * S, 40, base + 1.6 * S)].map((v) => m296.lever(v).lever);
-  assert.ok(ends.slice(0, 41).every((a) => Math.abs(Math.abs(a) - m296.BANK) < 2e-3), "Â\½ü¦b¤@ºİ®Éºb±ì¾a¦b¾×¾P¤W");
-  assert.ok(Math.sign(ends[0]) !== Math.sign(ends[ends.length - 1]), "Â\¹L¤@¦¸,ºb±ì´«¨ì¥t¤@Ãäªº¾×¾P");
-  // ¾P¦b¨C¦¸Â\°Êªº¤¤³~¶i¤J¥W¼Ñ:ºb±ì¥u¦bÂ\½ü©~¤¤ªşªñÂà°Ê
+  assert.ok(ends.slice(0, 41).every((a) => Math.abs(Math.abs(a) - m296.BANK) < 2e-3), "æ“ºè¼ªåœ¨ä¸€ç«¯æ™‚æ§“æ¡¿é åœ¨æ“‹éŠ·ä¸Š");
+  assert.ok(Math.sign(ends[0]) !== Math.sign(ends[ends.length - 1]), "æ“ºéä¸€æ¬¡,æ§“æ¡¿æ›åˆ°å¦ä¸€é‚Šçš„æ“‹éŠ·");
+  // éŠ·åœ¨æ¯æ¬¡æ“ºå‹•çš„ä¸­é€”é€²å…¥å‡¹æ§½:æ§“æ¡¿åªåœ¨æ“ºè¼ªå±…ä¸­é™„è¿‘è½‰å‹•
   const moving = sweep(base + 2 * S, 400, base).filter((v, i, vs) => i > 0 && Math.abs(m296.lever(v).lever - m296.lever(vs[i - 1]).lever) > 1e-6);
-  assert.ok(moving.every((v) => Math.abs(m296.lever(v).balance) < 0.5 * S), "ºb±ì¥u¦bÂ\½ü©~¤¤ªşªñ³Q¼·°Ê");
+  assert.ok(moving.every((v) => Math.abs(m296.lever(v).balance) < 0.5 * S), "æ§“æ¡¿åªåœ¨æ“ºè¼ªå±…ä¸­é™„è¿‘è¢«æ’¥å‹•");
   apart(m296.escapement, "fork", "pin");
 });
 
-test("²Ä 298 ºØ:¦Ñ¦¡¿ö¥Î¾àÁa(¥ß¶b):Â\½ü¨CÂ\¤@¦¸,«aª¬½üÂà¹L¥b­Ó¾¦,¸g¤p¾¦½ü±a°Ê¥ª¤Uªº½ü", () => {
+test("ç¬¬ 298 ç¨®:è€å¼éŒ¶ç”¨æ“’ç¸±(ç«‹è»¸):æ“ºè¼ªæ¯æ“ºä¸€æ¬¡,å† ç‹€è¼ªè½‰éåŠå€‹é½’,ç¶“å°é½’è¼ªå¸¶å‹•å·¦ä¸‹çš„è¼ª", () => {
   escapes(m298.escapement, m298.PITCH, 1);
   noPenetration(m298.escapement);
   const r = m298.verge(4 * m298.SWING);
-  close(r.contrate / r.crown, m298.PINION.teeth / m298.CONTRATE.teeth, "¾¦¼Æ¤ñ", 1e-12);
-  // ¥ß¶b¾àÁa¬O¦^°h¦¡:¤e¥Ë¦ù¶i¾¦¶¡®É§â½ü±À¦^¤@ÂI
+  close(r.contrate / r.crown, m298.PINION.teeth / m298.CONTRATE.teeth, "é½’æ•¸æ¯”", 1e-12);
+  // ç«‹è»¸æ“’ç¸±æ˜¯å›é€€å¼:å‰ç“¦ä¼¸é€²é½’é–“æ™‚æŠŠè¼ªæ¨å›ä¸€é»
   const ws = sweep(2 * m298.escapement.period, 400).map((v) => m298.verge(v).crown);
-  assert.ok(ws.slice(1).some((w, i) => w < ws[i] - 1e-4), "¦³¦^°h");
+  assert.ok(ws.slice(1).some((w, i) => w < ws[i] - 1e-4), "æœ‰å›é€€");
 });
 
-test("²Ä 300¡V301 ºØ:¦P¤@¾÷ºcªº«eµø»P°¼µø¹Ï;¤e¥Ë¥æ´À¦a¥Ñ¨â­Ó¾àÁa½ü¤§¤@ªº¾¦§@¥Î,¨CÂ\¤@¦¸½üÂà¹L¥b­Ó¾¦", () => {
-  for (const v of [0, 0.4, 2]) assert.deepEqual(fig300.pose(v).parts, fig301.pose(v).parts, "¨â¹Ïªº«º¶Õ¤@­P");
-  assert.notDeepEqual(fig300.view.direction, fig301.view.direction, "ªì©lµø¨¤¤£¦P");
+test("ç¬¬ 300â€“301 ç¨®:åŒä¸€æ©Ÿæ§‹çš„å‰è¦–èˆ‡å´è¦–åœ–;å‰ç“¦äº¤æ›¿åœ°ç”±å…©å€‹æ“’ç¸±è¼ªä¹‹ä¸€çš„é½’ä½œç”¨,æ¯æ“ºä¸€æ¬¡è¼ªè½‰éåŠå€‹é½’", () => {
+  for (const v of [0, 0.4, 2]) assert.deepEqual(fig300.pose(v).parts, fig301.pose(v).parts, "å…©åœ–çš„å§¿å‹¢ä¸€è‡´");
+  assert.notDeepEqual(fig300.view.direction, fig301.view.direction, "åˆå§‹è¦–è§’ä¸åŒ");
   escapes(twin.escapement, twin.PITCH, 1);
   noPenetration(twin.escapement);
 });
 
-test("²Ä 302 ºØ:Â\½ü¦¡¾àÁa:Â\½ü C ¨Ó¦^Â\,¤e¥Ë A¡BB ½ü¬y©ñ¨«¾àÁa½ü D ªº¾¦", () => {
+test("ç¬¬ 302 ç¨®:æ“ºè¼ªå¼æ“’ç¸±:æ“ºè¼ª C ä¾†å›æ“º,å‰ç“¦ Aã€B è¼ªæµæ”¾èµ°æ“’ç¸±è¼ª D çš„é½’", () => {
   escapes(m302.escapement, m302.PITCH, 1);
   noPenetration(m302.escapement);
 });
 
-test("²Ä 303 ºØ:ÀRÀ»¦¡Â\ÄÁ¾àÁa:¤e¥Ë­±»PÂ\°Ê¶b¦P¤ß,¤£·|²£¥Í¦^°h", () => {
+test("ç¬¬ 303 ç¨®:éœæ“Šå¼æ“ºé˜æ“’ç¸±:å‰ç“¦é¢èˆ‡æ“ºå‹•è»¸åŒå¿ƒ,ä¸æœƒç”¢ç”Ÿå›é€€", () => {
   const e = m303.escapement;
   escapes(e, m303.PITCH, -1);
   noPenetration(e);
   const ws = sweep(2 * e.period, 480).map((v) => m303.deadbeat(v).wheel);
-  assert.ok(ws.every((w, i) => i === 0 || w <= ws[i - 1] + 1e-5), "¤£¦^°h");
-  assert.ok(ws.slice(1).filter((w, i) => Math.abs(w - ws[i]) < 1e-5).length > 150, "¾¦©è¦í¤e¥Ë®É½üÀR¤î");
+  assert.ok(ws.every((w, i) => i === 0 || w <= ws[i - 1] + 1e-5), "ä¸å›é€€");
+  assert.ok(ws.slice(1).filter((w, i) => Math.abs(w - ws[i]) < 1e-5).length > 150, "é½’æŠµä½å‰ç“¦æ™‚è¼ªéœæ­¢");
 });
 
-test("²Ä 304 ºØ:¾P½ü¦¡¾àÁa:¨â­Ó¤e¥Ë§¨µÛ¾P,Â\¨CÂ\¤@¦¸½üÂà¹L¥b­Ó¾P¶Z", () => {
+test("ç¬¬ 304 ç¨®:éŠ·è¼ªå¼æ“’ç¸±:å…©å€‹å‰ç“¦å¤¾è‘—éŠ·,æ“ºæ¯æ“ºä¸€æ¬¡è¼ªè½‰éåŠå€‹éŠ·è·", () => {
   escapes(m304.escapement, m304.PITCH, -1);
   noPenetration(m304.escapement);
 });
 
-test("²Ä 305 ºØ:³æ¾P¦¡¾àÁa:Â\¨CÂ\°Ê¤@¦¸,¾àÁa½ü(±a¤@®Ú°¾¤ß¾Pªº¤p¶ê½L)±ÛÂà¥b°é", () => {
+test("ç¬¬ 305 ç¨®:å–®éŠ·å¼æ“’ç¸±:æ“ºæ¯æ“ºå‹•ä¸€æ¬¡,æ“’ç¸±è¼ª(å¸¶ä¸€æ ¹åå¿ƒéŠ·çš„å°åœ“ç›¤)æ—‹è½‰åŠåœˆ", () => {
   const e = m305.escapement;
-  close(e.step, 2 * Math.PI, "Â\¤@­Ó¨Ó¦^,¶ê½LÂà¤@°é", 1e-9);
+  close(e.step, 2 * Math.PI, "æ“ºä¸€å€‹ä¾†å›,åœ“ç›¤è½‰ä¸€åœˆ", 1e-9);
   const half = m305.singlePin(2.5 * e.period + e.period / 2).disc - m305.singlePin(2.5 * e.period).disc;
-  assert.ok(Math.abs(half - Math.PI) < 0.3, `Â\¤@¦¸¬ù¥b°é(¹ê»Ú ${(half / Math.PI).toFixed(2)} °éªº¤@¥b)`);
+  assert.ok(Math.abs(half - Math.PI) < 0.3, `æ“ºä¸€æ¬¡ç´„åŠåœˆ(å¯¦éš› ${(half / Math.PI).toFixed(2)} åœˆçš„ä¸€åŠ)`);
   noPenetration(e);
 });
 
-test("²Ä 306 ºØ:¤T¸}¦¡Â\ÄÁ¾àÁa:¤T¸}½üªº¾¦¥æ´À§@¥Î©ó¤W¡B¤U¤e¥Ë,Â\¨CÂ\¤@¦¸Âà¤»¤À¤§¤@°é", () => {
-  stepsPerSwing((v) => m306.threeLeg(v).wheel, m306.TRAVEL, m306.STEP);
+test("ç¬¬ 306 ç¨®:ä¸‰è…³å¼æ“ºé˜æ“’ç¸±:ä¸‰è…³è¼ªçš„é½’äº¤æ›¿ä½œç”¨æ–¼ä¸Šã€ä¸‹å‰ç“¦,æ“ºæ¯æ“ºä¸€æ¬¡è½‰å…­åˆ†ä¹‹ä¸€åœˆ", () => {
+  escapes(m306.escapement, 2 * m306.STEP, 1);
+  noPenetration(m306.escapement);
 });
 
-test("²Ä 307 ºØ:¤T¸}¦¡¾àÁaªºÅÜ§Î(¸ûªøªº¤î°Ê¾¦ D¡BE):Â\¨CÂ\¤@¦¸Âà¤»¤À¤§¤@°é", () => {
-  stepsPerSwing((v) => m307.threeLeg(v).wheel, m307.SWING, m307.STEP);
+test("ç¬¬ 307 ç¨®:ä¸‰è…³å¼æ“’ç¸±çš„è®Šå½¢(è¼ƒé•·çš„æ­¢å‹•é½’ Dã€E):æ“ºæ¯æ“ºä¸€æ¬¡è½‰å…­åˆ†ä¹‹ä¸€åœˆ", () => {
+  escapes(m307.escapement, 2 * m307.STEP, 1);
+  noPenetration(m307.escapement);
 });
 
-test("²Ä 308 ºØ:¤ÀÂ÷¦¡¾àÁa:¥u¦bÂ\¦V¥ªÂ\®É¥Ñºb±ì Q ¸ÑÂê¨Ã±µ¦¬½Ä¶q;Â\¦V¥kªğ¦^®É¨î°Ê¤ö³Q±À¦V¤@®Ç", () => {
+test("ç¬¬ 308 ç¨®:åˆ†é›¢å¼æ“’ç¸±:åªåœ¨æ“ºå‘å·¦æ“ºæ™‚ç”±æ§“æ¡¿ Q è§£é–ä¸¦æ¥æ”¶è¡é‡;æ“ºå‘å³è¿”å›æ™‚åˆ¶å‹•çˆªè¢«æ¨å‘ä¸€æ—", () => {
   const T = m308.geometry.TRAVEL;
-  const right = sweep(2 * T, 100).map((v) => m308.detached(v)); // ¥Ñ¥ª©¹¥k(ªğ¦^)
-  assert.ok(right.every((d) => d.lever === 0 && d.wheel === 0), "¦V¥k®É¤£¸ÑÂê¡B½ü¤£°Ê");
-  assert.ok(right.some((d) => d.click < 0), "¦V¥k®É¨î°Ê¤ö³Q±À¦V¤@®Ç");
-  const left = sweep(4 * T, 100, 2 * T).map((v) => m308.detached(v));
-  assert.ok(left.some((d) => d.lever > 0), "¦V¥ª®Éºb±ì Q ³Q¼·¶}");
-  close(m308.detached(4 * T).wheel, -m308.PITCH, "¨Ó¦^¤@¦¸Âà¤@¾¦", 1e-9);
-  close(left[0].x, -left[left.length - 1].x, "Â\©¹¥ª¨«", 1e-9);
-  assert.ok(left[0].x > left[left.length - 1].x);
+  const base = 2 * m308.escapement.period;
+  const right = sweep(base + 2 * T, 100, base).map((v) => m308.detached(v)); // ç”±å·¦å¾€å³(è¿”å›)
+  assert.ok(right.every((d) => d.lever < 1e-9), "å‘å³æ™‚ä¸è§£é–");
+  close(right[right.length - 1].wheel, right[0].wheel, "å‘å³æ™‚è¼ªä¸å‹•", 1e-6);
+  assert.ok(right.some((d) => d.click < -0.1), "å‘å³æ™‚åˆ¶å‹•çˆªè¢«æ¨å‘ä¸€æ—");
+  assert.ok(right[0].x < right[right.length - 1].x, "é€™ä¸€ç¨‹æ“ºå¾€å³èµ°");
+  const left = sweep(base + 4 * T, 100, base + 2 * T).map((v) => m308.detached(v));
+  assert.ok(left.some((d) => d.lever > 0.05), "å‘å·¦æ™‚æ§“æ¡¿ Q è¢«æ’¥é–‹");
+  assert.ok(left.every((d) => Math.abs(d.click) < 1e-9), "å‘å·¦æ™‚åˆ¶å‹•çˆªé ‚è‘—æ“‹éŠ·ä¸å€’");
+  close(left[left.length - 1].wheel - left[0].wheel, -m308.PITCH, "ä¾†å›ä¸€æ¬¡è½‰ä¸€é½’", 1e-6);
+  noPenetration(m308.escapement);
+  apart(m308.escapement, "lever", "click");
 });
 
-test("²Ä 309 ºØ:°¨©_­«¤O¾àÁa:Â\¨C¦¸Â\°Ê§â¨ä¤¤¤@­Ó¥[­«ªº¤e¥Ë©ï°_,ªğ¦^®É¤e¥Ë¸¨¤U", () => {
+test("ç¬¬ 309 ç¨®:é¦¬å¥‡é‡åŠ›æ“’ç¸±:æ“ºæ¯æ¬¡æ“ºå‹•æŠŠå…¶ä¸­ä¸€å€‹åŠ é‡çš„å‰ç“¦æŠ¬èµ·,è¿”å›æ™‚å‰ç“¦è½ä¸‹", () => {
   const S = m309.SWING;
-  const atRight = m309.mudge(2 * S); // Â\¨ì¥kºİ
-  assert.ok(atRight.right > 0 && atRight.left === 0, "Â\©¹¥k®É©ï°_¥kÃäªº¤e¥Ë");
-  const atLeft = m309.mudge(4 * S);
-  assert.ok(atLeft.left > 0 && atLeft.right === 0, "Â\©¹¥ª®É©ï°_¥ªÃäªº¤e¥Ë");
-  const mid = m309.mudge(3 * S);
-  assert.ok(mid.left === 0 && mid.right === 0, "Â\¦b¤¤¶¡®É¨â¤e¥Ë³£¸¨¤U");
-  stepsPerSwing((v) => -m309.mudge(v).wheel, S, m309.PITCH / 2);
+  const base = 2 * m309.escapement.period;
+  const atRight = m309.mudge(base + 2 * S); // æ“ºåˆ°å³ç«¯
+  assert.ok(atRight.right > 0.01 && atRight.left < 1e-9, "æ“ºå¾€å³æ™‚æŠ¬èµ·å³é‚Šçš„å‰ç“¦");
+  const atLeft = m309.mudge(base + 4 * S);
+  assert.ok(atLeft.left > 0.01 && atLeft.right < 1e-9, "æ“ºå¾€å·¦æ™‚æŠ¬èµ·å·¦é‚Šçš„å‰ç“¦");
+  const mid = m309.mudge(base + 3 * S);
+  assert.ok(mid.left < 1e-9 && mid.right < 1e-9, "æ“ºåœ¨ä¸­é–“æ™‚å…©å‰ç“¦éƒ½è½ä¸‹");
+  escapes(m309.escapement, m309.PITCH, -1);
+  noPenetration(m309.escapement);
 });
 
-test("²Ä 310 ºØ:¤T¸}¦¡­«¤O¾àÁa:¤e¥Ë A¡BB ¥æ´À³Q©ï°_,¾àÁa½ü¨CÂ\¤@¦¸Âà¤»¤À¤§¤@°é", () => {
+test("ç¬¬ 310 ç¨®:ä¸‰è…³å¼é‡åŠ›æ“’ç¸±:å‰ç“¦ Aã€B äº¤æ›¿è¢«æŠ¬èµ·,æ“’ç¸±è¼ªæ¯æ“ºä¸€æ¬¡è½‰å…­åˆ†ä¹‹ä¸€åœˆ", () => {
   const S = m310.SWING;
-  assert.ok(m310.gravity(2 * S).right > 0 && m310.gravity(4 * S).left > 0, "¨â¤e¥Ë¥æ´À³Q©ï°_");
-  stepsPerSwing((v) => m310.gravity(v).wheel, S, m310.STEP);
+  const base = 2 * m310.escapement.period;
+  assert.ok(m310.gravity(base + 2 * S).right > 0.02 && m310.gravity(base + 4 * S).left > 0.02, "å…©å‰ç“¦äº¤æ›¿è¢«æŠ¬èµ·");
+  // å‰ç“¦çš„æŠ¬å‡æ˜¯ç”±ä¸­å¤®çš„éŠ·å®Œæˆçš„:æ“ºåœ¨ä¸­é–“ã€æ²’ç¢°åˆ°è‡‚æ™‚,ä¸€æ”¯è‡‚ä»è¢«éŠ·æ‰˜è‘—æŠ¬èµ·
+  const mid = m310.gravity(base + 3 * S);
+  assert.ok(mid.left > 0.02 || mid.right > 0.02, "æ“ºåœ¨ä¸­é–“æ™‚,ä¸€æ”¯è‡‚ç”±éŠ·æ‰˜è‘—");
+  escapes(m310.escapement, 2 * m310.STEP, 1);
+  noPenetration(m310.escapement);
 });
 
-test("²Ä 311 ºØ:Âù¤T¸}¦¡­«¤O¾àÁa:¨â­Ó¤e¥Ë¥æ´À³Q©ï°_,Âê©w½ü¨CÂ\¤@¦¸Âà¤»¤À¤§¤@°é", () => {
+test("ç¬¬ 311 ç¨®:é›™ä¸‰è…³å¼é‡åŠ›æ“’ç¸±:å…©å€‹å‰ç“¦äº¤æ›¿è¢«æŠ¬èµ·,é–å®šè¼ªæ¯æ“ºä¸€æ¬¡è½‰å…­åˆ†ä¹‹ä¸€åœˆ", () => {
   const S = m311.SWING;
-  assert.ok(m311.doubleThree(2 * S).right > 0 && m311.doubleThree(4 * S).left > 0, "¨â¤e¥Ë¥æ´À³Q©ï°_");
-  stepsPerSwing((v) => m311.doubleThree(v).wheel, S, m311.STEP);
+  const base = 2 * m311.escapement.period;
+  assert.ok(m311.doubleThree(base + 2 * S).right > 0.02 && m311.doubleThree(base + 4 * S).left > 0.02, "å…©å‰ç“¦äº¤æ›¿è¢«æŠ¬èµ·");
+  escapes(m311.escapement, 2 * m311.STEP, 1);
+  noPenetration(m311.escapement);
 });
 
-test("²Ä 312 ºØ:¥¬¬¥§J®á­«¤O¾àÁa:Â\±À¶}¤@­Ó¤e¥Ë¡B©ñ¶}¾×¤î,½ü¨CÂ\¤@¦¸Âà¥b­Ó¾¦¶Z", () => {
+test("ç¬¬ 312 ç¨®:å¸ƒæ´›å…‹æ¡‘é‡åŠ›æ“’ç¸±:æ“ºæ¨é–‹ä¸€å€‹å‰ç“¦ã€æ”¾é–‹æ“‹æ­¢,è¼ªæ¯æ“ºä¸€æ¬¡è½‰åŠå€‹é½’è·", () => {
   const S = m312.SWING;
-  assert.ok(m312.bloxam(2 * S).right > 0 && m312.bloxam(4 * S).left > 0, "¨â¤e¥Ë¥æ´À³Q©ï°_");
-  stepsPerSwing((v) => -m312.bloxam(v).wheel, S, m312.PITCH / 2);
+  const base = 2 * m312.escapement.period;
+  assert.ok(m312.bloxam(base + 2 * S).right > 0.02 && m312.bloxam(base + 4 * S).left > 0.02, "å…©å‰ç“¦äº¤æ›¿è¢«æ¨é–‹");
+  const mid = m312.bloxam(base + 3 * S);
+  assert.ok(mid.left > 0.002 || mid.right > 0.002, "æ“ºåœ¨ä¸­é–“æ™‚,ä¸€æ”¯è‡‚ç”±å°è¼ªæ‰˜è‘—æŠ¬èµ·");
+  escapes(m312.escapement, m312.PITCH, -1);
+  noPenetration(m312.escapement);
 });
 
-test("²Ä 313 ºØ:¤Ñ¤å¥x­p®É¾¹¾àÁa:Â\½ü´Â½bÀY¤è¦VÂà®É±À¶}¤î°Ê¾¹¡B©ñ¨«¤@¾¦;ªğ¦^®É¤£°Ê¤î°Ê¾¹", () => {
+test("ç¬¬ 313 ç¨®:å¤©æ–‡å°è¨ˆæ™‚å™¨æ“’ç¸±:æ“ºè¼ªæœç®­é ­æ–¹å‘è½‰æ™‚æ¨é–‹æ­¢å‹•å™¨ã€æ”¾èµ°ä¸€é½’;è¿”å›æ™‚ä¸å‹•æ­¢å‹•å™¨", () => {
+  // èˆ‡ç¬¬ 291 ç¨®åŒä¸€å¥—æ©Ÿæ§‹(æ•´çµ„è½‰ âˆ’90Â°):æ“ºè¼ªå…ˆå¾€è¿”å›çš„æ–¹å‘æ“º(åªå£“å½é€šéå½ˆç°§),å†æœç®­é ­æ–¹å‘æ“º(æ¨é–‹æ­¢å‹•å™¨)
   const S = m313.SWING;
-  const back = sweep(2 * S, 100).map((v) => m313.chronometer(v));
-  assert.ok(back.every((c) => c.detent === 0 && c.wheel === 0), "ªğ¦^®É¤î°Ê¾¹¤£°Ê¡B½ü¤£°Ê");
-  const go = sweep(4 * S, 100, 2 * S).map((v) => m313.chronometer(v));
-  assert.ok(go.some((c) => c.detent > 0), "´Â½bÀY¤è¦V®É±À¶}¤î°Ê¾¹");
-  close(m313.chronometer(4 * S).wheel, -m313.PITCH, "¨Ó¦^¤@¦¸Âà¤@¾¦", 1e-9);
+  const base = 2 * m313.escapement.period;
+  const back = sweep(base + 2 * S, 100, base).map((v) => m313.chronometer(v));
+  assert.ok(back.every((c) => c.lift < 1e-9), "è¿”å›æ™‚æ­¢å‹•å™¨ä¸å‹•");
+  close(back[back.length - 1].wheel, back[0].wheel, "è¿”å›æ™‚è¼ªä¸å‹•", 1e-6);
+  const go = sweep(base + 4 * S, 100, base + 2 * S).map((v) => m313.chronometer(v));
+  assert.ok(go.some((c) => c.lift > 0.01), "æœç®­é ­æ–¹å‘æ™‚æ¨é–‹æ­¢å‹•å™¨");
+  close(go[go.length - 1].wheel - go[0].wheel, -m313.PITCH, "ä¾†å›ä¸€æ¬¡è½‰ä¸€é½’", 1e-6);
+  assert.equal(m313.default.figure, 313);
+  apart(m313.escapement, "spring", "pin");
 });
 
-test("²Ä 314 ºØ:ºb±ì¦¡¤Ñ¤å¥x­p®É¾¹¾àÁa:¤e¥Ë¥uÂê½ü,½Ä¶qª½±µµ¹Â\½ü¤Wªº¤e¥Ë C,¨Ó¦^¤@¦¸Âà¤@¾¦", () => {
+test("ç¬¬ 314 ç¨®:æ§“æ¡¿å¼å¤©æ–‡å°è¨ˆæ™‚å™¨æ“’ç¸±:å‰ç“¦åªé–è¼ª,è¡é‡ç›´æ¥çµ¦æ“ºè¼ªä¸Šçš„å‰ç“¦ C,ä¾†å›ä¸€æ¬¡è½‰ä¸€é½’", () => {
   const S = m314.SWING;
-  const levers = sweep(2 * S, 100).map((v) => m314.leverChrono(v).lever);
-  assert.ok(Math.sign(levers[0]) !== Math.sign(levers[levers.length - 1]), "¨CÂ\¤@¦¸ºb±ì´«Ãä");
-  close(m314.leverChrono(2 * S).wheel, 0, "¤@­Ó¤è¦V¤£µ¹½Ä¶q", 1e-12);
-  close(m314.leverChrono(4 * S).wheel, -m314.PITCH, "¨Ó¦^¤@¦¸Âà¤@¾¦", 1e-9);
+  const e = m314.escapement;
+  const base = 2 * e.period;
+  const levers = sweep(base + 2 * S, 100, base).map((v) => m314.leverChrono(v).lever);
+  assert.ok(Math.sign(levers[0]) !== Math.sign(levers[levers.length - 1]), "æ¯æ“ºä¸€æ¬¡æ§“æ¡¿æ›é‚Š");
+  const first = m314.leverChrono(base + 2 * S).wheel - m314.leverChrono(base).wheel;
+  const second = m314.leverChrono(base + 4 * S).wheel - m314.leverChrono(base + 2 * S).wheel;
+  close(first + second, -m314.PITCH, "ä¾†å›ä¸€æ¬¡è½‰ä¸€é½’", 1e-6);
+  // è¼ªé½’æ¨è‘—æ»¾å­(å‰ç“¦ C)çš„å‡¹æ§½å´å£èµ°:æ»¾å­å¾€å›è½‰ä¸€é»é»å°±æœƒå£“é€²è¼ªé½’(åªæ˜¯é åœ¨æ»¾å­å¤–ç·£ä¸Šçš„ä¸ç®—)
+  const [bx, by] = e.balanceCenter;
+  const pushesRoller = (v) => {
+    const { teeth, stops } = e.at(v);
+    const back = placePoly(stops[stops.length - 1].map(([x, y]) => [x - bx, y - by]), e.balanceCenter, -0.01);
+    return teeth.some((t) => penetrationDepth(t, back) > 1e-4);
+  };
+  const pushes = (from) => sweep(from + 2 * S, 400, from).filter(pushesRoller);
+  const ccw = pushes(base);
+  assert.ok(ccw.length > 10, "æ“ºè¼ªé€†æ™‚é‡æ“º:è¼ªé½’æ¨è‘—å‰ç“¦ C èµ°(è¡é‡)");
+  const travel = m314.leverChrono(ccw.at(-1)).wheel - m314.leverChrono(ccw[0]).wheel;
+  assert.ok(travel < -m314.PITCH / 4, `æ¨è‘—å‰ç“¦ C çš„é‚£ä¸€æ®µ,è¼ªè½‰éå¯è§€çš„è§’åº¦(å¯¦éš› ${(travel / m314.PITCH).toFixed(2)} é½’)`);
+  assert.equal(pushes(base + 2 * S).length, 0, "æ“ºè¼ªé †æ™‚é‡æ“º:è¼ªé½’ä¸æ¨æ»¾å­(æ¯ä¾†å›åªçµ¦ä¸€æ¬¡è¡é‡)");
+  noPenetration(e, 2000);
+  apart(m314.escapement, "fork", "pin");
 });
