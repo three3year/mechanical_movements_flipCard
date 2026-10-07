@@ -416,6 +416,8 @@ test("第 388 種:刨木機進料:帶齒的上滾子把木板往前送,平滑的
 test("第 389 種:升降千斤頂:偏心輪帶著棘爪推棘齒桿上升,上方的擋止扣住不讓它退下;爪與齒由接觸算", () => {
   const T = 2 * Math.PI;
   close(m389.perTurn % m389.geometry.PITCH, 0, "每圈推上整數個齒", 1e-9);
+  // 原文沒說每圈幾齒;偏心距 0.25(行程 0.5)比兩齒多出一截,爪越得過第二個齒尖、越不過第三個
+  close(m389.perTurn, 2 * m389.geometry.PITCH, "偏心輪每轉一圈,棘齒桿升兩齒", 1e-9);
   assert.ok(m389.perTurn > 0, "棘齒桿被推上去");
   for (let k = 0; k < 3; k++) close(m389.rack((k + 1) * T) - m389.rack(k * T), m389.perTurn, `第 ${k + 1} 圈升的高度`, 1e-9);
   // 「上方的棘爪為一個擋止裝置」:下方的爪退下時,棘齒桿不會落到這一圈開始的高度以下
@@ -436,6 +438,12 @@ test("第 390 種:部件 A 往兩個方向擺時,開口皮帶 C 與交叉皮帶 
   assert.ok(fs.every((f, i) => i === 0 || f >= fs[i - 1] - 1e-9), "飛輪只朝一個方向轉");
   assert.ok(m390.oscillation(2 * S).fly > 0.5 && m390.oscillation(4 * S).fly - m390.oscillation(2 * S).fly > 0.5, "A 往兩個方向擺,飛輪都被推");
   close(m390.perCycle % m390.PITCH, 0, "一個來回推過整數個齒", 1e-9);
+  // 每擺一次推五齒半上下(皮帶輪擺過的角度扣掉換向時爪尖落進齒裡的空程),一個來回 11 齒
+  close(m390.perCycle, 11 * m390.PITCH, "一個來回推過 11 齒", 1e-9);
+  for (const [from, to] of [[0, 2 * S], [2 * S, 4 * S]]) {
+    const n = (m390.oscillation(to).fly - m390.oscillation(from).fly) / m390.PITCH;
+    assert.ok(n > 5 && n < 6, `擺一次推過 ${n.toFixed(2)} 齒`);
+  }
   close(m390.oscillation(4 * S).fly, m390.perCycle, "一個來回轉過的角度", 1e-9);
   const o = m390.oscillation(S);
   close(o.c, -o.d, "開口皮帶與交叉皮帶的皮帶輪反向轉");

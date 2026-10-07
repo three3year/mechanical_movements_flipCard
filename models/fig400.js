@@ -15,7 +15,7 @@ import { shape, rect, thickLine, circle } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
 export const LIFT = 0.18;
-export const FEED = 0.2;
+export const FEED = 0.2; // 進料步幅(原本 0.4:A 往前走 0.4 時左端的鉤撞上導架;原文沒有給步幅)
 const A_BOTTOM = -0.06; // 桿 A 底面(相對桿 A 的位置)
 export const CAM_BASE = 0.42; // 抬起那片的基圓半徑
 const FEED_BASE = 0.55; // 往前推那片的基圓半徑

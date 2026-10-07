@@ -73,17 +73,19 @@ const TABLE = (() => {
   return out;
 })();
 
+// 水桶第一次被撥到 60° 以上的位置(開始倒水;從最低點逆時針轉過的角度,度)
+const FIRST = (() => {
+  for (let k = 0; k < STEPS; k++) if (TABLE[k] > deg(60)) return (k * 360) / STEPS;
+  return 360;
+})();
+
 /** 水桶掛在輪上角度 a 處 → 傾斜角與存量:在最低點浸水裝滿,一路滿著上升,被固定銷撥斜時倒空 */
 export function bucket(a) {
   const x = wrap(a + Math.PI / 2) / DA;
   const i = Math.floor(x) % STEPS;
   const tilt = TABLE[i] + (TABLE[(i + 1) % STEPS] - TABLE[i]) * (x - Math.floor(x));
   const from = (wrap(a + Math.PI / 2) * 180) / Math.PI; // 從最低點逆時針轉過的角度(度)
-  const first = (() => { // 第一次被撥到 60° 以上的位置(開始倒水)
-    for (let k = 0; k < STEPS; k++) if (TABLE[k] > deg(60)) return (k * 360) / STEPS;
-    return 360;
-  })();
-  const level = from < 25 ? from / 25 : from < first ? 1 : from < first + 15 ? (first + 15 - from) / 15 : 0;
+  const level = from < 25 ? from / 25 : from < FIRST ? 1 : from < FIRST + 15 ? (FIRST + 15 - from) / 15 : 0;
   return { tilt, level };
 }
 
@@ -130,7 +132,7 @@ export default {
     // 吊銷有摩擦(hold):水桶擺回來時不會一直來回晃
     free: { bucket0: { pivot: [...polar(RIM, -SWEEP), 0.3], on: "wheel", hold: true } },
     expect: [
-      { at: (deg(200 - 90) + SWEEP) / TAU, part: "bucket0", label: "水桶到頂端被固定銷撥斜、倒水", quote: "透過與設置於方便處的固定銷接觸使其傾斜,而將水倒出", tolerance: 0.25 },
+      { at: (deg(200 - 90) + SWEEP) / TAU, part: "bucket0", label: "水桶到頂端被固定銷撥斜、倒水", quote: "透過與設置於方便處的固定銷接觸使其傾斜,而將水倒出" },
       { at: (deg(320 - 90) + SWEEP) / TAU, part: "bucket0", label: "過了銷,水桶靠自重擺回垂直" },
     ],
   },

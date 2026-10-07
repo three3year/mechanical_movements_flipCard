@@ -8,7 +8,7 @@
 import { clamp } from "./kit.js";
 import { falling } from "./jumps.js";
 import { stream } from "./flow.js";
-import { shape, circle } from "./shapes.js";
+import { shape } from "./shapes.js";
 
 const PULLEY = { center: [0, 2.2, 0], radius: 0.45 };
 const GROUND = -2.05;

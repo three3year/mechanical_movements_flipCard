@@ -7,7 +7,7 @@
 // 圓弧(根部與拱腳相切,原文「支點於其基部仍保持與拱腳相切」),彎多少由「頂端到滑塊銷的距離 = 繩長」決定;紅線是尺的外緣
 // (要畫的拱的一側)。
 // 推斷:彈性尺彎成圓弧(實際是彈性曲線,差不多);尺長取等邊尖拱一側的弧長;繩長取滑塊在中間時剛好彎成等邊尖拱。
-import { clamp, deg } from "./kit.js";
+import { clamp } from "./kit.js";
 import { shape, rect } from "./shapes.js";
 
 const SPAN = 3.4;

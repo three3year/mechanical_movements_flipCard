@@ -140,10 +140,6 @@ export const wheelOutlineAt = (theta) => {
   const a = intermittent(theta).abs;
   return ratchetShape(RATCHET).outline.map(([x, y]) => [WHEEL.center[0] + x * Math.cos(a) - y * Math.sin(a), WHEEL.center[1] + x * Math.sin(a) + y * Math.cos(a)]);
 };
-export const pawlGap = (theta) => {
-  const s = intermittent(theta);
-  return gapOf(pinAt(theta), s.psi, s.abs);
-};
 
 export default {
   figure: 398,

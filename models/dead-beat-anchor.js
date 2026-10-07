@@ -39,8 +39,11 @@ export function deadBeatPallet({ P, O, outer, at, width = 0.1, lift, back = 0.3 
   return area < 0 ? poly.reverse() : poly;
 }
 
-/** 叉瓦離輪最遠的那一端(接擒縱叉的臂) */
-export const palletRoot = (poly) => [(poly[8][0] + poly[9][0]) / 2, (poly[8][1] + poly[9][1]) / 2];
+/** 叉瓦離輪最遠的那一端(接擒縱叉的臂):鎖面與另一面各占多邊形的一半,兩半在這一端相接(反轉後也是) */
+export const palletRoot = (poly) => {
+  const [a, b] = [poly[poly.length / 2 - 1], poly[poly.length / 2]];
+  return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+};
 
 /**
  * 擒縱輪的轉角表:lever(v) 是主動量 v 時擒縱叉的轉角,period 是一個來回的主動量。先空走 warmup 個來回,取下一個來回當週期;

@@ -221,16 +221,15 @@ function simulate(turns) {
 }
 
 // 先空轉兩圈,之後每圈都一樣:取第三圈當作週期;每圈升的高度是整數個齒距,逐步推開的微小誤差按比例攤掉
-const { TABLE, LIFT, STEP } = (() => {
+const { TABLE, STEP } = (() => {
   const run = simulate(3);
   const table = run.slice(2 * STEPS);
   const [h0, raw] = [table[0].h, table[STEPS].h - table[0].h];
   const step = Math.round(raw / PITCH) * PITCH;
-  return { TABLE: table.map((s) => ({ ...s, h: h0 + ((s.h - h0) * step) / raw })), LIFT: raw, STEP: step };
+  return { TABLE: table.map((s) => ({ ...s, h: h0 + ((s.h - h0) * step) / raw })), STEP: step };
 })();
 /** 偏心輪每轉一圈,棘齒桿升的高度(整數個齒距,由接觸算出) */
 export const perTurn = STEP;
-export const rawLift = LIFT; // 檢查用:逐步推開時一圈實際升的高度
 const H0 = TABLE[0].h; // 主動量 0 時棘齒桿的位置(空轉兩圈後)
 
 function lookup(theta) {
