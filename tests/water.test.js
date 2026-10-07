@@ -144,11 +144,15 @@ test("第 441 種:波斯水車:水桶在低處裝滿,滿著升到高處,碰到�
   const low = m441.bucket(-90 * deg + 30 * deg);
   assert.equal(low.level, 1, "過了最低點就裝滿");
   assert.equal(low.tilt, 0, "上升時桶子垂直掛著");
-  const atPin = m441.bucket(m441.PIN);
-  assert.ok(atPin.tilt > 1, "碰到固定銷時被撥斜");
-  const after = m441.bucket(m441.PIN + 40 * deg);
+  const tilts = sweep(m441.PIN + 40 * deg, 60, m441.PIN - 20 * deg).map((a) => m441.bucket(a).tilt);
+  assert.ok(Math.max(...tilts) > 1, "經過頂端時被固定銷撥斜");
+  const after = m441.bucket(m441.PIN + 130 * deg);
   assert.equal(after.level, 0, "倒過之後空著下降");
-  assert.equal(after.tilt, 0, "離開銷後又垂直掛著");
+  assert.equal(after.tilt, 0, "離開銷後靠自重擺回、垂直掛著");
+  // 擺回是加速的:剛離開銷時擺得慢,越擺越快
+  const back = sweep(m441.PIN + 80 * deg, 11, m441.PIN + 25 * deg).map((a) => m441.bucket(a).tilt);
+  const steps = back.slice(1).map((t, i) => back[i] - t).filter((d) => d > 1e-6);
+  assert.ok(steps.length > 2 && steps[steps.length - 1] > steps[0], "越擺越快");
   assert.ok(angle(m441.default, "wheel", 0.2) > 0, "輪逆時針轉(原圖箭頭)");
   assert.ok(-m441.RIM < m441.RIVER, "輪的下半部浸在水流裡");
 });
@@ -204,11 +208,17 @@ test("第 439 種:水桶裝滿就下降,觸地時底部的閥門打開排空,再
     const c = m439.cycle(v);
     if (c.y < prevY - 1e-9) assert.equal(c.level, 1, "下降時水桶是滿的");
     if (c.y > prevY + 1e-9) assert.equal(c.level, 0, "上升時水桶是空的");
-    if (c.open && c.y > m439.BOTTOM + 1e-9) assert.ok(c.y < m439.BOTTOM + 0.2, "閥門只在觸地附近打開");
+    // 閥門由接觸算:閥桿碰到墊塊之前閥瓣坐在閥座上,水桶再往下才被頂開
+    if (m439.opening(c.y) > 1e-9) assert.ok(c.y < m439.BOTTOM + 0.12 + 1e-9, "閥門只在閥桿頂到墊塊時打開");
     close(c.y + m439.weightY(c.y), m439.TOP + m439.weightY(m439.TOP), "繩長不變");
     prevY = c.y;
   }
-  assert.ok(m439.cycle(0.6).open, "觸地時閥門打開");
+  close(m439.opening(m439.cycle(0.6).y), 0.12, "水桶撞到地面,閥門被頂開", 1e-9);
+  close(m439.opening(m439.TOP), 0, "提起時閥瓣坐回閥座");
+  // 落下是加速的,撞到墊塊才停
+  const ys = [0.32, 0.37, 0.42, 0.47].map((v) => m439.cycle(v).y);
+  const drops = ys.slice(1).map((y, i) => ys[i] - y);
+  assert.ok(drops.every((d, i) => i === 0 || d > drops[i - 1]), "水桶越落越快");
 });
 
 test("第 440 種:分成兩半的水槽:一邊裝滿就翻過去倒出,另一邊轉到水流下方;可當水錶計數", () => {
@@ -283,17 +293,24 @@ test("第 448 種:提升泵:上行時下閥開、活塞閥關,水從出水口溢
   for (const v of sweep(4 * Math.abs(m448.SWING[0] - m448.SWING[1]), 40)) {
     const p = m448.pump(v);
     const parts = def.pose(v).parts;
+    if (p.phase.f < 0.25) continue; // 換向後的一小段:一個閥正被頂開、另一個正落回閥座
     assert.equal(OPENED(parts.footValve), p.up, "下方閥門在上行時打開");
     assert.equal(OPENED(parts.pistonValve), !p.up, "活塞閥門在下行時打開");
     if (p.up) assert.ok(def.pose(v).flows[0].points.some((q) => q[0] < -0.9), "上行時水從出水口溢出");
   }
   // 手柄往下壓,活塞上升
   assert.ok(m448.pump(0.01).piston < m448.pump(0.3).piston, "壓手柄提起活塞");
+  // 換向時閥瓣不會瞬間翻開或闔上:落回閥座是加速的
+  const span = Math.abs(m448.SWING[0] - m448.SWING[1]);
+  const shut = [0.02, 0.06, 0.1, 0.14, 0.18].map((f) => def.pose(span * (1 + f)).parts.footValve.angle);
+  const falls = shut.slice(1).map((a, i) => shut[i] - a);
+  assert.ok(falls.every((d, i) => d > 0 && (i === 0 || d > falls[i - 1])), "下閥靠自重加速落回閥座");
 });
 
 test("第 449 種:現代提升泵:出水口的瓣閥向上開,上行時被水頂開", () => {
   const def = m449.default;
   for (const v of sweep(4, 40)) {
+    if (v % 1 < 0.25) continue; // 換向後的一小段:閥瓣正在開、闔
     const parts = def.pose(v).parts;
     const up = OPENED(parts.footValve);
     assert.equal(OPENED(parts.outValve), up, "出水瓣閥與下閥同時(上行時)打開");

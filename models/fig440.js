@@ -2,7 +2,10 @@
 // 同時另一邊被帶到水流下方裝水,又使水槽擺回來。這個裝置曾被用作水錶。
 // 主動件是虛擬的「進程」:每單位是一個來回(兩次傾倒)。
 // 推斷:水流落在軸的正上方,隔板的頂端偏向哪邊,水就落進另一邊(抬高的那一邊);各階段所佔的進程。
-import { deg, smooth, clamp } from "./kit.js";
+// 2026-10-07 複查:翻轉原本是平順地轉過去;水槽是靠裝滿那一邊的重量翻倒的,改成加速翻過去、撞到底座上的擋柱停住
+// (擋柱是推斷,原圖沒畫)。
+import { deg, clamp } from "./kit.js";
+import { falling } from "./jumps.js";
 import { stream } from "./flow.js";
 import { shape, rect } from "./shapes.js";
 
@@ -18,11 +21,11 @@ export function trough(v) {
   // 前半:右邊(抬高)裝水;0.4–0.5 翻到右邊低、右邊倒空;後半:左邊裝水;0.9–1 翻回
   if (u < 0.4) return { tilt: TILT, right: u / 0.4, left: 0, count: 2 * n };
   if (u < 0.5) {
-    const s = smooth((u - 0.4) / 0.1);
+    const s = falling((u - 0.4) / 0.1); // 裝滿的一邊比較重,水槽加速翻過去,撞到擋柱停住
     return { tilt: TILT * (1 - 2 * s), right: 1 - clamp((u - 0.42) / 0.08, 0, 1), left: 0, count: 2 * n + (u > 0.45 ? 1 : 0) };
   }
   if (u < 0.9) return { tilt: -TILT, right: 0, left: (u - 0.5) / 0.4, count: 2 * n + 1 };
-  const s = smooth((u - 0.9) / 0.1);
+  const s = falling((u - 0.9) / 0.1);
   return { tilt: -TILT * (1 - 2 * s), right: 0, left: 1 - clamp((u - 0.92) / 0.08, 0, 1), count: 2 * n + 1 + (u > 0.95 ? 1 : 0) };
 }
 
@@ -41,6 +44,12 @@ export default {
         { kind: "box", size: [0.12, 1.9, 0.12], at: [-0.5, -0.4, -0.65], angle: deg(-14) },
         { kind: "box", size: [0.12, 1.9, 0.12], at: [0.5, -0.4, -0.65], angle: deg(14) },
         { kind: "cylinder", radius: 0.06, length: 1.5, at: [PIVOT[0], PIVOT[1], 0] },
+        // 兩根擋柱:水槽翻到底時,槽底的一端靠在上面
+        ...[-1, 1].map((k) => {
+          const x = k * 1.42;
+          const top = PIVOT[1] - (1.42 / Math.cos(TILT)) * Math.sin(TILT) + 0.07 * Math.cos(TILT) - 0.035;
+          return { kind: "box", size: [0.1, top + 1.275, 0.2], at: [x, (top - 1.275) / 2, 0] };
+        }),
         // 斜槽
         { kind: "box", size: [2.4, 0.08, 0.35], at: [1.5, 2.6, 0], angle: Math.atan2(2.15 - 3.0, 0.5 - 2.6) + Math.PI },
       ],

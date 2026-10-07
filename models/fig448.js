@@ -5,7 +5,7 @@
 // 推斷:泵已經引過水(吸水管裡滿著水);手柄、連桿與泵筒的尺寸依原圖;剖面圖。
 import { Y, deg } from "./kit.js";
 import { stream } from "./flow.js";
-import { lever, leverPart, stroke, flap, barrel, water } from "./pump.js";
+import { lever, leverPart, stroke, flap, barrel, water, valveOpening } from "./pump.js";
 import { backHalf } from "./section.js";
 import { shape, thickLine } from "./shapes.js";
 
@@ -21,9 +21,9 @@ const arm = lever(HANDLE);
 
 /** 主動量 v → 手柄角、活塞高度、是否上行 */
 export function pump(v) {
-  const { at, forward } = stroke(v, ...SWING);
-  const { E, top } = arm(at);
-  return { theta: at, E, top, piston: top[1] - ROD, up: forward };
+  const phase = stroke(v, ...SWING);
+  const { E, top } = arm(phase.at);
+  return { theta: phase.at, E, top, piston: top[1] - ROD, up: phase.forward, phase };
 }
 
 export default {
@@ -64,6 +64,7 @@ export default {
     { id: "link", kind: "link", width: 0.08, thickness: 0.05 },
   ],
   driver: { part: "handle", type: "rotation", cycle: SWING },
+  powered: ["footValve", "pistonValve"], // 外力來源:閥瓣是被水頂開的(流體傳動,沒有實體相連)
   target: "piston",
   view: { direction: [0.08, 0.06, 1] },
   pose(v) {
@@ -79,8 +80,9 @@ export default {
         link: { from: [p.E[0], p.E[1], 0.08], to: [p.top[0], p.top[1], 0.08] },
         piston: { position: [0, p.piston, 0] },
         // 下方的閥門:上行時被水頂開;活塞裡的閥門:下行時被水頂開
-        footValve: { position: [-SUCTION.r, BARREL.y0 + 0.03, 0], angle: p.up ? OPEN : 0 },
-        pistonValve: { position: [-0.16, pistonTop + 0.02, 0], angle: p.up ? 0 : OPEN },
+        // (2026-10-07 複查:原本換向的瞬間直接翻開 / 闔上;改成被水頂開、靠自重加速落回閥座)
+        footValve: { position: [-SUCTION.r, BARREL.y0 + 0.03, 0], angle: OPEN * valveOpening(p.up, p.phase) },
+        pistonValve: { position: [-0.16, pistonTop + 0.02, 0], angle: OPEN * valveOpening(!p.up, p.phase) },
         below: water(0, BARREL.y0, p.piston - PISTON_H / 2, BARREL.y1 - BARREL.y0),
         above: water(0, pistonTop, Math.max(pistonTop, SPOUT_Y), BARREL.y1 - BARREL.y0),
       },

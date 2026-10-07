@@ -3,7 +3,7 @@
 // 推斷:泵已經引過水;出水管從泵筒頂端往右、往上,頂上是向上開的瓣閥;剖面圖。
 import { Y, deg } from "./kit.js";
 import { stream } from "./flow.js";
-import { stroke, flap, barrel, water, pipeWalls } from "./pump.js";
+import { stroke, flap, barrel, water, pipeWalls, valveOpening } from "./pump.js";
 import { backHalf } from "./section.js";
 
 export const BARREL = { r: 0.42, y0: -1.1, y1: 1.0 };
@@ -51,10 +51,12 @@ export default {
     flap("outValve", 0.3),
   ],
   driver: { part: "piston", type: "translation", direction: [0, 1, 0], cycle: STROKE },
+  powered: ["footValve", "pistonValve", "outValve"], // 外力來源:閥瓣是被水頂開的(流體傳動,沒有實體相連)
   target: "outValve", // 出水口向上開的瓣閥:水從這裡被送到泵上方
   view: { direction: [0.08, 0.06, 1] },
   pose(v) {
-    const { at: y, forward: up } = stroke(v, ...STROKE);
+    const phase = stroke(v, ...STROKE);
+    const { at: y, forward: up } = phase;
     const travel = v * 4;
     const top = y + PISTON_H / 2;
     const flows = up
@@ -63,10 +65,11 @@ export default {
     return {
       parts: {
         piston: { position: [0, y, 0] },
-        footValve: { position: [-SUCTION.r, BARREL.y0 + 0.03, 0], angle: up ? OPEN : 0 },
-        pistonValve: { position: [-0.16, top + 0.02, 0], angle: up ? 0 : OPEN },
+        // (2026-10-07 複查:原本換向的瞬間直接翻開 / 闔上;改成被水頂開、靠自重加速落回閥座)
+        footValve: { position: [-SUCTION.r, BARREL.y0 + 0.03, 0], angle: OPEN * valveOpening(up, phase) },
+        pistonValve: { position: [-0.16, top + 0.02, 0], angle: OPEN * valveOpening(!up, phase) },
         // 出水口的瓣閥:上行時被水頂開(向上開)
-        outValve: { position: [0.8, 1.95, 0], angle: up ? OPEN : 0 },
+        outValve: { position: [0.8, 1.95, 0], angle: OPEN * valveOpening(up, phase) },
         below: water(0, BARREL.y0, y - PISTON_H / 2, BARREL.y1 - BARREL.y0),
         above: water(0, top, BARREL.y1, BARREL.y1 - BARREL.y0),
       },
