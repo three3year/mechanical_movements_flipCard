@@ -59,7 +59,7 @@ export default {
     {
       id: "frame",
       kind: "group",
-      pieces: [-2.7, 2.7].flatMap((x) => pedestalX({ at: [WORM.y, 0], x, bore: 0.14, floor: -1.575 + 0.18 })),
+      pieces: [-2.7, 2.7].flatMap((x) => pedestalX({ x, y: WORM.y, z: 0, bore: 0.14, floor: -1.575 + 0.18 })),
     },
   ],
   driver: { part: "wheel", type: "rotation", grips: ["screw"], range: [-RANGE, RANGE] },

@@ -1,12 +1,12 @@
 // 第 114 種:缺齒式小齒輪把均勻的圓周運動轉換為往復直線運動。小齒輪只有幾個齒,
 // 交替地帶動長圓框架上方與下方的齒條:有齒的部分經過上方時框架往一邊走,經過下方時往另一邊走,
-// 兩段之間有一小段齒都沒碰到齒條,框架停一下。主動件是小齒輪(逆時針)。
+// 兩段之間有一小段齒都沒推到齒條,框架停一下(每端約 12°)。主動件是小齒輪(逆時針)。
 // 框架兩端的桿穿在固定的導套裡,小齒輪的軸裝在後面的軸承座上(導套、軸承座是推斷;原圖的桿伸出畫面外)。
 // 框架的位置由小齒輪的齒推齒條決定:逐步轉小齒輪,齒壓進哪一排齒條就把框架往那一邊推到剛好不重疊,
 // 沒被推時框架靠摩擦停住(取穩定的一圈當作週期)。齒頂比節圓先碰到齒條,所以實際的推程比「有齒的弧長」略長、
 // 停頓略短。動力重演:框架是靠摩擦定位的滑塊,只被齒推動。
 import { TAU, rot2 } from "./kit.js";
-import { penetrationDepth } from "./contact.js";
+import { penetrationDepth, pushUntilClear } from "./contact.js";
 import { pedestal, squareGuide } from "./supports.js";
 import { rackOffset, circularPitch } from "./gears.js";
 import { sectorEngaged } from "./jumps.js";
@@ -61,17 +61,6 @@ const bottomTeeth = (x) => RACK_TEETH.map((t) => t.map(([px, py]) => [x + BOTTOM
 const pinionAt = (theta) => PROFILE.map((p) => rot2(p, theta));
 const pinionTeeth = (theta) => PINION_TEETH.map((t) => t.map((p) => rot2(p, theta)));
 const deepest = (as, bs) => Math.max(0, ...as.flatMap((a) => bs.map((b) => penetrationDepth(a, b))));
-function clear(value, dir, max, overlaps) {
-  if (!overlaps(value)) return value;
-  if (overlaps(value + dir * max)) return value;
-  let [lo, hi] = [0, max];
-  for (let k = 0; k < 30; k++) {
-    const mid = (lo + hi) / 2;
-    if (overlaps(mid * dir + value)) lo = mid;
-    else hi = mid;
-  }
-  return value + dir * hi;
-}
 const SAMPLES = 360;
 const TOL = 0.008;
 const TABLE = (() => {
@@ -82,8 +71,8 @@ const TABLE = (() => {
     const p = pinionTeeth((TAU * i) / SAMPLES);
     // 逆時針轉:上方的齒往左推上排齒條,下方的齒往右推下排齒條
     // 梯形的簡化齒形在咬合時本來就會互相擦到約 0.003,穿入超過 TOL 才算推到
-    x = clear(x, -1, max, (v) => deepest(p, topTeeth(v)) > TOL);
-    x = clear(x, 1, max, (v) => deepest(p, bottomTeeth(v)) > TOL);
+    x = pushUntilClear(x, -1, max, (v) => deepest(p, topTeeth(v)) > TOL);
+    x = pushUntilClear(x, 1, max, (v) => deepest(p, bottomTeeth(v)) > TOL);
     run.push(x);
   }
   return run.slice(SAMPLES);

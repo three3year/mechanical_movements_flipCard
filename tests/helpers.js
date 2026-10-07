@@ -56,3 +56,6 @@ export function assertMeshFree(def, idA, idB, values, state) {
 
 /** 0 到 to 之間均勻取 n 個主動量 */
 export const sweep = (to, n = 24, from = 0) => Array.from({ length: n + 1 }, (_, i) => from + ((to - from) * i) / n);
+
+/** 封閉折線的周長 */
+export const perimeter = (outline) => outline.reduce((sum, p, i) => sum + Math.hypot(outline[(i + 1) % outline.length][0] - p[0], outline[(i + 1) % outline.length][1] - p[1]), 0);

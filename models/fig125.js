@@ -55,7 +55,7 @@ const gear = (id, g, pin) => ({
 });
 const FLOOR = -2.0;
 const GUIDE_Y = 5.3; // 頂桿導套的高度:頂桿在整個行程裡都穿過它
-const HEAD_X = (PINS[0].gear.center[0] + PINS[0].r * Math.cos(PINS[0].at) + ((PINS[1].gear.center[0] + PINS[1].r * Math.cos(PINS[1].at)) + (PINS[2].gear.center[0] + PINS[2].r * Math.cos(PINS[2].at))) / 2) / 2;
+const HEAD_X = compound(0).top[0]; // 頂桿的水平位置(上層槓桿中點,固定不動)
 const z = (p, d = 0.3) => [p[0], p[1], d];
 
 export default {

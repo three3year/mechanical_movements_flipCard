@@ -1,7 +1,7 @@
 // 第六章「齒條與小齒輪」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
+import { close, sweep, perimeter } from "./helpers.js";
 import fig113, { rackX, pitch as pitch113, roller as roller113 } from "../models/fig113.js";
 import { frameX as frame114, stroke as stroke114, contactShapes as contactShapes114 } from "../models/fig114.js";
 import fig115, { drive as drive115 } from "../models/fig115.js";
@@ -27,6 +27,11 @@ test("第 114 種:缺齒式小齒輪交替帶動上下齒條,框架往復直線�
   close(Math.max(...xs) - Math.min(...xs), stroke114, "行程", 1e-9);
   assert.ok(stroke114 > 4 * 0.82 * (TAU / 12), "推程至少是 4 顆齒的節圓弧長(齒頂先碰到,推程略長)");
   close(frame114(TAU), frame114(0), "每圈回到原處", 1e-9);
+  // 有齒的部分從一排換到另一排之間,齒都沒推到齒條,框架停一下(每端約 12°)
+  const steps = sweep(TAU, 3600).map(frame114);
+  let still = 0;
+  for (let i = 1; i < steps.length; i++) if (Math.abs(steps[i] - steps[i - 1]) < 1e-9) still++;
+  assert.ok(still > 200, `兩段之間停住(停了 ${still / 10}°)`);
   // 由接觸算:齒只貼著齒條(簡化齒形擦到的深度在 0.01 以內),上下兩排不會同時被咬住
   for (const t of sweep(TAU, 180)) {
     const { pinion, top, bottom } = contactShapes114(t);
@@ -119,11 +124,9 @@ test("第 117 種:凸輪在軛內兩個滾子之間轉動,軛做往復運動;兩
   assert.ok(fig117.parts.length >= 2);
   // 摩擦滾子貼著凸輪滾動:凸輪轉一圈,滾子轉過的弧長等於凸輪外形一圈(上下兩個一樣),轉向和凸輪相反
   const r = fig117.parts.find((p) => p.id === "rollerTop").radius;
-  const outline = fig117.parts.find((p) => p.id === "cam").shape.outline;
-  let perimeter = 0;
-  for (let i = 0; i < outline.length; i++) perimeter += Math.hypot(outline[(i + 1) % outline.length][0] - outline[i][0], outline[(i + 1) % outline.length][1] - outline[i][1]);
-  close(-roller117(TAU, Math.PI / 2) * r, perimeter, "上滾子滾一圈的弧長", 0.02);
-  close(-roller117(TAU, -Math.PI / 2) * r, perimeter, "下滾子滾一圈的弧長", 0.02);
+  const length = perimeter(fig117.parts.find((p) => p.id === "cam").shape.outline);
+  close(-roller117(TAU, Math.PI / 2) * r, length, "上滾子滾一圈的弧長", 0.02);
+  close(-roller117(TAU, -Math.PI / 2) * r, length, "下滾子滾一圈的弧長", 0.02);
 });
 
 test("第 118 種:下齒條固定,小齒輪一邊前進一邊滾動,上齒條移動小齒輪的兩倍距離", () => {

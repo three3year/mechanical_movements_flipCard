@@ -14,7 +14,8 @@ const PIVOT = [1.15, 0.85, 0.2];
 const CAM = { pin: [-2.15, -0.38, 0], radius: 0.62, offset: 0.4 };
 
 // 凸輪中心
-const camCenter = (theta) => {
+export const camRadius = CAM.radius;
+export const camCenter = (theta) => {
   const p = polar(CAM.offset, theta + deg(110));
   return [CAM.pin[0] + p[0], CAM.pin[1] + p[1]];
 };

@@ -29,9 +29,9 @@ test("第 152 種:往回轉時軌跡跟著縮回(軌跡是主動量的函式)", 
 
 import { frameX as frame128, bounds as bounds128 } from "../models/fig128.js";
 import { pulleyY, radii as radii129 } from "../models/fig129.js";
-import fig130, { shears } from "../models/fig130.js";
-import { placeOutline as placeOutline130, circlePolygon as circlePolygon130, penetrationDepth as penetrationDepth130, polygonsOverlap as polygonsOverlap130 } from "../models/contact.js";
-import { polar as polar130 } from "../models/kit.js";
+import fig130, { shears, camCenter as camCenter130, camRadius as camRadius130 } from "../models/fig130.js";
+import { placeOutline, circlePolygon, penetrationDepth, polygonsOverlap } from "../models/contact.js";
+import { perimeter } from "./helpers.js";
 import { swingRack } from "../models/fig131.js";
 import { press as press132 } from "../models/fig132.js";
 import { press as press133 } from "../models/fig133.js";
@@ -64,12 +64,12 @@ test("第 130 種:剪具的夾爪靠長臂的重量張開,凸輪轉到高處時�
   // 由接觸算:長臂整圈都貼著凸輪(靠自重壓在上面,不懸空也不穿入)
   const arm = fig130.parts.find((p) => p.id === "arm");
   for (const t of sweep(TAU, 72)) {
-    const placed = placeOutline130(arm.pieces[0].shape.outline, arm.center, shears(t));
-    const cam = circlePolygon130(polar130(0.4, t + (110 * Math.PI) / 180).map((v, i) => v + [-2.15, -0.38][i] || 0).slice(0, 2), 0.62, 64);
-    assert.ok(penetrationDepth130(placed, cam) < 0.003, "長臂不穿進凸輪");
+    const placed = placeOutline(arm.pieces[0].shape.outline, arm.center, shears(t));
+    const cam = circlePolygon(camCenter130(t), camRadius130, 64);
+    assert.ok(penetrationDepth(placed, cam) < 0.003, "長臂不穿進凸輪");
     // 長臂逆時針是左端往下:再往下擺 0.01 rad 就會壓進凸輪(貼著,不懸空)
-    const lowered = placeOutline130(arm.pieces[0].shape.outline, arm.center, shears(t) + 0.01);
-    assert.ok(polygonsOverlap130(lowered, cam), `凸輪轉角 ${t.toFixed(2)} 時長臂懸空`);
+    const lowered = placeOutline(arm.pieces[0].shape.outline, arm.center, shears(t) + 0.01);
+    assert.ok(polygonsOverlap(lowered, cam), `凸輪轉角 ${t.toFixed(2)} 時長臂懸空`);
   }
 });
 
@@ -252,7 +252,6 @@ test("第 151 種:蝸桿帶動螺桿軸,左右旋螺紋上的螺帽彼此靠近�
 
 import fig147, { governor } from "../models/fig147.js";
 import { shuttle, stroke as stroke153, contactShapes as contactShapes153 } from "../models/fig153.js";
-import { penetrationDepth } from "../models/contact.js";
 import { lift as lift154 } from "../models/fig154.js";
 
 test("第 147 種:轉速越快,十字頭越落後、滾子沿斜面越往上,十字頭被抬得越高", () => {
@@ -292,11 +291,9 @@ test("第 154 種:凸柱撥動曲柄搖臂,繞過滑輪的繩把重物拉起;凸
 
 test("第 137 種:兩個滾子貼著偏心輪滾動——曲柄軸轉一圈,滾子轉過的弧長等於偏心輪外形一圈,轉向和偏心輪相反", () => {
   const r = fig137.parts.find((p) => p.id === "rollerTop").radius;
-  const outline = fig137.parts.find((p) => p.id === "shaft").shape.outline;
-  let perimeter = 0;
-  for (let i = 0; i < outline.length; i++) perimeter += Math.hypot(outline[(i + 1) % outline.length][0] - outline[i][0], outline[(i + 1) % outline.length][1] - outline[i][1]);
+  const outline = perimeter(fig137.parts.find((p) => p.id === "shaft").shape.outline);
   for (const at of [Math.PI / 2, -Math.PI / 2]) {
-    near(-roller137(TAU, at) * r, perimeter, "滾一圈的弧長", 0.02);
+    near(-roller137(TAU, at) * r, outline, "滾一圈的弧長", 0.02);
     const a = sweep(TAU, 120).map((t) => roller137(t, at));
     for (let i = 1; i < a.length; i++) assert.ok(a[i] < a[i - 1], "偏心輪逆時針轉,滾子一直順時針轉");
   }

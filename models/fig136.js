@@ -76,7 +76,7 @@ export default {
         { kind: "box", size: [0.2, 0.55, 0.5], at: [2.45, 0.215 + 0.275, ROD_Z] },
         { kind: "cylinder", axis: X, radius: 0.21, inner: 0.11, length: 0.2, at: [2.45, ROD_Y, ROD_Z] },
         { kind: "box", size: [3.6, 0.12, 1.2], at: [1.2, -R - 0.05, ROD_Z] },
-        ...pedestalX({ at: [0, 0], x: -1.45, bore: 0.3, floor: -R - 0.11 }),
+        ...pedestalX({ x: -1.45, y: 0, z: 0, bore: 0.3, floor: -R - 0.11 }),
       ],
     },
   ],

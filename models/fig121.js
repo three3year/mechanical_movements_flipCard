@@ -9,7 +9,7 @@
 // 碟形輪鬆套在棘輪的軸上,軸後面一個軸承座;桿上端的滑塊與導槽是推斷(原圖的桿伸出畫面外)。
 import { deg, swing, polar, TAU } from "./kit.js";
 import { gearProfile, shape, circle } from "./shapes.js";
-import { placeOutline, polygonsOverlap, swingUntilContact } from "./contact.js";
+import { placeOutline, polygonsOverlap, swingUntilContact, pushUntilClear } from "./contact.js";
 import { pedestal } from "./supports.js";
 
 const DISC = 2.1;
@@ -81,19 +81,10 @@ function simulate(side) {
     const { disc } = rodDrive(v);
     const base = CLICK.at + disc - Math.PI / 2;
     const pushing = (disc - prev) * side < 0;
-    if (pushing && polygonsOverlap(placed(side, disc, base + rel), cogAt(cog))) {
+    if (pushing) {
       // 推的量不超過這一步碟形輪擺過的角度(加一點餘裕);超過就表示爪不是頂在齒面上
-      const max = Math.abs(disc - prev) + 1e-4;
-      const hits = (d) => polygonsOverlap(placed(side, disc, base + rel), cogAt(cog - side * d));
-      if (!hits(max)) {
-        let [lo, hi] = [0, max];
-        for (let k = 0; k < 30; k++) {
-          const mid = (lo + hi) / 2;
-          if (hits(mid)) lo = mid;
-          else hi = mid;
-        }
-        cog -= side * hi;
-      }
+      const pushed = pushUntilClear(0, 1, Math.abs(disc - prev) + 1e-4, (d) => polygonsOverlap(placed(side, disc, base + rel), cogAt(cog - side * d)));
+      cog -= side * pushed;
     }
     // 爪靠在齒上的轉角(從抬起的位置往下擺到碰到齒)
     const target = rest(side, disc, cog, base + rel + side * RAISE) - base;
@@ -218,7 +209,7 @@ export default {
       check: "replay",
       parts: ["cog"],
       reason:
-        "制動爪靠自重與彈簧往齒溝裡壓時,斜的齒面把棘輪往回頂(楔形作用);重演的「摩擦定位」是黏滯阻尼(速度越快阻力越大),擋不住這個一直存在的小力矩," +
+        "棘輪的齒必須是對稱的(原文:翻轉制動爪就反向,鋸齒只能朝一個方向推),制動爪靠自重與彈簧往齒溝裡壓時,斜的齒面把棘輪往回頂(楔形作用);重演的「摩擦定位」是黏滯阻尼(速度越快阻力越大),擋不住這個一直存在的小力矩," +
         "棘輪一開始就被慢慢推回、爪推不到齒面(拿掉定位阻尼試過,推回得更快)。實物的棘輪接著刨床的進給螺桿,靠靜摩擦擋住;原書沒有摩擦的資料。" +
         "爪推齒的接觸改由測試檢查:每個來回推兩齒、回程不動、爪不穿進齒",
     },

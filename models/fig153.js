@@ -8,7 +8,7 @@
 // 桿擱在左右兩個滾輪上(照原圖);圓盤的軸與搖臂的樞軸往後伸進軸承座(軸承座是推斷)。
 import { deg, polar, rot2 } from "./kit.js";
 import { shape, circle, stadium, rect } from "./shapes.js";
-import { polygonsOverlap, circlePolygon, placeOutline } from "./contact.js";
+import { polygonsOverlap, circlePolygon, placeOutline, pushUntilClear } from "./contact.js";
 import { pedestal } from "./supports.js";
 
 const DISC = { center: [0, -0.35, 0], radius: 1.45, studR: 1.18 };
@@ -29,18 +29,6 @@ const upperArm = (psi) => placeOutline(ARM(CRANK.up), CRANK.pivot, CRANK.upAt + 
 const lowerArm = (psi) => placeOutline(ARM(CRANK.down), CRANK.pivot, CRANK.downAt + psi);
 const hitsAny = (poly, list) => list.some((o) => polygonsOverlap(poly, o));
 
-// 把 value 往 dir 推到剛好不重疊(不超過 max);推不開就回傳原值
-function clear(value, dir, max, overlaps) {
-  if (!overlaps(value)) return value;
-  if (overlaps(value + dir * max)) return value;
-  let [lo, hi] = [0, max];
-  for (let k = 0; k < 30; k++) {
-    const mid = (lo + hi) / 2;
-    if (overlaps(value + dir * mid)) lo = mid;
-    else hi = mid;
-  }
-  return value + dir * hi;
-}
 
 const SAMPLES = 720; // 半圈的取樣數
 const { TABLE } = (() => {
@@ -52,11 +40,11 @@ const { TABLE } = (() => {
   for (let i = 0; i <= 4 * SAMPLES; i++) {
     const studs = studsAt(i * dc);
     // 凸柱推凸塊:桿往右;銷把上臂往右推(搖臂順時針)
-    x = clear(x, 1, maxX, (v) => hitsAny(lugAt(v), studs));
-    psi = clear(psi, -1, 0.2, (p) => polygonsOverlap(upperArm(p), pinAt(x)));
+    x = pushUntilClear(x, 1, maxX, (v) => hitsAny(lugAt(v), studs));
+    psi = pushUntilClear(psi, -1, 0.2, (p) => polygonsOverlap(upperArm(p), pinAt(x)));
     // 凸柱推下臂:搖臂逆時針;上臂把銷往左推(桿往左)
-    psi = clear(psi, 1, 0.2, (p) => hitsAny(lowerArm(p), studs));
-    x = clear(x, -1, 0.3, (v) => polygonsOverlap(upperArm(psi), pinAt(v)));
+    psi = pushUntilClear(psi, 1, 0.2, (p) => hitsAny(lowerArm(p), studs));
+    x = pushUntilClear(x, -1, 0.3, (v) => polygonsOverlap(upperArm(psi), pinAt(v)));
     run.push({ x, psi });
   }
   return { TABLE: run.slice(3 * SAMPLES) };

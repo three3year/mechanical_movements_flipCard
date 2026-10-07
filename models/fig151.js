@@ -51,8 +51,8 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        ...pedestalX({ at: [0, 0], x: -3.3, bore: 0.16, floor: -0.9 }),
-        ...pedestalX({ at: [0, 0], x: 3.3, bore: 0.16, floor: -0.9 }),
+        ...pedestalX({ x: -3.3, y: 0, z: 0, bore: 0.16, floor: -0.9 }),
+        ...pedestalX({ x: 3.3, y: 0, z: 0, bore: 0.16, floor: -0.9 }),
         // 螺帽的導軌(左右各一段,中間讓開蝸輪)
         { kind: "box", size: [2.55, 0.1, 0.5], at: [-1.875, -0.375, 0] },
         { kind: "box", size: [2.55, 0.1, 0.5], at: [1.875, -0.375, 0] },

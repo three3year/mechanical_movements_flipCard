@@ -118,9 +118,16 @@ test("第 108 種:兩道反向螺旋溝的交會處互相切通——凸條不�
     const y = slideY(theta);
     const tipA = Math.PI - theta; // 尖點在圓筒局部座標中的角度
     const tip = [0.8 * Math.cos(tipA), 0.8 * Math.sin(tipA), y];
-    for (const t of tubes) for (const [x, yy, z] of t.points) {
-      const d = Math.hypot(x - tip[0], yy - tip[1], z - tip[2]);
-      assert.ok(d > 0.035, `主動量 ${theta.toFixed(2)} 時尖點碰到凸條`);
+    // 量到凸條中心線(相鄰取樣點之間的線段)的距離,要大於凸條的半徑
+    for (const t of tubes) {
+      for (let k = 0; k + 1 < t.points.length; k++) {
+        const [a, b] = [t.points[k], t.points[k + 1]];
+        const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        const ap = [tip[0] - a[0], tip[1] - a[1], tip[2] - a[2]];
+        const u = Math.max(0, Math.min(1, (ap[0] * ab[0] + ap[1] * ab[1] + ap[2] * ab[2]) / (ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2)));
+        const d = Math.hypot(ap[0] - u * ab[0], ap[1] - u * ab[1], ap[2] - u * ab[2]);
+        assert.ok(d > t.radius, `主動量 ${theta.toFixed(2)} 時尖點碰到凸條`);
+      }
     }
   }
 });

@@ -15,7 +15,7 @@ export function pedestal({ at: [x, y], z, bore, floor, ring = bore + 0.15, depth
 }
 
 /** 軸沿 x 的軸承座:同 pedestal,軸承環的中心在 (x, y, z),環與立柱沿 x 的厚度是 depth */
-export function pedestalX({ at: [y, z], x, bore, floor, ring = bore + 0.15, depth = 0.3 }) {
+export function pedestalX({ x, y, z, bore, floor, ring = bore + 0.15, depth = 0.3 }) {
   const top = y - ring * 0.8;
   return [
     { kind: "cylinder", axis: [1, 0, 0], radius: ring, inner: bore, length: depth, at: [x, y, z] },

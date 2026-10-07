@@ -12,7 +12,7 @@
 // 框架兩端的桿穿在固定的導套裡,軸的兩端架在軸承座上(導套、軸承座是推斷)。
 import { deg, swingPhase, polar, TAU } from "./kit.js";
 import { pinionAngle, circularPitch } from "./gears.js";
-import { ratchetRadius } from "./ratchets.js";
+import { ratchetRadius, pawlRest } from "./ratchets.js";
 import { ratchetShape, arcPoints, shape, stadium } from "./shapes.js";
 import { pedestal, squareGuide } from "./supports.js";
 
@@ -41,25 +41,8 @@ const tipGap = (pinion, psi, wheelAngle) => {
   return Math.hypot(x, y) - ratchetRadius(RATCHET, Math.atan2(y, x) - wheelAngle);
 };
 // 棘爪被彈簧往棘輪壓(順時針),停在爪尖碰到輪面的轉角
-function rest(pinion, from, wheelAngle) {
-  const steps = 240;
-  const sweep = 1.6;
-  let prev = from;
-  for (let i = 1; i <= steps; i++) {
-    const psi = from - (sweep * i) / steps;
-    if (tipGap(pinion, psi, wheelAngle) <= 0) {
-      let [lo, hi] = [prev, psi];
-      for (let k = 0; k < 40; k++) {
-        const mid = (lo + hi) / 2;
-        if (tipGap(pinion, mid, wheelAngle) > 0) lo = mid;
-        else hi = mid;
-      }
-      return lo;
-    }
-    prev = psi;
-  }
-  return from - sweep;
-}
+const rest = (pinion, from, wheelAngle) =>
+  pawlRest({ pivot: pivotOf(pinion), length: PAWL.length, from, into: -1, sweep: 1.6 }, { center: [0, 0], angle: wheelAngle, ...RATCHET }).angle;
 
 // 棘輪的相位:推程開始時,爪尖靠在齒根、正好貼著直面的腳(局部 0.982 個齒距;0.98 是直面的腳)。
 // 之後整個推程爪尖都頂著直面,小齒輪與軸鎖在一起轉;空轉的那一程小齒輪相對軸退回一整圈(10 齒),
@@ -127,7 +110,6 @@ export function motion(v) {
   return { x, front, back, shaft, pawls: { front: pf, back: pb } };
 }
 export const stroke = STROKE;
-export const ratchetPhase = PHASE;
 /** 爪尖到棘輪面的距離(負的就是穿進去),測試檢查接觸用 */
 export function pawlGap(v, which) {
   const m = motion(v);

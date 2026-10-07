@@ -23,6 +23,8 @@ const OUTLINE = Array.from({ length: 180 }, (_, i) => {
 const ARC = outlineArc(OUTLINE);
 /** 凸輪轉 theta:滾子轉過的角度(貼著凸輪滾動;接觸點大致在凸輪軸的正上方) */
 export const rollerAngle = (theta) => -(ARC(Math.PI / 2) - ARC(Math.PI / 2 - theta)) / ROLLER;
+/** 槓桿轉 psi 時滾子中心的位置 */
+const rollerAt = (psi) => [PIVOT[0] + ARM * Math.cos(psi), PIVOT[1] + ARM * Math.sin(psi), PIVOT[2] - 0.2];
 /** 凸輪轉 theta:槓桿的轉角 */
 export function lever(theta) {
   const h = rollerFace(OUTLINE, theta, Math.PI / 2, ROLLER);
@@ -93,7 +95,7 @@ export default {
   target: "rod",
   // 動力重演:只轉凸輪;槓桿繞樞軸自由擺、靠自重壓在凸輪上,滾子套在槓桿的銷上自由轉。吊桿照模型的姿勢跟著槓桿走
   replay: {
-    free: { lever: { pivot: PIVOT }, roller: { pivot: [CAM.center[0], CAM.center[1] + rollerFace(OUTLINE, 0, Math.PI / 2, ROLLER), PIVOT[2] - 0.2], on: "lever" } },
+    free: { lever: { pivot: PIVOT }, roller: { pivot: rollerAt(lever(0)), on: "lever" } },
     ignore: [["rod", "lever"]],
     expect: [
       { at: Math.PI / 2, part: "lever", label: "凸輪轉四分之一圈,槓桿照凸輪的輪廓升降", quote: "透過作用於槓桿的凸輪,將均勻的圓周運動轉換為附著桿的交替直線運動" },
@@ -109,7 +111,7 @@ export default {
       parts: {
         cam: { angle: theta },
         lever: { angle: psi },
-        roller: { position: [PIVOT[0] + ARM * Math.cos(psi), PIVOT[1] + ARM * Math.sin(psi), PIVOT[2] - 0.2], angle: rollerAngle(theta) },
+        roller: { position: rollerAt(psi), angle: rollerAngle(theta) },
         rod: { position: [rod[0], rod[1], 0.4] },
       }, // 吊桿的頂端跟著槓桿上的環走(略有左右擺動,導座留了間隙)
       readouts: [],

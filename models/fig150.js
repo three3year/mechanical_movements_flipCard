@@ -32,6 +32,8 @@ export function valve(theta, state) {
   return { y, psi, rod: PIVOT[1] + (ROD_AT / ARM) * (y - PIVOT[1]) };
 }
 export const eccentricity = ECC;
+/** 槓桿轉 psi 時滾子中心的位置 */
+const rollerAt = (psi) => [PIVOT[0] + ARM * Math.cos(psi), PIVOT[1] + ARM * Math.sin(psi), PIVOT[2] + 0.08];
 
 const STACK_Z = (state) => -ORDER.indexOf(state) * SPACING; // 讓選用的凸輪落在 z = 0(槓桿所在的平面)
 
@@ -97,7 +99,7 @@ export default {
   replay: {
     free: {
       lever: { pivot: PIVOT },
-      roller: { pivot: [PIVOT[0] + ARM * Math.cos(valve(0, "middle").psi), PIVOT[1] + ARM * Math.sin(valve(0, "middle").psi), PIVOT[2] + 0.08], on: "lever" },
+      roller: { pivot: rollerAt(valve(0, "middle").psi), on: "lever" },
     },
     ignore: [["rod", "lever"], ["lever", "frame"]], // 樞軸銷穿過槓桿的孔(孔畫得比銷小)
     expect: [
@@ -121,7 +123,7 @@ export default {
       parts: {
         shaft: { position: [0, 0, STACK_Z(state)], angle: theta },
         lever: { angle: psi },
-        roller: { position: [PIVOT[0] + ARM * Math.cos(psi), PIVOT[1] + ARM * Math.sin(psi), PIVOT[2] + 0.08], angle: (-RC * theta) / ROLLER }, // 圓凸輪:經過接觸點的輪緣長 = 半徑 × 轉角
+        roller: { position: rollerAt(psi), angle: (-RC * theta) / ROLLER }, // 圓凸輪:經過接觸點的輪緣長 = 半徑 × 轉角
         rod: { position: [PIVOT[0] + ROD_AT * Math.cos(psi), rod, 0.45] }, // 閥桿的頂端跟著槓桿上的環走(略有左右擺動,導座留了間隙)
       },
       readouts: [],
