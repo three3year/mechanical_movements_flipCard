@@ -21,7 +21,7 @@ export function spin(v) {
   return { a, b: DRAFT * a, feed: R * a, out: DRAFT * R * a, flyer: FLYER_PER_TURN * a * DRAFT, bobbin: FLYER_PER_TURN * a * DRAFT * 0.93 };
 }
 
-const roller = (id, x, top, label) => ({ id, kind: "pulley", style: "disc", center: [x, NIP_Y + (top ? R : -R), 0], radius: R, width: 0.9, arrow: top, ...(label ? { label, labelOffset: [0, R + 0.15, 0.5] } : {}) });
+const roller = (id, x, top, label) => ({ id, kind: "pulley", style: "disc", center: [x, NIP_Y + (top ? R : -R), 0], radius: R, width: 0.9, ...(label ? { label, labelOffset: [0, R + 0.15, 0.5] } : {}) });
 
 export default {
   figure: 496,

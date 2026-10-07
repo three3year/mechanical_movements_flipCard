@@ -37,7 +37,7 @@ export default {
   parts: [
     { id: "post", kind: "group", label: "A", labelOffset: [-0.2, -0.75, 0.4], pieces: [{ kind: "gear", teeth: TEETH.A, radius: RA, width: 0.1, bore: 0.1 }, { kind: "cylinder", radius: 0.1, length: 0.6, at: [0, 0, -0.2] }] },
     // 臂在所有輪的下面(頂面 −0.21,G 與 B 的底面 −0.2);零件的位置要用 center(at 只給附件用,原本寫 at 使臂畫在 z = 0、穿在 B 的中間)
-    { id: "arm", kind: "plate", shape: shape(thickLine([[-0.5, 0], [N_AT + 0.7, 0]], 0.22), [circle(0.1).reverse()]), thickness: 0.06, center: [0, 0, -0.24], label: "C", labelOffset: [-0.45, 0.3, 0.3], spin: 0.5, pieces: [{ kind: "cylinder", radius: 0.05, length: 0.5, at: [M_AT, 0, 0.2] }, { kind: "cylinder", radius: 0.05, length: 0.6, at: [N_AT, 0, 0.2] }] },
+    { id: "arm", kind: "plate", shape: shape(thickLine([[-0.5, 0], [N_AT + 0.7, 0]], 0.22), [circle(0.1).reverse()]), thickness: 0.06, center: [0, 0, -0.24], label: "C", labelOffset: [-0.45, 0.3, 0.3], spin: 0.5, mark: [-0.35, 0], pieces: [{ kind: "cylinder", radius: 0.05, length: 0.5, at: [M_AT, 0, 0.2] }, { kind: "cylinder", radius: 0.05, length: 0.6, at: [N_AT, 0, 0.2] }] },
     { id: "labelD", kind: "group", pieces: [], label: "D", labelOffset: [0, 0, 0.3] },
     { id: "wheelB", kind: "gear", teeth: TEETH.B, radius: RB, width: 0.4, bore: 0.05, label: "B", labelOffset: [0, 0.65, 0.4] },
     { id: "wheelE", kind: "group", label: "E", labelOffset: [0.85, 0.3, 0.3], spin: 0.75, pieces: [wheel(TEETH.E, RN, 0.15), pointer(0.9, 0.22)] },

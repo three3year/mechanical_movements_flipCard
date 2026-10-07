@@ -232,6 +232,15 @@ test("第 502 種:周轉輪系:A 固定時框架的轉動經 F、E 傳給 B;A �
   const d = m502.train(1, "dFixedA");
   assert.equal(d.which, "D");
   close(m502.E_AB, (24 * 24) / (18 * 18), "輪系值 = (A/F)(E/B)");
+  // A 也轉時由副軸帶動(看得到傳動):A 與框架同向、轉速一半;A 固定時副軸拿開、夾塊鎖住 A
+  const def = m502.default;
+  const turn = (state) => def.pose(1, state).parts.wheelA.angle - def.pose(0, state).parts.wheelA.angle;
+  close(turn("bTurningA"), 0.5, "A 以框架一半的轉速同向轉");
+  close(turn("bFixedA"), 0, "A 固定");
+  assert.equal(def.pose(0.3, "bTurningA").parts.counter.visible, true, "A 也轉時副軸裝上");
+  assert.equal(def.pose(0.3, "bTurningA").parts.clamp.visible, false);
+  assert.equal(def.pose(0.3, "bFixedA").parts.counter.visible, false, "A 固定時副軸拿開");
+  assert.equal(def.pose(0.3, "bFixedA").parts.clamp.visible, true, "A 固定時夾塊鎖住 A");
 });
 
 test("第 503 種:簡單的傘齒輪周轉輪系:臂的轉動是兩個輪 C、D 的平均", () => {

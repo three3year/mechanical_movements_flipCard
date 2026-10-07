@@ -74,6 +74,7 @@ export default {
       spin: 0.3,
       pieces: [
         { kind: "cylinder", radius: 0.07, length: 3.0 },
+        { kind: "box", size: [0.04, 0.04, 0.15], at: [0.07, 0, 1.18], accent: true }, // 軸上的鍵條(記號,在 g 與上方軸承之間)
         { kind: "plate", shape: shape(thickLine([[-RC - 0.25, 0], [RC + 0.25, 0]], 0.08)), thickness: 0.08, rotation: [Math.SQRT1_2, 0, 0, Math.SQRT1_2] },
       ],
     },

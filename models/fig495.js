@@ -25,6 +25,10 @@ export default {
         { kind: "plate", shape: shape(rect(4.6, 0.2, 0, -1.25)), thickness: 1.0 },
         { kind: "box", size: [0.3, 1.1, 0.5], at: [-1.75, -0.65, 0] },
         { kind: "box", size: [0.3, 1.1, 0.5], at: [1.25, -0.65, 0] },
+        // 兩個支座頂上的軸承;A 固定在右支座伸出的套筒上(推斷:原圖的 A 連著右邊的機架)
+        { kind: "cylinder", radius: 0.17, inner: 0.1, length: 0.3, axis: X, at: [-1.75, 0, 0] },
+        { kind: "cylinder", radius: 0.17, inner: 0.1, length: 0.3, axis: X, at: [1.25, 0, 0] },
+        { kind: "cylinder", radius: 0.2, inner: 0.1, length: 0.6, axis: X, at: [R * 0.9 + 0.45, 0, 0] },
       ],
     },
     // 固定的 A(右)
@@ -40,6 +44,7 @@ export default {
       pieces: [
         { kind: "cylinder", radius: 0.09, length: 4.0, at: [0, 0, 0.2] },
         { kind: "box", size: [0.14, 0.75, 0.14], at: [0, 0.38, 0] },
+        { kind: "box", size: [0.05, 0.05, 0.5], at: [0.09, 0, -1.15], accent: true }, // 軸上的鍵條(記號)
         { kind: "cylinder", radius: 0.6, length: 0.25, at: [0, 0, 2.05] },
       ],
     },

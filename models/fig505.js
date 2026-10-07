@@ -31,8 +31,8 @@ export default {
   parts: [
     { id: "wheelA", kind: "gear", center: A.center, teeth: A.teeth, radius: A.radius, width: 0.25, bore: 0.1, label: "A", labelOffset: [-0.25, -0.45, 0.3] },
     { id: "wheelC", kind: "gear", internal: true, center: C.center, teeth: C.teeth, radius: C.radius, rim: C.radius + 0.25, width: 0.25, label: "C", labelOffset: [-1.3, -1.6, 0.3] },
-    { id: "pinionB", kind: "gear", center: [ORBIT, 0, 0], teeth: TEETH.B, radius: (TEETH.B * M) / 2, width: 0.25, bore: 0.06, label: "B", labelOffset: [0, 0.25, 0.3], arrow: false },
-    { id: "armD", kind: "plate", shape: shape(thickLine([[0, 0], [C.radius + 0.6, 0]], 0.14), [circle(0.06).reverse(), circle(0.05, ORBIT, 0).reverse()]), thickness: 0.06, label: "D", labelOffset: [C.radius + 0.55, 0.25, 0.3], spin: 0.6, pieces: [{ kind: "cylinder", radius: 0.06, length: 0.5, at: [ORBIT, 0, -0.1] }] },
+    { id: "pinionB", kind: "gear", center: [ORBIT, 0, 0], teeth: TEETH.B, radius: (TEETH.B * M) / 2, width: 0.25, bore: 0.06, label: "B", labelOffset: [0, 0.25, 0.3] },
+    { id: "armD", kind: "plate", shape: shape(thickLine([[0, 0], [C.radius + 0.6, 0]], 0.14), [circle(0.06).reverse(), circle(0.05, ORBIT, 0).reverse()]), thickness: 0.06, label: "D", labelOffset: [C.radius + 0.55, 0.25, 0.3], spin: 0.6, mark: [C.radius + 0.4, 0], pieces: [{ kind: "cylinder", radius: 0.06, length: 0.5, at: [ORBIT, 0, -0.1] }] },
   ],
   states: {
     initial: "C",

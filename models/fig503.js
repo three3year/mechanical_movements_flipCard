@@ -40,6 +40,7 @@ export default {
       spin: 0.35,
       pieces: [
         { kind: "cylinder", radius: 0.09, length: 3.3 },
+        { kind: "box", size: [0.05, 0.05, 0.6], at: [0.09, 0, 1.2], accent: true }, // 軸上的鍵條(記號)
         // 臂 F、G:從軸伸到 B 的軸
         { kind: "plate", shape: shape(thickLine([[0, 0.12], [R * 0.9 + 0.35, 0.12]], 0.12)), thickness: 0.08, rotation: [Math.SQRT1_2, 0, 0, Math.SQRT1_2] },
       ],
