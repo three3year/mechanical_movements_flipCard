@@ -147,7 +147,7 @@ import { bandTravel } from "../models/fig141.js";
 import { traverse as traverse142, relativeTurns } from "../models/fig142.js";
 import { traverse as traverse143 } from "../models/fig143.js";
 import { tongs } from "../models/fig144.js";
-import { beamEngine } from "../models/fig145.js";
+import fig145, { beamEngine, beamDrive, beamSwing } from "../models/fig145.js";
 import { dist } from "../models/kit.js";
 
 test("第 140 種:扳下槓桿,水平連桿把肘節拉向伸直,衝頭往下;越接近伸直下移越慢(力越大)", () => {
@@ -201,6 +201,13 @@ test("第 145 種:樑往復擺動,經槓桿與連桿使曲柄與飛輪連續旋�
   }
   const es = sweep(TAU, 180).map((t) => beamEngine(t).e[1]);
   assert.ok(Math.max(...es) - Math.min(...es) > 0.3, "樑的左端上下擺動");
+  // 原文的輸入是樑:主動件是樑、目標件是飛輪;樑來回擺一趟,飛輪朝同一方向轉一整圈(死點由飛輪的慣性帶過)
+  assert.equal(fig145.driver.part, "beam");
+  assert.equal(fig145.target, "wheel");
+  const wheel = sweep(4 * beamSwing, 400).map((v) => beamDrive(v).wheel);
+  for (let i = 1; i < wheel.length; i++) assert.ok(wheel[i] > wheel[i - 1] - 1e-9, "飛輪一直朝同一方向轉");
+  near(beamDrive(2 * beamSwing).wheel - beamDrive(0).wheel, TAU, "樑往下再往上擺一趟,飛輪轉一圈", 1e-6);
+  near(beamDrive(beamSwing / 2).beam, -beamSwing / 2, "樑的轉角就是主動量(先往下擺)", 1e-9);
 });
 
 import { yokeY as yoke146 } from "../models/fig146.js";
@@ -244,7 +251,8 @@ test("第 151 種:蝸桿帶動螺桿軸,左右旋螺紋上的螺帽彼此靠近�
 });
 
 import fig147, { governor } from "../models/fig147.js";
-import { shuttle, stroke as stroke153 } from "../models/fig153.js";
+import { shuttle, stroke as stroke153, contactShapes as contactShapes153 } from "../models/fig153.js";
+import { penetrationDepth } from "../models/contact.js";
 import { lift as lift154 } from "../models/fig154.js";
 
 test("第 147 種:轉速越快,十字頭越落後、滾子沿斜面越往上,十字頭被抬得越高", () => {
@@ -257,8 +265,21 @@ test("第 147 種:轉速越快,十字頭越落後、滾子沿斜面越往上,十
 
 test("第 153 種:凸柱把水平桿往右推,下一根凸柱經曲柄搖臂把它推回左邊(每半圈一個來回)", () => {
   const xs = sweep(Math.PI, 360).map((c) => shuttle(c).x);
-  near(Math.max(...xs), stroke153, "推到右端", 1e-6);
-  near(xs[0], xs[xs.length - 1], "半圈後回到原處", 1e-9);
+  near(Math.max(...xs) - Math.min(...xs), stroke153, "行程", 1e-9);
+  assert.ok(stroke153 > 0.5, "桿有明顯的往復");
+  near(xs[0], xs[xs.length - 1], "半圈後回到原處", 1e-6);
+  // 由接觸算:凸柱、凸塊、銷、搖臂兩臂彼此只貼著、不穿入;推動之間桿停住
+  for (const c of sweep(Math.PI, 180)) {
+    const s = contactShapes153(c);
+    for (const st of s.studs) {
+      assert.ok(penetrationDepth(st, s.lug) < 0.003, "凸柱不穿進凸塊");
+      assert.ok(penetrationDepth(st, s.lower) < 0.003, "凸柱不穿進下臂");
+    }
+    assert.ok(penetrationDepth(s.pin, s.upper) < 0.003, "上臂不穿進銷");
+  }
+  let still = 0;
+  for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i] - xs[i - 1]) < 1e-12) still++;
+  assert.ok(still > 60, "兩次推動之間桿停住(凸柱還沒碰到)");
 });
 
 test("第 154 種:凸柱撥動曲柄搖臂,繞過滑輪的繩把重物拉起;凸柱滑過後重物落回(每圈四次)", () => {

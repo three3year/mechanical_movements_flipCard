@@ -5,6 +5,11 @@
 import { polar, add } from "./kit.js";
 import { meshAngle } from "./gears.js";
 import { shape, circle, rect } from "./shapes.js";
+import { pedestal } from "./supports.js";
+// 支撐(推斷):中央凸柱往後固定在軸承座上(圓盤套在凸柱上轉);正齒輪套在圓盤上的銷上;
+// 橫移導桿加長,穿在下方固定的方形導套裡(導桿走 3.4,導套要在整個行程裡都套著它)。
+const GUIDE_LEN = 3.8;
+const SLEEVE_Y = -4.55;
 
 const SUN = { center: [0, 0, 0], teeth: 6, radius: 0.3 };
 const GEAR = { teeth: 18, radius: 0.9 };
@@ -39,6 +44,7 @@ export default {
       spin: DISC,
       mark: [0, DISC - 0.5],
       markSize: 0.08,
+      pieces: [{ kind: "cylinder", radius: 0.1, length: 0.4, at: [...polar(D, G_AT).slice(0, 2), 0.18] }], // 正齒輪的銷(固定在圓盤上)
     },
     { id: "sun", kind: "gear", center: [0, 0, 0], teeth: SUN.teeth, radius: SUN.radius, width: 0.25, web: false, arrow: false },
     {
@@ -48,17 +54,35 @@ export default {
       radius: GEAR.radius,
       width: 0.22,
       web: false,
+      bore: 0.1,
       pieces: [
         { kind: "plate", shape: shape(rect(0.42, CRANK + 0.5, 0, CRANK / 2), [circle(0.1, 0, 0).reverse()]), thickness: 0.08, at: [0, 0, 0.2] },
         { kind: "cylinder", radius: 0.1, length: 0.4, at: [0, CRANK, 0.25], accent: true },
       ],
     },
     { id: "rod", kind: "link", width: 0.18, thickness: 0.08 },
-    { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.2, 1.6, 0.16], at: [0, -0.8, 0] }] },
+    { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.2, GUIDE_LEN, 0.16], at: [0, -GUIDE_LEN / 2, 0] }] },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.12, length: 0.7, at: [0, 0, -0.475] }, // 固定的中央凸柱(小齒輪固定在它的前端)
+        ...pedestal({ at: [0, 0], z: -0.7, bore: 0.12, floor: SLEEVE_Y - 0.4 }), // 立柱一路到導套下方
+        // 橫移導桿的方形導套(四片板)與立柱
+        { kind: "box", size: [0.06, 0.3, 0.28], at: [-0.13, SLEEVE_Y, 0.3] },
+        { kind: "box", size: [0.06, 0.3, 0.28], at: [0.13, SLEEVE_Y, 0.3] },
+        { kind: "box", size: [0.2, 0.3, 0.06], at: [0, SLEEVE_Y, 0.41] },
+        { kind: "box", size: [0.2, 0.3, 0.06], at: [0, SLEEVE_Y, 0.19] },
+        { kind: "box", size: [0.2, 0.2, 0.72], at: [0, SLEEVE_Y - 0.25, -0.2] }, // 托架:從立柱伸到導套下緣
+      ],
+    },
   ],
   driver: { part: "disc", type: "rotation", speed: 1.2 },
   target: "guide",
-  view: { direction: [0.06, 0.05, 1] },
+  view: { direction: [0.06, 0.05, 1], fit: ["disc", "gear", "rod"] },
+  waivers: [
+    { check: "interference", parts: ["sun", "frame"], reason: "小齒輪牢固地裝在固定凸柱的前端(原文):小齒輪的轂套在凸柱上,兩者是一體的,分開畫成兩件" },
+  ],
   pose(phi) {
     const { center, spin, pin, y } = traverse(phi);
     return {

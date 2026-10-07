@@ -61,11 +61,11 @@ export default {
       arrow: false,
       pieces: [
         { kind: "plate", shape: shape(stadium(ARM, 0.24).outline, [circle(0.08).reverse()]), thickness: 0.1, at: [0, 0, 0.3] }, // 臂窄:不碰旁邊偏心量較大的凸輪
-        { kind: "cylinder", radius: ROLLER, inner: 0.12, length: 0.2, at: [ARM, 0, 0.08] }, // 滾子只壓在選用的那個凸輪上,不碰相鄰的凸輪
         { kind: "cylinder", radius: 0.1, length: 0.5, at: [ARM, 0, 0.15] }, // 滾子銷:穿過滾子與槓桿
         { kind: "cylinder", radius: 0.2, inner: 0.08, length: 0.2, at: [ROD_AT, 0, 0.35] },
       ],
     },
+    { id: "roller", kind: "cylinder", radius: ROLLER, inner: 0.12, length: 0.2, mark: true, spin: ROLLER }, // 套在槓桿的滾子銷上,只壓在選用的那個凸輪上滾動
     {
       id: "rod",
       kind: "group",
@@ -92,6 +92,20 @@ export default {
   ],
   driver: { part: "shaft", type: "rotation" },
   target: "rod",
+  // 動力重演(用中間那個凸輪):只轉軸;槓桿繞樞軸自由擺、靠自重壓在凸輪上,滾子套在槓桿的銷上自由轉。
+  // 閥桿照模型的姿勢跟著槓桿走
+  replay: {
+    free: {
+      lever: { pivot: PIVOT },
+      roller: { pivot: [PIVOT[0] + ARM * Math.cos(valve(0, "middle").psi), PIVOT[1] + ARM * Math.sin(valve(0, "middle").psi), PIVOT[2] + 0.08], on: "lever" },
+    },
+    ignore: [["rod", "lever"], ["lever", "frame"]], // 樞軸銷穿過槓桿的孔(孔畫得比銷小)
+    expect: [
+      { at: Math.PI / 2, part: "lever", label: "凸輪轉四分之一圈,槓桿照偏心量升降", quote: "閥門會依作用於槓桿上的凸輪擺動幅度大小,而產生較大或較小的動作" },
+      { at: Math.PI, part: "lever", label: "凸輪轉半圈,槓桿到最低" },
+      { part: "lever", label: "轉完一圈,槓桿回到起點" },
+    ],
+  },
   states: {
     options: [
       { id: "large", label: "大幅度凸輪" },
@@ -107,6 +121,7 @@ export default {
       parts: {
         shaft: { position: [0, 0, STACK_Z(state)], angle: theta },
         lever: { angle: psi },
+        roller: { position: [PIVOT[0] + ARM * Math.cos(psi), PIVOT[1] + ARM * Math.sin(psi), PIVOT[2] + 0.08], angle: (-RC * theta) / ROLLER }, // 圓凸輪:經過接觸點的輪緣長 = 半徑 × 轉角
         rod: { position: [PIVOT[0] + ROD_AT * Math.cos(psi), rod, 0.45] }, // 閥桿的頂端跟著槓桿上的環走(略有左右擺動,導座留了間隙)
       },
       readouts: [],

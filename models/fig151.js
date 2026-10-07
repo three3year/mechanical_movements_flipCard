@@ -2,6 +2,9 @@
 // 螺桿軸左段是右旋螺紋、右段是左旋螺紋,兩個螺帽(端頭的方塊,只能滑動不能轉)依轉向彼此靠近或分開。
 // 蝸桿每轉一圈蝸輪轉一齒,螺帽每次只移動一小段。主動件是蝸桿軸(在可移動的範圍內往返)。
 import { X, Z, TAU, screwAdvance } from "./kit.js";
+import { pedestal, pedestalX } from "./supports.js";
+// 支撐(推斷,原圖只畫出蝸桿、螺桿與螺帽):螺桿兩端架在軸承座上,蝸桿軸往後伸進軸承座;
+// 兩個螺帽的底面擱在一根固定的導軌上,所以不會跟著螺桿轉,只能沿軸移動。
 
 const N = 30; // 蝸輪齒數
 const PITCH = 0.3; // 螺紋的螺距
@@ -28,7 +31,7 @@ export default {
       length: 1.0,
       pitch: (TAU * 0.85) / N,
       thread: 0.08,
-      pieces: [{ kind: "cylinder", radius: 0.1, length: 2.0 }],
+      pieces: [{ kind: "cylinder", radius: 0.1, length: 2.6, at: [0, 0, -0.3] }], // 軸:往後伸進軸承座(在蝸輪後面)
     },
     {
       id: "screw",
@@ -44,6 +47,18 @@ export default {
     },
     { id: "nutLeft", kind: "box", center: [-X0, 0, 0], size: [0.55, 0.65, 0.65] },
     { id: "nutRight", kind: "box", center: [X0, 0, 0], size: [0.55, 0.65, 0.65] },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        ...pedestalX({ at: [0, 0], x: -3.3, bore: 0.16, floor: -0.9 }),
+        ...pedestalX({ at: [0, 0], x: 3.3, bore: 0.16, floor: -0.9 }),
+        // 螺帽的導軌(左右各一段,中間讓開蝸輪)
+        { kind: "box", size: [2.55, 0.1, 0.5], at: [-1.875, -0.375, 0] },
+        { kind: "box", size: [2.55, 0.1, 0.5], at: [1.875, -0.375, 0] },
+        ...pedestal({ at: [0, 1.15], z: -1.35, bore: 0.1, floor: -0.9 }),
+      ],
+    },
   ],
   driver: { part: "worm", type: "rotation", range: [0, TURNS * TAU] },
   targets: ["nutLeft", "nutRight"], // 兩個螺帽彼此靠近或分開

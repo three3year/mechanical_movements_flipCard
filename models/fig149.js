@@ -5,7 +5,7 @@
 // 以銷相連。原本的模型這些都沒畫出來(槓桿與吊桿懸空、滾子只是貼著槓桿、凸輪沒有軸),這裡補上:底板、
 // 樞軸立柱與樞軸銷、凸輪的軸與後方的軸承座、滾子銷、吊桿頂端的銷,以及套住吊桿的 U 形導座(立在底板上)。
 // 滾子中心離凸輪輪廓恆為滾子半徑(數值驗證過),凸輪→滾子→槓桿→銷→吊桿的傳力路徑因此看得見。不改運動學。
-import { rollerFace } from "./cams.js";
+import { rollerFace, outlineArc } from "./cams.js";
 import { shape, circle, stadium, arcPoints } from "./shapes.js";
 
 const PIVOT = [-2.4, 0.25, 0.25];
@@ -20,6 +20,9 @@ const OUTLINE = Array.from({ length: 180 }, (_, i) => {
   return [CAM.offset + CAM.a * Math.cos(t), CAM.b * Math.sin(t)];
 });
 
+const ARC = outlineArc(OUTLINE);
+/** 凸輪轉 theta:滾子轉過的角度(貼著凸輪滾動;接觸點大致在凸輪軸的正上方) */
+export const rollerAngle = (theta) => -(ARC(Math.PI / 2) - ARC(Math.PI / 2 - theta)) / ROLLER;
 /** 凸輪轉 theta:槓桿的轉角 */
 export function lever(theta) {
   const h = rollerFace(OUTLINE, theta, Math.PI / 2, ROLLER);
@@ -57,11 +60,11 @@ export default {
       arrow: false,
       pieces: [
         { kind: "plate", shape: shape(stadium(ARM, 0.36).outline, [circle(0.16).reverse()]), thickness: 0.1 },
-        { kind: "cylinder", radius: ROLLER, inner: 0.1, length: 0.3, at: [ARM, 0, -0.2] },
         { kind: "cylinder", radius: 0.09, length: 0.55, at: [ARM, 0, -0.17] }, // 滾子銷:穿過滾子與槓桿
         { kind: "cylinder", radius: 0.2, inner: 0.08, length: 0.2, at: [ROD_AT, 0, 0.1] },
       ],
     },
+    { id: "roller", kind: "cylinder", radius: ROLLER, inner: 0.1, length: 0.3, mark: true, spin: ROLLER }, // 套在槓桿的滾子銷上,貼著凸輪滾動
     {
       id: "rod",
       kind: "group",
@@ -88,12 +91,27 @@ export default {
   ],
   driver: { part: "cam", type: "rotation" },
   target: "rod",
+  // 動力重演:只轉凸輪;槓桿繞樞軸自由擺、靠自重壓在凸輪上,滾子套在槓桿的銷上自由轉。吊桿照模型的姿勢跟著槓桿走
+  replay: {
+    free: { lever: { pivot: PIVOT }, roller: { pivot: [CAM.center[0], CAM.center[1] + rollerFace(OUTLINE, 0, Math.PI / 2, ROLLER), PIVOT[2] - 0.2], on: "lever" } },
+    ignore: [["rod", "lever"]],
+    expect: [
+      { at: Math.PI / 2, part: "lever", label: "凸輪轉四分之一圈,槓桿照凸輪的輪廓升降", quote: "透過作用於槓桿的凸輪,將均勻的圓周運動轉換為附著桿的交替直線運動" },
+      { at: Math.PI, part: "lever", label: "凸輪轉半圈" },
+      { part: "lever", label: "轉完一圈,槓桿回到起點" },
+    ],
+  },
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const psi = lever(theta);
     const rod = [PIVOT[0] + ROD_AT * Math.cos(psi), PIVOT[1] + ROD_AT * Math.sin(psi), 0.4];
     return {
-      parts: { cam: { angle: theta }, lever: { angle: psi }, rod: { position: [rod[0], rod[1], 0.4] } }, // 吊桿的頂端跟著槓桿上的環走(略有左右擺動,導座留了間隙)
+      parts: {
+        cam: { angle: theta },
+        lever: { angle: psi },
+        roller: { position: [PIVOT[0] + ARM * Math.cos(psi), PIVOT[1] + ARM * Math.sin(psi), PIVOT[2] - 0.2], angle: rollerAngle(theta) },
+        rod: { position: [rod[0], rod[1], 0.4] },
+      }, // 吊桿的頂端跟著槓桿上的環走(略有左右擺動,導座留了間隙)
       readouts: [],
     };
   },

@@ -21,10 +21,21 @@ export default {
   figure: 144,
   parts: [
     { id: "rightRod", kind: "group", pieces: [{ kind: "cylinder", axis: [1, 0, 0], radius: 0.07, length: 1.1, at: [0.75, 0, 0] }, { kind: "cylinder", radius: 0.2, inner: 0.1, length: 0.18 }] },
-    { id: "leftRod", kind: "group", pieces: [{ kind: "cylinder", axis: [1, 0, 0], radius: 0.07, length: 1.1, at: [-0.75, 0, 0] }, { kind: "box", size: [0.42, 0.38, 0.18] }] },
+    // 左桿加長:它走的距離是右桿的三倍,要在整個行程裡都穿在導套裡
+    { id: "leftRod", kind: "group", pieces: [{ kind: "cylinder", axis: [1, 0, 0], radius: 0.07, length: 2.6, at: [-1.5, 0, 0] }, { kind: "box", size: [0.42, 0.38, 0.18] }] },
     // 每個交叉點有兩根桿(上斜、下斜);最左、最右兩個節點只有半根
     ...linkIds.map((id) => ({ id, kind: "link", width: 0.1, thickness: 0.05 })),
     { id: "post", kind: "box", center: [FIX[0], -0.65, -0.2], size: [0.6, 1.2, 0.2] },
+    {
+      id: "sleeves",
+      kind: "group",
+      // 兩根桿的導套與立柱(推斷:原圖的桿伸出畫面外;導套的位置讓桿在行程兩端都還穿著)
+      pieces: [-3.1, 2.75].flatMap((x) => [
+        { kind: "cylinder", axis: [1, 0, 0], radius: 0.16, inner: 0.07, length: 0.1, at: [x, 0, 0] },
+        { kind: "box", size: [0.1, 1.09, 0.16], at: [x, -0.705, 0] },
+        { kind: "box", size: [0.5, 0.1, 0.4], at: [x, -1.3, 0] },
+      ]),
+    },
   ],
   driver: { part: "rightRod", type: "translation", direction: [1, 0, 0], range: RANGE.map((s) => FIX[0] + s), initial: FIX[0] + 0.9 },
   target: "leftRod",
