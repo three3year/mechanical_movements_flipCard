@@ -28,7 +28,7 @@ export default {
     { id: "labelB", kind: "group", pieces: [], label: "B", labelOffset: [-1.2, -1.2, 0.6] },
     waterPart,
     bellPart(),
-    ...[-1, 1].map((s) => ({ id: `pulley${s > 0 ? "R" : "L"}`, kind: "pulley", style: "spoked", center: [s * POST_X, PULLEY_Y, 0], radius: PULLEY_R, width: 0.08, arrow: false })),
+    ...[-1, 1].map((s) => ({ id: `pulley${s > 0 ? "R" : "L"}`, kind: "pulley", style: "spoked", center: [s * POST_X, PULLEY_Y, 0], radius: PULLEY_R, width: 0.08 })), // 兩個滑輪轉向相反,各有箭頭
     ...[-1, 1].map((s) => ({ id: `weight${s > 0 ? "R" : "L"}`, kind: "sphere", radius: 0.3, label: "C", labelOffset: [-s * 0.45, 0, 0.3] })),
     { id: "ropeL", kind: "rope", radius: 0.015 },
     { id: "ropeR", kind: "rope", radius: 0.015 },

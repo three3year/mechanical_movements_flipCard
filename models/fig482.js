@@ -42,6 +42,7 @@ export default {
         { kind: "plate", shape: shape(rect(0.3, 0.9, VALVE.x, -1.0)), thickness: 0.3 },
         { kind: "plate", shape: shape(thickLine([[-1.75, 0.0], [-2.3, 0.0]], 0.25)), thickness: 0.3 },
         { kind: "box", size: [0.06, 0.5, 0.06], at: [PIVOT[0], PIVOT[1] + 0.25, 0.24] }, // 吊架在槓桿的背面
+        { kind: "cylinder", radius: 0.022, length: 0.14, at: [PIVOT[0], PIVOT[1], 0.29] }, // 槓桿 d 的樞軸銷:從吊架穿過槓桿
       ],
     },
     { id: "labelE", kind: "group", pieces: [], label: "E", labelOffset: [VALVE.x + 0.35, -1.25, 0.5] },
@@ -49,7 +50,7 @@ export default {
     { id: "mercury", kind: "fill", fluid: "mercury", center: [0.15, (MERCURY - 0.95) / 2, 0], size: [3.6, MERCURY + 0.95, 0.8], level: 1 },
     { id: "cup", kind: "plate", shape: shape(thickLine([[-CUP.w / 2, 0], [-CUP.w / 2, CUP.h], [CUP.w / 2, CUP.h], [CUP.w / 2, 0]], 0.06)), thickness: 0.7, arrow: false, label: "H", labelOffset: [0.4, CUP.h - 0.2, 0.5] },
     { id: "valve", kind: "plate", shape: shape(thickLine([[-VALVE.w / 2, 0], [-VALVE.w / 2, VALVE.h], [VALVE.w / 2, VALVE.h], [VALVE.w / 2, 0]], 0.05), [circle(0.07, 0, 0.12).reverse()]), thickness: 0.4, arrow: false, label: "D", labelOffset: [0.4, VALVE.h, 0.4] },
-    { id: "lever", kind: "plate", shape: shape(thickLine([[-ARM_CUP, 0], [ARM_VALVE, 0]], 0.06)), thickness: 0.06, arrow: false, label: "d", labelOffset: [0.15, 0.15, 0.3] },
+    { id: "lever", kind: "plate", shape: shape(thickLine([[-ARM_CUP, 0], [ARM_VALVE, 0]], 0.06), [circle(0.026).reverse()]), thickness: 0.06, arrow: false, label: "d", labelOffset: [0.15, 0.15, 0.3] },
     { id: "rodH", kind: "link", width: 0.04, thickness: 0.03 },
     { id: "rodD", kind: "link", width: 0.04, thickness: 0.03 },
   ],
@@ -85,5 +86,6 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["casing", "valve"], reason: "簡化畫法:閥瓣坐在外殼的閥座上,重疊 0.16" },
+    { check: "interference", parts: ["lever", "rodH"], reason: "接合處的簡化畫法:吊杯子的桿頂鉸在槓桿 d 的端頭,桿端伸進槓桿 0.03(槓桿傾斜時)" },
   ],
 };

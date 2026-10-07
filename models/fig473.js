@@ -5,12 +5,12 @@
 // 主動件是槓桿(把手在左)。
 // 推斷:槓桿繞框架頂上的支點擺動,右端以繩子吊著倒扣的桶;兩個閥門依桶的走向開合;剖面圖。
 import { Y, deg } from "./kit.js";
-import { stroke, flap } from "./pump.js";
+import { stroke, valveOpening, flap } from "./pump.js";
 import { stream } from "./flow.js";
 import { backHalf } from "./section.js";
-import { shape, thickLine } from "./shapes.js";
+import { shape, thickLine, circle } from "./shapes.js";
 
-const PIVOT = [0.0, 2.75, 0];
+const PIVOT = [0.0, 2.75, 0.25]; // 槓桿在頂上橫樑的前面一層(擺動時才不會掃到橫樑)
 const ARM = 1.0; // 支點到吊繩
 const HANDLE = 1.9;
 export const SWING = [deg(-12), deg(12)]; // 把手往上 → 往下(逆時針轉,右端把桶提起)
@@ -22,9 +22,10 @@ const ROPE = 1.1;
 
 /** 槓桿轉 a → 倒扣桶頂的高度、是否往上 */
 export function bell(v) {
-  const { at, forward } = stroke(v, ...SWING);
+  const phase = stroke(v, ...SWING);
+  const { at, forward } = phase;
   const end = [PIVOT[0] + ARM * Math.cos(at), PIVOT[1] + ARM * Math.sin(at)];
-  return { angle: at, end, top: end[1] - ROPE, rising: forward };
+  return { angle: at, end, top: end[1] - ROPE, rising: forward, phase };
 }
 
 export default {
@@ -37,6 +38,9 @@ export default {
         { kind: "box", size: [0.14, 4.6, 0.14], at: [-1.35, 0.6, 0] },
         { kind: "box", size: [0.14, 4.6, 0.14], at: [1.35, 0.6, 0] },
         { kind: "box", size: [3.0, 0.16, 0.3], at: [0, 2.95, 0] },
+        // 槓桿的支座:從橫樑前面垂下的托架與樞軸銷(推斷;原圖的槓桿架在框架頂上)
+        { kind: "box", size: [0.16, 0.24, 0.05], at: [0, 2.8, 0.175] },
+        { kind: "cylinder", radius: 0.035, length: 0.2, at: [0, PIVOT[1], 0.25] },
         { kind: "box", size: [3.0, 0.2, 1.4], at: [0, OUTER.y0 - 0.1, 0] },
         { kind: "lathe", axis: Y, profile: [[0, 0], [OUTER.r + 0.08, 0], [OUTER.r + 0.08, OUTER.y1 - OUTER.y0], [OUTER.r, OUTER.y1 - OUTER.y0], [OUTER.r, 0.08], [0, 0.08]], at: [0, OUTER.y0, 0], ...backHalf(Y) },
         // 從豎井引來的管子(穿過水,伸到水面上)
@@ -55,9 +59,10 @@ export default {
     },
     flap("topValve", 0.2),
     flap("pipeValve", 0.2),
-    { id: "lever", kind: "plate", shape: shape(thickLine([[-HANDLE, 0], [ARM + 0.1, 0]], 0.1)), thickness: 0.1, center: PIVOT, arrow: false, pieces: [{ kind: "sphere", radius: 0.12, at: [-HANDLE, 0, 0] }] },
+    { id: "lever", kind: "plate", shape: shape(thickLine([[-HANDLE, 0], [ARM + 0.1, 0]], 0.1), [circle(0.04).reverse()]), thickness: 0.1, center: PIVOT, arrow: false, pieces: [{ kind: "sphere", radius: 0.12, at: [-HANDLE, 0, 0] }] },
     { id: "rope", kind: "rope", radius: 0.02 },
   ],
+  powered: ["topValve", "pipeValve"], // 外力來源:閥瓣是被氣流頂開的(流體傳動,沒有實體相連)
   driver: { part: "lever", type: "rotation", cycle: SWING },
   target: "bell",
   view: { direction: [0.1, 0.1, 1] },
@@ -72,15 +77,15 @@ export default {
       parts: {
         lever: { angle: b.angle },
         bell: { position: [0, b.top, 0] },
-        topValve: { position: [-0.1, b.top + 0.3, 0.05], angle: b.rising ? 0 : open },
-        pipeValve: { position: [0.15, PIPE_TOP, 0.05], angle: b.rising ? open : 0 },
+        // 閥瓣被氣流頂開、回程加速落回閥座(pump.js 的 valveOpening)
+        topValve: { position: [-0.1, b.top + 0.3, 0.05], angle: open * valveOpening(!b.rising, b.phase) },
+        pipeValve: { position: [0.15, PIPE_TOP, 0.05], angle: open * valveOpening(b.rising, b.phase) },
       },
-      paths: { rope: { points: [[...b.end, 0], [0, b.top + 0.3, 0]], closed: false, phase: 0 } },
+      paths: { rope: { points: [[...b.end, PIVOT[2]], [0, b.top + 0.3, 0]], closed: false, phase: 0 } },
       flows,
       readouts: [{ label: "倒扣的桶", value: b.rising ? "被提起:裡面變稀薄,氣體經下方的閥上來" : "下降:空氣經頂上的閥排出" }],
     };
   },
   waivers: [
-    { check: "interference", parts: ["frame", "lever"], reason: "接合處的簡化畫法:槓桿鉸接在機架的橫樑上,槓桿與橫樑重疊 0.20(支座的耳沒有畫出來)" },
   ],
 };

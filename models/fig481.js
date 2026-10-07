@@ -42,6 +42,8 @@ export default {
         { kind: "plate", shape: shape(circle(CASE + 0.1), [circle(CASE).reverse()]), thickness: 0.7 },
         { kind: "plate", shape: shape(circle(CASE + 0.1)), thickness: 0.04, at: [0, 0, -0.37] },
         { kind: "box", size: [3.0, 0.25, 0.9], at: [0, -CASE - 0.2, 0] },
+        // 背板上托著鼓的空心軸頸的軸承(推斷:原圖是剖面,只畫出中央管)
+        { kind: "cylinder", radius: 0.3, inner: 0.2, length: 0.12, at: [0, 0, -0.31] },
         // 中央的進氣管 a(往上彎,出口在水面上方)
         { kind: "plate", shape: shape(thickLine([[0, -0.05], [0, WATER + 0.25], [0.15, WATER + 0.35]], 0.08)), thickness: 0.12, at: [0, 0, 0.32] },
       ],
@@ -62,6 +64,8 @@ export default {
         { kind: "plate", shape: shape(circle(R + 0.04), [circle(R - 0.04).reverse()]), thickness: 0.56 },
         ...Array.from({ length: CHAMBERS }, (_, k) => ({ kind: "plate", shape: shape(thickLine(partition, 0.06)), thickness: 0.56, angle: (k * TAU) / CHAMBERS, ...(k === 0 ? { mark: [0.9, 0.25] } : {}) })),
         { kind: "plate", shape: shape(circle(0.3), [circle(0.2).reverse()]), thickness: 0.56 },
+        // 空心軸頸:中央管 a 從裡面穿過,往後伸進軸承
+        { kind: "cylinder", radius: 0.19, inner: 0.12, length: 0.2, at: [0, 0, -0.32] },
       ],
     },
     ...Array.from({ length: CHAMBERS }, (_, k) => ({ id: `labelB${k}`, kind: "group", pieces: [], label: "B", labelOffset: [0, 0, 0.5] })),

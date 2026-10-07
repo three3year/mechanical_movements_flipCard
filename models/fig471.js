@@ -50,7 +50,7 @@ export default {
       labelOffset: [-0.25, -0.35, 0.4],
       spin: R + 0.12,
       pieces: [
-        { kind: "plate", shape: shape([[0, -0.12], [R, -0.08], [R, 0.08], [0, 0.12]]), thickness: 0.08, at: [0, 0, 0.15] },
+        { kind: "plate", shape: shape([[0, -0.12], [R, -0.08], [R, 0.08], [0, 0.12]]), thickness: 0.08, at: [0, 0, 0.15], mark: [R * 0.55, 0], markSize: 0.05 },
         { kind: "cylinder", radius: 0.08, length: 0.8, at: [0, 0, -0.35] }, // 曲柄軸只往後伸(連桿從曲柄前面掃過軸心)
         { kind: "cylinder", radius: 0.05, length: 0.25, at: [R, 0, 0.22] },
       ],

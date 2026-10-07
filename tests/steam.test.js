@@ -42,6 +42,10 @@ test("第 472 種:壓縮空氣錘:滑閥輪流把空氣送到活塞上方與下�
     if (ys[i].y > ys[i - 1].y + 1e-9) assert.ok(ys[i].below, "錘上升時空氣在活塞下方");
   }
   assert.ok(ys.some((h) => Math.abs(h.y - m472.ANVIL_TOP) < 1e-9), "錘打到砧上");
+  // 滑閥由驅動軸上的偏心輪推動:空氣送到哪一側由滑閥的位置決定;軸每轉一圈,錘打一下
+  for (const t of sweep(4 * Math.PI, 80)) assert.equal(m472.hammer(t).below, m472.valve(t).shift > 0, "滑閥偏右時空氣進活塞下方");
+  const strikes = sweep(4 * Math.PI, 400).filter((t, i, all) => i > 0 && m472.hammer(t).y <= m472.ANVIL_TOP + 1e-9 && m472.hammer(all[i - 1]).y > m472.ANVIL_TOP + 1e-9);
+  assert.equal(strikes.length, 2, "軸轉兩圈打兩下");
   const pump = sweep(2 * Math.PI, 12).map((t) => m472.default.pose(t).parts.pumpPiston.position[1]);
   assert.ok(Math.max(...pump) - Math.min(...pump) > 0.5, "空氣泵隨驅動軸往復");
 });
@@ -50,6 +54,7 @@ test("第 473 種:空氣泵:倒扣的桶下降時空氣經上方的閥排出,提
   const def = m473.default;
   for (const v of sweep(4 * 0.42, 40).slice(1)) {
     const b = m473.bell(v);
+    if (b.phase.f < 0.2) continue; // 換向後瓣閥的開合過程(見 water.test.js 的瓣閥測試)
     const parts = def.pose(v).parts;
     assert.equal(Math.abs(parts.topValve.angle) > 0.3, !b.rising, "下降時上方的閥開");
     assert.equal(Math.abs(parts.pipeValve.angle) > 0.3, b.rising, "提起時下方的閥開");
@@ -108,7 +113,12 @@ test("第 478 種:Ray 疏水器:管裡是水時管子短、閥門開;是蒸汽�
     const s = m478.trap(t);
     assert.ok(s.plunger >= m478.STOP - 1e-12, "柱塞被槓桿推到擋止為止");
     assert.ok(s.plunger >= s.end - 1e-12, "管端不會穿過柱塞");
+    // 由接觸算:加重的肘節槓桿 D 鉸在固定的支點上,下臂的左側面貼著柱塞右端的下緣
+    const a = s.lever;
+    const corner = [s.plunger + 1.2 - m478.PIVOT[0], -0.1 - m478.PIVOT[1]];
+    close(-corner[0] * Math.cos(a) - corner[1] * Math.sin(a), 0.04, "下臂的側面貼著柱塞端", 1e-6);
   }
+  assert.ok(m478.trap(1).lever > m478.trap(0).lever, "管子膨脹時柱塞把槓桿推回(重球抬起)");
 });
 
 test("第 479、480 種:儲氣槽:氣體進入時容器 A 上升,而且下緣一直浸在水裡", () => {

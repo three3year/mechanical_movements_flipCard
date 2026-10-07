@@ -49,7 +49,7 @@ export default {
         { kind: "sphere", radius: SPHERE.r },
         // 兩根彎臂(局部 z 是轉軸方向 = 世界 x;局部 x、y 在轉動平面)
         ...[1, -1].flatMap((s) => [
-          { kind: "cylinder", radius: 0.05, length: ARM_OUT, axis: [1, 0, 0], at: [s * (SPHERE.r + ARM_OUT / 2), 0, 0] },
+          { kind: "cylinder", radius: 0.05, length: ARM_OUT, axis: [1, 0, 0], at: [s * (SPHERE.r + ARM_OUT / 2), 0, 0], ...(s > 0 ? { accent: true } : {}) }, // 一根彎臂塗記號色
           { kind: "cylinder", radius: 0.05, length: 0.25, axis: [0, 1, 0], at: [s * (SPHERE.r + ARM_OUT), -s * 0.11, 0] },
         ]),
       ],
