@@ -96,3 +96,33 @@ export function doubleAction(v, from, to, f1, f2) {
   const base = cycle * (d1 + d2);
   return forward ? base + f1(at) - f1(from) : base + d1 + f2(at) - f2(to);
 }
+
+/**
+ * 被自重或彈簧壓在棘輪上的爪,逐步跟著主動量 x 走:齒背把爪抬起時爪跟著被抬(停在碰到的角度);
+ * 過了齒尖,爪從靜止以固定的角加速度 acc(每單位主動量平方的弧度)落回,碰到輪面就停。
+ * rest(x):主動量 x 時爪能落到的最深角度(爪尖碰到輪面,例如 pawlRest 的 angle);into:爪落下時角度的增減方向(±1)。
+ * 從 x0 起(爪靠在輪上)逐步算到 x1,回傳 at(x)(x 超出範圍時取端點)。
+ */
+export function pawlTrack({ rest, x0, x1, into = 1, acc, samples = 1200 }) {
+  const dx = (x1 - x0) / samples;
+  const table = [rest(x0)];
+  let psi = table[0];
+  let w = 0;
+  for (let i = 1; i <= samples; i++) {
+    const limit = rest(x0 + i * dx);
+    const next = psi + into * (w + acc * dx) * dx;
+    if (into * (next - limit) >= 0) {
+      psi = limit;
+      w = 0;
+    } else {
+      psi = next;
+      w += acc * dx;
+    }
+    table.push(psi);
+  }
+  return (x) => {
+    const f = Math.min(samples, Math.max(0, (x - x0) / dx));
+    const i = Math.min(samples - 1, Math.floor(f));
+    return table[i] + (table[i + 1] - table[i]) * (f - i);
+  };
+}

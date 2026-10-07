@@ -11,6 +11,8 @@ const R = 1.75; // 弧桿半徑
 const ARM = R; // 主臂半長
 const SPAN = deg(150); // 弧桿從主臂端點往下繞過的角度
 const BEND_K = 0.006; // 每度自由端往內偏移的量(放大)
+const ROD = 0.07; // 弧桿的半粗
+const WEIGHT = 0.42; // 配重的邊長
 
 /** 溫度 t → 弧桿上各點(相對擺輪中心)、配重的位置;s = +1 上方臂端起的弧(右側)、−1 下方臂端起的弧(左側) */
 export function rim(t0, s) {
@@ -23,8 +25,10 @@ export function rim(t0, s) {
     const r = R - bend * f * f * 3; // 越靠自由端彎得越多
     return [r * Math.cos(a), r * Math.sin(a)];
   });
-  const k = 17; // 配重所在的點
-  return { pts, weight: pts[k], weightRadius: Math.hypot(...pts[k]) };
+  const k = 17; // 配重所在的點:配重裝在弧桿外側,內面貼著弧桿
+  const rk = Math.hypot(...pts[k]);
+  const out = (rk + ROD + WEIGHT / 2) / rk;
+  return { pts, weight: [pts[k][0] * out, pts[k][1] * out], weightRadius: rk };
 }
 
 export default {
@@ -36,6 +40,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(rect(0.28, 2 * ARM + 0.2), [circle(0.12).reverse()]), thickness: 0.14 },
         { kind: "plate", shape: shape(circle(0.3), [circle(0.12).reverse()]), thickness: 0.2 },
+        { kind: "cylinder", radius: 0.12, length: 0.7 }, // 擺輪軸 a(推斷:原圖只畫出軸孔)
         // 兩端的計時螺絲
         { kind: "cylinder", axis: [0, 1, 0], radius: 0.06, length: 0.35, at: [0, ARM + 0.25, 0] },
         { kind: "cylinder", axis: [0, 1, 0], radius: 0.06, length: 0.35, at: [0, -ARM - 0.25, 0] },
@@ -45,10 +50,10 @@ export default {
     },
     { id: "labelT", kind: "group", center: [0, ARM + 0.2, 0], label: "t", labelOffset: [-0.3, 0.1, 0.3] },
     { id: "labelT2", kind: "group", center: [0, -ARM - 0.2, 0], label: "t'", labelOffset: [0.3, -0.1, 0.3] },
-    { id: "rimR", kind: "rod", radius: 0.07 },
-    { id: "rimL", kind: "rod", radius: 0.07 },
-    { id: "weightB", kind: "box", size: [0.42, 0.42, 0.3], label: "b", labelOffset: [0.45, 0, 0.3] },
-    { id: "weightB2", kind: "box", size: [0.42, 0.42, 0.3], label: "b'", labelOffset: [-0.45, 0, 0.3] },
+    { id: "rimR", kind: "rod", radius: ROD },
+    { id: "rimL", kind: "rod", radius: ROD },
+    { id: "weightB", kind: "box", size: [WEIGHT, WEIGHT, 0.3], label: "b", labelOffset: [0.45, 0, 0.3] },
+    { id: "weightB2", kind: "box", size: [WEIGHT, WEIGHT, 0.3], label: "b'", labelOffset: [-0.45, 0, 0.3] },
   ],
   powered: ["rimR", "rimL"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "溫度", mode: "balance", range: RANGE, initial: 20, unit: "°C" },
@@ -65,8 +70,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["weightB2", "rimL"], reason: "補償擺輪的配重夾在輪緣上:輪緣穿過配重(配重上的夾口沒畫),重疊 0.15" },
-    { check: "interference", parts: ["weightB", "rimR"], reason: "補償擺輪的配重夾在輪緣上:輪緣穿過配重(配重上的夾口沒畫),重疊 0.15" },
-  ],
 };
