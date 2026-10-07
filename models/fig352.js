@@ -2,6 +2,8 @@
 // 一條繩的兩端分別纏在大段與小段上(纏繞方向相反),中間往上繞過兩個導輪,再垂下一個繩圈吊著重物的滑輪。
 // 轉一圈時大段捲進一個大圓周、小段放出一個小圓周,重物上升兩者差的一半。主動件是絞盤(以手柄轉動)。
 // 推斷:鼓輪的兩段半徑與可轉的圈數;手柄的形狀。
+// 繩不打滑:大段捲進的速度是 R1·ω、小段放出的是 R2·ω,所以左導輪以 R1·ω、右導輪以 R2·ω 的表面速度轉,
+// 吊重物的滑輪一邊升一邊以兩者平均的表面速度轉;繩上的色段跟著繩走(大段捲進多少,繩頭就往那邊收多少)。
 import { X, Z, TAU, clamp, routeRope } from "./kit.js";
 
 const R1 = 0.48; // 大段
@@ -18,6 +20,11 @@ const Y0 = -0.4; // 重物滑輪的起始高度
 /** 絞盤轉 theta → 重物滑輪的高度 */
 export const pulleyY = (theta) => Y0 + ((R1 - R2) * clamp(theta, ...RANGE)) / 2;
 export const radii = [R1, R2];
+/** 絞盤轉 theta → 左、右導輪與吊重滑輪的轉角(繩不打滑) */
+export const sheaves = (theta0) => {
+  const theta = clamp(theta0, ...RANGE);
+  return { left: (R1 * theta) / G.r, right: (R2 * theta) / G.r, pulley: (-(R1 + R2) * theta) / (2 * PULLEY) };
+};
 
 export default {
   figure: 352,
@@ -72,15 +79,13 @@ export default {
     return {
       parts: {
         drum: { angle: theta },
-        pulley: { position: [0, y, z], angle: 0 },
+        guideL: { angle: sheaves(theta).left },
+        guideR: { angle: sheaves(theta).right },
+        pulley: { position: [0, y, z], angle: sheaves(theta).pulley },
         weight: { position: [0, y - PULLEY - 0.06, z] },
       },
-      paths: { rope: { points: route.points, closed: false, phase: 0 } },
+      paths: { rope: { points: route.points, closed: false, phase: -R1 * theta } },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["frame", "guideR"], reason: "接合處的簡化畫法:導輪套在機架的銷上;導輪隨繩上下略為移動,銷與輪的孔重疊 0.20" },
-    { check: "interference", parts: ["frame", "guideL"], reason: "接合處的簡化畫法:導輪套在機架的銷上;導輪隨繩上下略為移動,銷與輪的孔重疊 0.20" },
-  ],
 };

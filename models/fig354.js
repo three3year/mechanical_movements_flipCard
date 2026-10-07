@@ -2,8 +2,10 @@
 // 曲柄手腕在溝槽裡走;溝槽的形狀做成讓十字頭以均勻的速度上下往復(位移隨曲柄角成三角波)。
 // 主動件是曲柄(在十字頭後方的圓盤上)。
 // 推斷:溝槽是「曲柄手腕相對十字頭走過的軌跡」(由均勻往復反推),所以手腕始終在溝槽裡。
+// 機架(推斷,原圖只畫出上下兩個導件):兩個導件是一個方框的上下兩邊,方框立在底板上;曲柄盤的軸往後伸進軸承座。
 import { TAU } from "./kit.js";
 import { shape, circle, offsetLoop } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const R = 1.6; // 曲柄半徑 = 十字頭的單邊行程
 
@@ -34,6 +36,7 @@ export default {
         { kind: "plate", shape: shape(circle(R + 0.3), [circle(0.1).reverse()]), thickness: 0.05, at: [0, 0, -0.42] },
         { kind: "box", size: [R, 0.18, 0.1], at: [R / 2, 0, -0.25] },
         { kind: "cylinder", radius: 0.12, length: 0.5, at: [R, 0, 0], accent: true },
+        { kind: "cylinder", radius: 0.1, length: 0.45, at: [0, 0, -0.62] }, // 曲柄盤的軸,往後伸進軸承座
       ],
     },
     {
@@ -44,11 +47,24 @@ export default {
         { kind: "tube", points: wall(0.15), closed: true, radius: 0.05 },
         { kind: "tube", points: wall(-0.15), closed: true, radius: 0.05 },
         // 上下兩根桿,穿過上下兩個導件(桿的長度讓它在整個行程中都留在導件裡)
-        { kind: "box", size: [0.22, 2.4, 0.22], at: [0, 1.4, 0] },
+        { kind: "box", size: [0.22, 4.0, 0.22], at: [0, 2.2, 0] },
         { kind: "box", size: [0.22, 4.0, 0.22], at: [0, -2.3, -0.2] },
       ],
     },
-    { id: "guides", kind: "group", pieces: [{ kind: "box", size: [0.9, 0.3, 0.4], at: [0, 2.0, -0.05] }, { kind: "box", size: [0.9, 0.3, 0.4], at: [0, -2.3, -0.05] }] }, // 導座在曲柄輪盤的前面
+    {
+      // 導座在曲柄輪盤的前面:方框的上下兩邊(十字頭的桿穿過它們),方框立在底板上(底板中間讓出下桿的路)
+      id: "guides",
+      kind: "group",
+      pieces: [
+        { kind: "box", size: [4.8, 0.3, 0.4], at: [0, 2.4, -0.05] },
+        { kind: "box", size: [4.8, 0.3, 0.4], at: [0, -2.4, -0.05] },
+        { kind: "box", size: [0.3, 4.5, 0.4], at: [-2.25, 0, -0.05] },
+        { kind: "box", size: [0.3, 4.5, 0.4], at: [2.25, 0, -0.05] },
+        { kind: "box", size: [2.2, 0.15, 1.3], at: [-1.4, -2.625, -0.45] },
+        { kind: "box", size: [2.2, 0.15, 1.3], at: [1.4, -2.625, -0.45] },
+        ...pedestal({ at: [0, 0], z: -0.7, bore: 0.11, floor: -2.55 }),
+      ],
+    },
   ],
   driver: { part: "crank", type: "rotation", initial: Math.PI / 2 },
   target: "crosshead", // 等速往復的十字頭
@@ -57,7 +73,6 @@ export default {
     return { parts: { crank: { angle: theta }, crosshead: { position: [0, crosshead(theta), 0] } }, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["crosshead", "guides"], reason: "十字頭走到行程頂端時碰到導座,重疊 0.14(96 個取樣中 5 個);行程是示意的大小" },
     { check: "interference", parts: ["crank", "crosshead"], reason: "接合處的簡化畫法:曲柄銷在十字頭的橫槽裡滑動,銷與槽壁(畫成圓條)重疊 0.13" },
   ],
 };

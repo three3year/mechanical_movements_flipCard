@@ -178,3 +178,19 @@ export function pushUntilClear(value, dir, max, overlaps) {
   }
   return value + dir * hi;
 }
+
+/**
+ * 靠自重(或彈簧)搭在齒上的爪:restAt(v) 是主動量 v 時它靠在齒上的轉角(由接觸算)。爪尖滑過齒尖時,靠著的轉角
+ * 會在一瞬間跳低,實物是加速落下。回傳 v 時爪的轉角:最近 window 這段主動量裡,每個時刻靠著的轉角再以 accel
+ * (每單位主動量平方的轉角)加速落下,取其中最高的,但不低於此刻靠著的轉角——爪不穿進齒,也不比自由落下快。
+ * into:落下的轉向(+1 逆時針 / −1 順時針)。restAt 要用相對於裝爪的零件的轉角(那個零件本身也在轉時)。
+ */
+export function fallingRest(restAt, v, { into, accel, window, samples = 12 }) {
+  let angle = restAt(v);
+  for (let i = 1; i <= samples; i++) {
+    const dv = (window * i) / samples;
+    const held = restAt(v - dv) + into * 0.5 * accel * dv * dv;
+    if (into < 0 ? held > angle : held < angle) angle = held;
+  }
+  return angle;
+}

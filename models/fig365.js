@@ -1,7 +1,8 @@
 // 第 365 種:一根圓桿夾在兩個滾子之間,兩滾子的軸彼此傾斜(一個在桿的前面、一個在後面)。
 // 滾子轉動時,接觸處的表面速度一部分沿桿的長度方向、一部分沿桿的圓周方向,所以桿同時縱向移動與旋轉。
 // 主動件是前面的滾子;後面的滾子以相反方向轉(兩者在接觸處的速度一致)。
-// 推斷:滾子的傾角與尺寸(依原圖);滾子與桿之間不打滑。
+// 推斷:滾子的傾角與尺寸(依原圖);滾子與桿之間不打滑。兩個滾子的軸兩端各有一個軸承環,立柱托在兩側的底座上
+// (原圖沒畫機架;底座分在左右兩邊,讓桿上下穿過)。
 import { deg, clamp, quatMul, quatAxisAngle, quatFromZ, Z, X } from "./kit.js";
 
 const TILT = deg(18); // 每個滾子的軸與水平的夾角(一正一負)
@@ -28,9 +29,31 @@ const roller = (id, z) => ({
   pieces: [{ kind: "cylinder", radius: 0.1, length: 4.6 }],
 });
 
+// 軸承:滾子軸上離中心 2.15 處,front 在前(z > 0)、back 在後
+const BEARING_AT = 2.15;
+const FLOOR = -2.6;
+const bearings = [
+  [TILT, RR + ROD],
+  [-TILT, -(RR + ROD)],
+].flatMap(([tilt, z]) =>
+  [1, -1].flatMap((s) => {
+    const axis = [Math.cos(tilt), Math.sin(tilt), 0];
+    const [x, y] = [s * BEARING_AT * axis[0], s * BEARING_AT * axis[1]];
+    return [
+      { kind: "cylinder", axis, radius: 0.22, inner: 0.12, length: 0.2, at: [x, y, z] },
+      { kind: "box", size: [0.2, y - 0.2 - FLOOR, 0.2], at: [x, (y - 0.2 + FLOOR) / 2, z] },
+    ];
+  }),
+);
+
 export default {
   figure: 365,
   parts: [
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [...bearings, ...[1, -1].map((s) => ({ kind: "box", size: [0.8, 0.15, 2.0], at: [s * BEARING_AT * Math.cos(TILT), FLOOR - 0.075, 0] }))],
+    },
     roller("front", RR + ROD),
     roller("back", -(RR + ROD)),
     { id: "rod", kind: "cylinder", axis: [0, 1, 0], radius: ROD, length: 5.0, mark: true, spin: ROD, spinOffset: 2.2 },

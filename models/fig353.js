@@ -37,9 +37,11 @@ export default {
       pieces: [
         // 推板輪的支架與砧(砧面就在錘頭落下的位置:動力重演時錘頭落在砧上停住)
         { kind: "plate", shape: shape([[WHEEL[0] - 0.9, -2.4], [WHEEL[0] + 0.9, -2.4], [WHEEL[0] + 0.15, WHEEL[1]], [WHEEL[0] - 0.15, WHEEL[1]]]), thickness: 0.2, at: [0, 0, -0.35] },
-        { kind: "box", size: [2.3, 0.2, 0.6], at: [WHEEL[0], -2.45, -0.2] },
+        { kind: "box", size: [3.4, 0.2, 0.6], at: [WHEEL[0] - 0.55, -2.45, -0.2] },
         { kind: "plate", shape: shape([[-3.2, -2.45], [-1.6, -2.45], [-1.75, -0.4], [-1.6, -0.17], [-3.2, -0.17], [-3.05, -0.4]]), thickness: 0.8 },
-        { kind: "box", size: [0.35, 1.4, 0.4], at: [PIVOT[0], -0.75, -0.42] }, // 支柱在錘柄的後面
+        // 支柱在錘柄的後面,立在底座上(原本懸在半空);頂上的軸承環套著錘柄的軸
+        { kind: "box", size: [0.35, 2.05, 0.4], at: [PIVOT[0], -1.375, -0.42] },
+        { kind: "cylinder", radius: 0.3, inner: 0.13, length: 0.3, at: [PIVOT[0], PIVOT[1], -0.42] },
       ],
     },
     { id: "wheel", kind: "plate", center: WHEEL, shape: star, thickness: 0.2, hub: 0.25, mark: [0.6, 0], markSize: 0.07, spin: 0.85 },
@@ -51,6 +53,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(HANDLE), thickness: 0.3 },
         { kind: "plate", shape: shape(rect(0.55, 0.65, 0, 0), [circle(0.12).reverse()]), thickness: 0.4 },
+        { kind: "cylinder", radius: 0.11, length: 0.45, at: [0, 0, -0.38] }, // 錘柄的軸,往後伸進支柱頂的軸承環
         // 錘頭
         { kind: "plate", shape: shape([[-3.35, 0.0], [-2.6, -0.15], [-2.45, 0.85], [-3.1, 1.05], [-3.4, 0.75]]), thickness: 0.6 },
       ],

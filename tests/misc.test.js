@@ -92,6 +92,11 @@ test("第 351 種:衝壓機:缺齒小齒輪把桿抬起,直到齒脫離齒條,�
 test("第 352 種:中式絞盤的另一種配置:轉一圈,重物上升兩段圓周差的一半", () => {
   const [r1, r2] = m352.radii;
   close(m352.pulleyY(2 * Math.PI) - m352.pulleyY(0), Math.PI * (r1 - r2), "每圈上升 π(R₁ − R₂)");
+  // 繩不打滑:左導輪的表面速度是大段捲進的速度、右導輪是小段放出的速度,吊重滑輪是兩者的平均(一邊升一邊轉)
+  const [a, b] = [m352.sheaves(1), m352.sheaves(2)];
+  close((b.left - a.left) * 0.17, r1, "左導輪的表面速度 = R₁·ω", 1e-9);
+  close((b.right - a.right) * 0.17, r2, "右導輪的表面速度 = R₂·ω", 1e-9);
+  close(Math.abs(b.pulley - a.pulley) * 0.32, (r1 + r2) / 2, "吊重滑輪的表面速度 = 兩者的平均", 1e-9);
 });
 
 test("第 353 種:跳動錘的變形:推板每經過一次把錘頭抬起,滑脫後落下", () => {
@@ -167,13 +172,22 @@ test("第 359 種:原始鑽孔裝置:按下橫桿時繩解開、心軸轉;放開
   assert.ok(m359.pump(2 * S).bar > m359.pump(S).bar, "飛輪的動量把繩捲回、橫桿被拉起");
 });
 
-test("第 360 種:樑振動時,鼓輪經棘爪與棘輪帶動飛輪軸只朝一個方向轉", () => {
+test("第 360 種:樑振動時,鼓輪經棘爪與棘輪帶動飛輪軸只朝一個方向轉;飛輪連續旋轉", () => {
   const S = m360.SWING;
   const fs = sweep(8 * S, 400).map((v) => m360.beam(v).fly);
-  assert.ok(fs.every((f, i) => i === 0 || f <= fs[i - 1] + 1e-12), "飛輪只朝一個方向轉");
-  const back = m360.beam(3 * S);
-  close(back.fly, m360.beam(2 * S).fly, "回擺時鼓輪反轉,飛輪不動", 1e-12);
-  assert.ok(back.drum !== m360.beam(2 * S).drum, "鼓輪反轉");
+  assert.ok(fs.every((f, i) => i === 0 || f < fs[i - 1]), "飛輪只朝一個方向轉,而且不停(由擺動運動所產生的連續旋轉運動)");
+  // 鼓輪往回轉時,棘爪不帶飛輪:飛輪靠動量繼續往前、越轉越慢
+  const back = [2.2, 2.6, 3.0, 3.4].map((k) => m360.beam(k * S));
+  assert.ok(back.every((b) => !b.engaged), "回擺時棘爪沒有推");
+  assert.ok(back[1].drum > back[0].drum, "鼓輪反轉");
+  const d = back.slice(1).map((b, i) => back[i].fly - b.fly);
+  assert.ok(d[0] > d[1] && d[1] > d[2] && d[2] > 0, "滑行越來越慢");
+  // 推的時候棘輪和鼓輪鎖在一起;每一程推完正好前進一程(5 齒)
+  const [p1, p2] = [m360.beam(1.2 * S), m360.beam(1.8 * S)];
+  assert.ok(p1.engaged && p2.engaged);
+  close(p2.fly - p1.fly, p2.drum - p1.drum, "推動時飛輪跟著鼓輪轉", 1e-9);
+  close(m360.beam(2 * S).fly - m360.beam(6 * S).fly, m360.stroke.SPAN, "每一程前進一程", 1e-9);
+  close(m360.stroke.SPAN, m360.stroke.STROKE_TEETH * m360.stroke.PITCH, "一程剛好整數齒(棘爪每程在同一個相位碰上齒面)", 1e-9);
 });
 
 test("第 361 種:皮帶輪離合器:兩銷接觸時下方軸跟著皮帶輪轉,脫開時皮帶輪空轉、軸停住", () => {
@@ -188,12 +202,17 @@ test("第 362 種:銷在下方圓筒的傾斜溝槽中,圓筒轉一圈,上方軸
   close(m362.traverse(2 * Math.PI), m362.traverse(0), "一圈回到原處", 1e-12);
 });
 
-test("第 364 種:小輪連續旋轉,大輪間歇旋轉:每根凸柱經過時推一格,其餘時間不動", () => {
+test("第 364 種:小輪連續旋轉,大輪間歇旋轉:每根凸柱的滾子推著斜棱走過時推一格,其餘時間不動", () => {
   const per = (2 * Math.PI) / 8;
-  close(m364.bigAngle(-per) - m364.bigAngle(0), -m364.STEP, "每根凸柱一格", 1e-12);
-  const as = sweep(-2 * Math.PI, 360).map(m364.bigAngle);
-  const still = as.slice(1).filter((a, i) => a === as[i]).length;
-  assert.ok(still > 150, "大部分時間停住");
+  close(m364.bigAngle(-per) - m364.bigAngle(0), m364.STEP, "每根凸柱一格", 1e-12);
+  const as = sweep(-2 * Math.PI, 720).map(m364.bigAngle);
+  assert.ok(as.every((a, i) => i === 0 || a >= as[i - 1] - 1e-12), "大輪只朝一個方向轉");
+  const still = as.slice(1).filter((a, i) => Math.abs(a - as[i]) < 1e-12).length;
+  assert.ok(still > 0, "滾子之間的空檔大輪停住(間歇)");
+  // 由接觸算:推動時大輪轉角與滾子的高度成正比(斜棱是一道斜面)
+  const [a, b] = [m364.drive(-0.05), m364.drive(-0.15)];
+  assert.ok(a.y !== null && b.y !== null);
+  close((b.angle - a.angle) / (a.y - b.y), m364.STEP / 0.9, "轉角 / 滾子下降的距離 = 一格 / 斜棱的高度", 1e-9);
 });
 
 test("第 366 種:鑽床:大斜齒輪帶動鑽桿旋轉;踩下踏板時鑽桿被壓下,但照樣跟著小斜齒輪轉", () => {
@@ -211,6 +230,10 @@ test("第 367 種:平行尺:尺葉保持平行,刻度指示兩尺葉之間的寬
     close(lineAngle(lineStart.points), lineAngle(lineNow.points), "兩條線平行", 1e-12);
   }
   assert.ok(m367.ruler(m367.RANGE[1]).gap > m367.ruler(m367.RANGE[0]).gap, "擺開時寬度變大");
+  // 「黃銅弧形外緣的指向可指示兩個尺葉之間的寬度」:弧固定在下尺葉上,與上尺葉刻度相交的位置(從刻度的起點量)隨寬度單調增加
+  const marks = sweep(m367.RANGE[1], 10, m367.RANGE[0]).map((a) => m367.reading(a) - (m367.ruler(a).dx - 0.75));
+  for (let i = 1; i < marks.length; i++) assert.ok(marks[i] > marks[i - 1], "寬度越大,讀數越往刻度的另一頭");
+  assert.ok(marks.every((x) => x >= 0 && x <= 1.44), "讀數始終落在刻度上");
 });
 
 test("第 368 種:在圓筒上畫螺旋線:圓筒轉動,同一個正齒輪帶齒條使標記點從一端移到另一端,每轉移動一個螺距", () => {

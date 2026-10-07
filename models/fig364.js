@@ -1,37 +1,53 @@
 // 第 364 種:繞直角軸的連續旋轉產生間歇旋轉。左邊的小輪是主動件,輪緣上一圈徑向凸柱,柱端裝著摩擦滾子;
 // 右邊較大的輪(軸是鉛直的,原圖從側面看到它的輪緣)的表面有一圈傾斜的溝槽(凸棱)。小輪每轉過一根凸柱,
 // 它的滾子就推著一道斜棱的側面走過,大輪轉過一格;滾子之間的空檔,大輪停住。主動件是小輪。
-// 推斷:凸柱數(依原圖八根)與大輪上斜棱的數目、每格的角度。
-import { Y, TAU, deg } from "./kit.js";
-import { cycloid } from "./jumps.js";
+// 由接觸算:滾子在大輪最左的那條母線上往下走,斜棱是一道斜面——滾子的側面貼著斜棱,滾子降多少,
+// 斜棱就被推開多少,大輪轉角與滾子的高度成正比(斜棱從下緣到上緣剛好跨一格,滾子從上緣走到下緣推一格);
+// 滾子離開斜棱的高度範圍(大輪的上下緣之外)時大輪停住,等下一根凸柱的滾子從上緣進來。
+// 推斷:凸柱數(依原圖八根)與大輪上斜棱的數目;兩根軸的軸承座(原圖沒畫)。
+import { Y, Z, TAU } from "./kit.js";
 import { shape, circle } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const SMALL = { center: [-2.0, 0, 0], r: 0.75, studs: 8, reach: 1.25 };
 const BIG = { center: [0.4, 0, 0], r: 1.05, height: 1.0, ribs: 24 };
 export const STEP = TAU / BIG.ribs;
-const SPAN = deg(22); // 每根凸柱經過接觸處(小輪的 0°)時,推動大輪的那一段轉角
+const BAND = BIG.height / 2 - 0.05; // 斜棱的上下端(相對大輪中心的高度)
+const RIB_R = BIG.r + 0.03;
+const ROLLER = 0.09; // 滾子要放得進相鄰兩道斜棱之間(棱距約 0.28)
+const TUBE = 0.035;
+// 斜棱在最左母線上的斜率(橫向位移 / 高度),滾子側面與斜棱的接觸:中心線要離滾子中心這麼遠(橫向量)
+const SLOPE = (RIB_R * STEP) / (2 * BAND);
+const OFFSET = (ROLLER + TUBE) * Math.hypot(1, SLOPE);
+// 大輪轉角 B 時,第 i 道斜棱在高度 h 的最左母線上的橫向位置 = RIB_R·(i·STEP + STEP·(h + BAND)/(2·BAND) + B − π);
+// 滾子在高度 y 推著它時這個值等於 OFFSET。取 B0 讓起始的轉角在 0 附近
+const B0 = Math.PI + OFFSET / RIB_R - Math.round((Math.PI + OFFSET / RIB_R) / STEP) * STEP;
+export const PHI_BAND = Math.asin(BAND / SMALL.reach); // 滾子在斜棱高度範圍內的那段小輪轉角(單邊)
 
-/** 小輪轉 theta(順時針為負)→ 大輪的轉角:每根凸柱經過接觸處時推一格,其餘時間不動 */
-export function bigAngle(theta) {
+/** 小輪轉 theta(順時針為負)→ 大輪的轉角、正推著的滾子高度(沒推時 null) */
+export function drive(theta) {
   const per = TAU / SMALL.studs;
-  const t = -theta + SPAN / 2;
+  const t = -theta + PHI_BAND;
   const k = Math.floor(t / per);
   const u = t - k * per;
-  return -(k + (u < SPAN ? cycloid(u / SPAN) : 1)) * STEP;
+  if (u > 2 * PHI_BAND) return { angle: B0 + (k + 1) * STEP, y: null };
+  const y = SMALL.reach * Math.sin(PHI_BAND - u); // 正在接觸處的滾子的高度(由上往下)
+  return { angle: B0 + (k + (BAND - y) / (2 * BAND)) * STEP, y };
 }
+export const bigAngle = (theta) => drive(theta).angle;
 
 // 小輪:圓盤+八根徑向凸柱與柱端的滾子
 const studs = Array.from({ length: SMALL.studs }, (_, i) => {
   const a = (i * TAU) / SMALL.studs;
   return [
     { kind: "box", size: [SMALL.reach - SMALL.r + 0.1, 0.1, 0.1], at: [((SMALL.r + SMALL.reach) / 2) * Math.cos(a), ((SMALL.r + SMALL.reach) / 2) * Math.sin(a), 0], angle: a },
-    { kind: "cylinder", radius: 0.14, length: 0.22, axis: [Math.cos(a), Math.sin(a), 0], at: [SMALL.reach * Math.cos(a), SMALL.reach * Math.sin(a), 0], accent: i === 0 },
+    { kind: "cylinder", radius: ROLLER, length: 0.22, axis: [Math.cos(a), Math.sin(a), 0], at: [SMALL.reach * Math.cos(a), SMALL.reach * Math.sin(a), 0], accent: i === 0 },
   ];
 }).flat();
 // 大輪輪緣上的斜棱(局部:軸沿 z,斜棱從下緣斜上到上緣)
 const ribs = Array.from({ length: BIG.ribs }, (_, i) => {
   const a = (i * TAU) / BIG.ribs;
-  const d = STEP * 0.8;
+  const d = STEP; // 斜棱從下緣到上緣跨一格
   const r = BIG.r + 0.03;
   return { kind: "tube", points: [[r * Math.cos(a), r * Math.sin(a), -BIG.height / 2 + 0.05], [r * Math.cos(a + d), r * Math.sin(a + d), BIG.height / 2 - 0.05]], radius: 0.035, accent: i === 0 };
 });
@@ -39,7 +55,21 @@ const ribs = Array.from({ length: BIG.ribs }, (_, i) => {
 export default {
   figure: 364,
   parts: [
-    { id: "small", kind: "group", center: SMALL.center, spin: SMALL.reach, pieces: [{ kind: "plate", shape: shape(circle(SMALL.r), [circle(0.12).reverse()]), thickness: 0.18, circles: [0.3] }, ...studs] },
+    { id: "small", kind: "group", center: SMALL.center, spin: SMALL.reach, pieces: [{ kind: "plate", shape: shape(circle(SMALL.r), [circle(0.12).reverse()]), thickness: 0.18, circles: [0.3] }, ...studs, { kind: "cylinder", radius: 0.12, length: 0.7, at: [0, 0, -0.35] }] },
+    {
+      // 兩根軸的軸承座:小輪的軸往後伸進軸承座;大輪的立軸上下各一個托架(推斷,原圖沒畫)
+      id: "frame",
+      kind: "group",
+      pieces: [
+        ...pedestal({ at: [SMALL.center[0], SMALL.center[1]], z: -0.6, bore: 0.13, floor: -2.3 }),
+        ...[1.75, -1.75].flatMap((y) => [
+          { kind: "cylinder", axis: Y, radius: 0.25, inner: 0.11, length: 0.2, at: [BIG.center[0], y, 0] },
+          { kind: "box", size: [0.2, 0.2, 1.25], at: [BIG.center[0], y, -0.725] },
+        ]),
+        { kind: "box", size: [0.25, 4.15, 0.25], at: [BIG.center[0], -0.225, -1.45] },
+        { kind: "box", size: [2.8, 0.18, 1.9], at: [-0.8, -2.39, -0.85] },
+      ],
+    },
     {
       id: "big",
       kind: "group",
@@ -54,16 +84,21 @@ export default {
       ],
     },
   ],
-  // 動力重演:只推主動件;big 靠摩擦定位,由接觸帶動
-  replay: { from: 0, to: -6.283185307179586, free: { big: { hold: true } }, expect: [{ part: "big", label: "主動件走完一輪後 big 的位置" }] },
+  // 動力重演:只推小輪;大輪靠摩擦定位,由滾子推斜棱帶動
+  replay: {
+    from: 0,
+    to: -TAU,
+    seconds: 20,
+    free: { big: { hold: true, gravity: false } },
+    expect: [
+      { at: -TAU / 16, part: "big", label: "一根凸柱的滾子推著斜棱往下走:大輪轉過半格", quote: "摩擦滾子作用於較大輪表面上的傾斜溝槽或凸起物的側面" },
+      { part: "big", label: "小輪轉一圈:八根凸柱各推一格,大輪轉過三分之一圈" },
+    ],
+  },
   driver: { part: "small", type: "rotation", speed: -0.8 },
   target: "big", // 間歇轉動的大輪
   view: { direction: [0.03, 0.12, 1] },
   pose(theta) {
     return { parts: { small: { angle: theta }, big: { angle: bigAngle(theta) } }, readouts: [] };
   },
-  waivers: [
-    { check: "replay", parts: ["big"], reason: "未修:動力重演不成立——「主動件走完一輪後 big 的位置」預期 big 在主動量 -6.28 時已轉 -120°,實際轉了 115°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
-    { check: "interference", parts: ["small", "big"], reason: "摩擦傳動的小輪壓在大輪的渦形凸條上:小輪的位置依渦線的半徑算,輪緣伸進凸條 0.07(96 個取樣中 87 個)" },
-  ],
 };

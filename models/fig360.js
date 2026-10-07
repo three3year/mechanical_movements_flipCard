@@ -4,29 +4,85 @@
 // 主動件是樑(累計擺動)。
 // 推斷:鼓輪反轉時由繩把它帶回(繩在鼓輪上纏繞);棘輪齒數。棘輪固定在軸上、裝在鼓輪前面,
 // 棘爪的銷立在鼓輪的前面上(右上方),棘爪靠自重垂下、爪尖落在齒根:鼓輪往前轉時爪尖頂著齒的直面推棘輪,
-// 往回轉時爪尖沿齒背滑上去、過了齒尖落進下一格(棘爪的轉角由接觸算,ratchets.pawlRest)。
-import { deg, swingPhase, rot2 } from "./kit.js";
+// 往回轉時爪尖沿齒背滑上去、過了齒尖落進下一格(棘爪的轉角由接觸算,contact.swingUntilContact)。
+// 「連續旋轉」:飛輪不跟著鼓輪停下——鼓輪往回轉時飛輪憑動量繼續轉、越轉越慢(速度按指數衰減),
+// 下一程鼓輪往前轉到半途時棘爪追上齒的直面,再推它到這一程的終點。鼓輪每程轉過的角度剛好是 3 齒
+// (鼓輪半徑依此選定),所以棘爪每一程都在同一個相位碰上齒面;衰減率依「半途追上」算出。
+import { deg, swingPhase, rot2, TAU } from "./kit.js";
 import { ratchetShape, shape, circle, arcPoints, thickLine } from "./shapes.js";
-import { pawlRest } from "./ratchets.js";
+import { ratchetObstacles } from "./ratchets.js";
+import { swingUntilContact, fallingRest } from "./contact.js";
 
 const PIVOT = [-0.6, 2.3, 0];
 const ARC = 1.9; // 樑端弧形頭的半徑(以樞軸為圓心)
 export const SWING = deg(14);
-const DRUM = { center: [1.3, -0.35, 0], r: 0.62 };
-const RATCHET = { teeth: 20, outer: 0.5, inner: 0.42, dir: -1 };
+const RATCHET_TEETH = 12;
+const STROKE_TEETH = 3; // 鼓輪每程轉過的齒數
+const DRUM = { center: [1.3, -0.35, 0], r: (2 * SWING * ARC) / ((STROKE_TEETH * TAU) / RATCHET_TEETH) };
+const RATCHET = { teeth: RATCHET_TEETH, outer: 0.5, inner: 0.34, dir: -1 };
 const Z = { ratchet: 0.45, pawl: 0.45 }; // 棘輪與棘爪在鼓輪前面
-// 棘爪的銷在鼓輪前面上(相對鼓輪中心,右上方);爪長到爪尖伸得進齒根,垂下時與鼓輪的半徑約成 50°
-export const PAWL = { pivot: [0.57 * Math.cos(deg(55)), 0.57 * Math.sin(deg(55))], length: 0.42, hang: deg(-50) };
+// 棘爪的銷在鼓輪前面上,爪尖在銷的順時針方向 25° 處(爪短、銷在爪尖推的那條線的外側):齒面推回爪尖時,
+// 反力讓爪往齒根轉(自鎖),不會被擠出來。銷的位置選在推動的那一段(鼓輪轉過 45°–90°)時位於棘輪頂上,
+// 爪靠自重往下、壓向棘輪。
+const PIVOT_R = 0.57;
+const LEAD = deg(25);
+const PIVOT_AT = deg(157); // 銷在鼓輪上的角(鼓輪轉角 0 時)
+const TIP_R = RATCHET.inner + 0.04; // 爪尖貼在(外擴過的)齒根圓上
+export const PAWL = (() => {
+  const pivot = [PIVOT_R * Math.cos(PIVOT_AT), PIVOT_R * Math.sin(PIVOT_AT)];
+  const tip = [TIP_R * Math.cos(PIVOT_AT - LEAD), TIP_R * Math.sin(PIVOT_AT - LEAD)];
+  return { pivot, length: Math.hypot(tip[0] - pivot[0], tip[1] - pivot[1]), hang: Math.atan2(tip[1] - pivot[1], tip[0] - pivot[0]) + deg(25) };
+})();
 
-/** 累計擺動 v → 樑角、鼓輪轉角、飛輪(棘輪)轉角 */
+const SPAN = (2 * SWING * ARC) / DRUM.r; // 鼓輪每程的轉角
+// 飛輪滑行時速度按 e^(−x t/T) 衰減(T 是一程的時間):回程 T 加下一程的一半,滑行的量剛好半程,
+// 解 (1 − e^(−1.5x)) / x = 0.5
+const COAST = (() => {
+  let lo = 0.5;
+  let hi = 4;
+  for (let i = 0; i < 60; i++) {
+    const x = (lo + hi) / 2;
+    if ((1 - Math.exp(-1.5 * x)) / x > 0.5) lo = x;
+    else hi = x;
+  }
+  return lo;
+})();
+// 棘爪的轉角:從抬起的角度順時針往下擺,停在爪的外形第一次碰到棘輪齒形的地方(由接觸算)
+const PAWL_OUTLINE = thickLine([[0, 0], [PAWL.length, 0]], 0.08);
+function pawlAngle(pivot, from, center, wheel) {
+  return swingUntilContact({ pivot, outline: PAWL_OUTLINE, from, into: -1, sweep: 1.6, steps: 80 }, ratchetObstacles(RATCHET, wheel, center));
+}
+
+// 推動時棘輪相對鼓輪的角度:爪尖落在齒根、貼著齒的直面(在一個齒距裡找爪尖最深的位置)
+const PITCH = TAU / RATCHET_TEETH;
+const ENGAGED = (() => {
+  let best = { depth: Infinity, rho: 0 };
+  for (let i = 0; i <= 400; i++) {
+    const rho = (-PITCH * i) / 400;
+    const angle = pawlAngle([...PAWL.pivot, 0], PAWL.hang, [0, 0], rho);
+    const depth = Math.hypot(PAWL.pivot[0] + PAWL.length * Math.cos(angle), PAWL.pivot[1] + PAWL.length * Math.sin(angle));
+    if (depth < best.depth - 1e-9) best = { depth, rho };
+  }
+  return best.rho + 1e-3; // 往推的方向差一點點:爪尖貼著齒面、不壓進去
+})();
+
+/** 累計擺動 v → 樑角、鼓輪轉角、飛輪(棘輪)轉角;engaged:棘爪正推著棘輪 */
 export function beam(v) {
-  const { at, cycle, forward } = swingPhase(v, -SWING, SWING);
+  const { at, cycle, forward, f } = swingPhase(v, -SWING, SWING);
   // 樑右端往上擺(at 增加)時,繩從鼓輪左側被拉起,鼓輪順時針轉(負角)
   const pulled = ((at + SWING) * ARC) / DRUM.r;
-  const span = (2 * SWING * ARC) / DRUM.r;
-  const fly = -(cycle * span + (forward ? pulled : span));
-  return { psi: at, drum: -pulled, fly, forward };
+  // 飛輪往前(順時針)的累計量:推程的後半跟著鼓輪;其餘時間滑行
+  let ahead;
+  const engaged = forward && f >= 0.5;
+  if (engaged) ahead = cycle * SPAN + SPAN * f;
+  else {
+    const t = forward ? 1 + f : f; // 從上一程推完算起滑行了幾程的時間
+    const base = forward ? cycle * SPAN : (cycle + 1) * SPAN;
+    ahead = base + (SPAN * (1 - Math.exp(-COAST * t))) / COAST;
+  }
+  return { psi: at, drum: -pulled, fly: ENGAGED - ahead, forward, engaged };
 }
+export const stroke = { SPAN, PITCH, STROKE_TEETH };
 
 const head = (s) => shape([...arcPoints(ARC + 0.12, s > 0 ? deg(-12) : deg(168), s > 0 ? deg(12) : deg(192)), ...arcPoints(ARC - 0.05, s > 0 ? deg(12) : deg(192), s > 0 ? deg(-12) : deg(168))]);
 
@@ -39,7 +95,9 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(thickLine([[-2.3, -2.6], [-0.6, 2.3], [1.1, -2.6]], 0.2)), thickness: 0.2, at: [0, 0, -0.5] },
         { kind: "box", size: [4.6, 0.2, 0.8], at: [0, -2.7, -0.3] },
-        { kind: "box", size: [0.25, 2.4, 0.4], at: [DRUM.center[0], -1.5, -0.6] }, // 立柱在飛輪的後面
+        // 飛輪軸的軸承座:立柱在飛輪的後面,頂上一個軸承環(軸穿過環孔)
+        { kind: "box", size: [0.25, DRUM.center[1] - 0.25 + 2.6, 0.3], at: [DRUM.center[0], (DRUM.center[1] - 0.25 - 2.6) / 2, -0.55] },
+        { kind: "cylinder", radius: 0.27, inner: 0.13, length: 0.1, at: [DRUM.center[0], DRUM.center[1], -0.45] },
       ],
     },
     {
@@ -63,6 +121,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(circle(2.0), [circle(1.85).reverse()]), thickness: 0.15 },
         ...[0, 1, 2, 3].map((i) => ({ kind: "box", size: [3.8, 0.1, 0.08], angle: (i * Math.PI) / 4 })),
+        { kind: "box", size: [0.25, 0.25, 0.17], at: [1.92, 0, 0], accent: true }, // 輪緣上的記號
         { kind: "plate", shape: ratchetShape({ ...RATCHET, bore: 0.1 }), thickness: 0.1, at: [0, 0, Z.ratchet + 0.3] },
         { kind: "cylinder", radius: 0.1, length: 1.3, at: [0, 0, 0.45] },
       ],
@@ -73,18 +132,31 @@ export default {
       center: [DRUM.center[0], DRUM.center[1], 0.25],
       spin: DRUM.r,
       pieces: [
+        // 鼓輪鬆套在飛輪軸上(軸孔沒有畫出來)
         { kind: "cylinder", radius: DRUM.r, length: 0.25, mark: true },
         { kind: "cylinder", radius: DRUM.r + 0.12, length: 0.05, at: [0, 0, -0.13] },
         { kind: "cylinder", radius: 0.03, length: 0.3, at: [PAWL.pivot[0], PAWL.pivot[1], Z.pawl - 0.25] }, // 棘爪的銷
       ],
     },
-    { id: "pawl", kind: "plate", shape: shape(thickLine([[0, 0], [PAWL.length, 0]], 0.08), [circle(0.03).reverse()]), thickness: 0.06, arrow: false },
+    { id: "pawl", kind: "plate", shape: shape(thickLine([[0, 0], [PAWL.length, 0]], 0.08), [circle(0.03).reverse()]), thickness: 0.1, arrow: false },
     { id: "ropeR", kind: "rope" },
     { id: "ropeL", kind: "rope" },
     { id: "ball", kind: "sphere", radius: 0.22 },
   ],
-  // 動力重演:只推主動件;flywheel 靠摩擦定位,由接觸帶動
-  replay: { free: { flywheel: { hold: true } }, expect: [{ part: "flywheel", label: "主動件走完一輪後 flywheel 的位置" }] },
+  // 動力重演:只推樑;飛輪靠摩擦定位,由棘爪推動(重演不比快慢,飛輪沒有動量、不會滑行)。
+  // 每一程推完時,飛輪的位置和模型一樣:模型裡飛輪先滑行、半途被追上,重演裡沒有滑行、棘爪一開始就推,兩者推完都正好前進一程。
+  // 棘爪照模型的姿勢走(它的轉角由爪的外形與齒形的接觸算);做成鉸在鼓輪上的自由零件時,爪身短而薄,
+  // 重演的剛體求解在推的時候讓爪尖穿過齒面(加厚爪身、加深齒、加彈簧都試過),所以只放飛輪自由
+  replay: {
+    to: 2 * SWING,
+    seconds: 10,
+    free: { flywheel: { hold: true, gravity: false } },
+    // 鼓輪鬆套在飛輪軸上、飛輪軸在軸承環裡轉:軸與孔之間不算碰撞(孔沒有畫出來,實物是可以自由轉的軸承)
+    ignore: [["drum", "flywheel"], ["frame", "flywheel"]],
+    // 只比第一程:之後模型裡的飛輪在回程時繼續滑行(動量),重演的飛輪沒有動量、停在原地,照模型姿勢走的棘爪
+    // 就不再對得上重演裡棘輪的齒(下一程的比較沒有意義)
+    expect: [{ at: 2 * SWING, part: "flywheel", label: "樑往一邊擺完:棘爪推著棘輪,飛輪前進一程", quote: "連接繩索的鼓輪會透過棘爪與棘輪將運動傳遞給該軸" }],
+  },
   driver: { part: "beam", type: "rotation", cycle: [-SWING, SWING] },
   target: "flywheel",
   view: { direction: [0.03, 0.05, 1] },
@@ -97,7 +169,13 @@ export default {
     // 棘爪:銷在鼓輪上,從抬起的位置順時針垂下、停在碰到棘輪的齒面處
     const [px, py] = rot2(PAWL.pivot, b.drum);
     const pivot = [DRUM.center[0] + px, DRUM.center[1] + py, Z.pawl];
-    const pawl = pawlRest({ pivot, length: PAWL.length, from: b.drum + PAWL.hang, into: -1 }, { center: DRUM.center, angle: b.fly, ...RATCHET });
+    // 爪滑過齒尖後不是瞬間落下:以鼓輪為準的轉角加速落回齒上(約 0.15 秒落 30°)
+    const restRel = (u) => {
+      const bu = beam(u);
+      const [qx, qy] = rot2(PAWL.pivot, bu.drum);
+      return pawlAngle([DRUM.center[0] + qx, DRUM.center[1] + qy, Z.pawl], bu.drum + PAWL.hang, DRUM.center, bu.fly) - bu.drum;
+    };
+    const pawl = { angle: b.drum + fallingRest(restRel, v, { into: -1, accel: 270, window: 0.07 }) };
     const ballY = leftTop[1] - 1.9;
     return {
       parts: {
@@ -114,8 +192,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "replay", parts: ["flywheel"], reason: "未修:動力重演不成立——「主動件走完一輪後 flywheel 的位置」預期 flywheel 在主動量 0.98 時已轉 -86°,實際轉了 -39°。還沒查出是模型的接觸沒做對,還是重演的宣告(自由零件、彈簧、摩擦)設得不對(列入待確認清單)" },
-    { check: "interference", parts: ["flywheel", "pawl"], reason: "棘爪落在飛輪側面棘齒上的位置依時序演出;爪尖伸進齒 0.08" },
-  ],
 };

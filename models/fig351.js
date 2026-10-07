@@ -4,6 +4,7 @@
 // 它還托在上一個齒條齒的下面,一邊往上轉一邊退出齒條,桿再被托高一點(近似仍照節圓滾動),
 // 直到齒尖退出齒條的齒頂線(EXIT,由齒頂半徑與齒條齒頂線算)才滑脫;然後桿加速落到底
 // (jumps.falling,約 0.5 秒),等缺齒段轉過去、有齒段再進來把它抬起。
+// 導座與小齒輪的軸裝在後面的背板上(推斷,原圖沒畫機架)。
 import { TAU, deg } from "./kit.js";
 import { circularPitch } from "./gears.js";
 import { gearSize } from "./shapes.js";
@@ -60,7 +61,7 @@ export default {
       width: 0.25,
       bore: 0.1,
       toothed: TEETH,
-      pieces: [{ kind: "cylinder", radius: 0.08, length: 0.8 }],
+      pieces: [{ kind: "cylinder", radius: 0.08, length: 1.0, at: [0, 0, -0.1] }],
     },
     {
       id: "stamp",
@@ -78,10 +79,14 @@ export default {
     },
     // 導槽在桿的左側,整個行程裡桿都在兩個導槽之間
     { id: "guides", kind: "group", // 兩個導座各是一塊背板加左側的擋塊(右側是小齒輪;凸塊貼著背板與擋塊上下通過)
-      pieces: [1.05, 1.85].flatMap((y) => [
+      pieces: [
+        // 機架的背板:托著兩個導座與小齒輪的軸(推斷,原圖沒畫)
+        { kind: "box", size: [2.4, 6.2, 0.1], at: [-0.55, -0.6, -0.535] },
+        ...[1.05, 1.85].flatMap((y) => [
         { kind: "box", size: [0.15, 0.5, 0.5], at: [RACK_X - 0.42 - 0.52, y, 0] },
-        { kind: "box", size: [1.1, 0.5, 0.15], at: [RACK_X - 0.42 - 0.05, y, -0.31] },
-      ]) },
+        { kind: "box", size: [1.1, 0.5, 0.25], at: [RACK_X - 0.42 - 0.05, y, -0.36] },
+        ]),
+      ] },
   ],
   // 動力重演:只推缺齒小齒輪;桿在導座裡自由上下,靠自重落下
   replay: { from: 0, to: -2 * Math.PI, free: { stamp: { slide: [0, 1, 0], limits: [0, 3.6] } }, ignore: [["stamp", "guides"]], expect: [{ at: -5.4, part: "stamp", label: "有齒段把桿抬高" }, { at: -2 * Math.PI, part: "stamp", label: "齒脫離齒條後桿落到底" }] },
@@ -94,6 +99,6 @@ export default {
     return { parts: { pinion: { angle: theta }, stamp: { position: [RACK_X, lift + BASE, 0] } }, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["pinion", "stamp"], reason: "搗桿被缺齒小齒輪抬起的過程依時序演出,不逐點算齒與凸塊的接觸;重疊 0.07(96 個取樣中 14 個)" },
+    { check: "interference", parts: ["pinion", "stamp"], reason: "簡化齒形:缺齒小齒輪的第一齒進入、最後一齒退出齒條時,梯形齒的齒側與齒條的齒擦到 0.07(96 個取樣中 14 個);齒在齒條裡時桿照節圓滾動上升(齒輪咬合),最後一齒退出後才滑脫落下(動力重演確認抬起與落下都由接觸發生)" },
   ],
 };

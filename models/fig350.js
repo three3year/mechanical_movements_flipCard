@@ -1,7 +1,8 @@
 // 第 350 種:橫移(往復)運動。一根槓桿上下各開一道溝槽:上溝槽裡的銷是靜止的(固定在立柱上),
 // 下溝槽裡的銷沿水平虛線來回移動;槓桿因此繞上銷擺動並沿它滑動,槓桿中間與桿相連,把橫移運動傳給桿,
 // 桿在兩個導件 a、a 內左右往復。主動件是下溝槽裡的銷(沿水平虛線往復)。
-// 推斷:槓桿與桿的連接點在槓桿中段(原圖);銷的行程。
+// 推斷:槓桿與桿的連接點在槓桿中段(原圖);銷的行程。下銷裝在一個沿水平導軌滑動的滑塊上、導件 a、a 以腳座
+// 接在機架的橫條上(原圖只畫出銷與導件)。
 import { clamp } from "./kit.js";
 import { shape, rect, stadium, thickLine } from "./shapes.js";
 
@@ -35,18 +36,23 @@ export default {
       kind: "group",
       pieces: [
         { kind: "plate", shape: shape(rect(0.6, 2.2, TOP[0] - 0.2, 0.35)), thickness: 0.3, at: [0, 0, -0.35] },
-        { kind: "box", size: [4.2, 0.18, 0.4], at: [-0.2, -0.65, -0.35] },
+        { kind: "box", size: [5.4, 0.18, 0.4], at: [-0.1, -0.65, -0.35] },
         { kind: "cylinder", radius: 0.1, length: 0.7, at: TOP },
         // 導件 a、a
         { kind: "box", size: [0.2, 0.45, 0.45], at: [-2.5, ROD_Y, 0] },
         { kind: "box", size: [0.2, 0.45, 0.45], at: [2.3, ROD_Y, 0] },
+        ...[-2.5, 2.3].map((x) => ({ kind: "box", size: [0.2, 0.25, 0.6], at: [x, -0.55, -0.15] })),
+        // 下銷滑塊的水平導軌,兩端吊在機架的橫條上
+        { kind: "box", size: [3.1, 0.12, 0.3], at: [-0.5, -1.22, -0.15] },
+        ...[-1.95, 0.95].map((x) => ({ kind: "box", size: [0.15, 0.62, 0.15], at: [x, -0.92, -0.42] })),
+        ...[-1.95, 0.95].map((x) => ({ kind: "box", size: [0.15, 0.15, 0.4], at: [x, -1.22, -0.3] })),
       ],
     },
     { id: "labelA1", kind: "group", center: [-2.5, ROD_Y, 0], label: "a", labelOffset: [0, 0.45, 0.3] },
     { id: "labelA2", kind: "group", center: [2.3, ROD_Y, 0], label: "a", labelOffset: [0, 0.45, 0.3] },
     { id: "rod", kind: "group", pieces: [{ kind: "cylinder", axis: [1, 0, 0], radius: 0.1, length: 5.4 }, { kind: "box", size: [0.22, 0.32, 0.22], at: [0, 0, 0.12] }] },
     { id: "lever", kind: "plate", shape: lever, thickness: 0.1, arrow: false },
-    { id: "pinLow", kind: "cylinder", radius: 0.09, length: 0.6 },
+    { id: "pinLow", kind: "cylinder", radius: 0.09, length: 0.6, pieces: [{ kind: "box", size: [0.34, 0.24, 0.3], at: [0, -0.185, -0.45] }, { kind: "box", size: [0.12, 0.12, 0.12], at: [0, -0.07, -0.33] }] }, // 下銷立在滑塊上
   ],
   driver: { part: "pinLow", grips: ["lever"], type: "translation", direction: [1, 0, 0], range: RANGE, initial: 0 },
   target: "rod", // 左右往復的桿
