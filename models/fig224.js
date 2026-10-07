@@ -82,8 +82,8 @@ export default {
     {
       id: "bearings",
       kind: "group",
-      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進軸承座,軸承座立在同一塊底板上
-      pieces: [[0, 0], [0, 1.3687325105903]].flatMap(([x, y]) => [
+      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進一座落地的軸承座
+      pieces: [[0, 0], D].flatMap(([x, y]) => [
         { kind: "cylinder", radius: 0.1, length: 0.69, at: [x, y, -0.245] },
         ...pedestal({ at: [x, y], z: -0.59, bore: 0.1, floor: -2.89, depth: 0.2 }),
       ]),

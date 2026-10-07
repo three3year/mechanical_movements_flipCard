@@ -21,8 +21,6 @@ export function pitman(phi) {
   return { m, r, p };
 }
 
-/** 第二曲柄轉 phi:往復動力的搖桿(從樞軸 BEAM 指向抽送桿右端)的轉角 */
-export const leverAngle = (phi) => angleOf(BEAM, pitman(phi).r);
 export const ROD_LENGTH = ROD;
 /** 主動量 v:第二曲柄的轉角 */
 export const secondAngle = (v) => v;

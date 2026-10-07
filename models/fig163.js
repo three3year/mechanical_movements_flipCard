@@ -167,7 +167,7 @@ export default {
         { kind: "box", size: [0.12, 0.05, SHIFTER.z - FORK_Z + 0.25], at: [0, FORK_OFFSET - 0.13, (FORK_Z - 0.25 - SHIFTER.z) / 2] },
       ],
     },
-    { id: "farUpper", kind: "group", axis: Y, center: [FAR.x, 0, 0], spin: FAR.r, pieces: [{ kind: "cylinder", radius: FAR.r, length: 0.3, at: [0, 0, PULLEYS.upper], mark: true }, { kind: "cylinder", radius: 0.06, length: PULLEYS.upper - TOP_Y < 0 ? TOP_Y - PULLEYS.lower + 0.2 : 1, at: [0, 0, (TOP_Y + PULLEYS.lower) / 2 + 0.1] }, gearPiece(G.a, TOP_Y)] },
+    { id: "farUpper", kind: "group", axis: Y, center: [FAR.x, 0, 0], spin: FAR.r, pieces: [{ kind: "cylinder", radius: FAR.r, length: 0.3, at: [0, 0, PULLEYS.upper], mark: true }, { kind: "cylinder", radius: 0.06, length: TOP_Y - PULLEYS.lower + 0.2, at: [0, 0, (TOP_Y + PULLEYS.lower) / 2 + 0.1] }, gearPiece(G.a, TOP_Y)] },
     { id: "farMiddle", kind: "cylinder", axis: Y, center: [FAR.x, PULLEYS.middle, 0], radius: FAR.r, length: 0.3, mark: true, arrow: false },
     { id: "farLower", kind: "group", axis: Y, center: [FAR.x, 0, 0], spin: FAR.r, arrow: false, pieces: [{ kind: "cylinder", radius: FAR.r, length: 0.3, at: [0, 0, PULLEYS.lower], mark: true }, { kind: "cylinder", radius: 0.1, inner: 0.06, length: PULLEYS.lower - BOTTOM_Y, at: [0, 0, (PULLEYS.lower + BOTTOM_Y) / 2] }, gearPiece(G.b, BOTTOM_Y)] },
     { id: "idler", kind: "gear", center: G.idler.center, axis: Y, teeth: 8, radius: 0.2, width: 0.12 },

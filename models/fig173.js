@@ -11,10 +11,9 @@
 // → T 形桿(在撥爪輪掃過的範圍之外,銷穿進它的直槽)。固定銷照原文是機架上的一支銷,碰撥爪輪的上半齒:
 // 這裡在圓盤右側立一片機架板(有小齒輪軸的軸承孔,下方開一道槽讓 T 形桿的橫臂穿過、兼作導座),
 // 固定銷由機架板伸出的托架上沿徑向伸到撥爪輪上方。不改齒數、螺距、行程。
-import { deg, polar, add, X, Z, TAU, quatAxisAngle, quatMul, quatFromZ, screwAdvance } from "./kit.js";
+import { deg, polar, add, sub, X, Z, TAU, quatAxisAngle, quatMul, quatFromZ, quatRotate, screwAdvance } from "./kit.js";
 import { meshAngle } from "./gears.js";
 import { shape, circle, rect, gearProfile } from "./shapes.js";
-import { quatRotate, sub } from "./kit.js";
 import { polygonsOverlap, circlePolygon } from "./contact.js";
 
 const CENTER = [0, 0, 0];
@@ -34,7 +33,7 @@ const CONTACT = [CROWN.radius - 0.15, 0, -0.2 - 0.28];
 
 // z 分層(由後往前):圓盤面 −0.06 → 底板 −0.06–0.04、軸承塊到 0.335 → 螺桿軸心 0.2 → 撥爪輪齒尖到 0.6 → T 形桿 0.65–0.75
 const SCREW_Z = 0.2;
-const PIN_Z = SCREW_Z + 0.40; // 固定銷的高度:銷的下緣在撥爪輪齒根(0.22)之上、上緣在齒尖(0.40)之下
+const PIN_Z = SCREW_Z + 0.40; // 固定銷的高度:銷的中心在撥爪輪的齒尖半徑(0.40)上,只碰得到齒的上半段,齒尖轉到銷的高度以下就滑過去
 const PIN_R = 0.05;
 
 // 撥爪輪與固定銷的接觸:把銷換到螺桿(不含自轉)的局部座標,在撥爪輪那一層的平面上,銷的截面是一個圓,

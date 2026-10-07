@@ -9,7 +9,7 @@
 // 所以一個被推著轉時,另一個反向轉。
 // 立體化:銷裝在從調速器套筒往下伸的套管上,套管穿過上齒輪的軸孔(上齒輪鬆套在套管上)。這段套管與頂部、
 // 左側兩根軸的軸承是推斷(原圖看不出銷怎麼接到套筒)。
-import { Y, X, TAU, deg } from "./kit.js";
+import { Y, X, TAU, deg, wrap } from "./kit.js";
 import { flyBall } from "./governor.js";
 
 const GOV = flyBall({ top: 2.9, arm: 1.95, at: 1.0, link: 1.25, ball: 0.4, range: [deg(16), deg(46)], below: true });
@@ -34,7 +34,6 @@ export const studs = STUD;
 // 逐步推算:G 是上齒輪的轉角(下齒輪 −G,水平軸跟著轉);銷升到凸柱那一層後,轉到凸柱就推著它走。
 // 銷要升進那一層時若正好在凸柱的正下方(或正上方),會被凸柱擋住,等轉過凸柱才升上去(這段時間銷的高度被壓住,
 // 銷升降很慢,壓住的量不到 0.01)
-const wrap = (a) => ((a % TAU) + TAU) % TAU;
 function simulate(p0, p1, G0) {
   let G = G0;
   let inUpper = false;

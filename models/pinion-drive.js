@@ -5,7 +5,7 @@
 
 /**
  * fixed:驅動軸固定端(萬向接頭)的位置;floor:立柱落地的高度。
- * 回傳 { part(驅動軸的零件), pieces(機架上軸承與立柱的群組 pieces), pose(小齒輪前端的位置) }。
+ * 回傳 { part(驅動軸的零件), joint(小齒輪端的萬向接頭), pieces(機架上軸承與立柱的群組 pieces), pose(小齒輪前端的位置) }。
  */
 export function pinionDrive({ fixed, floor }) {
   return {

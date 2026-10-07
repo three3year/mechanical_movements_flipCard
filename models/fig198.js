@@ -75,9 +75,9 @@ export default {
       kind: "group",
       pieces: [
         // 後面的底板:滾子的軸與小齒輪的軸承都立在它上面(推斷,原圖只畫出滾子與小齒輪)
-        { kind: "box", size: [6.6, 4.8, 0.1], at: [-0.30000000000000004, 0.0, -0.95] },
-        ...ROLLERS.map(([x, y]) => ({ kind: "cylinder", radius: 0.055, length: 0.8, at: [x, y, -0.5499999999999999] })),
-        { kind: "cylinder", radius: 0.2, inner: 0.07, length: 0.2, at: [PINION[0], PINION[1], -0.7999999999999999] },
+        { kind: "box", size: [6.6, 4.8, 0.1], at: [-0.3, 0, -0.95] },
+        ...ROLLERS.map(([x, y]) => ({ kind: "cylinder", radius: 0.055, length: 0.8, at: [x, y, -0.55] })),
+        { kind: "cylinder", radius: 0.2, inner: 0.07, length: 0.2, at: [PINION[0], PINION[1], -0.8] },
       ],
     },
   ],
