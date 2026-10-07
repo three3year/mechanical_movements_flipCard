@@ -1,7 +1,7 @@
 // 第十二章「接頭與器具」:斷言對應原文
-import { penetrationDepth } from "../models/contact.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { penetrationDepth } from "../models/contact.js";
 import { close, turned } from "./helpers.js";
 
 import fig243, { turns as turns243 } from "../models/fig243.js";
@@ -204,24 +204,42 @@ test("第 253 種:鼓輪轉得危險地快時,鉤子因離心力往外甩出,鉤
   }
 });
 
-test("第 277 種:把擊錘往後扳起時,爪 a 推轉輪背面的棘齒 b,轉輪轉過一個膛室;擊錘落下時轉輪不動", () => {
+test("第 277 種:把擊錘往後扳起時,爪 a 推轉輪背面的棘齒 b,轉輪轉過一個膛室;擊錘落下時轉輪不動(由接觸算)", () => {
   const step = (2 * Math.PI) / m277.CHAMBERS;
   const cocked = m277.colt(m277.COCK);
-  close(cocked.cylinder, -step, "扳起一次轉一格", 1e-12);
+  close(cocked.cylinder, -step, "扳起一次轉一格", 1e-9);
   assert.ok(cocked.pin[1] > m277.colt(0).pin[1], "扳起時爪往上推");
-  close(m277.colt(2 * m277.COCK).cylinder, -step, "擊錘落下時轉輪不動", 1e-12);
+  close(m277.colt(2 * m277.COCK).cylinder, -step, "擊錘落下時轉輪不動", 1e-9);
+  const hands = sweep(2 * m277.COCK, 60, m277.COCK).map((v) => m277.colt(v).hand);
+  assert.ok(Math.max(...hands) - Math.min(...hands) > 0.08, "落下時爪被齒背頂開、滑過齒尖(原文:爪 a 由彈簧 c 頂住棘齒)");
+  for (const v of sweep(4 * m277.COCK, 120)) {
+    const { hand, teeth } = m277.contactAt(v);
+    for (const t of teeth) assert.ok(penetrationDepth(hand, t) < 2e-3, `主動量 ${v.toFixed(3)}:爪不穿進棘齒`);
+  }
 });
 
 test("第 278 種:平台升降時棘爪縮在棘齒外;繩索斷裂時彈簧壓下 b,棘爪 d 被推進棘齒,阻止平台下降", () => {
-  const { face, toothTip, B_UP, B_DOWN, pitch } = m278.geometry;
+  const { toothTip, B_UP, pitch, P } = m278.geometry;
   assert.ok(m278.pawlReach(B_UP) < toothTip, "繩拉著時棘爪不碰棘齒");
-  const reach = m278.pawlReach(B_DOWN);
-  assert.ok(reach > toothTip && reach <= face, "斷繩後棘爪進到棘齒之間");
-  for (const v of sweep(2.2, 20)) {
-    const intact = m278.platform(v, false).top;
-    const broken = m278.platform(v, true).top;
-    assert.ok(broken <= intact + 1e-9 && intact - broken < pitch, "斷繩時平台只落到下方最近的棘齒");
+  for (const p of sweep(P.brk - 0.01, 40)) {
+    const { top, b } = m278.story(p);
+    assert.ok(m278.pawlAt(top, b).joint + 0.15 < toothTip, `進程 ${p.toFixed(2)}:升降時棘爪縮著`);
   }
+  // 斷繩後:平台憑自重加速落下(每段落得比上一段多),落到棘齒上就停住
+  const { T_LAND, top: landed } = m278.landing;
+  const tops = [0, 1, 2, 3].map((k) => m278.story(P.brk + (k * T_LAND) / 3).top);
+  assert.ok(tops[1] - tops[2] > tops[0] - tops[1] && tops[2] - tops[3] > tops[1] - tops[2], "斷繩後加速落下");
+  const top0 = m278.story(P.brk).top;
+  assert.ok(top0 - landed < 2 * pitch, "只落到下方最近的棘齒");
+  for (const p of [P.brk + T_LAND + 0.01, (P.brk + P.mend) / 2, P.mend - 0.001]) {
+    const s = m278.story(p);
+    close(s.top, landed, "落到棘齒上就不再下降");
+    assert.ok(m278.pawlAt(s.top, s.b).joint + 0.15 > toothTip, "棘爪 d 被推進棘齒之間");
+  }
+  // 換上新繩後:繩拉緊、棘爪縮回,平台放回起點,整段連續(下一輪從同一個位置開始)
+  const after = m278.story(P.tight);
+  assert.ok(m278.pawlAt(after.top, after.b).joint + 0.15 < toothTip, "繩拉緊後棘爪縮回");
+  close(m278.story(0.99999).top, m278.story(0).top, "一輪結束時回到起點", 1e-6);
 });
 
 test("第 244 種:測功計:軸轉動時輪 A 在木塊間轉,槓桿 D 由擋止 C、C' 限制;夾緊程度剛好時槓桿呈水平", () => {
@@ -394,6 +412,13 @@ test("第 280 種:短槓桿外端往上時夾住輪緣、帶動輪轉;往下推�
   close(down.block, FROM, "夾具滑回原位");
   const ws = sweep(6 * span, 300).map((v) => m280.capstan(v).wheel);
   assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-12), "輪只朝一個方向轉");
+  close(span / m280.geometry.pitch, 2, "每程棘輪轉過整兩齒,止回爪落回齒間");
+  const pawl = sweep(span, 120).map(m280.pawlAngle);
+  assert.ok(Math.max(...pawl) - Math.min(...pawl) > 0.05, "輪轉動時止回爪被齒背頂起、越過齒尖後落下");
+  for (const v of sweep(2 * span, 120)) {
+    const { pawl: p, teeth } = m280.contactAt(v);
+    for (const t of teeth) assert.ok(penetrationDepth(p, t) < 2e-3, `主動量 ${v.toFixed(3)}:止回爪不穿進棘齒`);
+  }
 });
 
 test("第 281 種:圓盤旋轉,槽內的銷使右側的槓桿振動(銷始終在槽裡)", () => {
@@ -414,6 +439,9 @@ test("第 283 種:手柄振動,經小齒輪使齒條上下移動;齒條移動量
   const a = 0.5;
   close(m283.rack(a) - m283.rack(0), 0.55 * a * Math.sign(m283.rack(a) - m283.rack(0)), "位移 = 節圓半徑 × 轉角", 1e-9);
   assert.ok(m283.rack(-0.5) < m283.rack(0) === m283.rack(0.5) > m283.rack(0), "手柄來回,齒條上下");
+  const def = m283.default;
+  const y = (v, id) => def.pose(v).parts[id].position[1];
+  close(y(0.5, "rackL") - y(0, "rackL"), -(y(0.5, "rack") - y(0, "rack")), "兩側的齒條反向移動同樣的量(兩缸輪流抽氣)");
 });
 
 test("第 284 種:曲柄每轉一圈,卡榫推棘輪前進一段,小齒輪帶平台的齒條前進;接點越遠進料越慢", () => {
@@ -425,6 +453,19 @@ test("第 284 種:曲柄每轉一圈,卡榫推棘輪前進一段,小齒輪帶平
   assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-9), "棘輪只往前");
   assert.ok(ws.slice(1).some((w, i) => w === ws[i]), "回程時棘輪不動");
   close(m284.feed(4 * Math.PI, "slow").carriage - m284.feed(0, "slow").carriage, -2 * slow.step * 0.42, "平台位移 = 小齒輪轉角 × 節圓半徑", 1e-9);
+  // 每程推過幾齒由卡榫與齒相碰算出:進料慢一齒、進料快兩齒
+  close(slow.step / m284.geometry.PITCH, 1, "進料慢:每轉一齒");
+  close(fast.step / m284.geometry.PITCH, 2, "進料快:每轉兩齒");
+  for (const state of ["slow", "fast"])
+    for (const t of sweep(2 * Math.PI, 120)) {
+      const { catch: c, click, teeth } = m284.contactAt(t, state);
+      for (const tooth of teeth) {
+        assert.ok(penetrationDepth(c, tooth) < 2e-3, `${state} 曲柄 ${t.toFixed(3)}:卡榫不穿進棘齒`);
+        assert.ok(penetrationDepth(click, tooth) < 2e-3, `${state} 曲柄 ${t.toFixed(3)}:止回爪不穿進棘齒`);
+      }
+    }
+  const clicks = sweep(2 * Math.PI, 120).map((t) => m284.feed(t, "slow").clickAngle);
+  assert.ok(Math.max(...clicks) - Math.min(...clicks) > 0.05, "棘輪轉動時止回爪被齒背頂起、再落回齒間");
 });
 
 test("第 271 種:裝有兩根棘爪的槓桿振動時,棘齒桿得到近乎連續的直線運動(由接觸算)", () => {
@@ -450,7 +491,8 @@ test("第 274 種:轉速越快,球 K 沿拋物線臂 B 升得越高,桿 F 把套
   assert.ok(hi.sleeve > lo.sleeve, "套筒上升");
   for (const s of sweep(10, 10)) {
     const g = m274.governor(s);
-    close(g.y, m274.parabola(g.x), "輪 L 始終在拋物線上");
+    close(Math.hypot(g.x - g.contact, g.y - m274.parabola(g.contact)), m274.geometry.WHEEL_R, "輪 L 始終貼著臂 B 的拋物線曲面");
+    assert.ok(g.y > m274.parabola(g.x), "輪 L 壓在曲面上面(由拋物線引導)");
   }
 });
 

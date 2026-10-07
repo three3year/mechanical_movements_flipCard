@@ -1,6 +1,6 @@
 // 第 285 種:車床的可動頭(尾座,剖面)。把右邊的手輪轉動,運動傳給螺桿;螺桿旋在心軸尾端的螺帽裡,
 // 心軸不能轉、只能在套筒裡前後滑,於是作直線運動;頂尖固定在心軸的左端。主動件是手輪。
-// 推斷:手輪往右轉(順時針,從右邊看)時心軸往左伸出;螺距。
+// 推斷:手輪往右轉(順時針,從右邊看)時心軸往左伸出;螺距;套筒右端的端蓋(螺桿的軸頸從它的孔穿出,接手輪)。
 import { X, TAU, clamp, screwAdvance } from "./kit.js";
 import { backHalf } from "./section.js";
 import { shape } from "./shapes.js";
@@ -33,6 +33,8 @@ export default {
         { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 0.7, at: [0, -1.5, -0.3] },
         // 套筒(剖開)
         { kind: "lathe", axis: X, profile: [[BARREL.inner, BARREL.from], [BARREL.outer, BARREL.from], [BARREL.outer, BARREL.to], [BARREL.inner, BARREL.to]], ...HALF, at: [0, Y0, 0] },
+        // 套筒右端的端蓋:螺桿的軸頸穿過中間的孔
+        { kind: "lathe", axis: X, profile: [[0.065, BARREL.to], [BARREL.outer, BARREL.to], [BARREL.outer, BARREL.to + 0.12], [0.065, BARREL.to + 0.12]], at: [0, Y0, 0] },
         // 套筒上的夾緊螺絲與把手
         { kind: "cylinder", axis: [0, 1, 0], radius: 0.07, length: 0.4, at: [0.1, Y0 + 0.55, 0] },
         { kind: "box", size: [0.5, 0.08, 0.12], at: [0.1, Y0 + 0.75, 0] },
@@ -47,7 +49,7 @@ export default {
         { kind: "lathe", axis: X, profile: [[0, -2.25], [0.04, -2.25], [0.2, -1.95], [0.25, -1.75], [0.25, -1.6], [0, -1.6]] },
       ],
     },
-    { id: "screw", kind: "worm", axis: X, radius: 0.1, length: 2.6, pitch: PITCH, thread: 0.035, pieces: [{ kind: "cylinder", radius: 0.06, length: 0.9, at: [0, 0, 1.7] }] },
+    { id: "screw", kind: "worm", axis: X, radius: 0.1, length: 2.0, pitch: PITCH, thread: 0.035, pieces: [{ kind: "cylinder", radius: 0.06, length: 0.8, at: [0, 0, 1.38] }] },
     {
       id: "handwheel",
       kind: "pulley",
@@ -69,7 +71,7 @@ export default {
     return {
       parts: {
         handwheel: { angle: a },
-        screw: { angle: a, position: [0.95, Y0, 0] },
+        screw: { angle: a, position: [0.7, Y0, 0] },
         spindle: { position: [-0.05 - s, Y0, 0] },
       },
       readouts: [],

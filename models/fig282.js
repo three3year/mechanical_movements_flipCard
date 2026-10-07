@@ -1,7 +1,7 @@
 // 第 282 種:固定有銷的圓盤旋轉,銷在直立桿的長槽裡作動;直立桿繞靠近底部的中心擺動,兩端都左右橫移。
 // 桿下端的齒扇形段讓底部的水平齒條桿交替地左右直線移動;桿上端經一條繩繞過右上的滑輪,
 // 吊著重物上下交替移動。主動件是圓盤。
-// 推斷:繩繞過滑輪的走法與重物的高度(依原圖)。
+// 推斷:繩繞過滑輪的走法與重物的高度(依原圖);直立桿的樞軸裝在機架後面的橫樑上;齒條的背條在底座上兩片導板之間滑動。
 import { Z, deg, routeRope } from "./kit.js";
 import { crankPin, angleOf } from "./linkage.js";
 import { rackOffset, circularPitch } from "./gears.js";
@@ -50,9 +50,13 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [4.6, 0.2, 1.0], at: [0, -2.45, 0] },
-        { kind: "plate", shape: shape(thickLine([[-2.0, -2.35], [-2.0, 2.3], [-0.5, 2.75], [1.5, 2.75], [2.2, 2.3]], 0.22)), thickness: 0.2, at: [0, 0, -0.55] },
-        { kind: "box", size: [0.22, 4.6, 0.2], at: [1.75, 0, -0.55] },
+        { kind: "box", size: [4.6, 0.2, 1.0], at: [0, -2.67, 0] },
+        // 底座上夾住齒條背條的兩片導板
+        { kind: "box", size: [4.4, 0.22, 0.06], at: [0, -2.46, 0.15] },
+        { kind: "box", size: [4.4, 0.22, 0.06], at: [0, -2.46, -0.15] },
+        { kind: "plate", shape: shape(thickLine([[-2.0, -2.57], [-2.0, 2.3], [-0.5, 2.75], [1.5, 2.75], [2.2, 2.3]], 0.22)), thickness: 0.2, at: [0, 0, -0.55] },
+        { kind: "box", size: [0.22, 4.87, 0.2], at: [1.75, -0.135, -0.55] },
+        { kind: "box", size: [3.75, 0.2, 0.2], at: [-0.125, O[1], -0.45] }, // 直立桿樞軸所在的橫樑
         { kind: "box", size: [0.5, 0.18, 0.18], at: [2.0, 2.0, 0.1] },
       ],
     },
@@ -65,7 +69,7 @@ export default {
       pieces: [
         // 有長槽的直立桿(沿局部 +x)
         { kind: "plate", shape: shape(rect(TOP + 0.4, 0.42, TOP / 2 - 0.1, 0), [rect(2.2, 0.2, 1.65 + 0.6, 0).reverse()]), thickness: 0.14, at: [0, 0, 0.19] }, // 桿頂貼著繩所在的那一層
-        { kind: "cylinder", radius: 0.12, length: 0.5 },
+        { kind: "cylinder", radius: 0.12, length: 0.6, at: [0, 0, -0.05] }, // 樞軸的轂,貼著後面的橫樑轉
       ],
     },
     { id: "sector", kind: "gear", center: O, teeth: SECTOR.teeth, radius: SECTOR.radius, span: [deg(-128), deg(-52)], width: 0.14, arrow: false },
@@ -97,7 +101,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["frame", "rack"], reason: "齒條的背條嵌在底座的導槽裡滑動(導槽沒有畫出來)" },
     { check: "interference", parts: ["sector", "rack"], reason: "簡化齒形:扇形齒與齒條的梯形齒齒側互相擦到 0.06" },
   ],
 };

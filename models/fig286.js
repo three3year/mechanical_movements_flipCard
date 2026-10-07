@@ -1,7 +1,8 @@
 // 第 286 種:蒸汽引擎提升閥的推頂子(toe)與升降器(lifter)。搖臂軸上的曲面推頂子往左伸出;
 // 升降器固定在右邊的升降桿上,往左伸到推頂子上方。搖臂軸轉動時,推頂子的曲面頂起升降器的下緣,
 // 升降桿跟著上升,把閥門抬起;搖臂軸轉回時升降器隨桿落下。主動件是搖臂軸。
-// 推斷:升降器靠桿與閥門的重量壓在推頂子上;推頂子曲面的形狀依原圖。
+// 接觸:升降桿的高度由推頂子的曲面與升降器下緣相碰算出(取曲面上頂得最高的一點);搖臂軸轉回時升降器靠自重跟著落下。
+// 推斷:升降器靠桿與閥門的重量壓在推頂子上;推頂子曲面的形狀依原圖;搖臂軸的軸承、升降桿的導套與後面的牆板(原圖沒畫)。
 import { deg, clamp, rot2 } from "./kit.js";
 import { shape, thickLine, circle } from "./shapes.js";
 
@@ -39,7 +40,20 @@ const toe = shape(
 export default {
   figure: 286,
   parts: [
-    { id: "toe", kind: "plate", center: SHAFT, shape: toe, thickness: 0.32, spin: 0.55, mark: [0.3, -0.2], markSize: 0.06, pieces: [{ kind: "cylinder", radius: 0.3, length: 0.4 }] },
+    {
+      id: "toe",
+      kind: "plate",
+      center: SHAFT,
+      shape: toe,
+      thickness: 0.32,
+      spin: 0.55,
+      mark: [0.3, -0.2],
+      markSize: 0.06,
+      pieces: [
+        { kind: "cylinder", radius: 0.3, length: 0.4 },
+        { kind: "cylinder", radius: 0.12, length: 1.25, at: [0, 0, -0.42] }, // 搖臂軸,往後穿過牆板上的軸承
+      ],
+    },
     {
       id: "lifter",
       kind: "group",
@@ -52,8 +66,27 @@ export default {
         { kind: "plate", shape: shape([[LIFTER.x0 - 1.4, LIFTER.y0 - 0.14], [ROD_X - 0.2, LIFTER.y0 + LIFTER.slope * (ROD_X - 0.2 - LIFTER.x0)], [ROD_X - 0.2, 0.7], [LIFTER.x0 - 1.35, LIFTER.y0 + 0.05]]), thickness: 0.3 },
       ],
     },
-    { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.5, 0.25, 0.3], at: [ROD_X, -1.6, -0.4] }, { kind: "box", size: [0.5, 0.25, 0.24], at: [ROD_X, 1.35, -0.43] }] },
+    {
+      id: "guide",
+      kind: "group",
+      pieces: [
+        { kind: "box", size: [2.4, 4.4, 0.1], at: [1.4, -0.6, -1.1] }, // 牆板
+        { kind: "cylinder", radius: 0.25, inner: 0.12, length: 0.2, at: [SHAFT[0], SHAFT[1], -0.95] }, // 搖臂軸的軸承
+        // 升降桿的兩個導套,各由一根托架接到牆板
+        ...[-1.6, 1.35].flatMap((y) => [
+          { kind: "cylinder", axis: [0, 1, 0], radius: 0.18, inner: 0.1, length: 0.25, at: [ROD_X, y, -0.35] },
+          { kind: "box", size: [0.12, 0.12, 0.54], at: [ROD_X, y, -0.8] },
+        ]),
+      ],
+    },
   ],
+  // 動力重演:只轉搖臂軸;升降器(連桿)沿導套滑動,靠自重壓在推頂子上,被曲面頂起
+  replay: {
+    to: RANGE[0],
+    free: { lifter: { slide: [0, 1, 0] } },
+    ignore: [["lifter", "guide"]],
+    expect: [{ part: "lifter", label: "推頂子轉上來,把升降器與升降桿頂起", quote: "搖臂軸上的曲面推頂子作用於連接在升降桿上的升降器，藉此抬起閥門" }],
+  },
   driver: { part: "toe", type: "rotation", range: RANGE, initial: 0 },
   target: "lifter", // 被頂起的升降器
   view: { direction: [0.06, 0.06, 1] },

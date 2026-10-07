@@ -15,7 +15,9 @@ import { placeOutline, polygonsOverlap } from "./contact.js";
  * pins(v):各爪樞軸的世界座標 { id: [x, y] };fixed 的推件另給 angles(v) 的 { id: 轉角 }。
  * wheel:{ obstacles(θ) → 輪在轉角 θ 時的齒(世界座標多邊形陣列,每塊的順序固定), dir(被推時的轉向 ±1), pitch, angle?(v) → 輪是主動件時的轉角, start }。
  * pawls:{ id: { outline(局部輪廓,原點在樞軸), into(±1,落下的轉向), angle(起始轉角), pushes?(布林或 (v) → 布林:這一步是不是在推), fixed?, limits?: [min, max],
- *          fall?(自靜止落下 0.3 弧度所花的主動量,預設週期的 4%), stops?(v) → 其他擋住它的多邊形 } }。
+ *          fall?(自靜止落下 0.3 弧度所花的主動量,預設週期的 4%), stops?(v) → 其他擋住它的多邊形,
+ *          lift?(推的時候爪最多被抬起的弧度,預設 0.04;長的爪要小一點,免得爪尖被抬起的距離大過齒深。
+ *          也可以給 [往下, 往上]:拉爪的樞軸斜著動時,爪尖要跟著齒的直面走,爪可能得往齒裡轉一點) } }。
  * 回傳 { at(v) → { wheel, angles: { id } }, step(被推的輪每週期前進的角度), shapes(v)(檢查用的外形) }。
  */
 export function pawlDrive({ period, samples = 480, warmup = 2, pins, angles, wheel, pawls, trace }) {
@@ -38,7 +40,9 @@ export function pawlDrive({ period, samples = 480, warmup = 2, pins, angles, whe
     const extra = p.stops?.(v) ?? [];
     const clearAt = (d) => {
       const obstacles = [...wheel.obstacles(theta + wheel.dir * d), ...extra];
-      const lifts = p.fixed ? [0] : [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1].map((k) => k * LIFT);
+      const [down, up] = Array.isArray(p.lift) ? p.lift : [0, p.lift ?? LIFT];
+      const lifts = [0];
+      if (!p.fixed) for (let k = 1; k <= 8; k++) lifts.push((up * k) / 8, (down * k) / 8);
       for (const lift of lifts) if (!hits(placed(id, v, angle - (p.into ?? 0) * lift), obstacles)) return lift;
       return null;
     };
