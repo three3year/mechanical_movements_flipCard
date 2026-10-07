@@ -5,13 +5,15 @@
 // 推斷:鼓輪反轉時由繩把它帶回(繩在鼓輪上纏繞);棘輪齒數。棘輪固定在軸上、裝在鼓輪前面,
 // 棘爪的銷立在鼓輪的前面上(右上方),棘爪靠自重垂下、爪尖落在齒根:鼓輪往前轉時爪尖頂著齒的直面推棘輪,
 // 往回轉時爪尖沿齒背滑上去、過了齒尖落進下一格(棘爪的轉角由接觸算,contact.swingUntilContact)。
-// 「連續旋轉」:飛輪不跟著鼓輪停下——鼓輪往回轉時飛輪憑動量繼續轉、越轉越慢(速度按指數衰減),
-// 下一程鼓輪往前轉到半途時棘爪追上齒的直面,再推它到這一程的終點。鼓輪每程轉過的角度剛好是 3 齒
-// (鼓輪半徑依此選定),所以棘爪每一程都在同一個相位碰上齒面;衰減率依「半途追上」算出。
+// 「連續旋轉」:飛輪不跟著鼓輪停下——鼓輪往回轉時飛輪憑動量繼續轉、越轉越慢(速度按指數衰減)。
+// 回程裡飛輪滑行不到一齒,所以下一程棘爪碰上的是它面前的第一個齒面(往回轉時爪滑過的那幾齒之後),
+// 碰上之後推到這一程的終點。鼓輪每程轉過的角度剛好是 3 齒(鼓輪半徑依此選定),每圈飛輪前進 3 齒,
+// 棘爪每一程都在同一個相位碰上齒面;碰上的時刻由「飛輪滑到的位置 = 鼓輪轉到的位置」算出。
 import { deg, swingPhase, rot2, TAU } from "./kit.js";
 import { ratchetShape, shape, circle, arcPoints, thickLine } from "./shapes.js";
 import { ratchetObstacles } from "./ratchets.js";
 import { swingUntilContact, fallingRest } from "./contact.js";
+import { solve } from "./linkage.js";
 
 const PIVOT = [-0.6, 2.3, 0];
 const ARC = 1.9; // 樑端弧形頭的半徑(以樞軸為圓心)
@@ -35,18 +37,11 @@ export const PAWL = (() => {
 })();
 
 const SPAN = (2 * SWING * ARC) / DRUM.r; // 鼓輪每程的轉角
-// 飛輪滑行時速度按 e^(−x t/T) 衰減(T 是一程的時間):回程 T 加下一程的一半,滑行的量剛好半程,
-// 解 (1 − e^(−1.5x)) / x = 0.5
-const COAST = (() => {
-  let lo = 0.5;
-  let hi = 4;
-  for (let i = 0; i < 60; i++) {
-    const x = (lo + hi) / 2;
-    if ((1 - Math.exp(-1.5 * x)) / x > 0.5) lo = x;
-    else hi = x;
-  }
-  return lo;
-})();
+// 飛輪滑行時速度按 e^(−COAST·t/T) 衰減(T 是一程的時間);衰減率取得夠大,回程裡滑行不到一齒
+const COAST = 3.5;
+const coasted = (t) => (SPAN * (1 - Math.exp(-COAST * t))) / COAST; // 推完後滑行 t 程的時間走過的量
+// 下一程從起點走到 CATCH(比例)時,鼓輪追上滑行中的飛輪:coasted(1 + f) = SPAN·f
+const CATCH = solve((f) => coasted(1 + f) - SPAN * f, 0, 0, 1);
 // 棘爪的轉角:從抬起的角度順時針往下擺,停在爪的外形第一次碰到棘輪齒形的地方(由接觸算)
 const PAWL_OUTLINE = thickLine([[0, 0], [PAWL.length, 0]], 0.08);
 function pawlAngle(pivot, from, center, wheel) {
@@ -71,18 +66,18 @@ export function beam(v) {
   const { at, cycle, forward, f } = swingPhase(v, -SWING, SWING);
   // 樑右端往上擺(at 增加)時,繩從鼓輪左側被拉起,鼓輪順時針轉(負角)
   const pulled = ((at + SWING) * ARC) / DRUM.r;
-  // 飛輪往前(順時針)的累計量:推程的後半跟著鼓輪;其餘時間滑行
+  // 飛輪往前(順時針)的累計量:棘爪追上之後跟著鼓輪;其餘時間滑行
   let ahead;
-  const engaged = forward && f >= 0.5;
+  const engaged = forward && f >= CATCH;
   if (engaged) ahead = cycle * SPAN + SPAN * f;
   else {
     const t = forward ? 1 + f : f; // 從上一程推完算起滑行了幾程的時間
     const base = forward ? cycle * SPAN : (cycle + 1) * SPAN;
-    ahead = base + (SPAN * (1 - Math.exp(-COAST * t))) / COAST;
+    ahead = base + coasted(t);
   }
   return { psi: at, drum: -pulled, fly: ENGAGED - ahead, forward, engaged };
 }
-export const stroke = { SPAN, PITCH, STROKE_TEETH };
+export const stroke = { SPAN, PITCH, STROKE_TEETH, CATCH, returnCoast: coasted(1) };
 
 const head = (s) => shape([...arcPoints(ARC + 0.12, s > 0 ? deg(-12) : deg(168), s > 0 ? deg(12) : deg(192)), ...arcPoints(ARC - 0.05, s > 0 ? deg(12) : deg(192), s > 0 ? deg(-12) : deg(168))]);
 
@@ -144,7 +139,7 @@ export default {
     { id: "ball", kind: "sphere", radius: 0.22 },
   ],
   // 動力重演:只推樑;飛輪靠摩擦定位,由棘爪推動(重演不比快慢,飛輪沒有動量、不會滑行)。
-  // 每一程推完時,飛輪的位置和模型一樣:模型裡飛輪先滑行、半途被追上,重演裡沒有滑行、棘爪一開始就推,兩者推完都正好前進一程。
+  // 每一程推完時,飛輪的位置和模型一樣:模型裡飛輪先滑行、被追上才推,重演裡沒有滑行、棘爪一開始就推,兩者推完都正好前進一程。
   // 棘爪照模型的姿勢走(它的轉角由爪的外形與齒形的接觸算);做成鉸在鼓輪上的自由零件時,爪身短而薄,
   // 重演的剛體求解在推的時候讓爪尖穿過齒面(加厚爪身、加深齒、加彈簧都試過),所以只放飛輪自由
   replay: {

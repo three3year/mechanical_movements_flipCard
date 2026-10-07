@@ -182,12 +182,13 @@ test("第 360 種:樑振動時,鼓輪經棘爪與棘輪帶動飛輪軸只朝一�
   assert.ok(back[1].drum > back[0].drum, "鼓輪反轉");
   const d = back.slice(1).map((b, i) => back[i].fly - b.fly);
   assert.ok(d[0] > d[1] && d[1] > d[2] && d[2] > 0, "滑行越來越慢");
-  // 推的時候棘輪和鼓輪鎖在一起;每一程推完正好前進一程(5 齒)
+  // 推的時候棘輪和鼓輪鎖在一起;每一程推完正好前進一程(3 齒)
   const [p1, p2] = [m360.beam(1.2 * S), m360.beam(1.8 * S)];
   assert.ok(p1.engaged && p2.engaged);
   close(p2.fly - p1.fly, p2.drum - p1.drum, "推動時飛輪跟著鼓輪轉", 1e-9);
   close(m360.beam(2 * S).fly - m360.beam(6 * S).fly, m360.stroke.SPAN, "每一程前進一程", 1e-9);
   close(m360.stroke.SPAN, m360.stroke.STROKE_TEETH * m360.stroke.PITCH, "一程剛好整數齒(棘爪每程在同一個相位碰上齒面)", 1e-9);
+  assert.ok(m360.stroke.returnCoast < m360.stroke.PITCH, "回程裡飛輪滑行不到一齒:下一程棘爪碰上的是面前第一個齒面,不會走過齒面");
 });
 
 test("第 361 種:皮帶輪離合器:兩銷接觸時下方軸跟著皮帶輪轉,脫開時皮帶輪空轉、軸停住", () => {
@@ -208,11 +209,11 @@ test("第 364 種:小輪連續旋轉,大輪間歇旋轉:每根凸柱的滾子推
   const as = sweep(-2 * Math.PI, 720).map(m364.bigAngle);
   assert.ok(as.every((a, i) => i === 0 || a >= as[i - 1] - 1e-12), "大輪只朝一個方向轉");
   const still = as.slice(1).filter((a, i) => Math.abs(a - as[i]) < 1e-12).length;
-  assert.ok(still > 0, "滾子之間的空檔大輪停住(間歇)");
+  assert.ok(still > 0.3 * as.length, "間歇:滾子走在斜棱之外的時候大輪停住(至少三成的時間)");
   // 由接觸算:推動時大輪轉角與滾子的高度成正比(斜棱是一道斜面)
   const [a, b] = [m364.drive(-0.05), m364.drive(-0.15)];
   assert.ok(a.y !== null && b.y !== null);
-  close((b.angle - a.angle) / (a.y - b.y), m364.STEP / 0.9, "轉角 / 滾子下降的距離 = 一格 / 斜棱的高度", 1e-9);
+  close((b.angle - a.angle) / (a.y - b.y), m364.STEP / 0.56, "轉角 / 滾子下降的距離 = 一格 / 斜棱的高度", 1e-9);
 });
 
 test("第 366 種:鑽床:大斜齒輪帶動鑽桿旋轉;踩下踏板時鑽桿被壓下,但照樣跟著小斜齒輪轉", () => {
@@ -259,13 +260,13 @@ test("第 370 種:拋光鏡面:長桿有縱向與擺動運動,棘輪(鏡面)由�
   const slide = ps.map((p) => Math.hypot(p.pin[0] + 0.35, p.pin[1] + 2.05));
   assert.ok(Math.max(...slide) - Math.min(...slide) > 0.6, "長桿沿長度方向在軌道的銷上滑動");
   ps.forEach((p) => close(Math.hypot(p.pin[0] - p.center[0], p.pin[1] - p.center[1]), 2.0, "棘輪裝在長桿上的固定位置", 1e-9));
-  close(m370.polish(2 * Math.PI).ratchet - m370.polish(0).ratchet, -m370.STEP, "每圈轉一格", 1e-12);
+  close(m370.polish(2 * Math.PI).rel - m370.polish(0).rel, -m370.STEP, "每圈轉一格", 1e-12);
   // 由接觸算:一程比一齒多,爪尖先空走一段才碰上齒面;制動爪沒推的時候棘輪不動
   const { SWEEP, SLACK, STEP } = m370.geometry;
   assert.ok(SWEEP > STEP && SLACK > 0, "一程比一齒多一點");
   const rel = ps.map((p) => p.rel);
-  const still = ps.filter((p, i) => i > 0 && !p.engaged && !ps[i - 1].engaged && Math.abs(rel[i] - rel[i - 1]) > 1e-12);
-  assert.equal(still.length, 0, "制動爪沒頂著齒面時,棘輪不動(間歇)");
+  const movedWhileIdle = ps.filter((p, i) => i > 0 && !p.engaged && !ps[i - 1].engaged && Math.abs(rel[i] - rel[i - 1]) > 1e-12);
+  assert.equal(movedWhileIdle.length, 0, "制動爪沒頂著齒面時,棘輪不動(間歇)");
   assert.ok(ps.some((p) => p.engaged) && ps.some((p) => !p.engaged), "每圈有推、有停");
 });
 
@@ -341,9 +342,8 @@ test("第 377 種:踏車:人踩在周邊的踏板上往上走,圓筒被人的重
 test("第 378 種:擺鋸:擺的運動帶著鋸框往復,鋸條一面鋸一面往下切進樹幹", () => {
   const shifts = sweep(0.2, 200).map((p) => m378.sawing(p).shift);
   assert.ok(Math.max(...shifts) > 0.5 && Math.min(...shifts) < -0.5, "鋸框往復");
-  close(m378.sawing(0).saw - m378.sawing(0.85).saw, m378.DEPTH, "一刀鋸進的深度");
-  close(m378.sawing(1).saw, m378.sawing(0).saw, "鋸完提回起點,下一輪接得上(不跳)", 1e-9);
-  const ys = sweep(0.85, 50).map((p) => m378.sawing(p).saw);
+  close(m378.sawing(0).saw - m378.sawing(1).saw, m378.DEPTH, "一輪鋸進的深度");
+  const ys = sweep(1, 50).map((p) => m378.sawing(p).saw);
   assert.ok(ys.every((y, i) => i === 0 || y <= ys[i - 1] + 1e-12), "鋸的時候一路往下");
   // 鋸框由兩條繩吊著,繞過滑輪吊著配重:鋸框降多少,配重升多少
   close(m378.hang(-0.5).weightTop - m378.hang(-0.3).weightTop, 0.2, "配重與鋸框反向等量移動", 1e-9);

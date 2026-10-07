@@ -12,9 +12,9 @@ import { pedestal } from "./supports.js";
 const SMALL = { center: [-2.0, 0, 0], r: 0.75, studs: 8, reach: 1.25 };
 const BIG = { center: [0.4, 0, 0], r: 1.05, height: 1.0, ribs: 24 };
 export const STEP = TAU / BIG.ribs;
-const BAND = BIG.height / 2 - 0.05; // 斜棱的上下端(相對大輪中心的高度)
+const BAND = 0.28; // 斜棱的上下端(相對大輪中心的高度):斜棱只占輪面中段,滾子走過它的那段之外大輪停住(間歇)
 const RIB_R = BIG.r + 0.03;
-const ROLLER = 0.09; // 滾子要放得進相鄰兩道斜棱之間(棱距約 0.28)
+const ROLLER = 0.08; // 滾子要放得進相鄰兩道斜棱之間(垂直於斜棱量,棱距約 0.25)
 const TUBE = 0.035;
 // 斜棱在最左母線上的斜率(橫向位移 / 高度),滾子側面與斜棱的接觸:中心線要離滾子中心這麼遠(橫向量)
 const SLOPE = (RIB_R * STEP) / (2 * BAND);
@@ -47,9 +47,8 @@ const studs = Array.from({ length: SMALL.studs }, (_, i) => {
 // 大輪輪緣上的斜棱(局部:軸沿 z,斜棱從下緣斜上到上緣)
 const ribs = Array.from({ length: BIG.ribs }, (_, i) => {
   const a = (i * TAU) / BIG.ribs;
-  const d = STEP; // 斜棱從下緣到上緣跨一格
-  const r = BIG.r + 0.03;
-  return { kind: "tube", points: [[r * Math.cos(a), r * Math.sin(a), -BIG.height / 2 + 0.05], [r * Math.cos(a + d), r * Math.sin(a + d), BIG.height / 2 - 0.05]], radius: 0.035, accent: i === 0 };
+  // 斜棱從下端到上端跨一格(STEP),半徑 RIB_R、粗 TUBE、上下端在 ±BAND——和 drive() 的接觸計算用同一組數
+  return { kind: "tube", points: [[RIB_R * Math.cos(a), RIB_R * Math.sin(a), -BAND], [RIB_R * Math.cos(a + STEP), RIB_R * Math.sin(a + STEP), BAND]], radius: TUBE, accent: i === 0 };
 });
 
 export default {

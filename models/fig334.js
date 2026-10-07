@@ -75,7 +75,7 @@ export default {
         { kind: "plate", shape: shape(thickLine([[1.6, 0.6], [0, 0], [-2.2, 0]], 0.5)), thickness: 0.16, at: [0, 0, -0.1] },
         { kind: "plate", shape: shape(thickLine([[-2.7, 0.0], [-1.8, 1.1], [-0.6, 0.5]], 0.14)), thickness: 0.1, at: [0, 0, -0.1] },
         // 弧形段 D(樑上的另一段弧)
-        { kind: "plate", shape: shape([...arcPoints(1.35, deg(115), deg(200)), ...arcPoints(1.15, deg(200), deg(115))]), thickness: 0.14, at: [0, 0, Z_FRONT] },
+        { kind: "plate", shape: shape([...arcPoints(ARCH, deg(115), deg(200)), ...arcPoints(ARCH - 0.2, deg(200), deg(115))]), thickness: 0.14, at: [0, 0, Z_FRONT] },
         { kind: "plate", shape: shape(thickLine([[0, 0], [1.25 * Math.cos(deg(150)), 1.25 * Math.sin(deg(150))]], 0.12)), thickness: 0.1, at: [0, 0, Z_FRONT - 0.1] },
         { kind: "cylinder", radius: 0.2, length: 0.5 },
         { kind: "cylinder", radius: 0.1, length: 0.5, at: [0, 0, -0.45] }, // 樞軸,往後伸進軸承座

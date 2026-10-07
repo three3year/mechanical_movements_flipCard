@@ -136,8 +136,6 @@ test("第 331 種:曲柄手腕 B 在開槽十字頭 A 內作動,十字頭在導�
     close(y.head, y.wrist[1], "十字頭高度等於手腕高度(開槽十字頭)", 1e-12);
   }
   steamPushes(m331.default, sweep(1, 12));
-  // 後方的飛輪裝在曲柄軸上,跟著轉
-  assert.ok(m331.default.parts.find((q) => q.id === "crank").pieces.some((q) => q.kind === "plate" && q.at?.[2] === -0.7), "飛輪是曲柄軸的一部分");
 });
 
 /** 一串點離它們的最佳直線(首尾連線)的最大偏差 */

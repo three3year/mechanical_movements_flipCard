@@ -1,11 +1,11 @@
 // 第 378 種:由擺的運動驅動、用來鋸倒下的樹木的鋸子。左邊三腳架上吊著一個擺(重錘),擺經一根連桿推拉鋸框;
 // 鋸框掛在跨過樹幹的門形架上,來回鋸時慢慢往下,鋸條一點一點切進樹幹。主動件是虛擬的「進程」:擺已擺過的次數
-// (鋸切的進度);鋸框隨擺往復,同時逐漸下降,鋸完一刀提起來再鋸下一刀(示意)。
+// (鋸切的進度);鋸框隨擺往復,同時逐漸下降。進程繞回時重新從樹幹頂上鋸起(鋸框與配重回到起點,刻意的循環)。
 // 推斷:擺與鋸框的連接方式(連桿的一端在鋸框的長槽裡滑動)、每一次往復切進的深度(示意)。
 // 鋸框怎麼掛(依原圖):兩條繩從門形架上角的滑輪垂下吊著鋸框,繞過滑輪後從外側垂下吊著配重;鋸框往下切時配重被拉上去
 // (繩長不變,滑輪跟著轉)。繩的下端掛在鋸框頂上一根橫軌的滑塊上,鋸框來回鋸時在掛鉤下面滑,繩保持垂直(推斷);
 // 滑輪的支架也是推斷。
-import { TAU, deg, clamp, smooth } from "./kit.js";
+import { TAU, deg, clamp } from "./kit.js";
 import { shape, thickLine } from "./shapes.js";
 
 const PIVOT = [-3.0, 2.2, 0]; // 擺的懸掛點(三腳架頂)
@@ -14,16 +14,13 @@ const SWING = deg(16);
 const STROKES = 12; // 進程一輪裡擺擺過的次數
 const LOG = { center: [1.0, -0.95, 0], r: 0.75 };
 const SAW_Y0 = LOG.center[1] + LOG.r + 0.08; // 鋸條起始高度(剛碰到樹幹頂)
-export const DEPTH = 0.8; // 一輪鋸進的深度(示意)
-const CUT = 0.85; // 進程的這一部分在往下鋸,其餘時間把鋸框提起來準備下一刀
+export const DEPTH = 1.1; // 一輪鋸進的深度
 /** 進程 p → 擺角、鋸框的水平位移、鋸條高度 */
 export function sawing(p0) {
   const p = clamp(p0, 0, 1);
   const angle = SWING * Math.sin(TAU * STROKES * p);
   const bob = [PIVOT[0] + L * Math.sin(angle), PIVOT[1] - L * Math.cos(angle), 0];
-  // 往下鋸到 CUT,之後把鋸框平順地提回起點(示意:鋸完一刀,提起來再鋸下一刀),進程繞回時不會跳
-  const depth = p < CUT ? (DEPTH * p) / CUT : DEPTH * (1 - smooth((p - CUT) / (1 - CUT)));
-  return { angle, shift: L * Math.sin(angle), saw: SAW_Y0 - depth, bob };
+  return { angle, shift: L * Math.sin(angle), saw: SAW_Y0 - DEPTH * p, bob };
 }
 
 const HANG_Z = 0.45; // 繩、滑輪、配重所在的那一層(在連桿前面)

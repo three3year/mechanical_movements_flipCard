@@ -50,7 +50,7 @@ export default {
     },
     { id: "pipe", ...steamPipe(CYL) },
     ...cylinderParts(CYL),
-        {
+    {
       id: "crank",
       kind: "group",
       center: CRANK,

@@ -88,7 +88,7 @@ export function polish(theta) {
   } else pushed = STEP;
   // 棘輪相對長桿的轉角:推動時齒根角正好在爪尖(推程終點的齒根角 = cornerAngle(HIGH))
   const rel = cornerAngle(HIGH) - ROOT - k * STEP - (pushed - STEP);
-  return { ...f, rel, engaged, ratchet: rel };
+  return { ...f, rel, engaged };
 }
 export const geometry = { STEP, SWEEP, SLACK, PUSH };
 

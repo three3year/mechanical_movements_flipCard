@@ -35,7 +35,8 @@ const PISTON_ROD = 2.3;
 const CYL = { x: X, top: 0.4, length: 2.4, radius: 0.7 };
 const BASE = -3.2; // 底座頂面
 
-const upper = (a, b, near) => (d(a, near) < d(b, near) ? a : b);
+/** 兩個解裡離原圖位置 near 最近的那一個 */
+const nearest = (a, b, near) => (d(a, near) < d(b, near) ? a : b);
 
 /** 進程 p → 槓桿角與各接點:A、S、M、P、E(十字頭)、搖臂角 */
 export function motion(p) {
@@ -43,8 +44,8 @@ export function motion(p) {
     const psi = TILT + SWING * Math.sin(2 * Math.PI * q);
     const S = [A[0] + LEVER * Math.cos(psi), A[1] + LEVER * Math.sin(psi), 0];
     const M = [A[0] + LEVER_M * Math.cos(psi + M_ANGLE), A[1] + LEVER_M * Math.sin(psi + M_ANGLE), 0];
-    const P = upper(circleCircle(F, ARM, M, UPRIGHT, 1).point, circleCircle(F, ARM, M, UPRIGHT, -1).point, P0); // 靠近原圖位置的那一解
-    const E = upper(circleCircle(P, PARALLEL, S, SIDE, 1).point, circleCircle(P, PARALLEL, S, SIDE, -1).point, E0);
+    const P = nearest(circleCircle(F, ARM, M, UPRIGHT, 1).point, circleCircle(F, ARM, M, UPRIGHT, -1).point, P0);
+    const E = nearest(circleCircle(P, PARALLEL, S, SIDE, 1).point, circleCircle(P, PARALLEL, S, SIDE, -1).point, E0);
     return { psi, S, M, P, E };
   };
   const now = at(p);
