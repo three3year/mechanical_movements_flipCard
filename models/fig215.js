@@ -3,6 +3,7 @@
 // 把它推過一格(六分之一圈),其餘時間月牙板的圓弧卡在星形輪兩槽之間的內凹圓弧上,星形輪不動。主動件是左輪。
 // 推斷:原圖六道槽都是開通的,看不出不開槽的擋止格,這裡讓它連續轉;環在星形輪後面(原圖的虛線)。
 import { TAU } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { geneva, genevaWheel } from "./geneva.js";
 import { shape, circle } from "./shapes.js";
 
@@ -45,6 +46,15 @@ export default {
       ],
     },
     { id: "star", kind: "group", spin: RB, pieces: [{ kind: "plate", shape: shape(star, [circle(0.1).reverse()]), thickness: 0.2, mark: [0.55, 0.5], markSize: 0.07 }] },
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進軸承座,軸承座立在同一塊底板上
+      pieces: [[-2.25, 0], [0, 0]].flatMap(([x, y]) => [
+        { kind: "cylinder", radius: 0.1, length: 0.78, at: [x, y, -0.29] },
+        ...pedestal({ at: [x, y], z: -0.68, bore: 0.1, floor: -2.3, depth: 0.2 }),
+      ]),
+    },
   ],
   driver: { part: "wheelA", type: "rotation" },
   target: "star",

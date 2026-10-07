@@ -3,6 +3,7 @@
 // 相對速度依各扇形段的直徑而變。主動件是上軸。
 // 推斷:兩對扇形的半徑比 1.6;扇形的角度讓上軸一圈時下軸也剛好一圈(前面一對 138°、後面一對 222°)。
 import { TAU, deg } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { sectorShape, circle } from "./shapes.js";
 
 const C = 2.6;
@@ -49,7 +50,19 @@ const shaft = (id, center, list) => ({
 
 export default {
   figure: 223,
-  parts: [shaft("upper", UPPER, upperSectors), shaft("lower", LOWER, lowerSectors)],
+  parts: [
+    shaft("upper", UPPER, upperSectors),
+    shaft("lower", LOWER, lowerSectors),
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進軸承座,軸承座立在同一塊底板上
+      pieces: [[0, 1.3], [0, -1.3]].flatMap(([x, y]) => [
+        { kind: "cylinder", radius: 0.1, length: 0.7, at: [x, y, -0.25] },
+        ...pedestal({ at: [x, y], z: -0.6, bore: 0.1, floor: -3.84, depth: 0.2 }),
+      ]),
+    },
+  ],
   driver: { part: "upper", type: "rotation", initial: START },
   target: "lower",
   view: { direction: [0.06, 0.05, 1] },

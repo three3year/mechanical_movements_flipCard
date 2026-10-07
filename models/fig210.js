@@ -3,6 +3,7 @@
 // 主動件是開槽臂的軸(在槽容許的範圍內往復轉動)。
 // 推斷:槽的形狀依原圖描出;臂轉動的範圍。
 import { swing, rot2 } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { shape, circle, thickLine, arcPoints } from "./shapes.js";
 
 const BEND = { c: [0.2, 1.15], r: 1.0 };
@@ -61,6 +62,15 @@ export default {
       kind: "group",
       // 每個導座是夾著桿的兩塊(桿從中間滑過)
       pieces: [ROD.top, ROD.bottom].flatMap((y) => [-1, 1].map((s) => ({ kind: "box", size: [0.14, 0.3, 0.35], at: [X_ROD + s * 0.2, y, 0] }))),
+    },
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進軸承座,軸承座立在同一塊底板上
+      pieces: [[0, 0]].flatMap(([x, y]) => [
+        { kind: "cylinder", radius: 0.1, length: 0.7, at: [x, y, -0.25] },
+        ...pedestal({ at: [x, y], z: -0.6, bore: 0.1, floor: -3.97, depth: 0.2 }),
+      ]),
     },
   ],
   driver: { part: "arm", type: "rotation", cycle: [FROM, TO], initial: -FROM },

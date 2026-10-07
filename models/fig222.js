@@ -6,6 +6,7 @@
 // A 與 C 不咬合(原圖兩輪之間留有空隙):A 的軸心離偏心點要大於 偏心距 + 兩輪齒頂圓半徑和,
 // 否則 C 的中心繞到最靠近 A 時兩輪的齒會互相穿透(原本 [-1.8, 2.2] 離 E 只有 2.84,不夠)。
 import { TAU, Z } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { circleCircle } from "./linkage.js";
 import { meshAngle } from "./gears.js";
 import { circle } from "./shapes.js";
@@ -52,6 +53,15 @@ export default {
     { id: "frame", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "envelope", kind: "plate", shape: { outline: circle(ECC + C.radius + 0.1), holes: [circle(ECC + C.radius + 0.085).reverse()] }, thickness: 0.01, center: [0, 0, -0.3] },
     { id: "pivot", kind: "cylinder", center: [...E.slice(0, 2), 0.08], radius: 0.12, length: 0.26 }, // 樞軸不伸到連桿那一層
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出軸頭):A 的軸與 C 的偏心樞軸往後伸進軸承座
+      pieces: [A.center, E].flatMap(([x, y]) => [
+        { kind: "cylinder", radius: 0.06, length: 0.6, at: [x, y, -0.35] },
+        ...pedestal({ at: [x, y], z: -0.65, bore: 0.06, floor: -3.4, depth: 0.2 }),
+      ]),
+    },
   ],
   driver: { part: "gearC", type: "rotation" },
   target: "gearA", // 得到不規則轉動的那一輪

@@ -3,6 +3,7 @@
 // (正向的慢運動),等外側大圈的齒轉到下方,換成被它帶著同向快轉(快速的反向運動)。主動件是輪(兩個缺齒輪一起)。
 // 推斷:兩個缺齒輪各有半圈齒;齒數 12(內)、40(外)、小齒輪 14,同齒距,小齒輪軸心到輪心 = 內輪半徑 + 小齒輪半徑。
 import { TAU } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { shape, circle, gearProfile } from "./shapes.js";
 import { resample } from "./noncircular.js";
 
@@ -50,6 +51,15 @@ export default {
       ],
     },
     { id: "pinion", kind: "gear", center: [0, -D, 0], teeth: NP, radius: RP, width: 0.2, bore: 0.2 },
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進軸承座,軸承座立在同一塊底板上
+      pieces: [[0, 0], [0, -1.572450837747926]].flatMap(([x, y]) => [
+        { kind: "cylinder", radius: 0.1, length: 0.63, at: [x, y, -0.215] },
+        ...pedestal({ at: [x, y], z: -0.53, bore: 0.1, floor: -4.24, depth: 0.2 }),
+      ]),
+    },
   ],
   driver: { part: "wheel", type: "rotation" },
   target: "pinion",

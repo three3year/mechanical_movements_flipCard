@@ -3,6 +3,7 @@
 // 主動件是小齒輪 d。
 // 推斷:曲線槽是等角度的螺旋(c 每轉一度,凸柱離中心的距離變化相同);c 可轉 60°;齒數。
 import { TAU, deg, polar } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { shape, circle, arcPoints, thickLine, stadium, gearProfile } from "./shapes.js";
 import { resample } from "./noncircular.js";
 
@@ -78,6 +79,15 @@ export default {
         { kind: "plate", shape: segment, thickness: 0.3, at: [0, 0, -0.15] },
       ],
     })),
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進軸承座,軸承座立在同一塊底板上
+      pieces: [[0, 0], [0, 1.3687325105903]].flatMap(([x, y]) => [
+        { kind: "cylinder", radius: 0.1, length: 0.69, at: [x, y, -0.245] },
+        ...pedestal({ at: [x, y], z: -0.59, bore: 0.1, floor: -2.89, depth: 0.2 }),
+      ]),
+    },
   ],
   driver: { part: "pinionD", type: "rotation", range, initial: range[1] * 0.6 },
   target: "arm3", // 六支輻臂(連輪緣段)一起縮放,只標有凸柱 a 標號的那一支作代表

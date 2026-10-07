@@ -24,7 +24,7 @@ import * as m210 from "../models/fig210.js";
 import fig200 from "../models/fig200.js";
 import * as m205 from "../models/fig205.js";
 import * as m206 from "../models/fig206.js";
-import { penetrationDepth } from "../models/contact.js";
+import { penetrationDepth, placeOutline, polygonsOverlap } from "../models/contact.js";
 import * as m211 from "../models/fig211.js";
 import * as m212 from "../models/fig212.js";
 import * as m213 from "../models/fig213.js";
@@ -248,6 +248,19 @@ test("第 209 種:兩個橢圓輪滾動接觸;一圈中有光面滾動、也有�
     const right = m209.pair(t).right;
     close(r1(-t) + r2(Math.PI - right), D, "兩輪接觸半徑之和 = 中心距", 2e-3);
   }
+});
+
+test("第 209 種:叉形卡榫引導角狀凸出:兩輪轉一整圈,角狀凸出與叉齒都不互相穿入", () => {
+  const { D } = m209.geometry;
+  const { fork, horn } = m209.catches;
+  let near = Infinity;
+  for (const t of sweep(2 * Math.PI, 2880)) {
+    const right = m209.pair(t).right;
+    const h = placeOutline(horn.outline, [D, 0], right);
+    for (const f of fork) assert.ok(!polygonsOverlap(placeOutline(f.outline, [0, 0], t), h), `左輪轉 ${t.toFixed(3)} 時叉齒與角狀凸出重疊`);
+    near = Math.min(near, Math.hypot(h[0][0] - 2.45 * Math.cos(Math.PI + t), h[0][1] - 2.45 * Math.sin(Math.PI + t)));
+  }
+  assert.ok(near < 0.2, "角狀凸出確實經過叉口");
 });
 
 test("第 210 種:轉動開槽臂的軸,垂直桿得到變速的直線運動", () => {

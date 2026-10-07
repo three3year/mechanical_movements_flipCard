@@ -49,6 +49,18 @@ export default {
         { kind: "cylinder", radius: 0.12, length: 3.0, at: [0, 0, -1.5] },
       ],
     },
+    {
+      id: "frame",
+      kind: "group",
+      // 推斷(原圖只畫出軸頭):曲柄軸往前、開槽曲柄的軸往後,末端各進一個軸承,軸承由立柱與底板托著
+      pieces: [
+        { kind: "cylinder", radius: 0.24, inner: 0.12, length: 0.2, at: [0, 0, 3.0] },
+        { kind: "box", size: [0.2, -0.2 + 2.9, 0.2], at: [0, (-0.2 - 2.9) / 2, 3.0] },
+        { kind: "cylinder", radius: 0.24, inner: 0.12, length: 0.2, at: [O2[0], O2[1], -2.7] },
+        { kind: "box", size: [0.2, O2[1] - 0.2 + 2.9, 0.2], at: [O2[0], (O2[1] - 0.2 - 2.9) / 2, -2.7] },
+        { kind: "box", size: [1.6, 0.12, 6.4], at: [0.3, -2.96, 0.15] },
+      ],
+    },
   ],
   driver: { part: "crank", type: "rotation" },
   target: "slotted",

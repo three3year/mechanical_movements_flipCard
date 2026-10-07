@@ -3,6 +3,7 @@
 // B 上的凸曲部分 a、b 之間不挖鎖定圓弧,是擋止:B 走完四格後,A 的齒再也推不動 B,A 就被擋住。主動件是輪 A。
 // 推斷:B 有六格(五道開槽可用其四、凸弧佔一格);A 上齒旁的缺口是讓 B 的尖角通過;A 可轉約四圈多。
 import { TAU, rot2 } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { geneva, genevaWheel } from "./geneva.js";
 import { shape, circle } from "./shapes.js";
 
@@ -63,6 +64,15 @@ export default {
     },
     { id: "tagA", kind: "group", pieces: [], arrow: false, label: "a" },
     { id: "tagB", kind: "group", pieces: [], arrow: false, label: "b" },
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進軸承座,軸承座立在同一塊底板上
+      pieces: [[0, -2.8], [0, 0]].flatMap(([x, y]) => [
+        { kind: "cylinder", radius: 0.1, length: 0.57, at: [x, y, -0.185] },
+        ...pedestal({ at: [x, y], z: -0.47, bore: 0.1, floor: -5.22, depth: 0.2 }),
+      ]),
+    },
   ],
   driver: { part: "wheelA", type: "rotation", range, initial: 2 * TAU }, // 原圖:第三格推到一半,凸弧 a–b 在右上
   target: "wheelB",

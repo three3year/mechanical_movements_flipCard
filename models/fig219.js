@@ -26,6 +26,8 @@ export const geometry = { R, E, RP };
 
 // 冠狀輪的局部 xy 平面在世界中是水平面:局部 (x, y) → 世界 (x, ·, −y)
 const u = [Math.cos(BETA), 0, -Math.sin(BETA)];
+// 小齒輪軸外端的軸承(軸沿 u 從小齒輪往外伸 3.6)
+const BEARING = [u[0] * (R + 3.6), PITCH_Z + RP, u[2] * (R + 3.6)];
 const spokes = [0, 120, 240].map((a) => {
   const t = deg(a) + 0.4;
   // 輻條從軸轂伸到齒圈(齒圈圓心在 (E, 0))
@@ -60,6 +62,18 @@ export default {
       radius: RP,
       width: 2 * E + 0.5,
       pieces: [{ kind: "cylinder", radius: 0.08, length: 4.5, at: [0, 0, 1.6] }],
+    },
+    {
+      id: "frame",
+      kind: "group",
+      // 推斷(原圖只畫出兩根軸):冠狀輪的直立軸下端進到底座上的軸承,小齒輪軸外端的軸承由立柱托著
+      pieces: [
+        { kind: "cylinder", axis: Y, radius: 0.26, inner: 0.13, length: 0.2, at: [0, -2.9, 0] },
+        { kind: "box", size: [0.5, 0.3, 0.5], at: [0, -3.15, 0] },
+        { kind: "cylinder", axis: u, radius: 0.18, inner: 0.08, length: 0.2, at: BEARING },
+        { kind: "box", size: [0.18, BEARING[1] - 0.15 + 3.3, 0.18], at: [BEARING[0], (BEARING[1] - 0.15 - 3.3) / 2, BEARING[2]] },
+        { kind: "box", size: [7.2, 0.1, 5.0], at: [1.8, -3.35, -0.8] },
+      ],
     },
   ],
   driver: { part: "crown", type: "rotation" },

@@ -3,6 +3,7 @@
 // 左輪沿長軸的一側有齒,右輪與它相對應的一段有齒(兩者正好互相咬合),其餘是光面。主動件是左輪。
 // 推斷:兩輪是以焦點為軸的相同橢圓;齒數;叉與角狀凸出的位置在齒開始咬合的地方。
 import { TAU } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { conjugate, samplePitch, arcAt } from "./noncircular.js";
 import { shape, circle, thickLine } from "./shapes.js";
 
@@ -52,22 +53,29 @@ export function pair(theta) {
 export const geometry = { A, C, D, r1, r2 };
 
 const START = Math.PI + 0.45; // 原圖:左輪近焦點的頂點朝左上,以遠端的光面接觸右輪,叉形卡榫在上方接近接觸點
-// 叉形卡榫在左輪齒開始處(遠端頂點,局部角 180°),角狀凸出在右輪相應的位置
+// 叉形卡榫在左輪齒開始處(遠端頂點,局部角 180°),角狀凸出在右輪相應的位置(右輪的近端頂點,離它的軸只有 0.45)。
+// 叉齒短、叉口在根部就張開:叉齒伸得長會掃到右輪的軸,角狀凸出繞軸快轉時也會從叉齒側面掃過
+const FORK = { length: 0.12, root: 0.22, tip: 0.3 };
+const HORN = 0.25;
 const FORK_AT = Math.PI;
 const HORN_AT = Math.PI - driven(-FORK_AT);
 const fork = (() => {
   const base = [r1(FORK_AT) * Math.cos(FORK_AT), r1(FORK_AT) * Math.sin(FORK_AT)];
   const out = [Math.cos(FORK_AT), Math.sin(FORK_AT)];
   const side = [-out[1], out[0]];
-  const tip = (k) => [base[0] + out[0] * 0.45 + side[0] * k * 0.22, base[1] + out[1] * 0.45 + side[1] * k * 0.22];
-  return [shape(thickLine([base, tip(1)], 0.09)), shape(thickLine([base, tip(-1)], 0.09))];
+  const tip = (k) => [base[0] + out[0] * FORK.length + side[0] * k * FORK.tip, base[1] + out[1] * FORK.length + side[1] * k * FORK.tip];
+  const root = (k) => [base[0] + side[0] * k * FORK.root, base[1] + side[1] * k * FORK.root];
+  return [shape(thickLine([root(1), tip(1)], 0.09)), shape(thickLine([root(-1), tip(-1)], 0.09))];
 })();
 const horn = (() => {
   const rr = r2(HORN_AT);
   const base = [rr * Math.cos(HORN_AT), rr * Math.sin(HORN_AT)];
   const out = [Math.cos(HORN_AT), Math.sin(HORN_AT)];
-  return shape(thickLine([base, [base[0] + out[0] * 0.4, base[1] + out[1] * 0.4]], 0.1));
+  return shape(thickLine([base, [base[0] + out[0] * HORN, base[1] + out[1] * HORN]], 0.1));
 })();
+
+/** 叉形卡榫(左輪的局部座標,兩支叉齒)與角狀凸出(右輪的局部座標) */
+export const catches = { fork, horn };
 
 const gear = (id, center, outlineShape, extra) => ({
   id,
@@ -86,6 +94,15 @@ export default {
   parts: [
     gear("left", [0, 0, 0], outline(r1, toothed1, arcAt(r1, 0)), fork.map((s) => ({ kind: "plate", shape: s, thickness: 0.1, at: [0, 0, 0.16] }))),
     gear("right", [D, 0, 0], outline(r2, toothed2, arcAt(r2, Math.PI) + PITCH / 2), [{ kind: "plate", shape: horn, thickness: 0.1, at: [0, 0, 0.16] }]),
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進軸承座,軸承座立在同一塊底板上
+      pieces: [[0, 0], [2.9, 0]].flatMap(([x, y]) => [
+        { kind: "cylinder", radius: 0.1, length: 0.56, at: [x, y, -0.18] },
+        ...pedestal({ at: [x, y], z: -0.46, bore: 0.1, floor: -3.18, depth: 0.2 }),
+      ]),
+    },
   ],
   driver: { part: "left", type: "rotation", initial: START },
   target: "right",
@@ -95,6 +112,6 @@ export default {
     return { parts: { left: { angle: theta }, right: { angle: right } }, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["left", "right"], reason: "右輪的角進出左輪的叉形卡榫(帶過光面滾動的那一段)時,與叉齒重疊 0.10(96 個取樣中 10 個);兩輪的轉角是依節曲線的滾動關係算的,沒有另外算卡榫的接觸" },
+    { check: "interference", parts: ["left", "right"], reason: "簡化齒形:右輪近端頂點(節曲線半徑只有 0.45)一帶,梯形齒的齒頂與左輪的齒重疊 0.05(96 個取樣中 2 個);叉形卡榫與角狀凸出彼此不碰" },
   ],
 };

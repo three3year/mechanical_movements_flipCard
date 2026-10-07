@@ -3,6 +3,7 @@
 // 主動件是左輪。
 // 推斷:左輪 12 齒、右輪 11 齒;指片的長度與方向照原圖;可轉的範圍是從原圖位置往兩邊轉到指片相碰為止。
 import { TAU, Z, polar } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { meshAngle } from "./gears.js";
 import { shape, arcPoints } from "./shapes.js";
 
@@ -63,7 +64,19 @@ const gearPart = (id, g, f, offset) => ({
 
 export default {
   figure: 214,
-  parts: [gearPart("left", LEFT, FINGER.left, 0), gearPart("right", RIGHT, FINGER.right, R0)],
+  parts: [
+    gearPart("left", LEFT, FINGER.left, 0),
+    gearPart("right", RIGHT, FINGER.right, R0),
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進軸承座,軸承座立在同一塊底板上
+      pieces: [[-1, 0], [1.05, 0]].flatMap(([x, y]) => [
+        { kind: "cylinder", radius: 0.1, length: 0.63, at: [x, y, -0.215] },
+        ...pedestal({ at: [x, y], z: -0.53, bore: 0.1, floor: -2.01, depth: 0.2 }),
+      ]),
+    },
+  ],
   driver: { part: "left", type: "rotation", range },
   target: "right",
   view: { direction: [0.06, 0.05, 1] },

@@ -7,6 +7,7 @@
 // (凸柱在世界中的位置轉到凸輪的局部座標);凸輪順時針轉(第 217 種的箭頭);凸輪中心在 A 的右上方。
 import { TAU, deg, smooth, rot2, polar, add } from "./kit.js";
 import { shape, circle, thickLine, offsetLoop, arcPoints } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 export const H = [0, 0, 0];
 const L = 2.1; // H 到 A
@@ -70,6 +71,8 @@ const ccw = area > 0 ? groove : [...groove].reverse();
 // 凸輪的軸朝 −z(順時針轉為正),局部 x 在世界中左右相反:畫凸輪時先把 x 翻過來
 const mirror = (loop) => loop.map(([x, y]) => [-x, y]).reverse();
 const CAM_R = Math.max(...groove.map(([x, y]) => Math.hypot(x, y))) + 0.55;
+const FLOOR = K[1] - CAM_R - 0.3; // 第 217 種的底板(在凸輪下面)
+const POST_X = K[0] - CAM_R - 0.5; // 托住 H 的支架立柱(在凸輪左外側)
 export const geometry = { K, L, NOTCHES, CAM_R, groove };
 const grooveAt = (u) => groove[Math.round(u * N) % N];
 const TAGS = { C: grooveAt(0.02), D: grooveAt(PHASE.back), B: grooveAt((PHASE.back + PHASE.forward) / 2), e: grooveAt(PHASE.forward) };
@@ -123,11 +126,32 @@ export function woolCombModel(figure) {
         ],
       },
       ...Object.keys(TAGS).map((t) => ({ id: `tag${t}`, kind: "group", pieces: [], arrow: false, label: t })),
+      {
+        id: "frame",
+        kind: "group",
+        // 推斷(原圖只畫出軸頭):凸輪的軸往後伸進軸承座;槓桿的樞軸 H 在凸輪前面(凸輪盤蓋住 H 的後方),
+        // 由一支從凸輪左外側立起的支架從前面托著
+        pieces: [
+          { kind: "cylinder", radius: 0.32, length: 0.5, at: [K[0], K[1], -0.55] },
+          ...pedestal({ at: K, z: -0.85, bore: 0.32, floor: FLOOR, depth: 0.2 }),
+          { kind: "cylinder", radius: 0.12, length: 0.5, at: [H[0], H[1], 0.45] },
+          { kind: "cylinder", radius: 0.26, inner: 0.12, length: 0.2, at: [H[0], H[1], 0.65] },
+          { kind: "box", size: [H[0] - POST_X - 0.24, 0.24, 0.2], at: [(H[0] - 0.24 + POST_X) / 2, H[1], 0.65] },
+          { kind: "box", size: [0.26, H[1] + 0.12 - FLOOR, 0.2], at: [POST_X, (H[1] + 0.12 + FLOOR) / 2, 0.65] },
+          { kind: "box", size: [1.0, 0.18, 0.6], at: [POST_X, FLOOR - 0.09, 0.65] },
+        ],
+      },
     );
   } else {
     parts.unshift(
       { id: "wheelF", kind: "plate", shape: shape(fOutline, [circle(0.2).reverse()]), thickness: 0.18, hub: 0.32, spin: RF, label: "F", labelOffset: [0.7, -0.3, 0.3] },
       { id: "shaftH", kind: "cylinder", radius: 0.2, length: 0.9, arrow: false, label: "H", labelOffset: [0, 0.35, 0.3] },
+      {
+        id: "frame",
+        kind: "group",
+        // 推斷(原圖只畫出軸頭):滾軸的軸 H 往後伸進軸承座
+        pieces: [{ kind: "cylinder", radius: 0.2, length: 0.3, at: [H[0], H[1], -0.6] }, ...pedestal({ at: H, z: -0.85, bore: 0.2, floor: -2.6, depth: 0.2 })],
+      },
       { id: "catch", kind: "group", arrow: false, label: "G", labelOffset: [-0.6, 0.35, 0], pieces: [{ kind: "plate", shape: G_SHAPE, thickness: 0.12 }, { kind: "cylinder", radius: 0.2, inner: 0.08, length: 0.25 }, { kind: "cylinder", radius: 0.08, length: 0.5, at: [tipG[0] - pivotG[0], tipG[1] - pivotG[1], -0.27] }] }, // 爪尖的銷往後伸進 F 的凹槽(G 在槓桿前面,F 在後面)
     );
   }

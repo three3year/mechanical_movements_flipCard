@@ -21,6 +21,7 @@ const BIG = gearOf(26);
 const A = { ...gearOf(28), center: [-1.95, 1.5, 0] };
 const LINK = A.radius + BIG.radius;
 const D = [0, 0, 0];
+const POST_X = -3.4; // 前方軸承架的立柱(在 A 的左邊)
 const mesh = swingMesh({ r, fixed: D, rp: b.radius, pivot: A.center, arm: LINK, side: -1 });
 
 const S0 = mesh.byGear(0);
@@ -75,6 +76,23 @@ export default {
     { id: "tagG", kind: "group", pieces: [], arrow: false, label: "g" },
     { id: "tagH", kind: "group", pieces: [], arrow: false, label: "h" },
     { id: "pivotD", kind: "group", label: "D", labelOffset: [-0.3, 0, 0.3], pieces: [{ kind: "cylinder", radius: 0.1, length: 0.5, at: [0, 0, 0.1] }] }, // 樞軸只往前伸,後面那層的齒輪 B 從它後方繞過
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出軸頭):後面那層的齒輪 B 從 D 後方繞過、C 的溝槽板掃過 A 的後方,
+      // 所以 D 與 A 的軸往前伸進前方的軸承座(A 的軸同時是搖臂的樞軸)
+      pieces: [
+        { kind: "cylinder", radius: 0.1, length: 0.4, at: [D[0], D[1], 0.55] },
+        { kind: "cylinder", radius: 0.06, length: 1.27, at: [A.center[0], A.center[1], 0.115] },
+        // 軸承座不從輪前面直立下來(會擋住 C 與 A):D、A 的軸承各以一條橫條往左接到輪外側的立柱
+        { kind: "cylinder", radius: 0.24, inner: 0.1, length: 0.2, at: [D[0], D[1], 0.65] },
+        { kind: "cylinder", radius: 0.2, inner: 0.06, length: 0.2, at: [A.center[0], A.center[1], 0.65] },
+        { kind: "box", size: [D[0] - POST_X - 0.2, 0.2, 0.2], at: [(D[0] - 0.2 + POST_X) / 2, D[1], 0.65] },
+        { kind: "box", size: [A.center[0] - POST_X - 0.18, 0.2, 0.2], at: [(A.center[0] - 0.18 + POST_X) / 2, A.center[1], 0.65] },
+        { kind: "box", size: [0.25, A.center[1] + 0.1 + 3.0, 0.2], at: [POST_X, (A.center[1] + 0.1 - 3.0) / 2, 0.65] },
+        { kind: "box", size: [1.0, 0.18, 0.6], at: [POST_X, -3.09, 0.65] },
+      ],
+    },
   ],
   driver: { part: "gearC", type: "rotation" },
   target: "gearA",

@@ -3,6 +3,7 @@
 // 擋輪上方的直槽與內圓是原圖的樣子(推斷:槽讓擋輪有一點彈性)。主動件是下輪。
 // 推斷:兩輪的齒數(下輪原圖是鋸齒形,這裡用一般的齒形以便咬合);可轉的範圍由擋輪那段齒的齒數決定。
 import { TAU, Z } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { meshAngle } from "./gears.js";
 import { shape, rect, gearShape } from "./shapes.js";
 import { penetrationDepth, placeOutline } from "./contact.js";
@@ -68,9 +69,27 @@ export default {
         { kind: "cylinder", radius: 0.66, inner: 0.6, length: 0.24 },
       ],
     },
+    {
+      id: "bearings",
+      kind: "group",
+      // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進軸承座,軸承座立在同一塊底板上
+      pieces: [[0, -2.05], [0, 0]].flatMap(([x, y]) => [
+        { kind: "cylinder", radius: 0.1, length: 0.61, at: [x, y, -0.205] },
+        ...pedestal({ at: [x, y], z: -0.51, bore: 0.1, floor: -3.75, depth: 0.2 }),
+      ]),
+    },
   ],
   // 動力重演:只推主動件;upper 靠摩擦定位,由接觸帶動
-  replay: { free: { upper: { hold: true } }, expect: [{ part: "upper", label: "主動件走完一輪後 upper 的位置" }] },
+  // 動力重演:擋輪在軸上靠摩擦定位,只推下輪(從一端的擋止轉到另一端);擋輪由下輪的齒推著轉,
+  // 轉到盡頭時下輪的齒頂到擋輪完整的輪緣(擋止的那一刻,主動量的範圍就停在這裡)
+  replay: {
+    free: { upper: { hold: true } },
+    ignore: [["upper", "bearings"]], // 輪套在固定軸上(軸在輪轂的孔裡)
+    expect: [
+      { at: 0, part: "upper", label: "下輪轉到中間,擋輪被齒推著轉了一半" },
+      { part: "upper", label: "下輪轉到另一端的擋止,擋輪轉到盡頭", quote: "另一種用於相同目的的擋止裝置" },
+    ],
+  },
   driver: { part: "lower", type: "rotation", range: [-LIMIT, LIMIT] },
   target: "upper",
   view: { direction: [0.06, 0.05, 1] },
