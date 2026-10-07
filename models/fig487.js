@@ -12,6 +12,8 @@ export const WATER = -1.2;
 export default {
   figure: 487,
   parts: [
+    // 船側與軸承(推斷;原圖只畫出輪)
+    { id: "hull", kind: "group", pieces: [{ kind: "box", size: [5.0, 2.2, 0.1], at: [0, -0.2, -1.0] }, { kind: "cylinder", radius: 0.16, inner: 0.095, length: 0.2, at: [0, 0, -0.85] }] },
     {
       id: "wheel",
       kind: "group",
@@ -20,7 +22,8 @@ export default {
         { kind: "plate", shape: shape(circle(R.rim + 0.07), [circle(R.rim - 0.07).reverse()]), thickness: 0.12 },
         { kind: "plate", shape: shape(circle(R.rim * 0.62 + 0.05), [circle(R.rim * 0.62 - 0.05).reverse()]), thickness: 0.1 },
         { kind: "plate", shape: shape(circle(0.3), [circle(0.1).reverse()]), thickness: 0.3 },
-        ...Array.from({ length: PADDLES }, (_, i) => ({ kind: "box", size: [R.rim, 0.07, 0.07], at: polar(R.rim / 2, (i * TAU) / PADDLES), angle: (i * TAU) / PADDLES })),
+        ...Array.from({ length: PADDLES }, (_, i) => ({ kind: "box", size: [R.rim, 0.07, 0.07], at: polar(R.rim / 2, (i * TAU) / PADDLES), angle: (i * TAU) / PADDLES, ...(i === 0 ? { accent: true } : {}) })),
+        { kind: "cylinder", radius: 0.09, length: 1.0, at: [0, 0, -0.4] }, // 輪軸:往後伸進船側的軸承
       ],
     },
     // 槳板(徑向,伸出輪緣;固定在輪上、跟著輪轉):獨立成一個零件當目標件

@@ -20,13 +20,13 @@ test("第 484 種:圓筒上的螺旋葉片:風沿軸吹過,圓筒旋轉", () => 
   assert.equal(a.flows[0].fluid, "air", "風以空氣示意");
   const xs = a.flows[0].points.map((p) => p[0]);
   assert.ok(Math.max(...xs) - Math.min(...xs) > 3, "風沿軸吹過整個圓筒");
-  assert.notDeepEqual(fig484.pose(0.1).parts.drum.rotation, fig484.pose(0.2).parts.drum.rotation, "圓筒隨進程轉");
+  assert.notEqual(fig484.pose(0.1).parts.drum.angle, fig484.pose(0.2).parts.drum.angle, "圓筒隨進程轉(依自己的軸轉,看得到轉向箭頭)");
 });
 
 test("第 485 種:風車:風吹在斜的帆面上產生圓周運動", () => {
   assert.ok(m485.PITCH > 0 && m485.PITCH < Math.PI / 4, "帆面相對旋轉平面斜一個角度");
   const def = m485.default;
-  assert.notDeepEqual(def.pose(0.1).parts.sails.rotation, def.pose(0.3).parts.sails.rotation, "帆隨進程轉");
+  assert.notEqual(def.pose(0.1).parts.sails.angle, def.pose(0.3).parts.sails.angle, "帆隨進程轉(依自己的軸轉,看得到轉向箭頭)");
   assert.ok(def.pose(0.2).flows[0].points.length > 0, "有風");
 });
 
@@ -86,8 +86,23 @@ test("第 490 種:操舵裝置:轉舵輪時繩的一端捲進、另一端放出,
 test("第 491 種:絞盤:推桿轉動絞盤收進纜繩;棘爪在底座的棘齒上滑過,每過一齒落下一次(防止倒轉)", () => {
   close(m491.capstan(2 * Math.PI).hauled, 2 * Math.PI * m491.DRUM_R, "轉一圈收進鼓周長的繩");
   const tooth = (2 * Math.PI) / m491.TEETH;
-  assert.ok(m491.capstan(tooth * 0.9).lift > m491.capstan(tooth * 0.1).lift, "爪尖沿齒背抬起");
-  assert.ok(m491.capstan(tooth * 1.01).lift < m491.capstan(tooth * 0.99).lift, "過了齒尖就落下");
+  const tips = sweep(2 * tooth, 200).map((t) => m491.capstan(t).tip);
+  assert.ok(Math.max(...tips) - Math.min(...tips) > 0.05, "爪尖沿緩坡抬起、越過齒頂後落下");
+  // 越過齒頂後加速落下(不是一格就落到底):找第一段連續下降,前一半落得比後一半少
+  for (let i = 1; i < tips.length; i++) assert.ok(Math.abs(tips[i] - tips[i - 1]) < 0.03, "沒有瞬移");
+  const drops = tips.map((y, i) => (i ? tips[i - 1] - y : 0));
+  const steepest = drops.indexOf(Math.max(...drops.slice(0, 100)));
+  let [start, stop] = [steepest, steepest];
+  while (start > 1 && drops[start - 1] > -2e-4) start--;
+  while (stop + 1 < tips.length && drops[stop + 1] > 1e-6) stop++;
+  assert.ok(stop - start >= 4, "落下有過程");
+  const mid = Math.floor((start + stop) / 2);
+  assert.ok(tips[start - 1] - tips[mid] < tips[mid] - tips[stop], "落下越來越快");
+  // 由接觸算:爪尖不會沉進齒面以下
+  for (const t of sweep(2 * tooth, 60)) {
+    const c = m491.capstan(t);
+    assert.ok(c.tip >= -1.22 + m491.toothHeight(t - (m491.PAWL * Math.cos(c.tilt)) / m491.RATCHET_R) - 1e-6, "爪尖搭在齒面上(不穿入)");
+  }
 });
 
 test("第 492 種:小艇脫鉤器:拉繩使槓桿上的環孔從舌片滑脫,舌片翻開滑出鉤子,小艇脫離", () => {

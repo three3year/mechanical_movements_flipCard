@@ -2,7 +2,7 @@
 // 主動件是虛擬的「進程」:風已帶著風車轉了幾圈。風以流體示意(空氣)吹向帆面。
 // 推斷:四片帆裝在略為仰起的軸上,每片帆繞自己的長邊斜一個角度(風推斜面而轉);塔身與頂蓋依原圖;
 // 原圖頂蓋後面的曲線(拉繩)不畫出。
-import { TAU, Y, deg, quatAxisAngle, quatMul, quatFromZ, norm } from "./kit.js";
+import { TAU, Y, deg, quatAxisAngle, quatMul, norm } from "./kit.js";
 import { stream } from "./flow.js";
 import { shape, rect } from "./shapes.js";
 
@@ -38,10 +38,12 @@ export default {
     {
       id: "sails",
       kind: "group",
+      axis: AXIS,
+      center: HUB,
       spin: SAIL.to + 0.2,
       pieces: [
         { kind: "cylinder", radius: 0.12, length: 0.9, at: [0, 0, -0.35] },
-        ...[0, 1, 2, 3].flatMap((k) => lattice.map((p) => ({ ...p, rotation: quatMul(quatAxisAngle([0, 0, 1], (k * TAU) / 4), quatAxisAngle([1, 0, 0], PITCH)), at: rotZ(p.at ?? [0, 0, 0], (k * TAU) / 4, PITCH) }))),
+        ...[0, 1, 2, 3].flatMap((k) => lattice.map((p, j) => ({ ...p, rotation: quatMul(quatAxisAngle([0, 0, 1], (k * TAU) / 4), quatAxisAngle([1, 0, 0], PITCH)), at: rotZ(p.at ?? [0, 0, 0], (k * TAU) / 4, PITCH), ...(k === 0 && j === lattice.length - 1 ? { accent: true } : {}) }))), // 第一片帆的骨架塗記號色
       ],
     },
   ],
@@ -57,7 +59,7 @@ export default {
       return stream([start, [start[0] - AXIS[0] * 2.6, start[1] - AXIS[1] * 2.6, start[2] - AXIS[2] * 2.6]], travel, { spacing: 0.45 });
     }));
     return {
-      parts: { sails: { position: HUB, rotation: quatMul(quatFromZ(AXIS), quatAxisAngle([0, 0, 1], TAU * progress)) } },
+      parts: { sails: { angle: TAU * progress } },
       flows: [{ fluid: "air", points: wind }],
       readouts: [],
     };

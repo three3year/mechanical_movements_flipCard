@@ -53,6 +53,18 @@ export default {
     { id: "pin", kind: "plate", shape: pin, thickness: 0.5, arrow: false, pieces: [{ kind: "plate", shape: shape(thickLine([[-0.25, 0.75], [-0.25, 1.05], [0.25, 1.05], [0.25, 0.75]], 0.07), [circle(0.03, 0, 0.9).reverse()]), thickness: 0.12 }] },
     { id: "rope", kind: "rope", radius: 0.04 },
   ],
+  // 動力重演:只重演吊起之前(楔子把填塊擠到孔壁)。兩塊填塊沿水平滑動,只受楔子斜面與孔壁的推。
+  // 滑軌裝在地上:裝在石塊上的話,重演會關掉填塊與石塊的碰撞(孔壁就擋不住了)
+  replay: {
+    from: 0,
+    to: 0.3,
+    free: { packerL: { slide: [1, 0, 0], gravity: false }, packerR: { slide: [1, 0, 0], gravity: false } },
+    expect: [
+      { at: 0.15, part: "packerL", label: "楔子提起一半,左填塊被斜面往外推了一半" },
+      { part: "packerL", label: "楔子提到底,斜面把左填塊擠到孔壁為止", quote: "當吊起中央楔子時,它會將填塊緊緊楔入孔壁" },
+      { part: "packerR", label: "右填塊同樣被擠到孔壁" },
+    ],
+  },
   powered: ["rope"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "吊起", mode: "balance", range: [0, 1], initial: 0, format: (u) => Math.round(u * 100) + "%" },
   target: "stone", // 要被吊起的石塊

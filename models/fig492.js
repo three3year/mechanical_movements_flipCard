@@ -55,9 +55,10 @@ export const geometry = { TONGUE_AT, SWING, EYE, EYE_R, TONGUE, TONGUE_W };
 export function release(u0) {
   const u = clamp(u0, 0, 1);
   const lever = SWING * smooth(clamp(u / SLIP, 0, 1));
-  const open = smooth(clamp((u - SLIP) / 0.15, 0, 1));
+  // 環孔滑脫後,舌片被小艇的重量翻開、小艇往下掉:都是重力造成的,加速到底停住
+  const open = clamp((u - SLIP) / 0.15, 0, 1) ** 2;
   const tongue = TONGUE_AT - FLIP * open; // 往上翻(順時針)
-  const fall = DROP * smooth(clamp((u - SLIP - 0.12) / 0.3, 0, 1));
+  const fall = DROP * clamp((u - SLIP - 0.12) / 0.3, 0, 1) ** 2;
   return { lever, tongue, fall, held: u < SLIP, free: fall > 0.01 };
 }
 

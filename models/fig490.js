@@ -56,11 +56,11 @@ export default {
         { kind: "cylinder", radius: 0.05, length: 2.0, at: [0, 0, -0.5] },
         // 舵輪(在左端,平面圖上看是側面)與把手
         { kind: "cylinder", radius: 0.9, inner: 0.82, length: 0.08, at: [0, 0, -1.3] },
-        ...[0, 1, 2, 3].map((k) => ({ kind: "box", size: [1.7, 0.05, 0.05], at: [0, 0, -1.3], angle: (k * Math.PI) / 4 })),
+        ...[0, 1, 2, 3].map((k) => ({ kind: "box", size: [1.7, 0.05, 0.05], at: [0, 0, -1.3], angle: (k * Math.PI) / 4, ...(k === 0 ? { accent: true } : {}) })),
         ...Array.from({ length: 8 }, (_, k) => ({ kind: "cylinder", radius: 0.04, length: 0.25, axis: [Math.cos((k * Math.PI) / 4), Math.sin((k * Math.PI) / 4), 0], at: [1.02 * Math.cos((k * Math.PI) / 4), 1.02 * Math.sin((k * Math.PI) / 4), -1.3] })),
       ],
     },
-    ...PULLEYS.map((P, k) => ({ id: `pulley${k}`, kind: "pulley", style: "disc", center: P, radius: PULLEY_R, width: 0.1, arrow: false })),
+    ...PULLEYS.map((P, k) => ({ id: `pulley${k}`, kind: "pulley", style: "disc", center: P, radius: PULLEY_R, width: 0.1 })), // 兩個導引滑輪轉向相反,各有箭頭
     { id: "tiller", kind: "plate", shape: shape(thickLine([[0, 0], [-TILLER, 0]], 0.16), [circle(0.06).reverse()]), thickness: 0.1, center: RUDDER, arrow: false, pieces: [{ kind: "plate", shape: shape([[-0.15, -0.15], [0.15, -0.15], [0.15, 0.15], [-0.15, 0.15]]), thickness: 0.14 }] },
     { id: "ropeTop", kind: "rope", radius: 0.02 },
     { id: "ropeBottom", kind: "rope", radius: 0.02 },

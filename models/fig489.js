@@ -32,6 +32,10 @@ export default {
       labelOffset: [ECC[0] + 0.3, ECC[1] - 0.3, 0.4],
       pieces: [
         { kind: "plate", shape: shape(circle(0.62, ECC[0], ECC[1]), [circle(0.16).reverse()]), thickness: 0.2, at: [0, 0, -0.2] },
+        // 偏心輪固定在船側上(推斷):往後的撐塊、船側的板與軸的軸承
+        { kind: "box", size: [0.2, 0.2, 0.5], at: [ECC[0] + 0.35, ECC[1] + 0.25, -0.55] },
+        { kind: "box", size: [4.0, 3.2, 0.08], at: [0, 0.2, -0.84] },
+        { kind: "cylinder", radius: 0.13, inner: 0.08, length: 0.1, at: [0, 0, -0.75] },
       ],
     },
     {
@@ -42,7 +46,8 @@ export default {
       spin: 0.45,
       pieces: [
         { kind: "plate", shape: shape(circle(0.22), [circle(0.08).reverse()]), thickness: 0.3 },
-        ...Array.from({ length: ARMS }, (_, i) => ({ kind: "plate", shape: shape(thickLine([[0, 0], polar(ARM, deg(45) + (i * TAU) / ARMS).slice(0, 2)], 0.12)), thickness: 0.08, at: [0, 0, 0.12] })),
+        ...Array.from({ length: ARMS }, (_, i) => ({ kind: "plate", shape: shape(thickLine([[0, 0], polar(ARM, deg(45) + (i * TAU) / ARMS).slice(0, 2)], 0.12)), thickness: 0.08, at: [0, 0, 0.12], ...(i === 0 ? { accent: true } : {}) })),
+        { kind: "cylinder", radius: 0.075, length: 1.0, at: [0, 0, -0.3] }, // 軸:穿過不動的偏心輪,往後伸進船側的軸承
       ],
     },
     { id: "ring", kind: "plate", shape: shape(circle(0.72), [circle(0.64).reverse()]), thickness: 0.08, label: "d", labelOffset: [0.1, 0.85, 0.4], arrow: false, pieces: Array.from({ length: ARMS }, (_, i) => ({ kind: "plate", shape: shape(thickLine([polar(0.68, deg(45) + (i * TAU) / ARMS).slice(0, 2), polar(ARM, deg(45) + (i * TAU) / ARMS).slice(0, 2)], 0.08)), thickness: 0.05 })) },

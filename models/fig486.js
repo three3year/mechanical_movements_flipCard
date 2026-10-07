@@ -22,13 +22,16 @@ export function sail(phi) {
 export default {
   figure: 486,
   parts: [
+    // 底下的軸承座(推斷;平面圖看不到)
+    { id: "frame", kind: "group", pieces: [{ kind: "cylinder", radius: 0.16, inner: 0.115, length: 0.16, at: [0, 0, -0.52] }, { kind: "box", size: [0.6, 0.6, 0.1], at: [0, 0, -0.65] }] },
     {
       id: "wheel",
       kind: "group",
       spin: ARM + 0.25,
       pieces: [
         { kind: "plate", shape: shape(rect(0.45, 0.45), [rect(0.15, 0.15).reverse()]), thickness: 0.2 },
-        ...Array.from({ length: ARMS }, (_, i) => ({ kind: "box", size: [ARM, 0.08, 0.08], at: polar(ARM / 2, (i * TAU) / ARMS), angle: (i * TAU) / ARMS })),
+        ...Array.from({ length: ARMS }, (_, i) => ({ kind: "box", size: [ARM, 0.08, 0.08], at: polar(ARM / 2, (i * TAU) / ARMS), angle: (i * TAU) / ARMS, ...(i === 0 ? { accent: true } : {}) })),
+        { kind: "box", size: [0.15, 0.15, 0.6], at: [0, 0, -0.3] }, // 方軸(平面圖上看是端面),往下伸進底下的軸承
         { kind: "plate", shape: shape(circle(ARM * 0.82), [circle(ARM * 0.82 - 0.04).reverse()]), thickness: 0.03, at: [0, 0, -0.1] },
       ],
     },
