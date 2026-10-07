@@ -2,9 +2,10 @@
 // 右圖是拿掉蓋板的同一個輪:固定的軸與輪的內孔之間夾著一圈六個滾子,輪轉動時滾子在兩者之間滾動,
 // 一邊自轉、一邊繞軸公轉(像行星齒輪,軸就是不動的太陽輪)。皮帶從輪頂繞過、兩股往下。
 // 兩張圖並排,主動件是皮帶輪,拖任一個都一起轉。
-// 推斷:滾子無滑動地滾動(原文只有名稱)。
+// 推斷:滾子無滑動地滾動(原文只有名稱);兩根軸後面的支座。
 import { Z, TAU, routeRope, beltTravel } from "./kit.js";
 import { shape, circle } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const R = 1.4; // 輪外徑
 const BORE = 0.86; // 輪的內孔
@@ -51,7 +52,16 @@ export default {
       mark: [R - 0.1, 0],
       markSize: 0.08,
     },
-    { id: "shaft", kind: "cylinder", center: AT.right, radius: SHAFT, length: 0.7 },
+    { id: "shaft", kind: "cylinder", center: AT.right, radius: SHAFT, length: 0.7, pieces: [{ kind: "cylinder", radius: 0.2, length: 0.6, at: [0, 0, -0.5] }] }, // 不動的軸,後端固定在支座上
+    {
+      id: "stands",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.2, length: 0.9, at: [AT.left[0], AT.left[1], -0.15] }, // 左圖皮帶輪的軸
+        ...pedestal({ at: AT.left, z: -0.75, bore: 0.2, floor: -2.6 }),
+        ...pedestal({ at: AT.right, z: -0.75, bore: 0.2, floor: -2.6 }),
+      ],
+    },
     ...Array.from({ length: ROLLERS }, (_, i) => ({ id: `roller${i}`, kind: "plate", shape: shape(circle(ROLLER - 0.01), [circle(0.06).reverse()]), thickness: 0.36, mark: [ROLLER * 0.55, 0], markSize: 0.05, arrow: false })),
     { id: "beltL", kind: "rope", radius: 0.05 },
     { id: "beltR", kind: "rope", radius: 0.05 },

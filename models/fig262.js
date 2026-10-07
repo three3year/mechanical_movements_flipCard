@@ -3,7 +3,4 @@ import { coneRoller } from "./cone-roller.js";
 
 export default {
   ...coneRoller(262, [1, 0.08, 0.06]),
-  waivers: [
-    { check: "interference", parts: ["base", "stemC"], reason: "桿在座的導孔裡滑動,行程盡頭桿端進到座裡面 0.10(導孔沒有畫出來)" },
-  ],
 };

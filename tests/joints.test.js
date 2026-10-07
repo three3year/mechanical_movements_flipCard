@@ -352,6 +352,18 @@ test("第 272 種:斜面圓盤凸輪旋轉,靠在盤上的桿得到往復直線�
   const ts = sweep(2 * Math.PI, 72).map(m272.rodTravel);
   assert.ok(Math.max(...ts) - Math.min(...ts) > 0.3, "桿往復");
   close(m272.rodTravel(2 * Math.PI), m272.rodTravel(0), "軸一圈回到原處", 1e-9);
+  // 桿端是圓頭:圓頭的中心離盤面恰好一個半徑(貼著、不陷進去)
+  const def = m272.default;
+  const ball = def.parts.find((p) => p.id === "rod").pieces.find((p) => p.kind === "sphere").radius;
+  for (const t of sweep(2 * Math.PI, 24)) {
+    const tip = def.pose(t).parts.rod.position;
+    const q = def.pose(t).parts.disc.rotation;
+    // 盤面法線 = 盤的局部 z 轉到世界
+    const [x, y, z, w] = q;
+    const n = [2 * (x * z + w * y), 2 * (y * z - w * x), 1 - 2 * (x * x + y * y)];
+    const d = Math.abs(n[0] * tip[0] + n[1] * tip[1] + n[2] * tip[2]);
+    close(d, 0.16 + ball, `轉角 ${t.toFixed(2)}:圓頭貼著盤面`, 1e-6);
+  }
 });
 
 test("第 276 種:凸輪橫跨中心所測的每個方向直徑皆相等,兩滾子始終貼著凸輪,桿往復直線運動", () => {
@@ -415,13 +427,20 @@ test("第 284 種:曲柄每轉一圈,卡榫推棘輪前進一段,小齒輪帶平
   close(m284.feed(4 * Math.PI, "slow").carriage - m284.feed(0, "slow").carriage, -2 * slow.step * 0.42, "平台位移 = 小齒輪轉角 × 節圓半徑", 1e-9);
 });
 
-test("第 271 種:裝有兩根棘爪的槓桿振動時,棘齒桿得到近乎連續的直線運動", () => {
+test("第 271 種:裝有兩根棘爪的槓桿振動時,棘齒桿得到近乎連續的直線運動(由接觸算)", () => {
   const S = m271.SWING;
   const xs = sweep(8 * S, 400).map((v) => m271.motion(v).x);
-  assert.ok(xs.every((x, i) => i === 0 || x >= xs[i - 1] - 1e-12), "只朝一個方向");
+  assert.ok(xs.every((x, i) => i === 0 || x >= xs[i - 1] - 1e-12), "只朝一個方向(往右)");
+  // 原文:當使裝有兩根棘爪的槓桿振動時,會將近乎連續的直線運動賦予棘齒桿
   const one = m271.motion(2 * S).x - m271.motion(0).x;
   const two = m271.motion(4 * S).x - m271.motion(2 * S).x;
-  assert.ok(one > 0.1 && two > 0.1, "槓桿往兩個方向擺時都在推");
+  assert.ok(one > 0.1 && two > 0.1, "槓桿往兩個方向擺時都在拉");
+  const cycle = m271.motion(4 * S).x - m271.motion(0).x;
+  close(cycle / m271.pitch, Math.round(cycle / m271.pitch), "每個來回拉過整數個齒", 1e-6);
+  for (const v of sweep(8 * S, 120)) {
+    const { hooks, teeth } = m271.contactAt(v);
+    for (const h of hooks) for (const t of teeth) assert.ok(penetrationDepth(h, t) < 2e-3, `主動量 ${v.toFixed(3)}:鉤不穿進齒`);
+  }
 });
 
 test("第 274 種:轉速越快,球 K 沿拋物線臂 B 升得越高,桿 F 把套筒沿心軸往上帶", () => {

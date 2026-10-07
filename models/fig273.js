@@ -5,6 +5,7 @@ import { clamp } from "./kit.js";
 export const SIDE = 1.65;
 export const RANGE = [0.55, 1.5]; // A、B 離中心的距離
 const Z = 0.12;
+const ROD = 2.2; // 桿長:整個行程裡桿都穿在導套裡
 
 /** A、B 離中心的距離 w → C、D 離中心的距離 */
 export const spread = (w) => Math.sqrt(SIDE * SIDE - clamp(w, ...RANGE) ** 2);
@@ -15,17 +16,34 @@ const rod = (id, axis, label, labelOffset) => ({
   label,
   labelOffset,
   pieces: [
-    { kind: "box", size: axis === "x" ? [1.0, 0.13, 0.13] : [0.13, 1.0, 0.13], at: axis === "x" ? [label === "A" ? -0.5 : 0.5, 0, 0] : [0, label === "C" ? 0.5 : -0.5, 0] },
+    { kind: "box", size: axis === "x" ? [ROD, 0.13, 0.13] : [0.13, ROD, 0.13], at: axis === "x" ? [label === "A" ? -ROD / 2 : ROD / 2, 0, 0] : [0, label === "C" ? ROD / 2 : -ROD / 2, 0] },
     { kind: "cylinder", radius: 0.12, inner: 0.05, length: 0.24, at: [0, 0, Z] },
   ],
 });
-// 導套:固定的方框,桿在其中滑動
-const guide = (x, y, horizontal) => ({ kind: "box", size: horizontal ? [0.3, 0.3, 0.3] : [0.3, 0.3, 0.3], at: [x, y, 0] });
+// 導套:四片板圍成的方框(中間是桿的方孔),桿在其中滑動
+const WALL = 0.06;
+const guide = (x, y, horizontal) => {
+  const o = 0.065 + WALL / 2; // 板的中心離桿的中心
+  const side = (dy, dz, w, t) => ({ kind: "box", size: horizontal ? [0.3, w, t] : [w, 0.3, t], at: horizontal ? [x, y + dy, dz] : [x + dy, y, dz] });
+  return [side(o, 0, WALL, 0.13 + 2 * WALL), side(-o, 0, WALL, 0.13 + 2 * WALL), side(0, o, 0.13, WALL), side(0, -o, 0.13, WALL)];
+};
 
 export default {
   figure: 273,
   parts: [
-    { id: "guides", kind: "group", pieces: [guide(-2.45, 0, true), guide(2.45, 0, true), guide(0, 2.45, false), guide(0, -2.45, false)] },
+    {
+      id: "guides",
+      kind: "group",
+      // 四個導套固定在後面的十字形底板上(推斷:原圖只畫導套)
+      pieces: [
+        ...guide(-2.45, 0, true),
+        ...guide(2.45, 0, true),
+        ...guide(0, 2.45, false),
+        ...guide(0, -2.45, false),
+        { kind: "box", size: [5.3, 0.4, 0.1], at: [0, 0, -0.2] },
+        { kind: "box", size: [0.4, 5.3, 0.1], at: [0, 0, -0.2] },
+      ],
+    },
     rod("rodA", "x", "A", [-0.05, -0.35, 0.3]),
     rod("rodB", "x", "B", [0.05, -0.35, 0.3]),
     rod("rodC", "y", "C", [0.35, 0.05, 0.3]),
@@ -54,10 +72,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["guides", "rodD"], reason: "桿端在導座的方孔裡滑動,行程一端桿端縮在導座裡面(方孔沒有畫出來)" },
-    { check: "interference", parts: ["guides", "rodC"], reason: "桿端在導座的方孔裡滑動,行程一端桿端縮在導座裡面(方孔沒有畫出來)" },
-    { check: "interference", parts: ["guides", "rodB"], reason: "桿端在導座的方孔裡滑動,行程一端桿端縮在導座裡面(方孔沒有畫出來)" },
-    { check: "interference", parts: ["guides", "rodA"], reason: "桿端在導座的方孔裡滑動,行程一端桿端縮在導座裡面(方孔沒有畫出來)" },
-  ],
 };

@@ -2,15 +2,17 @@
 // 輪緣朝箭頭的反方向(逆時針)轉時,臂端卡住輪緣,把運動傳給軸;朝箭頭方向(順時針)轉時,
 // 臂繞樞軸讓開、在輪緣內面上滑過,軸保持不動。
 // 主動件是輪緣,來回轉動(累計行程,見 kit.swing):逆時針那一程帶著軸轉,順時針那一程軸不動。
-// 推斷:臂的形狀與讓開的角度;輪緣來回轉動的幅度。
+// 推斷:臂的形狀與讓開的角度(讓開是彈簧力與摩擦力的平衡,原書沒有資料,7° 是示意);輪緣來回轉動的幅度;軸後面的軸承座。
 import { TAU, deg, swingPhase, smooth } from "./kit.js";
 import { shape, circle, arcPoints, thickLine, polygon } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 export const SWING = deg(70);
 const RIM = { outer: 2.05, inner: 1.82 };
 const ARMS = 4;
 const PIVOT = 0.62; // 樞軸離軸心的距離
 const YIELD = deg(7); // 讓開時臂繞樞軸轉的角度
+const SPRING_Z = 0.15; // 彈簧所在的那一層(臂的板在 ±0.08)
 
 /** 主動量 v(累計行程)→ 輪緣轉角、軸的轉角、臂讓開的角度 */
 export function friction(v) {
@@ -51,8 +53,9 @@ export default {
       mark: [0.25, 0.25],
       markSize: 0.06,
       spin: 0.7,
-      pieces: [{ kind: "cylinder", radius: 0.16, length: 0.8 }],
+      pieces: [{ kind: "cylinder", radius: 0.16, length: 1.2, at: [0, 0, -0.2] }], // 軸往後伸進軸承座
     },
+    { id: "frame", kind: "group", pieces: pedestal({ at: [0, 0], z: -0.7, bore: 0.16, floor: -2.4 }) },
     ...Array.from({ length: ARMS }, (_, i) => ({ id: `arm${i}`, kind: "plate", shape: arm, thickness: 0.16, arrow: false, pieces: [{ kind: "cylinder", radius: 0.09, length: 0.34 }] })),
     ...Array.from({ length: ARMS }, (_, i) => ({ id: `spring${i}`, kind: "spring", coils: 5, radius: 0.05, wire: 0.015 })),
   ],
@@ -67,18 +70,12 @@ export default {
       const pivot = [PIVOT * Math.cos(base), PIVOT * Math.sin(base), 0.0];
       const turn = base - yieldAngle;
       parts[`arm${i}`] = { position: pivot, angle: turn };
-      // 彈簧:從軸轂上的座(樞軸前方)撐到臂的中段
-      const seat = [0.5 * Math.cos(base - deg(50)), 0.5 * Math.sin(base - deg(50)), 0.1];
+      // 彈簧:從軸轂上的座(樞軸前方)撐到臂的中段,貼著臂的前面(z = SPRING_Z,線圈不陷進臂的板)
+      const seat = [0.5 * Math.cos(base - deg(50)), 0.5 * Math.sin(base - deg(50)), SPRING_Z];
       const mid = armLine[3];
       const c = Math.cos(turn), s = Math.sin(turn);
-      parts[`spring${i}`] = { from: seat, to: [pivot[0] + mid[0] * c - mid[1] * s, pivot[1] + mid[0] * s + mid[1] * c, 0.1] };
+      parts[`spring${i}`] = { from: seat, to: [pivot[0] + mid[0] * c - mid[1] * s, pivot[1] + mid[0] * s + mid[1] * c, SPRING_Z] };
     }
     return { parts, readouts: [] };
   },
-  waivers: [
-    { check: "interference", parts: ["arm3", "spring3"], reason: "彈簧的端頭扣在臂上:彈簧鋼絲的端圈伸進臂的板 0.04" },
-    { check: "interference", parts: ["arm2", "spring2"], reason: "彈簧的端頭扣在臂上:彈簧鋼絲的端圈伸進臂的板 0.04" },
-    { check: "interference", parts: ["arm1", "spring1"], reason: "彈簧的端頭扣在臂上:彈簧鋼絲的端圈伸進臂的板 0.04" },
-    { check: "interference", parts: ["arm0", "spring0"], reason: "彈簧的端頭扣在臂上:彈簧鋼絲的端圈伸進臂的板 0.04" },
-  ],
 };

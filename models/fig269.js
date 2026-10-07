@@ -2,9 +2,10 @@
 // 下齒條的齒在右段、朝上,正齒輪夾在中間。框架朝一個方向持續直線移動時,先由上齒條帶著齒輪轉,
 // 上齒條的齒走完後,換下齒條咬住齒輪,齒輪就反過來轉:齒輪得到交替方向的旋轉運動。
 // 主動件是框架(右端的桿)。
-// 推斷:兩段齒條的齒數與位置(依原圖);兩段之間留一小段兩邊都不咬合。
+// 推斷:兩段齒條的齒數與位置(依原圖);兩段之間留一小段兩邊都不咬合;齒輪軸的軸承座。
 import { TAU, clamp } from "./kit.js";
 import { rackShape } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const N = 16;
 const R = 0.85;
@@ -48,7 +49,8 @@ export default {
         { kind: "box", size: [4.0, 0.16, 0.16], at: [RIGHT + 2.0, 0, 0] },
       ],
     },
-    { id: "gear", kind: "gear", teeth: N, radius: R, width: 0.22, bore: 0.08, pieces: [{ kind: "cylinder", radius: 0.05, length: 0.6 }] },
+    { id: "gear", kind: "gear", teeth: N, radius: R, width: 0.22, bore: 0.08, pieces: [{ kind: "cylinder", radius: 0.08, length: 0.9, at: [0, 0, -0.3] }] },
+    { id: "stand", kind: "group", pieces: pedestal({ at: [0, 0], z: -0.6, bore: 0.08, floor: -2.0 }) }, // 齒輪軸的軸承座(在框架後面)
     { id: "guide", kind: "group", pieces: [{ kind: "box", size: [0.2, 0.9, 0.5], at: [RIGHT + 2.25, 0, 0] }] },
   ],
   driver: { part: "frame", type: "translation", direction: [1, 0, 0], range: RANGE, initial: 0.3 },

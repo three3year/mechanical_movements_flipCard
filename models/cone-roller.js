@@ -64,7 +64,10 @@ export function coneRoller(figure, view) {
           { kind: "cylinder", axis: X, radius: 0.3, length: 0.35, at: [NUT, 0, 0] },
           // 滾子的直立導架(重物壓著)
           { kind: "box", size: [0.12, 1.5, 0.12], at: [XC, 2.85, -0.42] }, // 導桿只在錐體掃過的範圍之上
-          { kind: "box", size: [0.45, 0.12, 0.6], at: [XC, 3.5, -0.2] },
+          // 頂上的方形導套(四片板圍住立桿),由一根短臂接到導桿
+          ...[-1, 1].map((k) => ({ kind: "box", size: [0.06, 0.12, 0.22], at: [XC + k * 0.08, 3.5, 0] })),
+          ...[-1, 1].map((k) => ({ kind: "box", size: [0.1, 0.12, 0.06], at: [XC, 3.5, k * 0.08] })),
+          { kind: "box", size: [0.1, 0.12, 0.27], at: [XC, 3.5, -0.245] },
         ],
         label: "E",
         labelOffset: [NUT, 0.55, 0.3],
@@ -94,8 +97,19 @@ export function coneRoller(figure, view) {
         labelOffset: [0.45, 0.5, 0.3],
         pieces: [{ kind: "cylinder", radius: 0.05, length: 0.5 }],
       },
-      { id: "stemC", kind: "group", pieces: [{ kind: "box", size: [0.1, 1.4, 0.1], at: [0, 0.7, 0] }, { kind: "box", size: [0.9, 0.1, 0.1], at: [0, 1.0, 0] }] },
+      { id: "stemC", kind: "group", pieces: [{ kind: "box", size: [0.1, 1.7, 0.1], at: [0, 0.85, 0] }, { kind: "box", size: [0.9, 0.1, 0.1], at: [0, 1.0, 0] }] }, // 立桿穿過頂上的導套
     ],
+    // 動力重演:只轉螺桿;滾子連同它的立桿沿導架上下、受重力,被偏心錐體頂起又落下(滾子被錐面摩擦帶著轉)
+    replay: {
+      seconds: 16,
+      free: { stemC: { slide: [0, 1, 0] }, rollerC: { on: "stemC" } },
+      ignore: [["stemC", "base"]], // 立桿在導套裡滑(重演不算立桿與導套壁的摩擦)
+      expect: [
+        { at: Math.PI, part: "stemC", label: "錐體轉半圈,滾子被頂起" },
+        { at: 2 * Math.PI, part: "stemC", label: "轉一圈,滾子落回(錐體前進一個螺距,接觸處變細)" },
+        { at: 3 * Math.PI, part: "stemC", label: "再轉半圈,滾子又被頂起,但比上一次低", quote: "會使滾子 C 產生一連串的速度與方向變化" },
+      ],
+    },
     driver: { part: "screwD", type: "rotation", range: RANGE, initial: 0 },
     target: "rollerC", // 被頂起落下又被摩擦帶轉的滾子
     view: { direction: view },

@@ -1,8 +1,10 @@
 // 第 268 種:藉由曲柄與擺動桿,把圓周運動轉換為往復運動。長桿的右端鉸接在曲柄盤的曲柄銷上,
 // 中段架在左邊的一個固定滾子上;曲柄轉動時,桿在滾子上來回滑動、同時擺動,左端往復(原圖虛線為其他位置)。
 // 主動件是曲柄盤。滾子被滑過的桿帶著轉。
+// 推斷:滾子的銷、曲柄盤的軸與後面的軸承座(原圖只畫兩個圓)。
 import { sub, add, scale, norm, dist } from "./kit.js";
 import { crankPin } from "./linkage.js";
+import { pedestal } from "./supports.js";
 
 const DISC = { center: [2.3, -0.35, 0], radius: 0.78, crank: 0.52 };
 const ROLLER = { center: [-0.9, -0.45, 0], radius: 0.28 };
@@ -23,6 +25,16 @@ export default {
   parts: [
     { id: "disc", kind: "pulley", style: "disc", center: DISC.center, radius: DISC.radius, width: 0.16, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.4, at: [DISC.crank, 0, 0.15] }] },
     { id: "roller", kind: "pulley", style: "disc", center: [...ROLLER.center.slice(0, 2), 0.18], radius: ROLLER.radius, width: 0.14 },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.06, length: 0.5, at: [ROLLER.center[0], ROLLER.center[1], 0.05] }, // 滾子的銷
+        ...pedestal({ at: ROLLER.center, z: -0.2, bore: 0.06, floor: -1.6 }),
+        { kind: "cylinder", radius: 0.1, length: 0.6, at: [DISC.center[0], DISC.center[1], -0.25] }, // 曲柄盤的軸
+        ...pedestal({ at: DISC.center, z: -0.45, bore: 0.1, floor: -1.6 }),
+      ],
+    },
     { id: "rod", kind: "link", width: 0.1, thickness: 0.06 },
   ],
   driver: { part: "disc", type: "rotation" },

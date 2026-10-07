@@ -2,7 +2,7 @@
 // 跟著 D 轉;螺帽固定在輪 E 的輪轂上,E 在較短支柱的軸承裡自由轉動、不能側移。兩輪轉速相同時螺桿不動;
 // 轉速不同時,螺桿依兩者的速度差沿軸移動(每差一圈移動一個螺距)。F 做得很長,D 隨螺桿移動時仍與它咬合。
 // 主動件是驅動軸 A。
-// 推斷:齒數(F 8、D 32、B 12、E 28)與螺距;讓兩輪轉速不同。
+// 推斷:齒數(F 8、D 32、B 12、E 28)與螺距;讓兩輪轉速不同;螺桿的尾軸穿過左支柱(原圖螺桿左端在支柱裡)。
 import { X, TAU, clamp, screwAdvance } from "./kit.js";
 import { meshAngle } from "./gears.js";
 
@@ -48,7 +48,7 @@ export default {
     { id: "labelF", kind: "group", center: F.center, label: "F", labelOffset: [-0.2, 0.75, 0.3] },
     gear("wheelD", D, 0.3, "D", [0, 0.2, 0.4]),
     gear("wheelE", E, 0.3, "E", [0, 0.2, 0.4], { pieces: [{ kind: "cylinder", radius: 0.3, length: 0.5, at: [0, 0, 0.35] }] }),
-    { id: "screwC", kind: "worm", axis: X, center: [XD + 1.9, AXIS_C, 0], radius: 0.2, length: 3.8, pitch: PITCH, thread: 0.05, label: "C", labelOffset: [0, 0.4, 0.3], pieces: [{ kind: "cylinder", radius: 0.12, length: 1.6, at: [0, 0, -2.6] }] },
+    { id: "screwC", kind: "worm", axis: X, center: [XD + 1.9, AXIS_C, 0], radius: 0.2, length: 3.8, pitch: PITCH, thread: 0.05, label: "C", labelOffset: [0, 0.4, 0.3], pieces: [{ kind: "cylinder", radius: 0.12, length: 2.9, at: [0, 0, -3.25] }] }, // 螺桿的尾軸往左穿過左支柱(可沿軸滑的軸承)
   ],
   driver: { part: "shaftA", grips: ["pinionB"], type: "rotation", range: RANGE, initial: 0 },
   target: "screwC",
