@@ -164,22 +164,6 @@ export function withFall(resting, period, drop, samples = 720) {
 }
 
 /**
- * 被推的零件(位置或轉角 value)往 dir(+1 / −1)推到剛好不再重疊:overlaps(v) 回答在 v 時是否重疊。
- * 一步最多推 max(通常是推它的零件這一步走的量加一點餘裕);推了 max 仍重疊就表示不是被這一面推,回傳原值。
- */
-export function pushUntilClear(value, dir, max, overlaps) {
-  if (!overlaps(value)) return value;
-  if (overlaps(value + dir * max)) return value;
-  let [lo, hi] = [0, max];
-  for (let k = 0; k < 30; k++) {
-    const mid = (lo + hi) / 2;
-    if (overlaps(value + dir * mid)) lo = mid;
-    else hi = mid;
-  }
-  return value + dir * hi;
-}
-
-/**
  * 靠自重(或彈簧)搭在齒上的爪:restAt(v) 是主動量 v 時它靠在齒上的轉角(由接觸算)。爪尖滑過齒尖時,靠著的轉角
  * 會在一瞬間跳低,實物是加速落下。回傳 v 時爪的轉角:最近 window 這段主動量裡,每個時刻靠著的轉角再以 accel
  * (每單位主動量平方的轉角)加速落下,取其中最高的,但不低於此刻靠著的轉角——爪不穿進齒,也不比自由落下快。
@@ -193,4 +177,20 @@ export function fallingRest(restAt, v, { into, accel, window, samples = 12 }) {
     if (into < 0 ? held > angle : held < angle) angle = held;
   }
   return angle;
+}
+
+/**
+ * 被推的零件(位置或轉角 value)往 dir(+1 / −1)推到剛好不再重疊:overlaps(v) 回答在 v 時是否重疊。
+ * 一步最多推 max(通常是推它的零件這一步走的量加一點餘裕);推了 max 仍重疊就表示不是被這一面推,回傳原值。
+ */
+export function pushUntilClear(value, dir, max, overlaps) {
+  if (!overlaps(value)) return value;
+  if (overlaps(value + dir * max)) return value;
+  let [lo, hi] = [0, max];
+  for (let k = 0; k < 30; k++) {
+    const mid = (lo + hi) / 2;
+    if (overlaps(value + dir * mid)) lo = mid;
+    else hi = mid;
+  }
+  return value + dir * hi;
 }
