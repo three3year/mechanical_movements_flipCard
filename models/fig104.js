@@ -1,8 +1,11 @@
 // 第 104 種:螺紋切削與滑動車床上的螺桿與輪。螺桿轉動時把旋轉傳給輪(像蝸桿帶蝸輪);
 // 或者螺桿固定不轉、轉動輪時,輪的齒沿著螺紋滾動,像小齒輪在齒條上,把直線運動傳給承載輪軸的滑塊。
 // 主動量是輪的轉角(拖螺桿也行);狀態切換兩種用法。輪的齒始終落在螺紋之間(同第 31 種的算法)。
+// 原文的兩種用法輸入不同(螺桿 / 輪),模型只能有一個主動件:以輪為主動件、螺桿為抓取處,兩者都是橘色。
+// 螺桿兩端的軸頸架在機床上的軸承座裡(原圖只畫出螺桿,軸承座是推斷)。
 import { TAU, X } from "./kit.js";
 import { shape } from "./shapes.js";
+import { pedestalX } from "./supports.js";
 
 const WHEEL = { teeth: 18, radius: 1.0 };
 const PITCH = (TAU * WHEEL.radius) / WHEEL.teeth;
@@ -41,6 +44,7 @@ export default {
       length: WORM.length,
       pitch: PITCH,
       thread: 0.13,
+      pieces: [{ kind: "cylinder", radius: 0.14, length: 5.8 }],
     },
     { id: "wheel", kind: "gear", teeth: WHEEL.teeth, radius: WHEEL.radius, width: 0.3, bore: 0.1, web: false },
     {
@@ -51,7 +55,12 @@ export default {
         { kind: "cylinder", radius: 0.18, length: 0.5, at: [0, 0, 0.2] },
       ],
     },
-    { id: "bed", kind: "box", center: [0, -1.75, 0.1], size: [5.0, 0.35, 0.6] },
+    { id: "bed", kind: "box", center: [0, -1.75, 0.1], size: [6.2, 0.35, 0.6] },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [-2.7, 2.7].flatMap((x) => pedestalX({ at: [WORM.y, 0], x, bore: 0.14, floor: -1.575 + 0.18 })),
+    },
   ],
   driver: { part: "wheel", type: "rotation", grips: ["screw"], range: [-RANGE, RANGE] },
   target: "slider", // 承載輪軸、得到直線運動的滑塊

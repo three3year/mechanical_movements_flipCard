@@ -5,8 +5,8 @@ import { sources, hasModel, loadModel } from "../models/registry.js";
 import { PART_KINDS, PATH_KINDS, FLUIDS, targetsOf, canBeTarget } from "../models/kinds.js";
 
 // 只有主動件自己是會動的實體(其餘是皮帶 / 繩 / 鍊或靜止件):沒有別的零件可標,維持主動件的橘色(維護者決定)
-// 第 134 種鼓輪 + 繩、第 227–229 種輪 + 鍊、第 254–259 種皮帶輪 + 皮帶、第 322、323、325 種平行尺、第 363 種蹺蹺板
-const ONLY_DRIVER_MOVES = new Set([134, 227, 228, 229, 254, 255, 256, 257, 258, 259, 322, 323, 325, 363]);
+// 第 102 種螺帽轉在不動的螺栓上(2026-10-07 複查時比照加入)、第 134 種鼓輪 + 繩、第 227–229 種輪 + 鍊、第 254–259 種皮帶輪 + 皮帶、第 322、323、325 種平行尺、第 363 種蹺蹺板
+const ONLY_DRIVER_MOVES = new Set([102, 134, 227, 228, 229, 254, 255, 256, 257, 258, 259, 322, 323, 325, 363]);
 
 const figures = Object.keys(sources).map(Number);
 const models = await Promise.all(figures.map((n) => loadModel(n)));

@@ -1,5 +1,6 @@
 // 第 103 種:螺桿旋轉,使滑塊做直線運動。螺桿一端支在 L 形機架的立柱上(只能轉、不能移動),
 // 滑塊的螺帽套在螺桿上、底部在機床的導軌上滑動(不能轉)。螺桿每轉一圈,滑塊移動一個螺距。
+// 螺桿的軸頸穿出立柱,外側有一個軸環(照原圖)貼著立柱:滑塊往立柱推時,螺桿受的反力往右,由軸環擋住。
 import { X, TAU, screwAdvance } from "./kit.js";
 import { shape } from "./shapes.js";
 
@@ -24,7 +25,7 @@ export default {
       length: 4.4,
       pitch: PITCH,
       thread: 0.08,
-      pieces: [{ kind: "cylinder", radius: 0.14, length: 5.6, at: [0, 0, -0.5] }, { kind: "cylinder", radius: 0.2, length: 0.3, at: [0, 0, -3.0] }],
+      pieces: [{ kind: "cylinder", radius: 0.14, length: 6.0, at: [0, 0, -0.7] }, { kind: "cylinder", radius: 0.22, length: 0.3, at: [0, 0, -3.35] }],
     },
     {
       id: "slider",
