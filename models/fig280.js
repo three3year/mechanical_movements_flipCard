@@ -55,6 +55,16 @@ const check = pawlDrive({
   // 爪靠自重往下擺(逆時針),尖端搭在棘輪上
   pawls: { pawl: { outline: PAWL_OUTLINE, into: 1, angle: deg(195), limits: [deg(160), deg(250)] } },
 });
+// 第一程裡爪落得最深的那一刻(動力重演的中途事件)
+const PEAK = (() => {
+  let best = { a: -Infinity, v: 0 };
+  for (let i = 0; i <= 200; i++) {
+    const v = (i * SPAN) / 200;
+    const a = check.at(v).angles.pawl;
+    if (a > best.a) best = { a, v };
+  }
+  return best.v;
+})();
 /** 主動量 v:止回爪的轉角 */
 export const pawlAngle = (v) => check.at(v).angles.pawl;
 /** 檢查用:止回爪與棘輪的齒(世界座標 2D) */
@@ -123,6 +133,8 @@ export default {
     seconds: 16,
     free: { pawl: {} },
     expect: [
+      // 中途:爪被齒背頂起、越過齒尖後落得比停著時深(擺動只有幾度,容許誤差收小,爪不動就不會通過)
+      { at: PEAK, part: "pawl", label: "爪越過齒尖,落進齒間", tolerance: 0.03 },
       { at: 2 * SPAN, part: "pawl", label: "輪轉過兩齒,止回爪越過齒尖落回齒間", quote: "輪的向後移動則由一般的棘輪與棘爪機構所阻止" },
       { at: 4 * SPAN, part: "pawl", label: "再一個來回,爪又落回齒間" },
     ],

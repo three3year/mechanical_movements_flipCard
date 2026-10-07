@@ -219,27 +219,31 @@ test("第 277 種:把擊錘往後扳起時,爪 a 推轉輪背面的棘齒 b,轉�
 });
 
 test("第 278 種:平台升降時棘爪縮在棘齒外;繩索斷裂時彈簧壓下 b,棘爪 d 被推進棘齒,阻止平台下降", () => {
-  const { toothTip, B_UP, pitch, P } = m278.geometry;
+  const { toothTip, B_UP, pitch, P, PAWL_TIP } = m278.geometry;
   assert.ok(m278.pawlReach(B_UP) < toothTip, "繩拉著時棘爪不碰棘齒");
   for (const p of sweep(P.brk - 0.01, 40)) {
     const { top, b } = m278.story(p);
-    assert.ok(m278.pawlAt(top, b).joint + 0.15 < toothTip, `進程 ${p.toFixed(2)}:升降時棘爪縮著`);
+    assert.ok(m278.pawlAt(top, b).joint + PAWL_TIP < toothTip, `進程 ${p.toFixed(2)}:升降時棘爪縮著`);
   }
   // 斷繩後:平台憑自重加速落下(每段落得比上一段多),落到棘齒上就停住
   const { T_LAND, top: landed } = m278.landing;
   const tops = [0, 1, 2, 3].map((k) => m278.story(P.brk + (k * T_LAND) / 3).top);
   assert.ok(tops[1] - tops[2] > tops[0] - tops[1] && tops[2] - tops[3] > tops[1] - tops[2], "斷繩後加速落下");
   const top0 = m278.story(P.brk).top;
-  assert.ok(top0 - landed < 2 * pitch, "只落到下方最近的棘齒");
+  assert.ok(top0 - landed < pitch, "只落到下方最近的棘齒");
   for (const p of [P.brk + T_LAND + 0.01, (P.brk + P.mend) / 2, P.mend - 0.001]) {
     const s = m278.story(p);
     close(s.top, landed, "落到棘齒上就不再下降");
-    assert.ok(m278.pawlAt(s.top, s.b).joint + 0.15 > toothTip, "棘爪 d 被推進棘齒之間");
+    assert.ok(m278.pawlAt(s.top, s.b).joint + PAWL_TIP > toothTip, "棘爪 d 被推進棘齒之間");
   }
   // 換上新繩後:繩拉緊、棘爪縮回,平台放回起點,整段連續(下一輪從同一個位置開始)
   const after = m278.story(P.tight);
-  assert.ok(m278.pawlAt(after.top, after.b).joint + 0.15 < toothTip, "繩拉緊後棘爪縮回");
+  assert.ok(m278.pawlAt(after.top, after.b).joint + PAWL_TIP < toothTip, "繩拉緊後棘爪縮回");
   close(m278.story(0.99999).top, m278.story(0).top, "一輪結束時回到起點", 1e-6);
+  for (const p of sweep(1, 400)) {
+    const { pawl, teeth } = m278.contactAt(p);
+    for (const t of teeth) assert.ok(penetrationDepth(pawl, t) < 2e-3, `進程 ${p.toFixed(3)}:棘爪不穿進棘齒`);
+  }
 });
 
 test("第 244 種:測功計:軸轉動時輪 A 在木塊間轉,槓桿 D 由擋止 C、C' 限制;夾緊程度剛好時槓桿呈水平", () => {

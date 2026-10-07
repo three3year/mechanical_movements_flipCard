@@ -7,7 +7,8 @@
 // 垂直臂往左擺時把卡榫往回拉,鉤頂著齒的直面把棘輪往逆時針拖;垂直臂往右擺時卡榫被齒背頂起、越過齒尖後加速落進
 // 後面的齒間。棘輪左邊的止回爪靠自重搭在齒上,不讓棘輪倒轉。每程推過幾齒、停在哪裡都由爪與齒相碰算出:
 // 進料慢時一程一齒,進料快時一程兩齒。
-// 推斷:各桿長與棘輪齒數(依原圖);曲柄半徑(讓慢速每程剛好越過一齒);止回爪(原圖棘輪左上的小爪)的支架;
+// 推斷:各桿長與棘輪齒數(依原圖);每程推過的齒數(慢一齒、快兩齒;原文只說螺絲可調進料速度),
+// 為此曲柄半徑加大、進料快的接點移近支點;止回爪(原圖棘輪左上的小爪)的支架;
 // 棘輪軸的軸承座與平台的導軌(原圖沒畫)。
 import { TAU, deg } from "./kit.js";
 import { crankPin, circleCircle, angleOf } from "./linkage.js";
@@ -82,7 +83,7 @@ export const contactAt = (theta, state = "slow") => {
 
 const spokes = Array.from({ length: 4 }, (_, i) => ({ kind: "box", size: [2 * WHEEL.inner - 0.2, 0.12, 0.1], angle: (i * Math.PI) / 4 }));
 // 卡榫的鉤(卡榫末端那一段,往後伸到棘輪那一層)
-const HOOK = [[CATCH - 0.14, 0.05], [CATCH - 0.14, -0.05], [CATCH - 0.1, -0.05], [CATCH - 0.12, -0.16], [CATCH - 0.07, -0.16], [CATCH + 0.02, -0.05], [CATCH + 0.02, 0.05]];
+const HOOK = [[CATCH - 0.14, 0.05], [CATCH - 0.14, -0.05], ...CATCH_OUTLINE.slice(2)];
 
 export default {
   figure: 284,

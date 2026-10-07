@@ -1,18 +1,9 @@
-// 擒縱與冠狀棘輪的共用小工具。純函式。前段的 escapeStep 等照相位擺放的函式是第 234、237、238、402 種用的;
-// 後段(toothedWheel 以下)是由接觸算的擒縱:擒縱輪、叉瓦作圖與鉸接零件的逐步模擬(第 288–314 種)。
-import { smooth, swingPhase, quatFromBasis } from "./kit.js";
-import { shape, ratchetShape } from "./shapes.js";
+// 擒縱與冠狀棘輪的共用小工具。純函式。sawCrown 是冠狀鋸齒的零件(第 234、237、277 種等);
+// toothedWheel 以下是由接觸算的擒縱:擒縱輪、叉瓦作圖與鉸接零件的逐步模擬(第 288–314 種)。
+// (原本照相位擺放的 escapeStep、escapeRecoil、singleBeat 等,第 234、237、238、402 種改成由接觸算後沒有人用,已刪)
+import { quatFromBasis } from "./kit.js";
+import { shape } from "./shapes.js";
 import { polygonsOverlap } from "./contact.js";
-
-/**
- * 擒縱:擒縱叉(或軸桿)在 from 與 to 之間往復(v 是累計擺動量),每擺一程放走擒縱輪半個齒距 step。
- * 一程的前段叉瓦擋住輪(鎖住),後段輪被放開、推著叉瓦前進(衝擊)。回傳輪的累計前進量。
- */
-export function escapeStep(v, from, to, step, release = 0.5) {
-  const { cycle, forward, f } = swingPhase(v, from, to);
-  const half = 2 * cycle + (forward ? 0 : 1);
-  return (half + smooth(Math.max(0, Math.min(1, (f - release) / (1 - release))))) * step;
-}
 
 /**
  * 冠狀鋸齒(齒立在輪緣上、朝上,局部 z 是輪軸):每齒一塊直角三角形板,斜邊沿 +角度方向升起,
@@ -35,56 +26,6 @@ export function sawCrown({ teeth, radius, height, base = 0, thick = 0.12 }) {
       accent: i === 0,
     };
   });
-}
-
-/** 冠狀鋸齒在輪的局部角 u 處的齒高(與 sawCrown 一致:每齒從 0 升到 height,在齒的終點直落) */
-export function sawHeight(u, teeth, height) {
-  const pitch = (2 * Math.PI) / teeth;
-  const f = ((u / pitch) % 1 + 1) % 1;
-  return height * f;
-}
-
-/**
- * 回退式擒縱:每擺一程,齒落在叉瓦上之後,擺繼續往外擺,叉瓦的斜面把輪往回推一點(回退 recoil);
- * 擺回來時輪先追回原位,再推著叉瓦前進(衝擊)半個齒距,脫開時落到另一個叉瓦上。
- * v 是累計擺動量;回傳輪的累計前進量(每程淨前進 step)。
- */
-export function escapeRecoil(v, from, to, step, recoil) {
-  const { cycle, forward, f } = swingPhase(v, from, to);
-  const half = 2 * cycle + (forward ? 0 : 1);
-  // 一程之內:先由回退的位置追回(0–0.3),再衝擊前進一個 step(0.3–0.7),最後落鎖並被推回(0.7–1)
-  let g;
-  if (f < 0.3) g = -recoil * (1 - smooth(f / 0.3));
-  else if (f < 0.7) g = step * smooth((f - 0.3) / 0.4);
-  else g = step - recoil * smooth((f - 0.7) / 0.3);
-  return half * step + g;
-}
-
-/** 擒縱輪:尖齒(鋸齒)輪+輪輻與輪轂;dir 同 ratchetShape(+1 時齒的直面朝逆時針側) */
-export function escapeWheelPieces({ teeth, outer, inner, dir = 1, spokes = 4, thickness = 0.12, rim = 0.16 }) {
-  const ringIn = inner - rim;
-  return [
-    { kind: "plate", shape: ratchetWithHole({ teeth, outer, inner, dir }, ringIn), thickness },
-    ...Array.from({ length: spokes }, (_, i) => ({ kind: "box", size: [2 * ringIn, 0.1, thickness * 0.8], angle: (i * Math.PI) / spokes + 0.3 })),
-    { kind: "cylinder", radius: 0.2, length: thickness * 1.6 },
-  ];
-}
-
-function ratchetWithHole(spec, hole) {
-  const s = ratchetShape(spec);
-  const n = 72;
-  const ring = Array.from({ length: n }, (_, i) => [hole * Math.cos((i / n) * 2 * Math.PI), hole * Math.sin((i / n) * 2 * Math.PI)]);
-  return { outline: s.outline, holes: [ring.reverse()] };
-}
-
-/**
- * 只在單一方向給衝擊的擒縱(天文台計時器、雙合式):擺輪每來回一次,擒縱輪轉過一齒;
- * 轉動發生在回程(往 from 擺)的中段 [start, start + span](以一程的比例計)。回傳 { at, forward, f, turned }。
- */
-export function singleBeat(v, from, to, step, start = 0.47, span = 0.2) {
-  const { at, cycle, forward, f } = swingPhase(v, from, to);
-  const turn = forward ? 0 : smooth((f - start) / span);
-  return { at, forward, f, turned: step * (cycle + turn) };
 }
 
 /**

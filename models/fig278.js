@@ -7,7 +7,7 @@
 // 平面上停住(由棘爪尖與棘齒的位置算)。之後換上新繩:繩一拉緊就把 b 拉上、棘爪縮回,再把平台放回最低處,
 // 接著下一輪(整段連續,沒有跳回)。
 // 推斷:肘節與棘爪的尺寸、棘齒的齒距;各段所佔的進程;換新繩後放回原處的那一段(原文沒寫,為了讓劇情能連續重播)。
-// 動力重演不適用:棘爪由兩端都鉸接的肘節連桿撐出(重演的自由零件只能有一個樞軸),撐出多少由肘節的幾何算。
+// 動力重演做不出來(宣告了,寫成豁免):棘爪由兩端都鉸接的肘節連桿撐出,撐出多少由肘節的幾何算。
 import { smooth } from "./kit.js";
 import { shape, rect } from "./shapes.js";
 import { falling } from "./jumps.js";
@@ -27,7 +27,7 @@ const G = 120; // 落下的「加速度」(以進程計:落下 d 花 √(d / G) 
 
 /** 銷 b 的高度 → 棘爪尖離中線的距離(肘節撐開) */
 export const pawlReach = (b) => Math.sqrt(LINK * LINK - (b - PAWL_Y) ** 2) + PAWL_TIP;
-export const geometry = { face: POST.face, toothTip: POST.face - TOOTH.depth, B_UP, B_DOWN, pitch: TOOTH.pitch, P };
+export const geometry = { face: POST.face, toothTip: POST.face - TOOTH.depth, B_UP, B_DOWN, pitch: TOOTH.pitch, P, PAWL_TIP };
 
 // 棘齒的平面(齒的上面)高度:from + k·齒距 + 0.85·齒距
 const flats = Array.from({ length: TOOTH.count }, (_, k) => TOOTH.from + k * TOOTH.pitch + 0.85 * TOOTH.pitch);
@@ -63,7 +63,7 @@ export function story(p0) {
 }
 export const landing = { top: LAND, T_LAND, SPREAD_AT };
 
-// 立柱內側在高度 y 處的邊界 x(棘齒的斜面或柱面)
+// 立柱內側在高度 y 處的邊界 x(棘齒的斜面或柱面;棘齒全是直線段,直接解出邊界即可,測試另以 contact.js 驗棘爪不穿入)
 const faceAt = (y) => {
   const k = Math.floor((y - TOOTH.from) / TOOTH.pitch);
   const local = y - TOOTH.from - k * TOOTH.pitch;
@@ -80,6 +80,18 @@ export function pawlAt(top, b) {
   const room = Math.min(...edge.map(([u, d]) => faceAt(py + d) - u));
   const joint = Math.min(pawlReach(b) - PAWL_TIP, room);
   return { joint, b: PAWL_Y + Math.sqrt(LINK * LINK - joint * joint) };
+}
+
+/** 檢查用:進程 p 時右邊的棘爪與右立柱的棘齒(世界座標 2D;左邊是鏡像) */
+export function contactAt(p) {
+  const { top, b: pressed } = story(p);
+  const { joint } = pawlAt(top, pressed);
+  const pawlPoly = PAWL_OUTLINE.map(([x, y]) => [joint + x, top + PAWL_Y + y]);
+  const teeth = Array.from({ length: TOOTH.count }, (_, i) => {
+    const y = TOOTH.from + i * TOOTH.pitch;
+    return [[POST.face, y], [POST.face, y + TOOTH.pitch * 0.85], [POST.face - TOOTH.depth, y + TOOTH.pitch * 0.85]];
+  });
+  return { pawl: pawlPoly, teeth };
 }
 
 // 立柱:內側一排棘齒,齒的上面是平的(擋住往下的棘爪)、下面是斜的
@@ -129,6 +141,23 @@ export default {
     { id: "pawlR", kind: "plate", shape: pawl(1), thickness: 0.25, arrow: false, label: "d", labelOffset: [-0.05, -0.35, 0.3] },
     { id: "ropeA", kind: "rope", label: "a", center: [0, 2.2, 0.25], labelOffset: [0.3, 0, 0] },
     { id: "ropeEnd", kind: "rope" },
+  ],
+  // 動力重演:繩斷之後放開平台(沿立柱上下、受重力);棘爪照模型撐出,平台要落到棘爪擋住的地方
+  replay: {
+    from: P.brk,
+    to: P.mend - 0.01,
+    seconds: 8,
+    free: { platform: { slide: [0, 1, 0] } },
+    ignore: [["platform", "pinB"], ["platform", "springC"], ["platform", "linkL"], ["platform", "linkR"]],
+    expect: [{ part: "platform", label: "繩斷後平台落下,被撐進棘齒的棘爪擋住", quote: "因此將棘爪推入棘齒中，並阻止平台的下降" }],
+  },
+  waivers: [
+    {
+      check: "replay",
+      parts: ["platform"],
+      reason:
+        "重演做不出來:棘爪由兩端都鉸接的肘節連桿撐出,重演的自由零件只能有一個樞軸,棘爪只能照模型擺放、和放開的平台之間沒有連在一起;平台受重力落得比模型快(模型的落下是照進程演的加速),就從棘爪上脫開、一路落到底。棘爪撐進棘齒、平台停在棘齒平面上由測試驗(棘爪不穿進棘齒、落點在下方最近的棘齒)",
+    },
   ],
   powered: ["platform"], // 外力來源:平台由繩拉著(斷繩後由自重)
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], speed: 0.07 },

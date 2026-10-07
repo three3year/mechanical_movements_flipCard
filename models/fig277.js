@@ -92,7 +92,7 @@ export function colt(v) {
   const pin = pinAt(hammerAt(v));
   return { hammer: hammerAt(v), cylinder: -(s.wheel - S0), pin: [...pin, HAND_Z], hand: s.angles.hand };
 }
-/** 檢查用:主動量 v 時爪與棘齒(x–y 平面,z = 棘齒圈半徑) */
+/** 檢查用:主動量 v 時爪與棘齒在爪所在平面(z = HAND_Z 附近)的剖面,畫在 x–y 平面 */
 export const contactAt = (v) => {
   const s = drive.shapes(v);
   return { hand: s.pawls.hand, teeth: s.wheel };
@@ -189,7 +189,7 @@ export default {
       check: "replay",
       parts: ["cylinder"],
       reason:
-        "重演引擎的限制:轉輪是實心的大圓柱,質量約是爪的一千倍,重演的摩擦定位阻尼又和質量成正比,鉸在擊錘上的細爪頂著棘齒推時,鉸接的約束先被擠開,轉輪幾乎不動。重演的質量、摩擦一律用全書一致的預設值(原書沒有重量資料);試過把轉輪的密度降到百分之一,爪就推得動一整格。模型的轉動由爪與棘齒的平面剖面接觸算(測試驗:每扳一次轉一格、落下不動、爪不穿進齒)",
+        "重演引擎的限制:轉輪是實心的大圓柱,質量約是爪的一千倍,重演的摩擦定位阻尼又和質量成正比,鉸在擊錘上的細爪頂著棘齒推時,鉸接的約束先被擠開,轉輪幾乎不動。重演的質量、摩擦一律用全書一致的預設值(原書沒有重量資料);試過把轉輪的密度降到百分之一,爪就推得動一整格;照實物畫出六個膛孔、做成空心,質量也只減到三成左右,遠不到推得動所需的百分之一。模型的轉動由爪與棘齒的平面剖面接觸算(測試驗:每扳一次轉一格、落下不動、爪不穿進齒)",
     },
   ],
   view: { direction: [0.06, 0.05, 1] },
@@ -199,7 +199,7 @@ export default {
     return {
       parts: {
         hammer: { angle: h },
-        cylinder: { angle: cylinder - S0 },
+        cylinder: { angle: cylinder - S0 }, // colt 的轉角是自起點算的;零件要的是絕對轉角(和 teethAt 的 θ = −s 一致)
         pawl: { position: pin, angle: hand },
         springC: { from: [...SPRING_SEAT, HAND_Z], to: [pin[0] + sx, pin[1] + sy, HAND_Z] },
       },

@@ -17,7 +17,7 @@ import { placeOutline, polygonsOverlap } from "./contact.js";
  * pawls:{ id: { outline(局部輪廓,原點在樞軸), into(±1,落下的轉向), angle(起始轉角), pushes?(布林或 (v) → 布林:這一步是不是在推), fixed?, limits?: [min, max],
  *          fall?(自靜止落下 0.3 弧度所花的主動量,預設週期的 4%), stops?(v) → 其他擋住它的多邊形,
  *          lift?(推的時候爪最多被抬起的弧度,預設 0.04;長的爪要小一點,免得爪尖被抬起的距離大過齒深。
- *          也可以給 [往下, 往上]:拉爪的樞軸斜著動時,爪尖要跟著齒的直面走,爪可能得往齒裡轉一點) } }。
+ *          也可以給 [往下, 往上](往下是負值,往齒裡轉):拉爪的樞軸斜著動時,爪尖要跟著齒的直面走,爪可能得往齒裡轉一點) } }。
  * 回傳 { at(v) → { wheel, angles: { id } }, step(被推的輪每週期前進的角度), shapes(v)(檢查用的外形) }。
  */
 export function pawlDrive({ period, samples = 480, warmup = 2, pins, angles, wheel, pawls, trace }) {
@@ -42,7 +42,11 @@ export function pawlDrive({ period, samples = 480, warmup = 2, pins, angles, whe
       const obstacles = [...wheel.obstacles(theta + wheel.dir * d), ...extra];
       const [down, up] = Array.isArray(p.lift) ? p.lift : [0, p.lift ?? LIFT];
       const lifts = [0];
-      if (!p.fixed) for (let k = 1; k <= 8; k++) lifts.push((up * k) / 8, (down * k) / 8);
+      if (!p.fixed)
+        for (let k = 1; k <= 8; k++) {
+          if (up) lifts.push((up * k) / 8);
+          if (down) lifts.push((down * k) / 8);
+        }
       for (const lift of lifts) if (!hits(placed(id, v, angle - (p.into ?? 0) * lift), obstacles)) return lift;
       return null;
     };

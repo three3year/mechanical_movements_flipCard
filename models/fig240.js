@@ -90,6 +90,20 @@ export const DROPS = Object.fromEntries(
   }),
 );
 export const STOP_OUTLINES = STOPS;
+// 動力重演的中途事件:第二個齒距裡爪 C 被齒背壓下到八成的那一刻(預期爪真的被頂開,不只比落回後的位置;
+// 取壓到最低之前,因為越過齒尖後彈回的快慢,重演的彈簧和模型的加速度不同)
+const PRESS_C = (() => {
+  const at = (w) => STOPS.pawlC.into * stopAngle("pawlC", w);
+  const w0 = DROPS.bar + PERIOD;
+  let low = { a: Infinity, w: w0 };
+  for (let i = 0; i <= 200; i++) {
+    const w = w0 + (i * PERIOD) / 200;
+    if (at(w) < low.a) low = { a: at(w), w };
+  }
+  let w = w0;
+  while (at(w) > at(w0) + 0.8 * (low.a - at(w0))) w += PERIOD / 400;
+  return w;
+})();
 export const pawlCAngle = (wheel) => stopAngle("pawlC", wheel);
 
 // 彈簧片:上片從爪 C 下緣的 SPRING.root(爪的局部座標)沿 SPRING.dir 伸出,彎到固定的 U 形彎頂端 SPRING.bend;
@@ -172,6 +186,7 @@ export default {
     expect: [
       { at: DROPS.bar + PERIOD, part: "bar", label: "平桿爪越過一齒、落回齒間" },
       { at: DROPS.bar + 2 * PERIOD, part: "hook", label: "長爪越過兩齒、落回齒間" },
+      { at: PRESS_C, part: "pawlC", label: "爪 C 被齒背壓下(彈簧被壓縮)" },
       { at: DROPS.bar + 2 * PERIOD, part: "pawlC", label: "爪 C 越過兩齒、落回齒間" },
     ],
   },
