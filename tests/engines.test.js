@@ -20,7 +20,8 @@ import { rot2 } from "../models/kit.js";
 import { coupling, ARM as ARM176, INSERT as INSERT176, GROOVE as GROOVE176, WRIST as WRIST176 } from "../models/uncoupling.js";
 import { cornish, crossing, valves, ANGLES as CORNISH, TAPPET, SPAN as SPAN181 } from "../models/cornish-gear.js";
 import { quadrantOutlines } from "../models/cornish-model.js";
-import { polygonsOverlap } from "../models/contact.js";
+import { catchState, catchOutlines, TIP as CATCH_TIP } from "../models/diagonal-catch.js";
+import { polygonsOverlap, pointInPolygon, edgeDistance } from "../models/contact.js";
 import fig181 from "../models/fig181.js";
 import * as gab186 from "../models/fig186.js";
 import * as gab187 from "../models/fig187.js";
@@ -420,16 +421,24 @@ test("第 176、177 種:溝槽在第 176 種位置時手腕帶動曲柄;轉到�
 
 const cornishSamples = sweep(2 * SPAN181, 1200);
 
-test("第 181、182 種:活塞上升時撥爪抬起下方手柄並被卡住,上方手柄同時被放開;下降時撥爪把上方手柄壓回", () => {
-  const start = cornish(0);
-  close(start.lower, CORNISH.lower.A);
-  close(start.upper, CORNISH.upper.A);
-  assert.deepEqual(valves(start).map((r) => r.value), ["關", "開", "上升"], "第 181 種:下方蒸汽閥與上方排氣閥開,活塞上升");
-  const top = cornish(SPAN181);
-  close(top.lower, CORNISH.lower.B);
-  close(top.upper, CORNISH.upper.B);
-  assert.deepEqual(valves(top).map((r) => r.value).slice(0, 2), ["開", "關"], "第 182 種:上方蒸汽閥與下方排氣閥開");
-  // 上升途中:下方手柄先被抬到頭,上方手柄才放開
+for (const [figs, state] of [["181、182", catchState], ["183、184", cornish]]) {
+  test(`第 ${figs} 種:活塞上升時撥爪抬起下方手柄並被卡住,上方手柄同時被放開;下降時撥爪把上方手柄壓回`, () => {
+    const start = state(0);
+    close(start.lower, CORNISH.lower.A);
+    close(start.upper, CORNISH.upper.A);
+    assert.deepEqual(valves(start).map((r) => r.value), ["關", "開", "上升"], `第 ${figs} 種(A 位置):下方蒸汽閥與上方排氣閥開,活塞上升`);
+    const top = state(SPAN181);
+    close(top.lower, CORNISH.lower.B);
+    close(top.upper, CORNISH.upper.B);
+    assert.deepEqual(valves(top).map((r) => r.value).slice(0, 2), ["開", "關"], `第 ${figs} 種(B 位置):上方蒸汽閥與下方排氣閥開`);
+    // 一整個往返回到第 181 種的位置
+    const back = state(2 * SPAN181 - 1e-9);
+    close(back.lower, CORNISH.lower.A, "下方手柄落回", 1e-6);
+    close(back.upper, CORNISH.upper.A, "上方手柄被壓回", 1e-6);
+  });
+}
+
+test("第 183、184 種:上升途中下方手柄先被抬到頭,上方手柄才放開", () => {
   let lowerDoneAt = null;
   let upperMovedAt = null;
   for (const v of cornishSamples.filter((v) => v <= SPAN181)) {
@@ -438,18 +447,53 @@ test("第 181、182 種:活塞上升時撥爪抬起下方手柄並被卡住,上�
     if (upperMovedAt === null && Math.abs(s.upper - CORNISH.upper.A) > 1e-9) upperMovedAt = v;
   }
   assert.ok(lowerDoneAt !== null && upperMovedAt !== null && lowerDoneAt <= upperMovedAt);
-  // 一整個往返回到第 181 種的位置
-  const back = cornish(2 * SPAN181 - 1e-9);
-  close(back.lower, CORNISH.lower.A, "下方手柄落回", 1e-6);
-  close(back.upper, CORNISH.upper.A, "上方手柄被壓回", 1e-6);
   // 兩張圖是同一機構的兩個時刻
   assert.equal(fig181.driver.initial, 0);
   assert.equal(fig182.driver.initial, SPAN181);
 });
 
+test("第 181、182 種:卡榫的指頭只靠在凸輪上、從不碰進去;A 位置鎖住上方手柄、B 位置鎖住下方手柄", () => {
+  const into = (tip, cam) => pointInPolygon(tip, cam) || edgeDistance(tip, cam) < CATCH_TIP - 1e-6;
+  const overlaps = (s) => {
+    const o = catchOutlines(s);
+    return into(o.tips.upper, o.cams.upper) || into(o.tips.lower, o.cams.lower);
+  };
+  for (const v of cornishSamples) assert.ok(!overlaps(catchState(v)), `v = ${v.toFixed(3)}`);
+  const turn = 0.01;
+  // A:上方手柄被配重往順時針拉——卡榫不動時上方指頭擋著它;卡榫要讓開(逆時針)得把下方指頭壓進下凸輪
+  const a = catchState(0);
+  assert.ok(overlaps({ ...a, upper: a.upper - turn }), "A:上方手柄轉不過去");
+  assert.ok(overlaps({ ...a, phi: a.phi + turn }), "A:卡榫被下凸輪的圓弧擋住");
+  assert.ok(!overlaps({ ...a, lower: a.lower - turn }), "A:下方手柄可以被抬起(指頭沿圓弧滑)");
+  // B:下方手柄靠自重往逆時針落——下方指頭擋著它;卡榫要讓開(順時針)得把上方指頭壓進上凸輪
+  const b = catchState(SPAN181);
+  assert.ok(overlaps({ ...b, lower: b.lower + turn }), "B:下方手柄落不下去");
+  assert.ok(overlaps({ ...b, phi: b.phi - turn }), "B:卡榫被上凸輪的圓弧擋住");
+  assert.ok(!overlaps({ ...b, upper: b.upper + turn }), "B:上方手柄可以被壓回(指頭沿圓弧滑)");
+});
+
+test("第 181、182 種:下方手柄被抬到頭、與卡榫嚙合的同時,上方手柄脫離卡榫甩出;下降時反過來", () => {
+  const follow = (9 * Math.PI) / 180; // 被放開之前,手柄只跟著卡榫的斜面轉一小段(約 8.6°)
+  let released = null;
+  for (const v of cornishSamples.filter((v) => v <= SPAN181)) {
+    const s = catchState(v);
+    const lowerDone = Math.abs(s.lower - CORNISH.lower.B) < 1e-9;
+    if (!lowerDone) assert.ok(CORNISH.upper.A - s.upper < follow, `v = ${v.toFixed(3)}:下方手柄還沒抬到頭,上方手柄仍被卡住`);
+    if (released === null && CORNISH.upper.A - s.upper >= follow) released = v;
+  }
+  assert.ok(released !== null, "上方手柄被配重拉起");
+  for (const v of cornishSamples.filter((v) => v > SPAN181)) {
+    const s = catchState(v);
+    const upperDone = Math.abs(s.upper - CORNISH.upper.A) < 1e-9;
+    if (!upperDone) assert.ok(s.lower - CORNISH.lower.B < follow, `v = ${v.toFixed(3)}:上方手柄還沒壓回,下方手柄仍被卡住`);
+  }
+  // 卡榫只在交接時擺動:兩個位置之間的轉角約 7°
+  const turned = catchState(SPAN181).phi - catchState(0).phi;
+  assert.ok(turned > 0.05 && turned < 0.2, `卡榫逆時針擺 ${turned}`);
+});
+
 test("第 181–184 種:撥爪只在推手柄時碰到手柄,從不穿過手柄", () => {
-  for (const v of cornishSamples) {
-    const s = cornish(v);
+  for (const v of cornishSamples) for (const s of [catchState(v), cornish(v)]) {
     for (const which of ["upper", "lower"]) {
       const c = crossing(which, s[which]);
       if (c === null) continue;

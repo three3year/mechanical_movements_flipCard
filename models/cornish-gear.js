@@ -8,6 +8,8 @@
 // 臂的端點離開活塞桿的路徑時剛好被卡住。被放開的手柄是靠配重(上方)、自重(下方)甩到位的,
 // 甩動的過程演出來(jumps.falling:起步慢、越來越快、到底停住),佔撥爪再走 SNAP 的行程;
 // 上方手柄在撥爪到頂時(第 182 種的位置)剛好甩到位,下方手柄甩到位時撥爪還在往下走、沒碰到它。
+// cornish() 是象限器(第 183、184 種)的時序;斜向卡榫(第 181、182 種)的手柄何時被放開由卡榫與凸輪的接觸算,
+// 見 diagonal-catch.js(撥爪推手柄、放開的時刻與甩到位的過程和這裡相同)。
 import { deg, swingPhase } from "./kit.js";
 import { falling } from "./jumps.js";
 
@@ -22,7 +24,7 @@ export const ANGLES = {
   lower: { A: deg(150), B: Math.PI - Math.acos(DX / HANDLE) },
   upper: { A: Math.PI + Math.acos(DX / HANDLE), B: deg(216.9) },
 };
-const SNAP = 0.5; // 手柄甩到位所佔的撥爪行程:上方手柄放開時撥爪離頂端剛好 0.5,到頂時甩到位
+export const SNAP = 0.5; // 手柄甩到位所佔的撥爪行程:上方手柄放開時撥爪離頂端剛好 0.5,到頂時甩到位
 
 /** 手柄臂(從軸沿 angle)與活塞桿右緣的交點高度;臂搆不到(或端點剛好停在桿緣上)時為 null */
 export function crossing(shaft, angle) {
@@ -32,15 +34,15 @@ export function crossing(shaft, angle) {
 }
 
 // 撥爪頂到手柄時,手柄的轉角:臂與桿右緣的交點高度 = y
-const lowerAt = (y) => Math.PI - Math.atan2(y - SHAFTS.lower[1], DX);
-const upperAt = (y) => Math.PI + Math.atan2(SHAFTS.upper[1] - y, DX);
+export const lowerAt = (y) => Math.PI - Math.atan2(y - SHAFTS.lower[1], DX);
+export const upperAt = (y) => Math.PI + Math.atan2(SHAFTS.upper[1] - y, DX);
 // 下方手柄被卡住時、上方手柄被卡住時撥爪中心的高度
-const LATCH_UP = SHAFTS.lower[1] + DX * Math.tan(Math.PI - ANGLES.lower.B) - TAPPET.half;
-const LATCH_DOWN = SHAFTS.upper[1] - DX * Math.tan(ANGLES.upper.A - Math.PI) + TAPPET.half;
+export const LATCH_UP = SHAFTS.lower[1] + DX * Math.tan(Math.PI - ANGLES.lower.B) - TAPPET.half;
+export const LATCH_DOWN = SHAFTS.upper[1] - DX * Math.tan(ANGLES.upper.A - Math.PI) + TAPPET.half;
 export const SPAN = STROKE.top - STROKE.bottom;
 
 /**
- * 累計行程 v(往復):撥爪中心高度、上下手柄轉角、卡榫的切換進度(0 = A,1 = B)與活塞方向。
+ * 象限器(第 183、184 種)的時序。累計行程 v(往復):撥爪中心高度、上下手柄轉角、切換進度 latch(0 = A,1 = B)與活塞方向。
  * 上升的半程從 A 開始;下降的半程從 B 開始。
  */
 export function cornish(v) {
