@@ -352,7 +352,7 @@ test("第 84 種:抬起 A 時框架被推向左方,降下 A 時推向右方,置�
 });
 
 import { pump, lift as lift86, liftAngle as liftAngle86, contactAt as contact86 } from "../models/fig086.js";
-import { reverser, leverF } from "../models/fig087.js";
+import { reverser, period as period87, firstStroke as stroke87, contactAt as contact87, tipping as tipping87 } from "../models/fig087.js";
 import { wheelB, contactAt as contact88 } from "../models/fig088.js";
 
 test("第 86 種:凸輪「抓住」制動裝置 B 之前輪不動;抓住後「連同輪一起帶動旋轉」(與凸輪同轉,順時針)", () => {
@@ -390,15 +390,51 @@ test("第 86 種:鉤、凸輪、擋止之間由接觸決定,任何時刻都不�
   assert.ok(gap < 0.02, `釋放時尾端貼著擋止(差 ${gap.toFixed(3)})`);
 });
 
-test("第 87 種:軸自動反向——驅動齒輪連續轉,軸來回往復;每次反向時加重槓桿 F 倒向另一側", () => {
-  const span = (300 * Math.PI) / 180;
-  const a = reverser(span * 0.5).shaft;
-  const b = reverser(span * 1.0 - 1e-9).shaft;
-  const c = reverser(span * 1.5).shaft;
+test("第 87 種:「能自動反向」——驅動齒輪連續轉,軸來回往復,一個週期後回到原處", () => {
+  const a = reverser(stroke87 * 0.5).shaft;
+  const b = reverser(stroke87 - 0.05).shaft;
+  const c = reverser((stroke87 + period87) / 2).shaft;
   assert.ok((b - a) * (c - b) < 0, "前一程與後一程轉向相反");
-  close(reverser(span * 2).shaft, reverser(0).shaft, "兩程後回到原處", 1e-9);
-  assert.ok(leverF(span * 0.5) * leverF(span * 1.5) < 0, "兩程中 F 倒向不同側");
-  close(leverF(span * (1 - 1e-6)), 0, "一程結束時 F 被推到垂直", 1e-3);
+  close(reverser(period87).shaft, reverser(0).shaft, "兩程後回到原處", 1e-3);
+  assert.ok(Math.abs(b - a) > Math.PI, "每一程軸轉一圈以上(E 轉近一圈,凸柱才從 G 的一側繞到另一側)");
+});
+
+test("第 87 種:凸柱撞上 G 之前 F 不動;F「被帶動至越過垂直位置」之前,撥叉 K 不動(D 保持嚙合、軸照轉)", () => {
+  const vs = sweep(stroke87 + 0.5, 1200);
+  const rest = reverser(0);
+  const moved = vs.find((v) => Math.abs(reverser(v).lever - rest.lever) > 1e-6);
+  const { stud, arm } = contact87(moved);
+  const gap = Math.min(...stud.map((p) => edgeDistance(p, arm)), ...arm.map((p) => edgeDistance(p, stud)));
+  assert.ok(gap < 0.02, `F 開始動的那一刻,凸柱正碰著 G 的上臂(差 ${gap.toFixed(3)})`);
+  const forkMoves = vs.find((v) => Math.abs(reverser(v).fork - rest.fork) > 1e-6);
+  assert.ok(reverser(forkMoves).lever > tipping87, "K 被撥動時 F 已經過了垂直");
+  for (const v of vs.filter((v) => v > moved && v < forkMoves)) close(reverser(v).clutch, rest.clutch, "F 被推向垂直時 D 不動", 1e-9);
+});
+
+test("第 87 種:F 過了垂直「突然倒下」——一路加速,撞上擋銷把 K 撥過去,D 換邊;D 在中間沒咬上時軸停住", () => {
+  const vs = sweep(stroke87 + 0.6, 600, stroke87 - 0.6);
+  const states = vs.map(reverser);
+  const start = states.findIndex((s) => s.lever > tipping87);
+  const end = states.findIndex((s, i) => i > start && Math.abs(s.lever - states.at(-1).lever) < 0.02); // 最後一小段是撞到擋銷停住
+  assert.ok(end - start > 3, "倒下有過程,不是瞬間到位");
+  // 倒下途中(最後一步撞到擋銷停住,不算)每一步都比前一步快或一樣快
+  const steps = states.slice(start, end).map((s, i, all) => (i ? s.lever - all[i - 1].lever : 0)).slice(2);
+  for (let i = 1; i < steps.length; i++) assert.ok(steps[i] >= steps[i - 1] * 0.97, `越倒越快(第 ${i} 步)`); // 查表是分段直線,取樣跨段時差一點
+  assert.ok(steps.at(-1) > steps[0], "倒到後段比剛過垂直時快");
+  assert.ok(states.at(-1).clutch < 0 && states[0].clutch > 0, "D 從與 C 嚙合換到與 B 嚙合");
+  const idle = states.filter((s, i) => i && Math.abs(s.clutch) < 0.14 && Math.abs(states[i - 1].clutch) < 0.14);
+  assert.ok(idle.length > 0, "D 有經過中間");
+  for (let i = 1; i < states.length; i++) {
+    if (Math.abs(states[i].clutch) < 0.14 && Math.abs(states[i - 1].clutch) < 0.14) close(states[i].shaft, states[i - 1].shaft, "D 在中間時軸停住", 0.01); // 跨過咬上的界線時查表內插差一點
+  }
+});
+
+test("第 87 種:凸柱與 G 的上臂、F 與 K 的擋銷之間由接觸決定,任何時刻都不互相穿入", () => {
+  for (const v of sweep(period87, 1500)) {
+    const { stud, arm, lever, dogs } = contact87(v);
+    assert.ok(penetrationDepth(stud, arm) < 0.01, `主動量 ${v.toFixed(2)}:凸柱穿進 G 的上臂`);
+    for (const d of dogs) assert.ok(penetrationDepth(lever, d) < 0.01, `主動量 ${v.toFixed(2)}:F 穿進擋銷`);
+  }
 });
 
 test("第 88 種:凸輪 A 連續旋轉,輪 B「保持靜止,直到凸輪完成其旋轉」——每圈被推半圈、其餘時間靜止(照原圖順時針)", () => {
