@@ -24,6 +24,11 @@ export const upper = bevelGear({ apex: APEX, axis: [0, -1, 0], teeth: UPPER.teet
 export const lower = bevelGear({ apex: APEX, axis: [0, 1, 0], teeth: LOWER.teeth, radius: LOWER.radius, cone: coneOf(LOWER.radius, APEX[1] - PL[1]), width: 0.4 });
 export const drive = bevelGear({ apex: APEX, axis: DRIVE_AXIS, teeth: DRIVE_TEETH, radius: RD, cone: coneOf(RD, Math.sqrt(toApex(PU) ** 2 - RD * RD)), width: 0.4 });
 
+const DRIVE_N = (() => {
+  const l = Math.hypot(DRIVE_AXIS[0], DRIVE_AXIS[1]);
+  return [DRIVE_AXIS[0] / l, DRIVE_AXIS[1] / l, 0];
+})();
+const DRIVE_END = [drive.center[0] - 2.45 * DRIVE_N[0], drive.center[1] - 2.45 * DRIVE_N[1], 0]; // 驅動軸外端的軸承
 const bevel = (id, g, extra = {}) => ({ id, kind: "gear", center: g.center, axis: g.axis, teeth: g.teeth, radius: g.radius, cone: g.cone, width: g.width, ...extra });
 
 export default {
@@ -33,6 +38,21 @@ export default {
     // 上方大輪裝在套筒上,下方小輪固定在軸上
     bevel("upper", upper, { pieces: [{ kind: "cylinder", radius: 0.3, length: 0.9, at: [0, 0, -0.65] }] }),
     bevel("lower", lower, { pieces: [{ kind: "cylinder", radius: 0.14, length: 5.0, at: [0, 0, 1.6] }] }),
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        // 推斷(原圖沒畫):直立軸上下兩端的軸承、套筒的軸承、驅動軸外端的軸承,由後面的立柱與底板托著
+        ...[[3.1, 0.26, 0.14], [1.75, 0.42, 0.3], [-1.55, 0.26, 0.14]].flatMap(([y, r, inner]) => [
+          { kind: "cylinder", axis: [0, 1, 0], radius: r, inner, length: 0.16, at: [0, y, 0] },
+          { kind: "box", size: [0.14, 0.12, 2.1 - r + 0.05], at: [0, y, -(2.1 + r - 0.05) / 2] },
+        ]),
+        { kind: "box", size: [0.2, 5.3, 0.2], at: [0, 0.65, -2.1] },
+        { kind: "cylinder", axis: DRIVE_N, radius: 0.24, inner: 0.1, length: 0.16, at: DRIVE_END },
+        { kind: "box", size: [0.16, DRIVE_END[1] - 0.2 + 2.0, 0.16], at: [DRIVE_END[0], (DRIVE_END[1] - 0.2 - 2.0) / 2, 0] },
+        { kind: "box", size: [4.6, 0.12, 2.6], at: [1.6, -2.06, -0.9] },
+      ],
+    },
   ],
   driver: { part: "drive", type: "rotation" },
   targets: ["upper", "lower"], // 同軸上得到兩種速度的兩個輪

@@ -5,6 +5,8 @@
 import { deg, TAU } from "./kit.js";
 import { manglePath, belowHub } from "./mangle-path.js";
 import { circle } from "./shapes.js";
+import { pedestal } from "./supports.js";
+import { pinionDrive } from "./pinion-drive.js";
 
 const RT = 1.7; // 銷圈半徑
 const PINS = 22;
@@ -33,6 +35,9 @@ const pins = Array.from({ length: PINS }, (_, i) => {
   return { kind: "box", size: [0.3, 0.09, 0.24], at: [RT * Math.cos(a), RT * Math.sin(a), 0.2], angle: a };
 });
 
+// 小齒輪的驅動軸往前下方伸到固定的萬向接頭(見 pinion-drive.js);輪裝在固定的軸上,軸往後進到軸承座(推斷)
+const DRIVE = pinionDrive({ fixed: [0, -3.7, 2.2], floor: -4.2 });
+
 export default {
   figure: 194,
   parts: [
@@ -47,6 +52,17 @@ export default {
       ],
     },
     { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.25, web: false, center: [0, 0, 0.36], pieces: [{ kind: "cylinder", radius: 0.08, length: 0.5, at: [0, 0, 0.3] }] }, // 小齒輪的軸只往前伸(它沿輪面內外移動,不穿過輪板)
+    DRIVE.part,
+    DRIVE.joint,
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.13, length: 1.0, at: [0, 0, -0.42] }, // 輪的固定軸
+        ...pedestal({ at: [0, 0], z: -0.78, bore: 0.13, floor: -4.2 }),
+        ...DRIVE.pieces,
+      ],
+    },
   ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
   target: "wheel",
@@ -57,6 +73,7 @@ export default {
       parts: {
         wheel: { angle: wheel },
         pinion: { position: [0, y, 0.36], angle: path.phase(NP) + pinion },
+        ...DRIVE.pose([0, y, 0.9]),
       },
       readouts: [],
     };

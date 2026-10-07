@@ -6,6 +6,7 @@ import { TAU, deg } from "./kit.js";
 import { swingMesh } from "./swing-mesh.js";
 import { noncircularOutline, samplePitch, arcAt } from "./noncircular.js";
 import { shape, circle, rect } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 /** 輪 A 的節曲線:基本半徑 0.78,往右上的凸瓣,左側略鼓 */
@@ -33,7 +34,7 @@ export default {
   figure: 196,
   parts: [
     { id: "wheelA", kind: "plate", shape: { outline, holes: [circle(0.1).reverse()] }, thickness: 0.22, hub: 0.18, mark: [-0.5, 0], markSize: 0.08, spin: 1.2, label: "A", labelOffset: [-0.3, 0, 0.4] },
-    { id: "pinionB", kind: "gear", teeth: NB, radius: RB, width: 0.25, label: "B", labelOffset: [0.25, 0, 0.4], pieces: [{ kind: "cylinder", radius: 0.08, length: 0.7 }] },
+    { id: "pinionB", kind: "gear", teeth: NB, radius: RB, width: 0.25, label: "B", labelOffset: [0.25, 0, 0.4], pieces: [{ kind: "cylinder", radius: 0.08, length: 1.2, at: [0, 0, -0.25] }] }, // B 的軸往後伸進軸承座
     { id: "arm", kind: "link", width: 0.26, thickness: 0.1 },
     {
       id: "stand",
@@ -42,6 +43,7 @@ export default {
         { kind: "plate", shape: shape(rect(2.35, 1.0, 3.52, -0.35)), thickness: 0.6, at: [0, 0, -0.1] },
         { kind: "plate", shape: shape([[2.8, 0.15], [3.8, 0.15], [3.55, 0.45], [3.45, 1.0], [3.05, 1.0], [2.95, 0.45]]), thickness: 0.3, at: [0, 0, 0.1] },
         { kind: "cylinder", radius: 0.2, inner: 0.08, length: 0.4, at: [PIVOT[0], PIVOT[1], 0.25] },
+        ...pedestal({ at: [0, 0], z: -0.7, bore: 0.08, floor: -0.85 }), // B 的固定軸的軸承座(推斷)
       ],
     },
   ],

@@ -5,6 +5,8 @@
 import { deg, TAU, rot2 } from "./kit.js";
 import { manglePath, arcLength, cap, arcPoint, belowHub } from "./mangle-path.js";
 import { circle } from "./shapes.js";
+import { pedestal } from "./supports.js";
+import { pinionDrive } from "./pinion-drive.js";
 import { toothedLoop, resample } from "./noncircular.js";
 
 const OUTER = { c: [-0.35, -0.15], r: 2.25, from: deg(95), to: deg(410) };
@@ -32,6 +34,9 @@ const slot = toothedLoop(pitchLoop, { pitch: PITCH, addendum: M, dedendum: 1.2 *
 // 溝槽 b、d 的標籤位置(輪的局部座標):d 在外側溝的上端,b 在內側溝的上端
 const TAGS = { d: [-0.05, 2.45], b: [0.02, 0.62] };
 
+// 小齒輪的驅動軸往前下方伸到固定的萬向接頭(見 pinion-drive.js);輪裝在固定的軸上,軸往後進到軸承座(推斷)
+const DRIVE = pinionDrive({ fixed: [0, -3.7, 2.2], floor: -4.2 });
+
 export default {
   figure: 192,
   parts: [
@@ -48,6 +53,17 @@ export default {
       spin: 2.95,
     },
     { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.3, web: false, pieces: [{ kind: "cylinder", radius: 0.08, length: 0.9 }] },
+    DRIVE.part,
+    DRIVE.joint,
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.13, length: 1.0, at: [0, 0, -0.42] }, // 輪的固定軸
+        ...pedestal({ at: [0, 0], z: -0.78, bore: 0.13, floor: -4.2 }),
+        ...DRIVE.pieces,
+      ],
+    },
     { id: "tagD", kind: "group", pieces: [], arrow: false, label: "d" },
     { id: "tagB", kind: "group", pieces: [], arrow: false, label: "b" },
   ],
@@ -61,6 +77,7 @@ export default {
       parts: {
         wheel: { angle: wheel },
         pinion: { position: [0, y, 0], angle: path.phase(NP) + pinion },
+        ...DRIVE.pose([0, y, 0.5]),
         tagD: { position: tag(TAGS.d) },
         tagB: { position: tag(TAGS.b) },
       },

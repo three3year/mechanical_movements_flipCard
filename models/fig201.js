@@ -7,6 +7,7 @@ import { TAU, deg, Z, routeBelt } from "./kit.js";
 import { swingMesh } from "./swing-mesh.js";
 import { noncircularOutline, samplePitch, arcAt } from "./noncircular.js";
 import { shape, circle, stadium } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const r = (phi) => 0.72 + 0.32 * Math.cos(phi - deg(200));
 const NP = 10;
@@ -22,6 +23,7 @@ const START = mesh.state(0);
 const PULLEY = 0.58;
 const WHEEL = 1.55;
 const SLOT_X = -2.25; // 桿 A 的位置
+const FLOOR = -2.4;
 
 /** 不規則齒輪轉 angle(順時針為負):小齒輪軸心、不規則齒輪的轉角(START.gear + angle)、曲柄的擺角(從直立量起)、小齒輪與大輪的轉角、桿 A 的高度 */
 export function motion(angle) {
@@ -54,6 +56,23 @@ export default {
       ],
     },
     { id: "rodA", kind: "group", label: "A", labelOffset: [-0.3, -1.5, 0], pieces: [{ kind: "box", size: [0.14, 1.8, 0.14], at: [0, -1.0, 0.35] }, { kind: "box", size: [0.3, 0.3, 0.3], at: [0, 0, 0.35] }, { kind: "cylinder", radius: 0.15, length: 0.5, at: [0, 0, 0.4] }] },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        // 推斷(原圖沒畫):不規則齒輪的軸與軸承座、大輪與搖臂共用的固定軸與軸承座、桿 A 的兩個導套
+        { kind: "cylinder", radius: 0.09, length: 0.75, at: [GEAR[0], GEAR[1], -0.3] },
+        ...pedestal({ at: [GEAR[0], GEAR[1]], z: -0.7, bore: 0.09, floor: FLOOR }),
+        { kind: "cylinder", radius: 0.14, length: 1.4, at: [0, 0, -0.3] },
+        ...pedestal({ at: [0, 0], z: -0.85, bore: 0.14, floor: FLOOR }),
+        ...[-0.9, -1.45].flatMap((y) => [
+          { kind: "cylinder", axis: [0, 1, 0], radius: 0.17, inner: 0.105, length: 0.12, at: [SLOT_X, y, 0.35] },
+          { kind: "box", size: [0.5, 0.1, 0.1], at: [SLOT_X - 0.4, y, 0.35] },
+        ]),
+        { kind: "box", size: [0.16, -0.85 - FLOOR, 0.16], at: [SLOT_X - 0.65, (-0.85 + FLOOR) / 2, 0.35] },
+        { kind: "box", size: [5.0, 0.12, 1.6], at: [-0.8, FLOOR - 0.06, -0.2] },
+      ],
+    },
   ],
   driver: { part: "gear", type: "rotation", speed: 1.2 },
   target: "rodA",

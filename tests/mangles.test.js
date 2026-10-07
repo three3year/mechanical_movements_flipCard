@@ -24,6 +24,7 @@ import * as m210 from "../models/fig210.js";
 import fig200 from "../models/fig200.js";
 import * as m205 from "../models/fig205.js";
 import * as m206 from "../models/fig206.js";
+import { penetrationDepth } from "../models/contact.js";
 import * as m211 from "../models/fig211.js";
 import * as m212 from "../models/fig212.js";
 import * as m213 from "../models/fig213.js";
@@ -273,6 +274,24 @@ test("第 206 種:承載兩個棘爪的槓桿振動,一個上升時推、一個�
   // 上升的半程與下降的半程都有推進
   assert.ok(m206.wheelAngle(S) < m206.wheelAngle(0) - 0.05, "上升時推");
   assert.ok(m206.wheelAngle(2 * S) < m206.wheelAngle(S) - 0.05, "下降時推");
+  close(m206.wheelAngle(2 * S) - m206.wheelAngle(0), m206.advance, "每個來回推進的量固定", 1e-9);
+  assert.ok(Math.abs(Math.abs(m206.advance) / m206.pitch - Math.round(Math.abs(m206.advance) / m206.pitch)) < 1e-9, "每個來回推整數個齒");
+});
+
+test("第 206 種:兩個爪由接觸推動棘輪——爪尖不穿入齒,爪落進下一格時有加速過程", () => {
+  const S = m206.swing;
+  for (const v of sweep(4 * S, 400)) {
+    const { pawls, wheel } = m206.contactAt(v);
+    for (const which of ["left", "right"]) assert.ok(penetrationDepth(pawls[which], wheel) < 0.02, `主動量 ${v.toFixed(3)} ${which} 爪穿入齒`);
+  }
+  // 播放時一程 1.2 秒、每秒 30 格:爪每格轉不到 0.15 弧度
+  const def = m206.default;
+  let prev = def.pose(0).parts;
+  for (const v of sweep(4 * S, 144).slice(1)) {
+    const p = def.pose(v).parts;
+    for (const id of ["pawlLeft", "pawlRight"]) assert.ok(Math.abs(p[id].angle - prev[id].angle) < 0.15, `${id} 沒有瞬移`);
+    prev = p;
+  }
 });
 
 test("第 211 種:大輪連續旋轉,小齒輪間歇轉動:轉過有齒部分時轉一圈,其餘時間被鎖住", () => {

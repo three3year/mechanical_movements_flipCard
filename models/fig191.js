@@ -1,7 +1,8 @@
 // 第 191 種:用來得到逐漸加速運動的渦形齒輪(scroll-gears)。兩個一樣的渦形齒輪,節曲線是對數螺線:
 // 半徑沿一圈由小漸大,在一處以一個台階接回原處。上輪(主動)從台階處、最小半徑開始帶動下輪的最大半徑處,
 // 轉動中上輪的接觸半徑漸大、下輪的漸小,所以下輪越轉越快。兩輪只能轉近一圈(到台階為止)。主動件是上輪。
-// 推斷:兩條對數螺線(兩輪中心距 = 兩接觸半徑之和,一直成立,純滾動);齒數;上輪順時針轉。
+// 推斷:兩條對數螺線(兩輪中心距 = 兩接觸半徑之和,一直成立,純滾動);齒數;上輪順時針轉;
+// 兩輪的固定軸與後面托著兩根軸的機架板(原圖只畫出軸孔)。
 import { TAU } from "./kit.js";
 import { circle } from "./shapes.js";
 
@@ -13,6 +14,7 @@ const EPS = 0.06; // 從台階之後一點點開始
 const MAX = TAU - 2 * EPS;
 const UPPER = [0, D / 2, 0];
 const LOWER = [0, -D / 2, 0];
+const FLOOR = -D / 2 - R1 - 0.3; // 下輪最低處之下
 const radius = (a) => R0 * Math.exp(K * a);
 const arcLen = (a) => ((R0 * Math.sqrt(1 + K * K)) / K) * (Math.exp(K * a) - 1);
 const S = arcLen(TAU);
@@ -83,7 +85,19 @@ const plate = (id, center, offset, start, relief, extra) => ({
 
 export default {
   figure: 191,
-  parts: [plate("upper", UPPER, UPPER_OFFSET, PITCH / 2, (j) => (j === TEETH - 1 ? 0.3 : 1)), plate("lower", LOWER, LOWER_OFFSET, 0)],
+  parts: [
+    plate("upper", UPPER, UPPER_OFFSET, PITCH / 2, (j) => (j === TEETH - 1 ? 0.3 : 1)),
+    plate("lower", LOWER, LOWER_OFFSET, 0),
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        ...[UPPER, LOWER].map((c) => ({ kind: "cylinder", radius: 0.12, length: 0.7, at: [c[0], c[1], -0.2] })),
+        { kind: "box", size: [0.5, UPPER[1] + 0.3 - FLOOR, 0.12], at: [0, (UPPER[1] + 0.3 + FLOOR) / 2, -0.5] },
+        { kind: "box", size: [2.4, 0.12, 1.2], at: [0, FLOOR - 0.06, -0.3] },
+      ],
+    },
+  ],
   driver: { part: "upper", type: "rotation", range: [-MAX, 0] },
   target: "lower",
   view: { direction: [0.06, 0.05, 1] },

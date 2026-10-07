@@ -74,10 +74,21 @@ export default {
         { kind: "plate", shape: shape([...arcPoints(0.75, deg(72), deg(252))], []), thickness: 0.05, at: [0, 0, -0.2] },
         { kind: "plate", shape: shape([...arcPoints(0.75, deg(72), deg(252))], []), thickness: 0.05, at: [0, 0, 0.2] },
         { kind: "cylinder", radius: 0.14, length: 0.6, mark: true },
+        { kind: "cylinder", radius: 0.07, length: 0.5, at: [0, 0, -0.55] }, // 軸往後穿過框架的開口,進到底板上的軸承(推斷)
         ...Array.from({ length: PINS }, (_, i) => ({ kind: "cylinder", radius: 0.08, length: 0.52, at: [RL * Math.cos(pinAngle(i, 0)), RL * Math.sin(pinAngle(i, 0)), 0], accent: i === 0 })),
       ],
     },
     ...ROLLERS.map(([x, y], i) => ({ id: `roller${i}`, kind: "group", center: [x, y, 0], spin: ROLLER, arrow: i === 0 || i === 2, pieces: [{ kind: "cylinder", radius: ROLLER, inner: 0.07, length: 0.25, mark: true }] })),
+    {
+      id: "base",
+      kind: "group",
+      pieces: [
+        // 後面的底板:滾子的軸與小齒輪的軸承都立在它上面(推斷,原圖只畫出滾子與小齒輪)
+        { kind: "box", size: [4.2, 4.8, 0.1], at: [-0.10000000000000009, 0.0, -0.55] },
+        ...ROLLERS.map(([x, y]) => ({ kind: "cylinder", radius: 0.065, length: 0.75, at: [x, y, -0.17500000000000002] })),
+        { kind: "cylinder", radius: 0.2, inner: 0.07, length: 0.2, at: [[0, 0][0], [0, 0][1], -0.4] },
+      ],
+    },
   ],
   driver: { part: "pinion", type: "rotation" },
   target: "frame",

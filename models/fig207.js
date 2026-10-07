@@ -2,6 +2,7 @@
 // 兩輪因此反向轉(圖中的箭頭),相對的兩側朝同一方向走,可當作一對進料滾軸。主動件是蝸桿軸。
 // 推斷:左段右旋、右段左旋;齒數。
 import { TAU, X } from "./kit.js";
+import { pedestal } from "./supports.js";
 
 const N = 20;
 const R = 1.1;
@@ -20,6 +21,7 @@ export function wheels(theta) {
 }
 export const geometry = { N, R };
 
+const FLOOR = -WORM.radius - 0.7;
 export default {
   figure: 207,
   parts: [
@@ -43,6 +45,19 @@ export default {
       bore: 0.14,
       pieces: [{ kind: "cylinder", radius: 0.28, inner: 0.14, length: 0.4 }],
     })),
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        // 推斷(原圖只畫出軸頭):兩個蝸輪的固定軸與軸承座、蝸桿軸兩端的軸承與立柱
+        ...XS.flatMap((x) => [{ kind: "cylinder", radius: 0.13, length: 0.9, at: [x, Y, -0.3] }, ...pedestal({ at: [x, Y], z: -0.65, bore: 0.13, floor: FLOOR })]),
+        ...[-2.8, 2.8].flatMap((x) => [
+          { kind: "cylinder", axis: [1, 0, 0], radius: 0.24, inner: 0.12, length: 0.2, at: [x, 0, 0] },
+          { kind: "box", size: [0.2, -0.2 - FLOOR, 0.2], at: [x, (-0.2 + FLOOR) / 2, 0] },
+        ]),
+        { kind: "box", size: [6.4, 0.12, 1.6], at: [0, FLOOR - 0.06, -0.3] },
+      ],
+    },
   ],
   driver: { part: "shaft", type: "rotation", speed: 3 },
   targets: ["left", "right"], // 一對進料滾軸

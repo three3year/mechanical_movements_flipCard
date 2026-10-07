@@ -51,7 +51,8 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape(rect(6.1, 2.7, -0.05, 0.02)), thickness: 0.12, at: [0, 0, -0.35] },
+        // 機架板中間開一道橫槽,小齒輪的軸從槽裡往後穿到底板上的軸承(機架只左右走,軸在槽裡相對走一條水平線)
+        { kind: "plate", shape: shape(rect(6.1, 2.7, -0.05, 0.02), [rect(4.1, 0.2, 0, PINION[1]).reverse()]), thickness: 0.12, at: [0, 0, -0.35] },
         ...RODS.map((r) => ({ kind: "cylinder", radius: 0.1, inner: 0.04, length: 0.35, at: [...r.frame, 0.05] })),
       ],
     },
@@ -67,8 +68,18 @@ export default {
     { id: "rodTop", kind: "link", width: 0.1, thickness: 0.06, stretch: true },
     { id: "rodBottom", kind: "link", width: 0.1, thickness: 0.06, stretch: true },
     { id: "bar", kind: "link", width: 0.22, thickness: 0.06, stretch: true },
-    { id: "pinion", kind: "gear", center: [...PINION, 0], teeth: NP, radius: RP, width: 0.22, web: false, hub: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.35, at: [0, 0, 0.075] }] }, // 軸短:不往後穿過托架與機架板,也不碰前面的桿
+    { id: "pinion", kind: "gear", center: [...PINION, 0], teeth: NP, radius: RP, width: 0.22, web: false, hub: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 1.15, at: [0, 0, -0.325] }] }, // 軸只往後伸:從齒環中間的槽穿過托架與機架板,進到底板上的軸承(前面有掃過的桿)
     ...ROLLERS.map(([x, y], i) => ({ id: `roller${i}`, kind: "group", center: [x, y, -0.35], spin: ROLLER, pieces: [{ kind: "cylinder", radius: ROLLER, inner: 0.06, length: 0.2, mark: true }], arrow: i === 0 || i === 2 })),
+    {
+      id: "base",
+      kind: "group",
+      pieces: [
+        // 後面的底板:滾子的軸與小齒輪的軸承都立在它上面(推斷,原圖只畫出滾子與小齒輪)
+        { kind: "box", size: [6.6, 4.8, 0.1], at: [-0.30000000000000004, 0.0, -0.95] },
+        ...ROLLERS.map(([x, y]) => ({ kind: "cylinder", radius: 0.055, length: 0.8, at: [x, y, -0.5499999999999999] })),
+        { kind: "cylinder", radius: 0.2, inner: 0.07, length: 0.2, at: [PINION[0], PINION[1], -0.7999999999999999] },
+      ],
+    },
   ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
   target: "frame",

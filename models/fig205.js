@@ -3,6 +3,7 @@
 // (從一組的齒到另一組的下一齒),輪因此幾乎連續地轉。主動件是小齒輪。
 // 推斷:輪的轉速取平均(每轉小齒輪一圈,輪走兩格);齒數與凸輪形狀依原圖。
 import { TAU, polar } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { shape, circle, polarOutline } from "./shapes.js";
 
 const N = 12; // 每一組的齒數
@@ -23,6 +24,7 @@ const teeth = (front) =>
 // 凸輪:一端尖、一端圓的蛋形(往 +y 伸出)
 const cam = shape(polarOutline((a) => 0.32 + 0.5 * Math.max(0, Math.sin(a)) ** 2), [circle(0.1).reverse()]);
 
+const FLOOR = PINION[1] - 0.9;
 export default {
   figure: 205,
   parts: [
@@ -46,6 +48,17 @@ export default {
         { kind: "plate", shape: cam, thickness: 0.16, at: [0, 0, 0.2] },
         { kind: "plate", shape: cam, thickness: 0.16, at: [0, 0, -0.2], angle: Math.PI },
         { kind: "cylinder", radius: 0.18, inner: 0.08, length: 0.65, mark: true },
+      ],
+    },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        // 推斷(原圖只畫出輪轂):輪與小齒輪的固定軸,往後進到軸承座
+        { kind: "cylinder", radius: 0.24, length: 1.0, at: [0, 0, -0.35] },
+        ...pedestal({ at: [0, 0], z: -0.75, bore: 0.24, floor: FLOOR }),
+        { kind: "cylinder", radius: 0.075, length: 1.2, at: [PINION[0], PINION[1], -0.35] },
+        ...pedestal({ at: [PINION[0], PINION[1]], z: -0.75, bore: 0.075, floor: FLOOR }),
       ],
     },
   ],

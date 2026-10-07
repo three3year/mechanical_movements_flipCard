@@ -3,9 +3,11 @@
 // 以便繞過齒條兩端的引導部(兩端的 C 形導板)。主動件是小齒輪。
 // 推斷:小齒輪軸只升降、不左右移動;框架只左右平移。原文另一種用法(固定框架、小齒輪軸裝萬向接頭,
 // 軸端畫出類似圖中的軌跡)以小齒輪軸心的軌跡刻線表示。
+// 推斷(原圖沒畫):框架上下的導軌;小齒輪的驅動軸往前下方伸到固定的萬向接頭(見 pinion-drive.js)。
 import { TAU } from "./kit.js";
 import { manglePath } from "./mangle-path.js";
 import { shape, rect, stadium, arcPoints } from "./shapes.js";
+import { pinionDrive } from "./pinion-drive.js";
 
 const PINS = 11;
 const PITCH = 0.345;
@@ -21,6 +23,8 @@ const SEGMENTS = [
 ];
 const path = manglePath(SEGMENTS, RP, "slide");
 const PX = -0.77; // 小齒輪軸的水平位置(原圖)
+const FLOOR = -3.1;
+const DRIVE = pinionDrive({ fixed: [PX, -2.6, 1.6], floor: FLOOR });
 
 /** 小齒輪轉 alpha:框架的位移與小齒輪軸心的高度 */
 export function rack(alpha) {
@@ -55,6 +59,20 @@ export default {
       ],
     },
     { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.22, web: false, hub: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.5, at: [0, 0, 0.1] }] }, // 軸不往後穿過機架板(小齒輪沿齒條內外移動)
+    DRIVE.part,
+    DRIVE.joint,
+    {
+      id: "guides",
+      kind: "group",
+      pieces: [
+        // 框架上下的導軌(框架只左右平移)與托著導軌的立柱
+        { kind: "box", size: [10.0, 0.12, 0.25], at: [-0.8, 1.62, -0.3] },
+        { kind: "box", size: [10.0, 0.12, 0.25], at: [-0.8, -1.62, -0.3] },
+        ...[-5.6, 4.0].flatMap((x) => [{ kind: "box", size: [0.2, 1.68 - FLOOR, 0.2], at: [x, (1.68 + FLOOR) / 2, -0.55] }, { kind: "box", size: [0.2, 0.2, 0.3], at: [x, 1.62, -0.4] }, { kind: "box", size: [0.2, 0.2, 0.3], at: [x, -1.62, -0.4] }]),
+        { kind: "box", size: [10.0, 0.12, 1.0], at: [-0.8, FLOOR - 0.06, -0.3] },
+        ...DRIVE.pieces,
+      ],
+    },
   ],
   driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
   target: "frame",
@@ -65,6 +83,7 @@ export default {
       parts: {
         frame: { position: [frame, 0, 0] },
         pinion: { position: [PX, y, 0.05], angle: path.phase(NP) + pinion },
+        ...DRIVE.pose([PX, y, 0.4]),
       },
       readouts: [],
     };

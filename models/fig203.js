@@ -3,6 +3,7 @@
 // 銷在槽的不同部位被推動的比例不同,直臂的擺動就時快時慢。主動件是開槽臂(往復擺動)。
 // 推斷:槽的形狀依原圖描出;開槽臂的擺幅。
 import { swing, rot2 } from "./kit.js";
+import { pedestal } from "./supports.js";
 import { shape, circle, thickLine, arcPoints } from "./shapes.js";
 
 // 槽的中心線:左邊直立一段,四分之一圓彎到上方,再水平往右
@@ -68,6 +69,17 @@ export default {
         { kind: "cylinder", radius: 0.55, inner: 0.3, length: 0.2 },
         { kind: "cylinder", radius: 0.3, length: 0.4 },
         { kind: "cylinder", radius: 0.07, length: 0.5, at: [ARM, 0, -0.15] },
+        { kind: "cylinder", radius: 0.12, length: 0.75, at: [0, 0, -0.4] }, // 軸:往後伸進軸承座
+      ],
+    },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        // 推斷(原圖只畫出兩個軸轂):兩根軸的軸承座
+        { kind: "cylinder", radius: 0.12, length: 0.5, at: [0, 0, -0.4] },
+        ...pedestal({ at: [0, 0], z: -0.55, bore: 0.12, floor: -1.2 }),
+        ...pedestal({ at: PIVOT, z: -0.55, bore: 0.12, floor: -1.2 }),
       ],
     },
   ],

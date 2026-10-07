@@ -1,7 +1,8 @@
 // 第 195 種:驅動一對進料滾軸的方式,兩者相對的表面要朝同一方向運動。兩個輪完全相同,都與放在它們之間的
 // 無端螺桿(蝸桿)咬合:上輪的齒在前面看得到,下輪在後面(兩輪前後錯開,所以在圖中重疊),齒被遮住。
 // 蝸桿從上方帶上輪、從下方帶下輪,兩輪反向轉,相對的一側(靠蝸桿的一側)朝同一方向走。主動件是蝸桿。
-// 推斷:兩輪前後錯開的距離;齒數;蝸桿為右旋單線;各輪另一側同軸的光面滾軸(下輪的在前,原圖可見)。
+// 推斷:兩輪前後錯開的距離;齒數;蝸桿為右旋單線;各輪另一側同軸的光面滾軸(下輪的在前,原圖可見);
+// 三根軸的軸承與立柱(原圖沒畫)。
 import { TAU, X } from "./kit.js";
 
 const N = 24;
@@ -10,6 +11,8 @@ const PITCH = (TAU * R) / N;
 const WORM = { radius: 0.22, length: 1.7 };
 const Y = R + WORM.radius - 0.04;
 const Z = 0.22;
+const FLOOR = -Y - R - 0.35;
+const post = (x, y, z, ring) => [ring, { kind: "box", size: [0.2, y - 0.2 - FLOOR, 0.2], at: [x, (y - 0.2 + FLOOR) / 2, z] }];
 
 // 蝸桿轉 theta 時,局部角 at 處螺紋的軸向位置(右旋:z = −L/2 + a·節距/2π)
 const crest = (theta, at) => -WORM.length / 2 + ((at - theta) / TAU) * PITCH;
@@ -44,6 +47,16 @@ export default {
     { id: "worm", kind: "worm", axis: X, center: [0, 0, 0], radius: WORM.radius, length: WORM.length, pitch: PITCH, thread: 0.08, pieces: [{ kind: "cylinder", radius: 0.12, length: 6.0 }] },
     wheel("upper", Y, Z),
     wheel("lower", -Y, -Z),
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        ...post(0, Y, -1.0, { kind: "cylinder", radius: 0.26, inner: 0.14, length: 0.2, at: [0, Y, -1.0] }), // 上輪的軸往後伸進軸承
+        ...post(0, -Y, 1.0, { kind: "cylinder", radius: 0.26, inner: 0.14, length: 0.2, at: [0, -Y, 1.0] }), // 下輪的軸往前伸進軸承
+        ...[-2.6, 2.6].flatMap((x) => post(x, 0, 0, { kind: "cylinder", axis: X, radius: 0.24, inner: 0.12, length: 0.2, at: [x, 0, 0] })),
+        { kind: "box", size: [6.0, 0.12, 2.6], at: [0, FLOOR - 0.06, 0] },
+      ],
+    },
   ],
   driver: { part: "worm", type: "rotation", speed: 3 },
   targets: ["upper", "lower"], // 一對進料滾軸

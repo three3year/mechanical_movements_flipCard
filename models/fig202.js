@@ -2,6 +2,7 @@
 // 沙漏形,沿著蝸輪的圓周包住它,同時與好幾個齒咬合,所以穩固、能傳大力。蝸桿每轉一圈,蝸輪轉過一齒。主動件是蝸桿。
 // 推斷:螺紋以一圈圈的環表示(原圖的直線紋);齒數依原圖約 48。
 import { TAU, X } from "./kit.js";
+import { pedestal } from "./supports.js";
 
 const N = 48;
 const RW = 2.3;
@@ -27,6 +28,7 @@ for (let i = 0; i <= steps; i++) {
 }
 profile.push([0, HALF + 0.01]);
 
+const FLOOR = -C - 1.1; // 蝸桿(沙漏形)最低處之下
 export default {
   figure: 202,
   parts: [
@@ -40,6 +42,20 @@ export default {
       pieces: [
         { kind: "lathe", profile },
         { kind: "cylinder", radius: 0.16, length: 5.2, mark: true },
+      ],
+    },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        // 推斷(原圖只畫出軸頭):蝸輪的固定軸與軸承座、蝸桿兩端的軸承與立柱
+        { kind: "cylinder", radius: 0.17, length: 1.3, at: [0, 0, -0.5] },
+        ...pedestal({ at: [0, 0], z: -0.95, bore: 0.17, floor: FLOOR }), // 在蝸桿後面
+        ...[-2.35, 2.35].flatMap((x) => [
+          { kind: "cylinder", axis: X, radius: 0.28, inner: 0.16, length: 0.2, at: [x, -C, 0] },
+          { kind: "box", size: [0.2, -C - 0.26 - FLOOR, 0.2], at: [x, (-C - 0.26 + FLOOR) / 2, 0] },
+        ]),
+        { kind: "box", size: [5.6, 0.12, 1.6], at: [0, FLOOR - 0.06, -0.3] },
       ],
     },
   ],
