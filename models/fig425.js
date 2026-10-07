@@ -11,17 +11,21 @@ import { shape, circle, rect, thickLine } from "./shapes.js";
 export const BORE = 1.6; // 汽缸內半徑
 export const ECC = 0.42; // 偏心距
 export const PISTON = BORE - ECC; // 偏心輪半徑:剛好在一點碰到汽缸
-const SLOT = 0.16; // 擋板半寬
+export const SLOT = 0.16; // 擋板半寬
 
 /** 軸轉 theta(逆時針為正;原圖是順時針)→ 偏心輪中心、接觸點方向 */
 export function piston(theta) {
   const c = [ECC * Math.cos(theta), ECC * Math.sin(theta)];
   return { c, contact: theta };
 }
-/** 擋板 D 的下端(沿 +y 到偏心輪表面的距離) */
+/**
+ * 擋板 D 的下端高度:擋板是平底(寬 2·SLOT),被壓著貼在偏心輪上,停在平底寬度內偏心輪最高的那一點
+ * (2026-10-07 複查:原本只算中線上那一點,平底的角會切進偏心輪)
+ */
 export function abutment(theta) {
   const { c } = piston(theta);
-  return c[1] + Math.sqrt(PISTON * PISTON - c[0] * c[0]);
+  const x = Math.max(-SLOT, Math.min(SLOT, c[0])); // 平底範圍內離偏心輪中心最近(最高)的那一點
+  return c[1] + Math.sqrt(PISTON * PISTON - (x - c[0]) ** 2);
 }
 
 /** 月牙形空間裡、從角度 a0 到 a1 的蒸汽點 */
@@ -77,6 +81,16 @@ export default {
     { id: "shaftB", kind: "group", label: "B", labelOffset: [0, 0, 0.6], pieces: [] },
     { id: "abutment", kind: "box", size: [2 * SLOT, 1.2, 0.56], label: "D", labelOffset: [0.35, 0.2, 0.3] },
   ],
+  // 動力重演:只推軸;擋板 D 沿導槽上下滑,被彈簧(或蒸汽)往下壓著貼住偏心輪,活塞轉過時把它頂起
+  replay: {
+    free: { abutment: { slide: [0, 1, 0], spring: -1, gravity: false } },
+    ignore: [["abutment", "cylinder"]],
+    expect: [
+      { at: -Math.PI / 2 - Math.PI / 2, part: "abutment", label: "偏心輪轉到擋板下面,把擋板頂出活塞的路線", quote: "滑動擋板 D,會移出活塞的行經路線,讓活塞得以通過" },
+      { at: -Math.PI / 2 - Math.PI, part: "abutment", label: "偏心輪轉開,擋板被壓回、貼著它" },
+      { part: "abutment", label: "轉完一圈,擋板回到原處" },
+    ],
+  },
   driver: { part: "pistonC", type: "rotation", speed: -0.8, initial: -Math.PI / 2 },
   target: "abutment", // 軸 B 就是主動件(偏心活塞);標被活塞推開讓路的滑動擋板 D
   view: { direction: [0.03, 0.05, 1] },
@@ -100,7 +114,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["pistonC", "abutment"], reason: "擋板被活塞頂起的過程依時序演出;活塞經過時與擋板重疊 0.05(96 個取樣中 46 個)" },
     { check: "interference", parts: ["cylinder", "abutment"], reason: "接合處的簡化畫法:滑動擋板插在汽缸壁的槽裡,槽沒有畫出來,重疊 0.16" },
     { check: "interference", parts: ["cylinder", "pistonC"], reason: "簡化畫法:活塞的端緣貼著汽缸內壁滑動,重疊 0.09(96 個取樣中 19 個)" },
   ],

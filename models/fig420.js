@@ -1,12 +1,14 @@
 // 第 420 種:敲鐘用的錘子。錘臂下方的彈簧在敲擊之後把錘子抬離鐘面,不讓它貼著鐘,以免妨礙鐘的金屬振動。
 // 主動件是虛擬的「敲一下」進程:拉繩把錘子拉開 → 放開,錘子落下敲到鐘 → 彈簧把錘子抬離鐘面,停在不碰鐘的位置。
 // 推斷:錘子是曲柄形槓桿,左臂接拉繩、右臂是錘;放開後錘子靠自重落下,敲擊瞬間壓縮下方的彈簧;各階段所佔的進程。
+// 2026-10-07 複查:敲擊的角度原本照設計值給,錘頭方塊轉了角度後角會陷進鐘壁;改成錘頭外形第一次碰到鐘壁的角度(CONTACT)。
+// 不做動力重演:錘子由拉繩拉開(線狀零件,重演只能推剛體),下方的彈簧只在敲擊時才被壓到(重演的彈簧是固定的力矩)。
 import { deg, smooth, clamp } from "./kit.js";
 import { shape, thickLine, circle, rect } from "./shapes.js";
 
 const ARM = 1.25; // 支點到錘頭
 const HEAD = 0.3;
-export const REST = deg(34); // 靜止時錘臂的方向(彈簧撐著,錘頭離鐘面一點)
+export const REST = deg(36); // 靜止時錘臂的方向(彈簧撐著,錘頭離鐘面一點)
 export const STRIKE = deg(28.5); // 錘頭碰到鐘面時
 const PULLED = deg(62); // 拉開時
 const LEFT = [-1.05, -0.12]; // 左臂端(接拉繩)
@@ -14,16 +16,6 @@ const LEFT = [-1.05, -0.12]; // 左臂端(接拉繩)
 const LEFT_LOCAL = [LEFT[0] * Math.cos(-REST) - LEFT[1] * Math.sin(-REST), LEFT[0] * Math.sin(-REST) + LEFT[1] * Math.cos(-REST)];
 const SPRING_BASE = [0.6, -0.42, 0];
 const SPRING_ON_ARM = 0.6;
-
-/** 進程 u(0–1)→ 錘臂方向與階段 */
-export function hammer(v) {
-  const u = v - Math.floor(v);
-  if (u < 0.35) return { angle: REST + (PULLED - REST) * smooth(u / 0.35), phase: "拉繩:錘子拉開" };
-  if (u < 0.45) return { angle: PULLED + (STRIKE - PULLED) * ((u - 0.35) / 0.1) ** 2, phase: "放開:錘子落下" };
-  if (u < 0.5) return { angle: STRIKE, phase: "敲擊鐘面" };
-  if (u < 0.65) return { angle: STRIKE + (REST - STRIKE) * smooth((u - 0.5) / 0.15), phase: "彈簧把錘子抬離鐘面" };
-  return { angle: REST, phase: "靜止:錘子不碰鐘" };
-}
 
 export const head = (a) => [ARM * Math.cos(a), ARM * Math.sin(a), 0];
 // 鐘的剖面(半徑、高度):口朝下;鐘壁在錘頭敲擊的高度剛好碰到錘頭
@@ -33,9 +25,35 @@ const strikeAt = head(STRIKE);
 export const BELL_X = strikeAt[0] + HEAD / 2 + bellR(strikeAt[1]);
 /** 錘頭右緣到鐘壁的距離(負的就是撞進鐘裡) */
 export const gap = (a) => {
-  const h = head(a);
-  return BELL_X - bellR(h[1]) - (h[0] + HEAD / 2);
+  // 錘頭(方塊,隨錘臂轉)四個角與右緣上的點,到鐘壁(正面那個剖面)的距離取最小
+  let g = Infinity;
+  for (const [u, w] of [[1, 1], [1, -1], [-1, 1], [-1, -1], [1, 0]]) {
+    const [lx, ly] = [ARM + (u * HEAD) / 2, (w * HEAD) / 2];
+    const [x, y] = [lx * Math.cos(a) - ly * Math.sin(a), lx * Math.sin(a) + ly * Math.cos(a)];
+    g = Math.min(g, BELL_X - bellR(y) - x);
+  }
+  return g;
 };
+// 錘頭落下、第一次碰到鐘壁的角度(由錘頭的外形與鐘壁相碰決定)
+export const CONTACT = (() => {
+  let [lo, hi] = [STRIKE - deg(5), PULLED]; // lo 碰得到、hi 碰不到
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2;
+    if (gap(mid) < 0) lo = mid;
+    else hi = mid;
+  }
+  return hi;
+})();
+
+/** 進程 u(0–1)→ 錘臂方向與階段:放開後錘子加速落下,錘頭碰到鐘壁就停;彈簧再把它抬回靜止的位置 */
+export function hammer(v) {
+  const u = v - Math.floor(v);
+  if (u < 0.35) return { angle: REST + (PULLED - REST) * smooth(u / 0.35), phase: "拉繩:錘子拉開" };
+  if (u < 0.45) return { angle: PULLED + (CONTACT - PULLED) * ((u - 0.35) / 0.1) ** 2, phase: "放開:錘子落下" };
+  if (u < 0.5) return { angle: CONTACT, phase: "敲擊鐘面" };
+  if (u < 0.65) return { angle: CONTACT + (REST - CONTACT) * smooth((u - 0.5) / 0.15), phase: "彈簧把錘子抬離鐘面" };
+  return { angle: REST, phase: "靜止:錘子不碰鐘" };
+}
 const bellProfile = [
   [0.0, 1.62], [0.12, 1.62], [0.12, 1.75], [0.25, 1.75], [0.25, 1.6], [0.56, 1.55],
   ...Array.from({ length: 9 }, (_, i) => {
@@ -95,7 +113,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["bell", "hammer"], reason: "錘頭敲在鈴上:敲擊的位置依時序演出,錘頭陷進鈴壁 0.07(96 個取樣中 12 個)" },
     { check: "interference", parts: ["hammer", "spring"], reason: "彈簧的端頭扣在錘柄上:端圈伸進錘柄 0.05" },
   ],
 };

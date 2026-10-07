@@ -78,6 +78,15 @@ export default {
     { id: "piston1", kind: "plate", shape: shape(rect(PISTON, 0.14, -PISTON / 2, 0)), thickness: 0.54, label: "A", labelOffset: [0, 0, 0.4], arrow: false },
     { id: "piston2", kind: "plate", shape: shape(rect(PISTON, 0.14, -PISTON / 2, 0)), thickness: 0.54, label: "A", labelOffset: [0, 0, 0.4], arrow: false },
   ],
+  // 動力重演:只推輪轂;活塞 1 沿輪轂的溝槽滑(和輪轂不算碰撞),被蒸汽(以彈簧代表)往外壓,外端貼著缸壁;
+  // 經過擋板時被缸壁的斜坡推回溝槽裡。只比對到這裡:重演的彈簧力固定在起始的方向(不跟著輪轂轉),
+  // 活塞轉過半圈後彈簧反而往裡推,「過了擋板再伸出來」那一段重演做不出來
+  replay: {
+    free: { piston1: { slide: [0, 1, 0], on: "hub", spring: 1, gravity: false, limits: [-(BORE - HUB) - 0.05, 0.05] } }, // 溝槽的深度限住活塞
+    expect: [
+      { at: Math.PI / 2 + Math.PI / 2, part: "piston1", label: "活塞經過擋板,被缸壁推回溝槽裡", quote: "被設計為可在主軸 B 的輪轂 C 上的溝槽內徑向滑動" },
+    ],
+  },
   driver: { part: "hub", type: "rotation", speed: 0.6, initial: Math.PI / 2 },
   targets: ["piston1", "piston2"], // 軸 B 就是主動件(輪轂);標受蒸汽推、在輪轂裡滑進滑出的兩個活塞 A
   view: { direction: [0.03, 0.05, 1] },

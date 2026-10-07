@@ -215,8 +215,11 @@ test("第 425 種:旋轉引擎:偏心活塞 C 在一點碰汽缸;擋板 D 退出
     const { c } = m425.piston(t);
     close(Math.hypot(c[0], c[1]) + m425.PISTON, m425.BORE, "偏心輪在一點碰到汽缸");
     const tip = m425.abutment(t);
-    const surface = [0, tip];
-    close(Math.hypot(surface[0] - c[0], surface[1] - c[1]), m425.PISTON, "擋板下端貼著偏心輪");
+    // 擋板是平底:平底範圍內偏心輪的最高點剛好碰到它,其餘各點都在它下面(由接觸算,不穿入)
+    const top = (x) => (Math.abs(x - c[0]) <= m425.PISTON ? c[1] + Math.sqrt(m425.PISTON ** 2 - (x - c[0]) ** 2) : -Infinity);
+    const xs = sweep(m425.SLOT, 20, -m425.SLOT);
+    assert.ok(xs.every((x) => top(x) <= tip + 1e-9), "偏心輪不頂進擋板");
+    close(Math.max(...xs.map(top)), tip, "擋板下端貼著偏心輪", 2e-3);
     assert.ok(tip <= m425.BORE + 1e-9, "擋板不超出汽缸");
   }
   close(m425.abutment(Math.PI / 2), m425.BORE, "活塞的接觸點經過時,擋板完全退出");
