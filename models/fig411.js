@@ -156,6 +156,18 @@ export default {
     },
     { id: "record", kind: "trace" },
   ],
+  // 動力重演:只推托架(輪子、鼓輪照模型走);擺掛在頂點的橫軸上、只受重力,托架走上坡、下坡時它要一直保持鉛直
+  replay: {
+    from: RANGE[0],
+    to: RANGE[1],
+    seconds: 16,
+    free: { pendulum: { pivot: [carriage(RANGE[0]).mid[0], carriage(RANGE[0]).mid[1] + APEX, 0], on: "frame" } },
+    expect: [
+      { at: 0.4, part: "pendulum", label: "托架在上坡上,擺仍鉛直(偏離底邊中點)", quote: "當它位於傾斜面上時,擺則會相對應地朝右或朝左偏離中心" },
+      { at: 2.2, part: "pendulum", label: "托架在下坡上,擺仍鉛直" },
+      { part: "pendulum", label: "回到平地,擺回到正中" },
+    ],
+  },
   driver: { part: "frame", grips: ["drum"], type: "translation", direction: [1, 0, 0], range: RANGE, initial: -3.6 },
   target: "pendulum", // 帶著鉛筆的擺:在鼓輪的紙上畫出地面的剖面線
   view: { direction: [0.08, 0.1, 1] },

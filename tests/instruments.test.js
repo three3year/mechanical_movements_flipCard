@@ -55,23 +55,31 @@ test("第 500 種:主動件是虛擬的「壓力」,不指向零件", () => {
 
 const near = (a, b, eps, msg) => assert.ok(Math.abs(a - b) < eps, `${msg} 期望 ${b},實際 ${a}`);
 
-test("第 403 種:弧線繪製儀:兩根直尺靠著弦兩端的銷滑動,夾角處的鉛筆畫出通過兩銷的圓弧", () => {
+test("第 403 種:弧線繪製儀:兩根直尺頂住弦兩端的銷滑動,夾角處的鉛筆畫出通過兩銷附近的圓弧", () => {
   const angles = [];
   for (const phi of [m403.RANGE[0], 1.4, Math.PI / 2, 1.8, m403.RANGE[1]]) {
-    const P = m403.pencil(phi);
-    near(Math.hypot(P[0] - m403.CENTER[0], P[1] - m403.CENTER[1]), m403.RADIUS, 1e-9, "鉛筆在圓上");
-    const [A, B] = m403.PINS;
-    const a1 = Math.atan2(A[1] - P[1], A[0] - P[0]);
-    const a2 = Math.atan2(B[1] - P[1], B[0] - P[0]);
-    angles.push(Math.abs(a1 - a2));
+    const st = m403.setting(phi);
+    // 兩根直尺的下緣各頂著一根銷(銷中心到下緣的距離 = 銷半徑)
+    st.edges.forEach((e, i) => {
+      const pin = m403.PINS[i];
+      near(Math.abs((pin[0] - e.at[0]) * Math.sin(e.a) - (pin[1] - e.at[1]) * Math.cos(e.a)), 0.08, 1e-9, "銷中心到下緣的距離 = 銷半徑");
+      near((pin[0] - e.at[0]) * e.n[0] + (pin[1] - e.at[1]) * e.n[1], -0.08, 1e-9, "銷在下緣的內側、碰著它");
+    });
+    // 鉛筆夾在兩條下緣的夾角裡,碰著兩條邊
+    for (const e of st.edges) near(Math.abs((st.tip[0] - e.at[0]) * Math.sin(e.a) - (st.tip[1] - e.at[1]) * Math.cos(e.a)), 0.06, 1e-9, "鉛筆碰著直尺的邊");
+    angles.push(Math.abs(st.edges[0].a - st.edges[1].a));
+    // 鉛筆畫的線離通過兩銷的圓不到銷的粗細
+    near(Math.hypot(st.tip[0] - m403.CENTER[0], st.tip[1] - m403.CENTER[1]), m403.RADIUS, 0.1, "鉛筆在弧上");
   }
   for (const a of angles) near(a, angles[0], 1e-9, "兩根直尺的夾角固定(同弦所對的圓周角相等)");
 });
 
-test("第 404 種:彈性拱形桿被螺絲彎曲,外緣始終是一段圓弧;螺絲越旋,弧越彎", () => {
+test("第 404 種:彈性拱形桿被螺絲彎曲,外緣始終是一段圓弧;螺絲越旋,弧越彎,兩端的滾子往內收", () => {
   const a = m404.arch(0);
   const b = m404.arch(m404.RANGE[1]);
   assert.ok(b.h > a.h && b.r < a.r, "旋緊螺絲,弧更彎(半徑變小)");
+  assert.ok(b.c < a.c, "桿長不變:彎得越厲害,兩端越往內收(滾子在直桿上滾)");
+  for (const s of [a, b]) near(2 * s.r * Math.asin(s.c / s.r), m404.LENGTH, 1e-9, "拱形桿的長度不變");
   const pts = m404.default.pose(10).paths.bar.points;
   const s = m404.arch(10);
   for (const p of pts) near(Math.hypot(p[0] - s.center[0], p[1] - s.center[1]), s.r, 1e-9, "桿上各點在同一圓上");
@@ -94,12 +102,20 @@ test("第 406 種:拋物線:鉛筆到焦點的距離等於到準線的距離", (
   }
 });
 
-test("第 407 種:尖拱:鉛筆以銷為圓心、繩長為半徑,從拱腳畫到拱頂", () => {
-  for (const a of [m407.RANGE[0], 2.4, m407.RANGE[1]]) {
-    const P = m407.pencil(a);
-    near(Math.hypot(P[0] - m407.CENTER[0], P[1] - m407.CENTER[1]), m407.RADIUS, 1e-9, "繩長不變(圓弧)");
+test("第 407 種:尖拱:拱形尺的根部垂直固定在桿上,頂端由繩拉到溝槽裡的滑塊;滑塊一移,尺彎成不同的弧", () => {
+  const ks = [0.35, 0.6, 0.9, 1.2, 1.45].map((x) => m407.curvature(x));
+  assert.ok(ks.every((k, i) => i === 0 || k > ks[i - 1]), "滑塊往右,繩把尺的頂端往下拉,尺彎得更厲害");
+  for (const x of [0.35, 0.9, 1.45]) {
+    const tip = m407.pencil(x);
+    near(Math.hypot(tip[0] - x, tip[1] - (-1.55)), m407.STRING, 1e-6, "繩長不變");
+    const k = m407.curvature(x);
+    const base = m407.bowPoint(k, 0);
+    const next = m407.bowPoint(k, 0.01);
+    near(Math.atan2(next[1] - base[1], next[0] - base[0]), Math.PI / 2, 0.01, "根部與拱腳相切(直立)");
   }
-  near(m407.pencil(m407.RANGE[0])[0], 0, 1e-9, "拱頂在跨度的正中(等邊尖拱)");
+  // 滑塊在中間時,尺彎成以右邊拱腳為圓心、跨度為半徑的弧,鉛筆在跨度正中(等邊尖拱的拱頂)
+  near(1 / m407.curvature(0.9), 3.4, 1e-6, "等邊尖拱");
+  near(m407.pencil(0.9)[0], 0, 1e-9, "拱頂在跨度的正中");
 });
 
 test("第 408 種:中心引導器靠著兩根銷推動,葉片的畫線邊始終指向同一個會聚點", () => {
@@ -109,10 +125,10 @@ test("第 408 種:中心引導器靠著兩根銷推動,葉片的畫線邊始終�
     // 畫線邊的延長線通過會聚點
     const toV = [m408.V[0] - J[0], m408.V[1] - J[1]];
     near(Math.cos(angle) * toV[1] - Math.sin(angle) * toV[0], 0, 1e-9, "畫線邊的延長線通過會聚點");
-    // 兩腿的背面靠著兩根銷
-    for (const [leg, pin] of [["legA", m408.PINS[0]], ["legB", m408.PINS[1]]]) {
+    // 兩腿的背面靠著兩根銷(銷中心到背面 ≈ 銷半徑,在腿身的另一側)
+    for (const [leg, pin, side] of [["legA", m408.PINS[0], 1], ["legB", m408.PINS[1], -1]]) {
       const a = pose.parts[leg].angle;
-      near(Math.cos(a) * (pin[1] - J[1]) - Math.sin(a) * (pin[0] - J[0]), 0, 1e-9, `${leg} 的背面通過銷`);
+      near(side * (Math.cos(a) * (pin[1] - J[1]) - Math.sin(a) * (pin[0] - J[0])), 0.08, 2e-3, `${leg} 的背面靠著銷`);
     }
     // 腿與葉片的夾角在接頭處鎖住
     near(pose.parts.legA.angle - pose.parts.blade.angle, m408.LEGS[0], 1e-12, "腿與葉片的夾角不變");

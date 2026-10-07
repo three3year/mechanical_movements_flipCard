@@ -12,7 +12,15 @@ const R = -V[0] / 2;
 const LEG_AT = deg(70); // 腿與「接頭 → 會聚點」方向的夾角
 const LEGS = [deg(180) - LEG_AT, deg(180) + LEG_AT]; // 兩腿相對於葉片的方向
 const PIN_R = 0.08;
-export const PINS = LEGS.map((a) => [2 * R * Math.cos(LEG_AT) * Math.cos(a), 2 * R * Math.cos(LEG_AT) * Math.sin(a), 0]);
+// 兩腿的背面線經過圓上的這兩點(同弧所對的圓周角相等);銷實際插在背面外側一個銷半徑處,背面靠著銷滑
+// (2026-10-07 複查:原本銷的中心在背面線上,要在腿上開沒畫出的長孔)。儀器轉開 ψ 時背面也轉 ψ/2,
+// 銷到背面的距離是 PIN_R·cos(ψ/2),最多差千分之二——背面一直貼著銷
+const ON_FACE = LEGS.map((a) => [2 * R * Math.cos(LEG_AT) * Math.cos(a), 2 * R * Math.cos(LEG_AT) * Math.sin(a)]);
+const SIDE = [1, -1]; // legA 的腿身在背面的 −y 側、legB 在 +y 側,銷在另一側
+export const PINS = ON_FACE.map(([x, y], i) => {
+  const a = Math.atan2(-V[1], -V[0]) + LEGS[i]; // ψ = 0 時這條腿的方向(葉片朝會聚點)
+  return [x - SIDE[i] * PIN_R * Math.sin(a), y + SIDE[i] * PIN_R * Math.cos(a), 0];
+});
 export const RANGE = [deg(-20), deg(20)]; // 接頭在圓上的位置(從圓心量起)
 
 /** 接頭在圓上的位置 psi → 接頭的位置與葉片的方向 */
@@ -77,10 +85,6 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["pins", "legA"], reason: "接合處的簡化畫法:腳以長孔套在銷上滑動,長孔沒有畫出來,重疊 0.08" },
-    { check: "interference", parts: ["pins", "legB"], reason: "接合處的簡化畫法:腳以長孔套在銷上滑動,長孔沒有畫出來,重疊 0.08" },
-  ],
 };
 
 export { LEGS };
