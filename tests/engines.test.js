@@ -530,6 +530,33 @@ test("第 186–189 種:扳動手柄(或槓桿)把偏心桿端抬起,銷從鉤�
     for (let i = 1; i < lifts.length; i++) assert.ok(lifts[i] > lifts[i - 1], `第 ${fig} 種:扳得越多桿端抬得越高`);
     assert.equal(m.unhook(sign * m.max).released, true, `第 ${fig} 種:扳到頭(卡進凹槽)時銷已脫出`);
   }
+  // 第 186、187 種:「將下方的彈簧手柄向上拉……該銷便會從偏心桿的鉤口中脫離」——桿端是被手柄的指頭(趾頭)頂著搖臂的
+  // 凸柱抬起的,抬起的量由兩者的外形相碰算(維護者 2026-10-08 決定)
+  for (const [fig, m] of [[186, gab186], [187, gab187]]) {
+    for (const p of sweep(m.max, 40).slice(1)) {
+      const { handle, stud } = m.contact(p);
+      const depth = Math.max(...handle.map((h) => penetrationDepth(h, stud)));
+      assert.ok(depth < 1e-3, `第 ${fig} 種:手柄不壓進凸柱(${depth.toFixed(4)})`);
+      // 真的頂著:桿端少抬一點,手柄就會壓進凸柱
+      const lower = handle.map((h) => h.map(([x, y]) => [x, y - 0.01]));
+      assert.ok(lower.some((h) => penetrationDepth(h, stud) > 1e-3), `第 ${fig} 種:手柄轉 ${p.toFixed(2)} 時指頭頂在凸柱上`);
+    }
+    // 凸柱在偏心桿前面一層、和手柄同一層:桿抬起時從凸柱後面過去,整個行程碰不到(量模型裡的零件本身)
+    const def = m.default;
+    const depthOf = (q) => (q.kind === "plate" ? q.thickness : q.kind === "cylinder" ? q.length : q.size[2]);
+    const zRange = (id, only = () => true) => {
+      const part = def.parts.find((x) => x.id === id);
+      const z = def.pose(0).parts[id]?.position?.[2] ?? part.center?.[2] ?? 0;
+      const pieces = (part.pieces ?? [part]).filter(only);
+      return [Math.min(...pieces.map((q) => z + (q.at?.[2] ?? 0) - depthOf(q) / 2)), Math.max(...pieces.map((q) => z + (q.at?.[2] ?? 0) + depthOf(q) / 2))];
+    };
+    const studOutline = m.contact(0).stud;
+    const studZ = zRange("rocker", (q) => q.shape?.outline === studOutline);
+    assert.ok(Number.isFinite(studZ[0]), `第 ${fig} 種:搖臂上有凸柱這個零件`);
+    const [rod, handle] = [zRange("rod"), zRange("handle")];
+    assert.ok(studZ[0] > rod[1], `第 ${fig} 種:凸柱(z ${studZ.map((x) => x.toFixed(3))})在偏心桿(z ${rod})前面,不在同一層`);
+    assert.ok(studZ[0] < handle[1] && studZ[1] > handle[0], `第 ${fig} 種:凸柱和手柄同一層`);
+  }
   // 第 189 種:吊住桿尾的連桿長度不變
   for (const p of sweep(gab189.max, 20)) {
     const { end, lift } = gab189.unhook(p);

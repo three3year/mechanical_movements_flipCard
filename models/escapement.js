@@ -226,7 +226,7 @@ export function periodic({ period, init, step, samples = 720, warmup = 2, snap }
   const at = (v) => {
     const k = Math.floor(v / period);
     const x = ((v - k * period) / period) * samples;
-    const i = Math.min(samples - 1, Math.floor(x));
+    const i = Math.max(0, Math.min(samples - 1, Math.floor(x))); // 浮點誤差可能讓 x 略小於 0
     const out = {};
     for (const key of keys) out[key] = table[i][key] + (table[i + 1][key] - table[i][key]) * (x - i) + k * advance[key];
     return out;
@@ -332,7 +332,7 @@ export function wheelByContact({ hit, dir, period, pitch: P, start = 0, samples 
   const angle = (v) => {
     const k = Math.floor(v / period);
     const x = ((v - k * period) / period) * samples;
-    const i = Math.min(samples - 1, Math.floor(x));
+    const i = Math.max(0, Math.min(samples - 1, Math.floor(x))); // 浮點誤差可能讓 x 略小於 0
     return base + k * step + table[i] + (table[i + 1] - table[i]) * (x - i);
   };
   return { angle, step };

@@ -300,18 +300,47 @@ test("第 312 種:布洛克桑重力擒縱:擺推開一個叉瓦、放開擋止,
   noPenetration(m312.escapement);
 });
 
-test("第 313 種:天文台計時器擒縱:擺輪朝箭頭方向轉時推開止動器、放走一齒;返回時不動止動器", () => {
-  // 與第 291 種同一套機構(整組轉 −90°):擺輪先往返回的方向擺(只壓彎通過彈簧),再朝箭頭方向擺(推開止動器)
+test("第 313 種:天文台計時器擒縱:擺輪朝箭頭方向轉時推開止動器、放走一齒,輪齒推衝量叉瓦;返回時不動止動器", () => {
+  // 方向照插圖(維護者 2026-10-08 決定):擒縱輪在左、止動器在右、滾子在右上;擺輪先往返回的方向(順時針)擺,
+  // 再朝箭頭方向(逆時針)擺。原文說齒 V 把通過彈簧「向左」按,插圖的配置要往右(離開擒縱輪)才放得開齒
+  const def = m313.default;
+  const center = (id) => def.parts.find((p) => p.id === id).center;
+  assert.ok(center("wheel")[0] < center("detent")[0], "擒縱輪在止動器左邊(照插圖,不鏡像)");
+  assert.ok(center("balance")[0] > center("wheel")[0] && center("balance")[1] > center("wheel")[1], "擺輪的滾子在右上");
   const S = m313.SWING;
-  const base = 2 * m313.escapement.period;
-  const back = sweep(base + 2 * S, 100, base).map((v) => m313.chronometer(v));
-  assert.ok(back.every((c) => c.lift < 1e-9), "返回時止動器不動");
+  const e = m313.escapement;
+  const base = 2 * e.period;
+  const back = sweep(base + 2 * S, 200, base).map((v) => m313.chronometer(v));
+  assert.ok(back[back.length - 1].balance < back[0].balance, "先往返回的方向(順時針)擺");
+  assert.ok(back.every((c) => c.lift < 1e-9), "返回時止動器不動(在不移動槓桿的情況下通過)");
+  assert.ok(back.some((c) => c.flex > 0.02), "返回時齒 V 把通過彈簧壓彎(推至一旁)");
   close(back[back.length - 1].wheel, back[0].wheel, "返回時輪不動", 1e-6);
-  const go = sweep(base + 4 * S, 100, base + 2 * S).map((v) => m313.chronometer(v));
-  assert.ok(go.some((c) => c.lift > 0.01), "朝箭頭方向時推開止動器");
-  close(go[go.length - 1].wheel - go[0].wheel, -m313.PITCH, "來回一次轉一齒", 1e-6);
-  assert.equal(m313.default.figure, 313);
-  apart(m313.escapement, "spring", "pin");
+  const go = sweep(base + 4 * S, 200, base + 2 * S).map((v) => m313.chronometer(v));
+  assert.ok(go[go.length - 1].balance > go[0].balance, "朝箭頭方向是逆時針(原圖的箭頭)");
+  assert.ok(go.some((c) => c.lift > 0.01), "朝箭頭方向時齒 V 推通過彈簧,連止動器推開(將槓桿推至一旁)");
+  assert.ok(go.every((c) => c.flex < 1e-9), "朝箭頭方向時通過彈簧頂著角,不彎");
+  // 止動器往右(離開擒縱輪):鎖石的最左點往右移
+  const stoneLeft = (v) => Math.min(...e.at(v).stops[0].map(([x]) => x));
+  const pushed = sweep(base + 4 * S, 200, base + 2 * S).reduce((best, v) => (m313.chronometer(v).lift > m313.chronometer(best).lift ? v : best));
+  assert.ok(stoneLeft(pushed) > stoneLeft(base) + 0.03, "鎖石往右、離開擒縱輪的齒(從擒縱輪的齒上移開止動裝置)");
+  close(go[go.length - 1].wheel - go[0].wheel, -m313.PITCH, "來回一次放走一齒(順時針)", 1e-6);
+  close(e.step, -m313.PITCH, "每週期一齒", 1e-6);
+  // 衝量:放開的輪齒推著大滾子缺口上的叉瓦 P 走——滾子往回轉一點點就會壓進輪齒
+  const [bx, by] = e.balanceCenter;
+  const pushesRoller = (v) => {
+    const { teeth, stops } = e.at(v);
+    const back = placePoly(stops[stops.length - 1].map(([x, y]) => [x - bx, y - by]), e.balanceCenter, -0.01);
+    return teeth.some((t) => penetrationDepth(t, back) > 1e-4);
+  };
+  const pushes = (from) => sweep(from + 2 * S, 400, from).filter(pushesRoller);
+  const impulse = pushes(base + 2 * S);
+  assert.ok(impulse.length > 10, "朝箭頭方向擺:輪齒推著衝量叉瓦走(傳遞衝量)");
+  const travel = m313.chronometer(impulse.at(-1)).wheel - m313.chronometer(impulse[0]).wheel;
+  assert.ok(travel < -m313.PITCH / 4, `推著叉瓦的那一段,輪轉過可觀的角度(實際 ${(travel / m313.PITCH).toFixed(2)} 齒)`);
+  assert.equal(pushes(base).length, 0, "返回時輪齒不推滾子(每來回只給一次衝量)");
+  noPenetration(e, 2000);
+  apart(e, "spring", "pin");
+  apart(e, "hook", "pin");
 });
 
 test("第 314 種:槓桿式天文台計時器擒縱:叉瓦只鎖輪,衝量直接給擺輪上的叉瓦 C,來回一次轉一齒", () => {
