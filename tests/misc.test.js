@@ -57,6 +57,7 @@ import * as m399 from "../models/fig399.js";
 import * as m400 from "../models/fig400.js";
 import * as m401 from "../models/fig401.js";
 import * as m402 from "../models/fig402.js";
+import { penetrationDepth, polygonsOverlap } from "../models/contact.js";
 
 test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓桿把橫移運動傳給導件 a、a 內的桿", () => {
   const xs = sweep(0.6, 20, -1.6).map((x) => m350.traverse(x).rod);
@@ -412,26 +413,56 @@ test("第 388 種:刨木機進料:帶齒的上滾子把木板往前送,平滑的
   close(f.low * 0.95, f.travel, "下滾子不打滑");
 });
 
-test("第 389 種:升降千斤頂:偏心輪每轉一圈,棘爪把棘齒桿推上一齒,上方的擋止扣住不讓它退下", () => {
-  close(m389.rack(2 * Math.PI) - m389.rack(0), 0.22, "每圈一齒");
-  const hs = sweep(4 * Math.PI, 200).map(m389.rack);
-  assert.ok(hs.every((h, i) => i === 0 || h >= hs[i - 1] - 1e-12), "只升不降");
+test("第 389 種:升降千斤頂:偏心輪帶著棘爪推棘齒桿上升,上方的擋止扣住不讓它退下;爪與齒由接觸算", () => {
+  const T = 2 * Math.PI;
+  close(m389.perTurn % m389.geometry.PITCH, 0, "每圈推上整數個齒", 1e-9);
+  assert.ok(m389.perTurn > 0, "棘齒桿被推上去");
+  for (let k = 0; k < 3; k++) close(m389.rack((k + 1) * T) - m389.rack(k * T), m389.perTurn, `第 ${k + 1} 圈升的高度`, 1e-9);
+  // 「上方的棘爪為一個擋止裝置」:下方的爪退下時,棘齒桿不會落到這一圈開始的高度以下
+  for (const v of sweep(T, 120)) assert.ok(m389.rack(v) >= m389.rack(0) - 1e-9, `主動量 ${v.toFixed(2)}:擋止扣住`);
+  // 推的那一段:偏心輪往上帶時棘齒桿跟著升(前半圈),後半圈不動
+  assert.ok(m389.rack(T / 2) > m389.rack(0) + 0.1, "偏心輪往上帶時,棘爪把棘齒桿推上去");
+  close(m389.rack(0.9 * T), m389.rack(T), "偏心輪往下退時棘齒桿停在擋止上", 1e-9);
+  // 爪與齒不穿入(爪尖頂著直面、或沿斜面滑過)
+  for (const v of sweep(T, 180)) {
+    const c = m389.contactAt(v);
+    for (const pawl of c.pawls) for (const tooth of c.teeth) assert.ok(penetrationDepth(pawl, tooth) < 2e-3, `主動量 ${v.toFixed(2)}:爪壓進齒裡`);
+  }
 });
 
-test("第 390 種:部件 A 往兩個方向擺時,開口皮帶 C 與交叉皮帶 D 的棘爪輪流帶動飛輪 B,得到連續旋轉", () => {
+test("第 390 種:部件 A 往兩個方向擺時,開口皮帶 C 與交叉皮帶 D 的棘爪輪流帶動飛輪 B,得到連續旋轉;棘爪由接觸算", () => {
   const S = m390.SWING;
-  const fs = sweep(8 * S, 400).map((v) => m390.oscillation(v).fly);
-  assert.ok(fs.every((f, i) => i === 0 || f >= fs[i - 1] - 1e-12), "飛輪只朝一個方向轉");
-  assert.ok(m390.oscillation(2 * S).fly > 0 && m390.oscillation(4 * S).fly > m390.oscillation(2 * S).fly, "兩個方向的擺動都在推");
+  const fs = sweep(8 * S, 800).map((v) => m390.oscillation(v).fly);
+  assert.ok(fs.every((f, i) => i === 0 || f >= fs[i - 1] - 1e-9), "飛輪只朝一個方向轉");
+  assert.ok(m390.oscillation(2 * S).fly > 0.5 && m390.oscillation(4 * S).fly - m390.oscillation(2 * S).fly > 0.5, "A 往兩個方向擺,飛輪都被推");
+  close(m390.perCycle % m390.PITCH, 0, "一個來回推過整數個齒", 1e-9);
+  close(m390.oscillation(4 * S).fly, m390.perCycle, "一個來回轉過的角度", 1e-9);
   const o = m390.oscillation(S);
   close(o.c, -o.d, "開口皮帶與交叉皮帶的皮帶輪反向轉");
+  for (const v of sweep(4 * S, 200)) for (const key of ["c", "d"]) assert.ok(m390.pawlGap(v, key) > -3e-3, `主動量 ${v.toFixed(3)}:${key} 的爪尖壓進棘輪`);
 });
 
-test("第 391 種:一根齒條上升時、另一根下降時作用於齒輪,得到連續旋轉", () => {
+test("第 391 種:一根齒條上升時、另一根下降時作用於齒輪,得到連續旋轉;齒條的銷在溝槽 b 裡繞圈", () => {
   const S = m391.geometry.STROKE;
   const gs = sweep(4 * S, 200).map((v) => m391.racks(v).gear);
   assert.ok(gs.every((g, i) => i === 0 || g <= gs[i - 1] + 1e-12), "齒輪只朝一個方向轉");
   close(m391.racks(2 * S).gear, (-2 * S) / m391.geometry.GEAR.r, "上、下兩程都推動齒輪");
+  // 銷始終在溝的中心線上(齒條的傾角由銷在溝裡的位置決定)
+  for (const v of sweep(2 * S, 80)) {
+    const r = m391.racks(v);
+    for (const s of [-1, 1]) {
+      const [x, y] = m391.pinOf(s, v);
+      close(x, m391.pinX(s, y, r.up), `主動量 ${v.toFixed(2)}:${s < 0 ? "A" : "A¹"} 的銷在溝裡`, 1e-6);
+    }
+  }
+  // 上升的中段 A 直立咬著齒輪、A¹ 外傾;下降的中段反過來
+  const up = m391.racks(S / 2);
+  const down = m391.racks(1.5 * S);
+  assert.ok(Math.abs(up.angleA) < 1e-6 && Math.abs(up.angleA1) > 0.05, "上升時 A 咬著、A¹ 離開");
+  assert.ok(Math.abs(down.angleA1) < 1e-6 && Math.abs(down.angleA) > 0.05, "下降時 A¹ 咬著、A 離開");
+  // 肘節 C:A¹ 的銷到了上角才把它頂起,其餘時間落在擋上
+  const rest = m391.toggleAngle(m391.pinOf(1, S / 2));
+  assert.ok(m391.toggleAngle(m391.pinOf(1, S)) > rest + 0.1, "銷到上角時頂起肘節 C");
 });
 
 test("第 392 種:跳鋸:下端由曲柄帶動上下,上端的彈簧讓鋸子保持繃緊", () => {
@@ -450,11 +481,16 @@ test("第 393 種:拋光透鏡:杯子繞共同的軸轉,同時繞自己的軸轉
   assert.ok(Math.abs(m393.polisher(1).self) > 0, "杯子自轉");
 });
 
-test("第 394 種:Parsons 無端齒條:小齒輪連續朝同一方向轉,齒條框往復", () => {
-  const xs = sweep(-6 * Math.PI, 600).map((t) => m394.parsons(t).x);
-  const dirs = xs.slice(1).map((x, i) => Math.sign(x - xs[i])).filter(Boolean);
-  assert.ok(dirs.includes(1) && dirs.includes(-1), "框往復");
-  close(Math.max(...xs) - Math.min(...xs), m394.geometry.LEN, "行程 = 直線段長", 1e-6);
+test("第 394 種:Parsons 無端齒條:框往復,小齒輪連續朝同一方向轉(把往復運動轉成旋轉)", () => {
+  const span = m394.RANGE[1] - m394.RANGE[0];
+  const ps = sweep(4 * span, 800).map((v) => m394.parsons(v));
+  assert.ok(ps.every((p, i) => i === 0 || p.pinion >= ps[i - 1].pinion - 1e-9), "小齒輪只朝一個方向轉");
+  const xs = ps.map((p) => p.frame[0]);
+  close(Math.max(...xs) - Math.min(...xs), span, "框往復", 1e-6);
+  const { LEN, C, RP } = m394.geometry;
+  close(m394.parsons(2 * span).pinion - m394.parsons(0).pinion, (2 * LEN + 2 * Math.PI * C) / RP, "框來回一次,小齒輪沿跑道滾一圈", 1e-6);
+  // 往一個方向時咬一排、往回時咬另一排:框跟著上下換位
+  assert.ok(m394.parsons(span / 2).frame[1] * m394.parsons(1.5 * span).frame[1] < 0, "兩個方向咬不同排的齒");
 });
 
 test("第 395 種:四向活塞閥:閥塞轉 1/4 圈,進汽與排汽的端互換", () => {
@@ -469,53 +505,109 @@ test("第 395 種:四向活塞閥:閥塞轉 1/4 圈,進汽與排汽的端互換"
   assert.equal(m395.default.pose(0.45).flows.length, 0, "轉換時不流動");
 });
 
-test("第 396 種:Reed 擒縱:擺輪每擺一次,擒縱輪放走半齒,槓桿換邊", () => {
+test("第 396 種:Reed 擒縱:圓盤銷撥槓桿換邊;擺輪一個來回,叉瓦放走擒縱輪一齒(由接觸算)", () => {
   const S = m396.SWING;
-  close(m396.reed(2 * S).wheel - m396.reed(0).wheel, -m396.PITCH / 2, "每擺一次半齒", 1e-9);
-  assert.ok(Math.sign(m396.reed(0).lever) !== Math.sign(m396.reed(2 * S).lever), "槓桿換邊");
+  // 圓盤銷只在擺過中間時撥動槓桿,其餘時間槓桿靠在擋銷上
+  assert.ok(m396.reed(0).lever * m396.reed(2 * S).lever < 0, "擺過去,槓桿換邊");
+  close(m396.reed(S / 2).lever, m396.reed(0).lever, "擺輪擺出叉口後,槓桿不動", 1e-12);
+  const P = 4 * S; // 擺輪一個來回
+  close(m396.reed(P).wheel - m396.reed(0).wheel, -m396.PITCH, "鎖定與解鎖,一個來回放走一齒(順時針)", 1e-9);
+  close(m396.reed(3 * P).wheel - m396.reed(0).wheel, -3 * m396.PITCH, "三個來回放走三齒", 1e-9);
+  // 槓桿靠在擋銷上時,擒縱輪被叉瓦鎖住不動
+  const locked = sweep(S / 2, 30).map((v) => m396.reed(2 * S + v).wheel); // 擺輪從 +140° 擺回 +70°
+  assert.ok(Math.max(...locked) - Math.min(...locked) < 1e-6, "擺輪在外側擺動時,輪鎖住");
+  for (const v of sweep(P, 120)) {
+    const c = m396.contactAt(v);
+    for (const p of c.pallets) for (const t of c.teeth) assert.ok(penetrationDepth(p, t) < 2e-3, `主動量 ${v.toFixed(3)}:叉瓦壓進輪齒`);
+  }
 });
 
-test("第 397 種:連續圓周運動 → 間歇的直線往復運動", () => {
-  const xs = sweep(2 * Math.PI, 360).map((t) => m397.slide(m397.lever(t)).x);
-  const still = xs.slice(1).filter((x, i) => x === xs[i]).length;
-  assert.ok(still > 100, "有停頓(間歇)");
-  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.5, "往復");
+test("第 397 種:連續圓周運動 → 間歇的直線往復運動;擺桿的角度由曲柄銷在槽裡的位置決定", () => {
+  const T = 2 * Math.PI;
+  const angles = sweep(T, 360).map((t) => m397.lever(t).angle);
+  const still = angles.slice(1).filter((a, i) => Math.abs(a - angles[i]) < 1e-9).length;
+  assert.ok(still > 150, "曲柄轉半圈時擺桿停住(間歇)");
+  close(Math.max(...angles.map(Math.abs)), m397.SWING, "擺幅 = 2·asin(曲柄半徑 / 樞軸到曲柄軸的距離)", 1e-3);
+  const xs = angles.map((a) => m397.slide(a).x);
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.5, "滑桿往復");
+  // 銷始終在槽的中心線上(擺桿局部座標)
+  const { PIVOT, L, CRANK } = m397.geometry;
+  for (const t of sweep(T, 72)) {
+    const { angle } = m397.lever(t);
+    const [px, py] = m397.pinAt(t);
+    const [dx, dy] = [px - PIVOT[0], py - PIVOT[1]];
+    const [qx, qy] = [dx * Math.cos(-angle) - dy * Math.sin(-angle), dx * Math.sin(-angle) + dy * Math.cos(-angle)];
+    close(Math.hypot(qx, qy - L), CRANK.r, `曲柄 ${t.toFixed(2)}:銷在槽上`, 1e-9);
+    assert.ok(qx <= 1e-9, "銷在槽的那半圈(左半圈)");
+  }
 });
 
-test("第 398 種:連續圓周運動 → 間歇圓周運動,凸輪 C 為驅動端", () => {
-  const ws = sweep(2 * Math.PI, 360).map((t) => m398.intermittent(t).wheel);
-  assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-12), "大輪只朝一個方向轉");
-  const still = ws.slice(1).filter((w, i) => w === ws[i]).length;
-  assert.ok(still > 100, "間歇:有停住的時候");
-  for (const t of sweep(2 * Math.PI, 12)) close(m398.intermittent(t).x + m398.intermittent(t + Math.PI).x, 0, "等寬凸輪:方框兩側始終夾著", 1e-9);
+test("第 398 種:連續圓周運動 → 間歇圓周運動,凸輪 C 為驅動端;棘爪推大輪由接觸算", () => {
+  const ws = sweep(-2 * Math.PI, 720).map((t) => m398.intermittent(t).wheel);
+  assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-9), "大輪只朝一個方向轉");
+  const still = ws.slice(1).filter((w, i) => Math.abs(w - ws[i]) < 1e-9).length;
+  assert.ok(still > 200, "間歇:有停住的時候");
+  close(m398.perStroke, m398.PITCH, "方框往復一次,大輪被推一齒");
+  close(m398.intermittent(-2 * Math.PI).wheel, 3 * m398.PITCH, "凸輪轉一圈(三瓣),推三齒", 1e-9);
+  for (const t of sweep(2 * Math.PI, 12)) close(m398.yokeX(t) + m398.yokeX(t + Math.PI), 0, "等寬凸輪:方框兩側始終夾著", 1e-9);
+  for (const t of sweep(-2 * Math.PI, 240)) assert.ok(!polygonsOverlap(m398.pawlOutlineAt(t), m398.wheelOutlineAt(t)), `主動量 ${t.toFixed(2)}:爪壓進齒裡`);
 });
 
 test("第 399 種:修理鏈條:每一半的螺絲旋進另一半的螺帽,轉動螺帽把兩半拉近", () => {
-  close(m399.tighten(2 * Math.PI), m399.PITCH, "每轉一圈拉近一個螺距");
+  close(m399.tighten(2 * Math.PI), m399.PITCH, "兩個螺帽各轉一圈,兩半共拉近一個螺距");
   const def = m399.default;
   const a = def.pose(0).parts;
-  const b = def.pose(0.3).parts;
+  const b = def.pose(2 * Math.PI).parts;
   assert.ok(b.upper.position[1] < a.upper.position[1] && b.lower.position[1] > a.lower.position[1], "兩半互相靠近");
+  close(a.upper.position[1] - b.upper.position[1] + b.lower.position[1] - a.lower.position[1], m399.PITCH, "合計拉近一個螺距", 1e-9);
+  close(b.nutU.angle, 2 * Math.PI, "螺帽轉一圈");
 });
 
-test("第 400 種:四向進料:進料齒依序上、前、下、後,把布往前送", () => {
-  const q = (f) => m400.fourMotion(f * 2 * Math.PI);
-  assert.ok(q(0.25).lift > 0.17 && q(0.25).feed === 0, "先抬起");
-  assert.ok(q(0.5).feed > 0.39 && q(0.5).lift > 0.17, "再往前");
-  assert.ok(q(0.75).lift === 0 && q(0.75).feed > 0.39, "再落下");
-  close(q(1).feed, 0, "最後退回");
+test("第 400 種:四向進料:進料齒依序上、前、下、後,把布往前送;A 由凸輪頂起與推前,彈簧拉回,落下時加速", () => {
+  const T = 2 * Math.PI;
+  const q = (f) => m400.fourMotion(f * T);
+  assert.ok(q(0.25).lift > 0.17 && q(0.25).feed === 0, "先抬起(凸輪的徑向凸起把 A 抬起)");
+  assert.ok(q(0.5).feed > 0.19 && q(0.5).lift > 0.17, "再往前(兩根桿被一起往前帶)");
+  assert.ok(q(0.75).lift === 0 && q(0.75).feed > 0.19, "再落下(B 憑自重落下)");
+  close(q(1).feed, 0, "最後被彈簧拉回");
+  // 落下是加速的:每一小段落下的量越來越大,到底撞停
+  const drops = [0.55, 0.6, 0.65, 0.7, 0.75].map((f, i, a) => (i ? q(a[i - 1]).lift - q(f).lift : 0)).slice(1);
+  assert.ok(drops.every((d, i) => i === 0 || d > drops[i - 1]), "越落越快");
+  // 凸輪輪廓由 A 該走的位移反推:A 的底面(平底從動件)剛好貼著輪廓的最高點
+  const outline = m400.camOutline(m400.liftHeight, Math.PI / 2);
+  for (const t of sweep(T, 24)) {
+    const top = Math.max(...outline.map(([x, y]) => x * Math.sin(t) + y * Math.cos(t)));
+    close(top, m400.liftHeight(t), `凸輪轉 ${t.toFixed(2)}:A 坐在凸輪上`, 5e-3);
+  }
 });
 
-test("第 401 種:Brownell 曲柄:手腕越過死點前,滑塊 A 往前移;越過後彈簧 B 把它推回", () => {
-  const r0 = m401.wrist(Math.PI).r; // 手腕在底部:滑塊在擋止處
-  const near = m401.wrist(-0.1).r; // 接近頂部死點
-  assert.ok(near > r0 + 0.1, "接近死點時滑塊移出");
-  close(m401.wrist(0.8).r, r0, "越過後彈回擋止處", 1e-9);
+test("第 401 種:Brownell 曲柄:手腕越過死點前,滑塊 A 沿槽往前移;越過後彈簧 B 把它推回擋止", () => {
+  const deg = Math.PI / 180;
+  close(m401.wrist(Math.PI).s, 0, "手腕在底部:滑塊在擋止處");
+  assert.ok(m401.wrist(-10 * deg).s > 0.25, "接近死點時滑塊往前移");
+  close(m401.wrist(30 * deg).s, 0, "越過後彈回擋止處", 1e-9);
+  // 沿槽(切線)移:手腕離軸心的距離 ≥ 槽的半徑
+  const w = m401.wrist(-10 * deg);
+  assert.ok(Math.abs(w.local[1] - 0.6) < 1e-9 && w.local[0] < 0, "滑塊沿橫的槽往轉動的方向移");
+  // 彈回是加速的:越回越快
+  const back = [5, 10, 15, 20, 25].map((a) => m401.wrist(a * deg).s);
+  const steps = back.slice(1).map((s, i) => back[i] - s);
+  assert.ok(steps.every((d, i) => i === 0 || d > steps[i - 1]), "彈簧把滑塊越推越快");
 });
 
-test("第 402 種:Guernsey 擒縱:兩個擺輪由同一槓桿帶動,朝相反方向擺動", () => {
+test("第 402 種:Guernsey 擒縱:兩個擺輪由同一槓桿帶動,朝相反方向擺動;叉瓦放走擒縱輪的齒由接觸算", () => {
   const g = m402.guernsey(0);
   assert.ok(g.bal1 * g.bal2 < 0, "兩個擺輪反向");
   close(Math.abs(g.bal1), Math.abs(g.bal2), "擺幅相同");
-  close(m402.guernsey(2 * m402.SWING).wheel - m402.guernsey(0).wheel, -Math.PI / m402.N, "每擺一次放走半齒", 1e-9);
+  const P = 4 * m402.SWING; // 槓桿一個來回
+  close(m402.guernsey(P).wheel - m402.guernsey(0).wheel, -m402.PITCH, "一個來回放走一齒(順時針)", 1e-9);
+  close(m402.guernsey(3 * P).wheel - m402.guernsey(0).wheel, -3 * m402.PITCH, "三個來回放走三齒", 1e-9);
+  // 每擺一次都有放走一部分(兩個叉瓦輪流放行)
+  const w = [0, 1, 2].map((k) => m402.guernsey(k * 2 * m402.SWING).wheel);
+  assert.ok(w[1] < w[0] - 0.2 * m402.PITCH && w[2] < w[1] - 0.2 * m402.PITCH, "每擺一次,輪都往前轉一部分");
+  // 叉瓦與輪齒不穿入
+  for (const v of sweep(P, 120)) {
+    const c = m402.contactAt(v);
+    for (const p of c.pallets) for (const t of c.teeth) assert.ok(penetrationDepth(p, t) < 2e-3, `主動量 ${v.toFixed(3)}:叉瓦壓進輪齒`);
+  }
 });

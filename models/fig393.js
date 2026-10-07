@@ -2,6 +2,8 @@
 // 直立軸與要拋光的物體同心。杯子偏心地放著,所以除了跟著軸繞物體的軸轉之外,還在萬向接頭上繞自己的軸轉,
 // 杯面上的同一處不會一直碰到透鏡上的同一處。主動件是直立軸(頂上的手輪)。
 // 推斷:杯子自轉的轉速(摩擦帶動,取為軸轉速的一個比例);各部尺寸依原圖。
+// 直立軸穿過一個軸承環,軸承由台面左端立起的支柱伸臂托著(推斷;原圖只畫到軸)。支柱離軸夠遠,杯子繞過時碰不到。
+// 杯子的轉向只以杯緣上的記號表示(杯子的軸跟著公轉、方向一直在變,轉向箭頭只能沿固定的軸,所以不加箭頭)。
 import { Y, Z, quatMul, quatAxisAngle, quatFromZ, rotateAbout } from "./kit.js";
 import { shape, thickLine } from "./shapes.js";
 
@@ -26,6 +28,10 @@ export default {
         { kind: "box", size: [4.4, 0.28, 1.6], at: [0, -0.4, 0] },
         { kind: "plate", shape: shape(thickLine([[-1.9, -0.55], [-1.9, -2.6]], 0.14)), thickness: 0.14 },
         { kind: "plate", shape: shape(thickLine([[-1.9, -2.0], [0.4, -0.55]], 0.12)), thickness: 0.12 },
+        // 直立軸的軸承與托著它的支柱、伸臂
+        { kind: "box", size: [0.14, 2.66, 0.14], at: [-1.9, 1.07, 0] },
+        { kind: "box", size: [1.75, 0.12, 0.14], at: [-1.025, 2.4, 0] },
+        { kind: "cylinder", axis: Y, radius: 0.2, inner: 0.08, length: 0.15, at: [0, 2.4, 0] },
         // 要拋光的物體(半球形透鏡)
         { kind: "lathe", axis: Y, profile: [[0, -0.26], [R_LENS, -0.26], ...Array.from({ length: 12 }, (_, i) => { const t = ((i + 1) / 12) * (Math.PI / 2); return [R_LENS * Math.cos(t), -0.26 + R_LENS * Math.sin(t) * 0.75]; })] },
       ],

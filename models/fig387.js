@@ -2,6 +2,8 @@
 // 梯幫上,另一邊由吊在扶手木條上的桿件撐著(平行四邊形),所以不論梯子擺到什麼角度,踏階都保持水平。
 // 主動件是虛擬的「水位」(平衡型):水位越低,梯子越陡。
 // 推斷:梯子的長度與水位的範圍;小船以填色的水托著。
+// 梯子的下端只是擱在小船的甲板上(靠梯子的自重),水位升降時小船把梯子頂起、或梯子跟著小船落下(動力重演:梯幫是繞上端樞軸
+// 自由擺動的零件,只受重力與小船的支撐)。扶手的上端以銷接在岸上欄杆的立柱上(推斷;原圖只畫到扶手貼著立柱)。
 import { clamp } from "./kit.js";
 import { shape, rect } from "./shapes.js";
 
@@ -36,6 +38,7 @@ export default {
         { kind: "cylinder", radius: 0.05, length: 0.15, at: [PIVOT[0], PIVOT[1], -0.475] },
         // 岸上的欄杆(在扶手的前面一層:扶手的上端貼在立柱的側面)
         { kind: "box", size: [0.12, 1.6, 0.12], at: [2.5, 2.4, 0.5] },
+        { kind: "cylinder", radius: 0.035, length: 0.16, at: [PIVOT[0] + STEP_W, PIVOT[1] + RAIL_UP, 0.44] }, // 扶手上端的樞軸銷(從立柱伸出)
         { kind: "box", size: [0.12, 1.6, 0.12], at: [4.7, 2.4, 0.5] },
         { kind: "box", size: [2.3, 0.1, 0.1], at: [3.6, 3.15, 0.5] },
         { kind: "box", size: [2.4, 0.08, 0.08], at: [3.6, 2.4, 0.5], angle: 0.6 },
@@ -45,10 +48,22 @@ export default {
     { id: "water", kind: "fill", fluid: "water", center: [-1.5, -2.6, -1.0], size: [5.8, 3.8, 0.6], level: 0.5 }, // 水在梯子後方,看得到梯子
     { id: "boat", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: shape([[-0.7, 0], [0.7, 0], [0.5, -0.3], [-0.5, -0.3]]), thickness: 1.2 }] },
     { id: "stringer", kind: "group", center: PIVOT, arrow: false, pieces: [{ kind: "box", size: [LEN, 0.12, 0.1], at: [LEN / 2, 0, 0.4] }, { kind: "box", size: [LEN, 0.12, 0.1], at: [LEN / 2, 0, -0.4] }] },
-    { id: "rail", kind: "group", arrow: false, pieces: [{ kind: "box", size: [LEN, 0.1, 0.08], at: [LEN / 2, 0, 0.4] }] },
+    { id: "rail", kind: "group", arrow: false, pieces: [{ kind: "box", size: [LEN + 0.08, 0.1, 0.08], at: [LEN / 2 - 0.04, 0, 0.4] }] },
     ...Array.from({ length: STEPS }, (_, i) => ({ id: `step${i}`, kind: "plate", shape: shape(rect(STEP_W, 0.06, STEP_W / 2, 0)), thickness: 0.8, arrow: false })),
     ...Array.from({ length: STEPS }, (_, i) => ({ id: `hanger${i}`, kind: "link", width: 0.04, thickness: 0.04 })),
   ],
+  // 動力重演:水位從最高退到最低,梯子只靠自重擱在船上,要跟著小船一路落下
+  replay: {
+    from: RANGE[1],
+    to: RANGE[0],
+    free: { stringer: {} },
+    // 踏階、吊桿、扶手照模型走;只留小船托著梯幫,才看得出是小船在撐
+    ignore: [["stringer", "quay"], ["stringer", "rail"], ...Array.from({ length: STEPS }, (_, i) => [["stringer", `step${i}`], ["stringer", `hanger${i}`]]).flat()],
+    expect: [
+      { at: -0.6, part: "stringer", label: "退潮到一半,梯子跟著小船落下", quote: "無論梯子呈現任何位置" },
+      { part: "stringer", label: "退到最低,梯子擱在小船上最陡" },
+    ],
+  },
   powered: ["boat"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "水位", mode: "balance", range: RANGE, initial: 0.5 },
   target: "step3", // 踏階:梯子隨水位擺到什麼角度都保持水平(取中間一階代表)

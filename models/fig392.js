@@ -1,7 +1,9 @@
 // 第 392 種:跳鋸(線鋸)。鋸條的下端接在曲柄(下方的輪)上的連桿,由曲柄帶著上下;上端接在一根彈簧(上方的彈性橫桿)上,
 // 彈簧讓鋸條始終繃緊,不必用鋸框。鋸條穿過工作台中間的孔上下鋸。主動件是下方的曲柄輪。
 // 推斷:上端的彈簧畫成一根吊在頂部橫桿下的螺旋彈簧,鋸條往下時被拉長;各部尺寸依原圖。
+// 曲柄輪的軸往後伸進軸承座(原圖只畫出輪,軸承座是推斷)。
 import { crankPin } from "./linkage.js";
+import { pedestal } from "./supports.js";
 import { shape, circle, rect } from "./shapes.js";
 
 const CRANK = { center: [0, -2.2, 0], r: 0.45 };
@@ -30,6 +32,7 @@ export default {
         { kind: "box", size: [0.12, 1.3, 0.12], at: [-0.35, -0.55, 0] }, // 下段導軌止於曲柄輪的上方
         { kind: "box", size: [0.12, 1.3, 0.12], at: [0.35, -0.55, 0] },
         { kind: "box", size: [2.6, 0.18, 0.3], at: [1.0, HANG + 0.1, 0] },
+        ...pedestal({ at: [CRANK.center[0], CRANK.center[1]], z: -0.45, bore: 0.08, floor: -3.3 }),
       ],
     },
     {
@@ -40,6 +43,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(circle(0.85), [circle(0.7).reverse()]), thickness: 0.12 },
         ...[0, 1, 2].map((i) => ({ kind: "box", size: [1.5, 0.08, 0.08], angle: (i * Math.PI) / 3 })),
+        { kind: "cylinder", radius: 0.08, length: 0.6, at: [0, 0, -0.25] }, // 軸
         { kind: "cylinder", radius: 0.06, length: 0.3, at: [CRANK.r, 0, 0.12], accent: true },
       ],
     },

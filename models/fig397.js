@@ -1,39 +1,72 @@
 // 第 397 種:把連續的圓周運動變成間歇的直線往復運動(用在多種縫紉機上推動梭子,也用在三轉式圓筒印刷機上)。
 // 一根擺桿的下端以樞軸接在底座上,中段是一道彎曲的長槽,曲柄銷在槽裡走:銷走過槽的彎曲部分時擺桿停住,
 // 走過其餘部分時擺桿擺動;擺桿上端經連桿推拉上方的滑桿,滑桿因此一陣一陣地往復。主動件是曲柄。
-// 推斷:槽的形狀(以「擺桿角隨曲柄角變化、中間有停頓」反推);各桿長依原圖。
+// 推斷:槽的形狀(曲柄圓的半圈,見下);各桿長依原圖。
 // 結構(原圖):擺桿兩端各有圓形的轂,下端的轂以銷接在底座上;上端的轂以銷接連桿;連桿在滑桿下方,
 // 另一端以銷接滑桿左端垂下的耳;滑桿從那顆銷往右伸、蓋過擺桿頂端。模型原本連桿只是一條細桿、
 // 兩端沒有銷穿過擺桿與滑桿(連桿的 z 層與擺桿不相接),滑桿又往左伸;現在補上轂、貫穿的銷、滑桿的耳、
 // 底座的軸承座與曲柄後面的軸承柱,滑桿改成往右伸。連桿長、擺桿長、滑桿的高度都沒動。
-import { TAU, deg, smooth } from "./kit.js";
+// 由接觸算(2026-10-07 複查):擺桿的角度原本照「曲柄轉到哪、擺桿擺到哪」的進度表給,槽只是畫出來的折線,銷會擦到槽壁
+// (演出的動作)。現在槽的中心線是曲柄銷的圓在擺桿停頓位置的那半圈(左半圈):銷走過這半圈時,槽與銷的路徑重合,擺桿停住;
+// 銷走右半圈時,銷到擺桿樞軸的距離決定它在槽裡的哪一點,擺桿被轉到讓那一點對上銷——擺出去再回來。
+// 所以每轉一圈:停半圈、擺出去再擺回來半圈,擺幅 2·asin(曲柄半徑 / 樞軸到曲柄軸的距離),全部由銷在槽裡的位置決定。
+// 曲柄軸移到擺桿停住時的中心線上(原本偏右 0.05)。
 import { shape, thickLine, circle } from "./shapes.js";
 
 const PIVOT = [0, -2.2, 0]; // 擺桿下端的樞軸
-const CRANK = { center: [0.05, -0.45, 0], r: 0.35 };
+const CRANK = { center: [0, -0.45, 0], r: 0.35 };
+const L = CRANK.center[1] - PIVOT[1]; // 樞軸到曲柄軸的距離
 const ARM = 3.6; // 擺桿長
-export const SWING = deg(16);
+export const PIN_R = 0.07; // 曲柄銷半徑
+const SLOT_HALF = PIN_R + 0.015; // 槽的半寬(銷與槽壁留一點間隙)
+export const SWING = 2 * Math.asin(CRANK.r / L); // 擺幅
 const ROD = 1.6;
 const BAR_Y = 1.75; // 連桿與滑桿的接點高度(滑桿本體在它上方)
 const Z_ROD = 0.2; // 連桿那一層(擺桿板在 z = 0)
 const BAR = { length: 3.0, lead: 0.3 }; // 滑桿:從接點往左 lead、往右其餘
 
-/** 曲柄轉 theta → 擺桿角:曲柄轉過一圈的兩段各 90° 時擺桿停住(間歇) */
+/** 槽的中心線在擺桿局部座標(擺桿直立、樞軸在原點)裡的點:曲柄圓的左半圈,t ∈ [π/2, 3π/2] */
+export const slotPoint = (t) => [CRANK.r * Math.cos(t), L + CRANK.r * Math.sin(t)];
+
+/** 曲柄轉 theta → 曲柄銷的世界座標 */
+export const pinAt = (theta) => [CRANK.center[0] + CRANK.r * Math.cos(theta), CRANK.center[1] + CRANK.r * Math.sin(theta)];
+
+/**
+ * 曲柄轉 theta → 擺桿的轉角(逆時針為正)與銷在槽裡的位置 t:
+ * 銷到樞軸的距離 d 決定它在槽(左半圈)的哪一點,擺桿轉到讓那一點對上銷。
+ */
 export function lever(theta) {
-  const f = (((theta / TAU) % 1) + 1) % 1;
-  // 0–0.25 擺到右、0.25–0.5 停、0.5–0.75 擺回左、0.75–1 停
-  if (f < 0.25) return -SWING + 2 * SWING * smooth(f / 0.25);
-  if (f < 0.5) return SWING;
-  if (f < 0.75) return SWING - 2 * SWING * smooth((f - 0.5) / 0.25);
-  return -SWING;
+  const [px, py] = pinAt(theta);
+  const dx = px - PIVOT[0];
+  const dy = py - PIVOT[1];
+  const d2 = dx * dx + dy * dy;
+  const sin = Math.max(-1, Math.min(1, (d2 - L * L - CRANK.r * CRANK.r) / (2 * L * CRANK.r)));
+  const t = Math.PI - Math.asin(sin); // 左半圈上離樞軸 d 的那一點
+  const [qx, qy] = slotPoint(t);
+  const angle = Math.atan2(dy, dx) - Math.atan2(qy, qx);
+  return { angle: Math.atan2(Math.sin(angle), Math.cos(angle)), t };
 }
 
-/** 擺桿角 a → 上端位置、滑桿的位移 */
+/** 擺桿轉角 a(逆時針)→ 上端位置、滑桿的位移 */
 export function slide(a) {
-  const top = [PIVOT[0] + ARM * Math.sin(a), PIVOT[1] + ARM * Math.cos(a), 0];
+  const top = [PIVOT[0] - ARM * Math.sin(a), PIVOT[1] + ARM * Math.cos(a), 0];
   const x = top[0] - Math.sqrt(ROD * ROD - (BAR_Y - top[1]) ** 2);
   return { top, x };
 }
+
+// 擺桿:下段直桿從樞軸往上、接到槽的外側(左邊),上段再接回中心線到上端;槽是曲柄圓的左半圈(兩端各多留一點)
+const ccw = (poly) => {
+  let area = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const [a, b] = [poly[i], poly[(i + 1) % poly.length]];
+    area += a[0] * b[1] - b[0] * a[1];
+  }
+  return area < 0 ? [...poly].reverse() : poly;
+};
+const arc = (from, to, n = 32) => Array.from({ length: n + 1 }, (_, i) => slotPoint(from + ((to - from) * i) / n));
+const SLOT_OUTLINE = ccw(thickLine(arc(Math.PI / 2 - 0.45, 1.5 * Math.PI + 0.45), 2 * (SLOT_HALF + 0.12)));
+const SLOT_HOLE = ccw(thickLine(arc(Math.PI / 2 - 0.25, 1.5 * Math.PI + 0.25), 2 * SLOT_HALF)).reverse();
+export const geometry = { PIVOT, CRANK, L, SLOT_HALF };
 
 export default {
   figure: 397,
@@ -63,7 +96,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(thickLine([[0, 0], [CRANK.r, 0]], 0.22), [circle(0.06).reverse()]), thickness: 0.1, at: [0, 0, -0.25] },
         { kind: "cylinder", radius: 0.2, length: 0.15, at: [0, 0, -0.38] },
-        { kind: "cylinder", radius: 0.07, length: 0.4, at: [CRANK.r, 0, -0.05], accent: true },
+        { kind: "cylinder", radius: PIN_R, length: 0.4, at: [CRANK.r, 0, -0.05], accent: true },
       ],
     },
     {
@@ -72,9 +105,10 @@ export default {
       center: PIVOT,
       arrow: false,
       pieces: [
-        // 有彎曲長槽的擺桿(以兩條邊框表示槽),兩端各一個圓轂;上端的銷穿到連桿那一層
-        { kind: "plate", shape: shape(thickLine([[0, 0], [-0.15, 0.9], [-0.45, 1.7], [-0.15, 2.6], [0, ARM]], 0.12)), thickness: 0.1 },
-        { kind: "plate", shape: shape(thickLine([[0.3, 0.9], [0.05, 1.7], [0.3, 2.6]], 0.12)), thickness: 0.1 },
+        // 擺桿:下段、槽(曲柄圓的左半圈)、上段;兩端各一個圓轂,上端的銷穿到連桿那一層
+        { kind: "plate", shape: shape(thickLine([[0, 0], [-0.2, 0.8], [-0.5, L - 0.25]], 0.14)), thickness: 0.1 },
+        { kind: "plate", shape: shape(SLOT_OUTLINE, [SLOT_HOLE]), thickness: 0.1 },
+        { kind: "plate", shape: shape(thickLine([[-0.5, L + 0.25], [-0.2, L + CRANK.r + 0.6], [0, ARM]], 0.14)), thickness: 0.1 },
         { kind: "cylinder", radius: 0.15, length: 0.1 },
         { kind: "cylinder", radius: 0.15, length: 0.1, at: [0, ARM, 0] },
         { kind: "cylinder", radius: 0.05, length: 0.5, at: [0, ARM, 0.15] },
@@ -97,19 +131,16 @@ export default {
   target: "bar",
   view: { direction: [0.08, 0.08, 1] },
   pose(theta) {
-    const a = lever(theta);
+    const a = lever(theta).angle;
     const s = slide(a);
     return {
       parts: {
         crank: { angle: theta },
-        lever: { angle: -a },
+        lever: { angle: a },
         rod: { from: [s.top[0], s.top[1], Z_ROD], to: [s.x, BAR_Y, Z_ROD] },
         bar: { position: [s.x, BAR_Y, 0] },
       },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["crank", "lever"], reason: "曲柄銷在擺桿的弧形槽裡滑動;槽的兩壁畫成折線,銷在行程兩端擦到槽壁 0.12(96 個取樣中 13 個)" },
-  ],
 };
