@@ -11,7 +11,7 @@ import fig159, { treadle as treadle159, ropeLengthAt } from "../models/fig159.js
 import { penetrationDepth } from "../models/contact.js";
 import { lathe as lathe160 } from "../models/fig160.js";
 import { oval as oval172 } from "../models/fig172.js";
-import { traverse as traverse173 } from "../models/fig173.js";
+import { traverse as traverse173, tappetContact as tappet173, tappetTeeth as teeth173 } from "../models/fig173.js";
 import { clamp as clamp174, nose as nose174, grip as grip174 } from "../models/fig174.js";
 import { slotting as slotting178, crankLength as crankLength178 } from "../models/fig178.js";
 import { clamp as clamp180, nose as nose180, grip as grip180 } from "../models/fig180.js";
@@ -273,7 +273,7 @@ test("第 169 種:以短連桿取代溝槽,主曲柄半徑固定、轉一圈", (
 });
 
 import { valveGear as valve171 } from "../models/fig171.js";
-import { stroke as stroke175 } from "../models/fig175.js";
+import fig175, { stroke as stroke175 } from "../models/fig175.js";
 import { reverser } from "../models/fig179.js";
 import { gear as gear185 } from "../models/fig185.js";
 
@@ -298,6 +298,12 @@ test("第 171 種:連桿運動帶動閥桿,經曲面滑塊與搖臂軸傳給閥�
   const fwd = travel((t) => valve171(t, "forward").armAngle);
   const mid = travel((t) => valve171(t, "mid").armAngle);
   assert.ok(fwd > 0.05 && mid < fwd * 0.2);
+});
+
+test("第 175 種:原文是活塞帶動曲柄——主動件是長槽中的銷(活塞)、目標件是曲柄;活塞往返一次曲柄轉一圈", () => {
+  assert.equal(fig175.driver.part, "slider");
+  assert.equal(fig175.target, "crank");
+  reciprocates(fig175, "slider", "crank", "第 175 種");
 });
 
 test("第 175 種:曲柄轉一圈,長槽中的銷往返一次", () => {
@@ -337,9 +343,9 @@ test("第 173 種:圓盤每轉一圈,撥爪輪被撥一次、螺帽移動,導桿
   for (let k = -5; k < 3; k++) {
     const a = traverse173(k * TAU + 1);
     const b = traverse173((k + 1) * TAU + 1);
-    close(b.steps - a.steps, 1, "每圈撥一次");
+    close(b.screw - a.screw, TAU / teeth173, "固定銷每圈把撥爪輪撥過一齒(由接觸算)", 1e-3);
     assert.ok(b.stroke < a.stroke, "行程逐圈縮短");
-    close(a.stroke - b.stroke, 0.2, "每圈變化相同的量", 1e-9);
+    close(a.stroke - b.stroke, 0.2, "每圈變化相同的量", 1e-3);
   }
   // 一圈之中撥爪輪只在經過固定銷時轉動,其餘時間行程不變
   const stroke = sweep(TAU, 360, 0.01).map((t) => traverse173(t).stroke);
@@ -347,6 +353,11 @@ test("第 173 種:圓盤每轉一圈,撥爪輪被撥一次、螺帽移動,導桿
   // 導桿(T 形桿)的位移就是手腕銷的 x:一圈內往返一次,幅度等於行程
   const xs = sweep(TAU, 720, 0.3).map((t) => traverse173(t).x);
   close(Math.max(...xs) - Math.min(...xs), traverse173(0.3).stroke, "幅度 = 行程", 0.01);
+  // 撥爪輪的齒與固定銷不互相穿入;撥爪輪只在銷碰到齒時才轉
+  for (const t of sweep(TAU, 1440, -TAU)) {
+    const { pin, wheel } = tappet173(t);
+    if (pin) assert.ok(penetrationDepth(pin, wheel) < 0.01, `轉角 ${t.toFixed(3)} 銷穿進撥爪輪`);
+  }
 });
 
 const noseAt = (local, pivot, angle) => {

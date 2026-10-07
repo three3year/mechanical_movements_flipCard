@@ -61,6 +61,13 @@ const camOutline = [
 const STOP = { x: [-0.55, -0.25], y: [1.95, 2.62] };
 const STOP_OUTLINE = [[STOP.x[0], STOP.y[0]], [STOP.x[1], STOP.y[0]], [STOP.x[1], STOP.y[1]], [STOP.x[0], STOP.y[1]]];
 
+// B 張開的擋銷:B 相對輪逆時針張開到 OPEN_MAX 時,槓桿身的上緣碰到它
+const OPEN_MAX = deg(20);
+const STOP_PIN = (() => {
+  const [x, y] = rot2([0.55, 0.08 + 0.05], LEVER + OPEN_MAX);
+  return [PIVOT[0] + x, PIVOT[1] + y];
+})();
+
 const CAM0 = deg(140); // 主動量 0 時齒的前壁的方向(齒在鉤頭的逆時針側,還沒碰到)
 const camAt = (c) => placeOutline(camOutline, [0, 0], CAM0 - c);
 const pivotAt = (w) => rot2(PIVOT, w);
@@ -193,6 +200,8 @@ export default {
         { kind: "cylinder", radius: R, inner: R - 0.14, length: 0.42 },
         ...[0, 1, 2, 3].map((k) => ({ kind: "box", size: [R - 0.3, 0.14, 0.12], at: [...polar((R - 0.3) / 2 + 0.2, (k * TAU) / 4).slice(0, 2), 0], angle: (k * TAU) / 4, accent: k === 0 })),
         { kind: "cylinder", radius: 0.28, inner: 0.17, length: 0.3 },
+        // B 張開的擋銷(推斷):輪被拉回時 B 被甩開,擋銷不讓它翻過頭;模型裡 B 最多張開約 15°,碰不到它
+        { kind: "cylinder", radius: 0.05, length: 0.24, at: [...STOP_PIN, Z.catch - 0.06] },
         // 制動裝置的樞軸銷,立在左邊的輪輻上、伸到 B 那一層
         { kind: "cylinder", radius: 0.06, length: 0.5, at: [...PIVOT, 0.2] },
       ],
@@ -232,7 +241,7 @@ export default {
     from: 0,
     to: 2 * TAU,
     seconds: 20,
-    free: { wheel: { spring: 1, gravity: false, limits: [-3, 0] }, catch: { on: "wheel" } },
+    free: { wheel: { spring: 1, gravity: false, limits: [-3, 0] }, catch: { on: "wheel", limits: [-0.1, OPEN_MAX] } }, // B 與輪之間不算碰撞,擋銷以 limits 代表
     ignore: [["wheel", "frame"], ["wheel", "shaft"]],
     expect: [
       { at: lift * 0.8, part: "wheel", label: "凸輪的齒抓住制動裝置,帶著輪轉", quote: "抓住連接於該輪上的鉤形制動裝置 B,並將其連同輪一起帶動旋轉" },

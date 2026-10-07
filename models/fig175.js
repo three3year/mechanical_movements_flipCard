@@ -1,6 +1,8 @@
 // 第 175 種:讓引擎的曲柄在活塞每一次行程中恰好轉一整圈的方法。曲柄銷(左上)上的連桿穿過機架窗口中
 // 一個可擺動的銷座(連桿可在其中滑動),下端的銷在機架右側的直立長槽裡上下滑動。
-// 曲柄轉一圈,長槽中的銷(活塞)往返一次。主動件是曲柄;銷座與長槽的幾何依原圖推斷。
+// 曲柄轉一圈,長槽中的銷(活塞)往返一次。原文是活塞帶動曲柄:主動件是長槽中的銷(活塞),目標件是曲柄。
+// 主動量取曲柄的相位(driver.cycle 的一程是半圈),播放時曲柄等速轉、活塞跟著上下,經過死點時不會跳。
+// 銷座與長槽的幾何依原圖推斷;曲柄軸、銷座的樞軸與窗口中托著它的橫檔也是推斷(原圖只畫出圓)。
 import { deg, polar, add, sub, scale, norm } from "./kit.js";
 import { angleOf } from "./linkage.js";
 import { shape, circle, stadium } from "./shapes.js";
@@ -41,11 +43,22 @@ const frame = shape(
     circle(0.18, CRANK.center[0], CRANK.center[1]).reverse(),
   ],
 );
+// 窗口中托著銷座樞軸的橫檔(與機架同一層)
+const bar = shape([[-0.15, SWIVEL[1] - 0.12], [0.75, SWIVEL[1] - 0.12], [0.75, SWIVEL[1] + 0.12], [-0.15, SWIVEL[1] + 0.12]]);
 
 export default {
   figure: 175,
   parts: [
-    { id: "frame", kind: "plate", shape: frame, thickness: 0.3, center: [0, 0, -0.3] },
+    {
+      id: "frame",
+      kind: "group",
+      center: [0, 0, -0.3],
+      pieces: [
+        { kind: "plate", shape: frame, thickness: 0.3 },
+        { kind: "plate", shape: bar, thickness: 0.3 },
+        { kind: "cylinder", radius: 0.075, length: 0.45, at: [SWIVEL[0], SWIVEL[1], 0.2] }, // 銷座的樞軸
+      ],
+    },
     {
       id: "crank",
       kind: "group",
@@ -54,14 +67,22 @@ export default {
       pieces: [
         { kind: "plate", shape: stadium(CRANK.radius, 0.45), thickness: 0.12, angle: START },
         { kind: "cylinder", radius: 0.25, inner: 0.1, length: 0.25 },
+        { kind: "cylinder", radius: 0.17, length: 0.6, at: [0, 0, -0.2] }, // 曲柄軸:往後穿過機架的軸承孔
       ],
     },
     { id: "rod", kind: "link", width: 0.16, thickness: 0.08, stretch: true },
     { id: "swivel", kind: "plate", center: SWIVEL, shape: shape(circle(0.18), [circle(0.08).reverse()]), thickness: 0.25, posed: true, arrow: false },
-    { id: "slider", kind: "cylinder", radius: 0.12, length: 0.36 }, // 在機架的長槽裡滑,頂面貼著連桿的背面
+    {
+      id: "slider",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.12, length: 0.36 }, // 銷:頂面貼著連桿的背面
+        { kind: "box", size: [0.26, 0.55, 0.28], at: [0, 0, -0.18] }, // 活塞桿端的滑塊,在機架的長槽裡上下滑
+      ],
+    },
   ],
-  driver: { part: "crank", type: "rotation" },
-  target: "slider",
+  driver: { part: "slider", type: "translation", direction: [0, 1, 0], cycle: [0, Math.PI] },
+  target: "crank",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const { pin, end, angle } = stroke(theta);

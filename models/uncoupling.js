@@ -3,10 +3,13 @@
 // 被槽壁擋住,兩支曲柄一起轉;把環轉成溝槽與手腕的路徑同向(第 177 種)時,手腕銷沿溝槽穿過去,這支曲柄不動。
 // 主動件是後面那支(帶手腕銷的)曲柄;接上 / 脫開是狀態。
 // 推斷:後面的曲柄與圖中曲柄同軸、同長;脫開時圖中曲柄停在原圖位置(朝上);溝槽是直的。
+// 兩支曲柄各有自己的軸:圖中曲柄的軸往前伸進前面的軸承座,後面曲柄的軸往後伸進後面的軸承座(原圖沒畫,推斷)。
 import { polar } from "./kit.js";
 import { shape, circle, arcPoints } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 export const ARM = 4.05;
+const FLOOR = -(ARM + 0.9); // 曲柄朝下時眼的最低處之下
 // 眼與環做得小:脫開時手腕銷沿圓弧穿過直的溝槽,環越小,圓弧偏離溝槽的量越小
 export const EYE = 0.65;
 export const INSERT = 0.45;
@@ -52,6 +55,7 @@ export function uncouplingModel({ figure, initial }) {
           ...[1, -1].map((s) => ({ kind: "plate", shape: shape(eyeHalf(s)), thickness: 0.35, at: [0, ARM, 0] })),
           { kind: "cylinder", radius: 1.0, inner: 0.68, length: 0.35 },
           { kind: "cylinder", radius: 0.68, length: 0.6, mark: true },
+          { kind: "cylinder", radius: 0.3, length: 0.75, at: [0, 0, 0.6] }, // 軸:往前伸進軸承座
         ],
       },
       { id: "ring", kind: "group", posed: true, arrow: false, pieces: [{ kind: "plate", shape: half(1), thickness: 0.3 }, { kind: "plate", shape: half(-1), thickness: 0.3 }] },
@@ -63,7 +67,13 @@ export function uncouplingModel({ figure, initial }) {
           { kind: "plate", shape: shape([[-0.45, 0], [0.45, 0], [0.35, ARM], [-0.35, ARM]]), thickness: 0.15, at: [0, 0, -0.75] },
           { kind: "cylinder", radius: 0.55, length: 0.7, at: [0, 0, -0.65] }, // 輪轂頂著曲柄軸的端面(同一條軸線)
           { kind: "cylinder", radius: WRIST, length: 0.75, at: [0, ARM, -0.35], accent: true },
+          { kind: "cylinder", radius: 0.3, length: 0.85, at: [0, 0, -1.35] }, // 軸:往後伸進軸承座
         ],
+      },
+      {
+        id: "frame",
+        kind: "group",
+        pieces: [...pedestal({ at: [0, 0], z: 0.8, bore: 0.3, floor: FLOOR }), ...pedestal({ at: [0, 0], z: -1.55, bore: 0.3, floor: FLOOR })],
       },
     ],
     driver: { part: "wristArm", type: "rotation" },

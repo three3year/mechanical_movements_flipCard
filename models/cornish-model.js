@@ -57,7 +57,7 @@ function shaftPart(which, lock) {
   const arm = ARMS[which];
   const pieces = [
     { kind: "cylinder", radius: 0.36, inner: 0.2, length: 0.3 },
-    { kind: "cylinder", radius: 0.2, length: 1.0, at: [0, 0, -0.2], accent: true }, // 軸往後伸到活塞桿後面的閥桿臂
+    { kind: "cylinder", radius: 0.2, length: 1.25, at: [0, 0, -0.325], accent: true }, // 軸往後伸過閥桿臂,進到機架板的軸承
     // 手柄:直臂與端點的圓頭
     // 手柄是薄的直條、端頭不加球:撥爪是以手柄中心線與活塞桿邊緣的交點算的,有厚度的端頭會陷進撥爪。
     // 上下兩支手柄前後錯開一層,交叉時互不相碰
@@ -69,6 +69,42 @@ function shaftPart(which, lock) {
   if (lock === "quadrants") pieces.push({ kind: "plate", shape: localSector(which), thickness: 0.12, at: [0, 0, 0.3] });
   return { id: which, kind: "group", center: SHAFTS[which], arrow: false, pieces };
 }
+
+const FRAME_Z = -0.85; // 機架板(在閥桿臂的後面)
+// 機架板:兩根軸的軸承與卡榫的樞軸銷都在它上面(推斷,原圖只畫出軸頭)
+const framePart = (lock) => ({
+  id: "frame",
+  kind: "group",
+  pieces: [
+    { kind: "box", size: [0.8, SHAFTS.upper[1] - SHAFTS.lower[1] + 1.0, 0.1], at: [SHAFTS.upper[0], (SHAFTS.upper[1] + SHAFTS.lower[1]) / 2, FRAME_Z] },
+    ...[SHAFTS.upper, SHAFTS.lower].map((c) => ({ kind: "cylinder", radius: 0.32, inner: 0.2, length: 0.15, at: [c[0], c[1], FRAME_Z + 0.1] })),
+    ...(lock === "catch" ? [{ kind: "cylinder", radius: 0.13, length: 1.3, at: [0, 0, FRAME_Z + 0.65] }] : []), // 卡榫的樞軸銷
+  ],
+});
+// 象限器的動力重演:兩支手柄裝在各自的軸上自由轉動。上方手柄被配重往上拉(彈簧往順時針)、下方手柄靠自重落下
+// (彈簧往逆時針代表);各自的兩個極限位置由機架上的擋止決定(原圖沒畫,推斷)。誰被擋住、何時放開,全靠兩個象限器的圓弧
+const quadrantReplay = (initial) => {
+  const atB = initial > 0; // 第 184 種從 B 位置開始
+  const range = (which) => {
+    const d = ANGLES[which].A - ANGLES[which].B;
+    return atB ? [0, d] : [-d, 0];
+  };
+  const [first, second] = atB ? ["下降", "上升"] : ["上升", "下降"];
+  return {
+    free: {
+      upper: { pivot: SHAFTS.upper, spring: -1, gravity: false, limits: range("upper") },
+      lower: { pivot: SHAFTS.lower, spring: 1, gravity: false, limits: range("lower") },
+    },
+    ignore: [["upper", "upperRod"], ["lower", "lowerRod"], ["upper", "frame"], ["lower", "frame"]],
+    expect: [
+      { at: initial + SPAN / 2, part: atB ? "upper" : "lower", label: `活塞${first}到一半,撥爪推著${atB ? "上方" : "下方"}手柄轉` },
+      { at: initial + SPAN, part: "lower", label: `活塞${first}到底,下方手柄${atB ? "被放開、落回原處" : "被抬起、被上方象限器擋住"}`, quote: "下方的手柄會被凸出的撥爪撞擊,並在被抬起後與卡榫嚙合" },
+      { at: initial + SPAN, part: "upper", label: `同時上方手柄${atB ? "被壓回、被下方象限器擋住" : "脫離、被配重拉起"}`, quote: "上方的手柄由於脫離了卡榫,其後方的配重會將手柄向上拉" },
+      { at: initial + 2 * SPAN, part: "lower", label: `活塞${second}到底,下方手柄回到起點` },
+      { at: initial + 2 * SPAN, part: "upper", label: `上方手柄回到起點` },
+    ],
+  };
+};
 
 export function cornishModel({ figure, lock, initial }) {
   const parts = [
@@ -84,6 +120,7 @@ export function cornishModel({ figure, lock, initial }) {
     shaftPart("lower", lock),
     { id: "upperRod", kind: "link", width: 0.1, thickness: 0.08 },
     { id: "lowerRod", kind: "link", width: 0.1, thickness: 0.08 },
+    framePart(lock),
   ];
   if (lock === "catch")
     parts.push({
@@ -99,6 +136,7 @@ export function cornishModel({ figure, lock, initial }) {
     figure,
     parts,
     // 大型引擎的活塞走得慢(一程約 2.4 秒),手柄甩到位的過程(約 0.4 秒)才看得清楚
+    ...(lock === "quadrants" ? { replay: quadrantReplay(initial) } : {}),
     driver: { part: "rod", type: "translation", direction: [0, 1, 0], cycle: [0, SPAN], initial, speed: 1.2 },
     targets: ["upper", "lower"],
     view: { direction: [0.06, 0.05, 1] },
