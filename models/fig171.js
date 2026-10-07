@@ -2,7 +2,8 @@
 // (與機車頭的連桿運動相同,見第 185 種);連桿可用左邊的柄左右移動。槽中的滑塊接著往下的閥桿,
 // 閥桿帶動樞軸(trunnion)上方的曲面滑塊;曲面滑塊的溝槽裡有一根銷,接在搖臂軸的搖臂上,搖臂軸再把運動傳給閥門。
 // 溝槽是以樞軸中心為圓心的圓弧,所以圓筒擺動時不影響閥門的行程(此處圓筒不動,只畫出樞軸)。
-// 主動件是曲柄軸;連桿的位置是狀態(前進、中位、後退)。
+// 主動件是曲柄軸;連桿的位置是狀態(前進、中位、後退,原機構由司機扳動換向桿切換)。
+// 推斷(原圖沒畫):閥桿穿過的導套(橫樑架在兩根立柱之間)、搖臂軸的軸承(托在左邊的立柱上)。
 import { deg, polar } from "./kit.js";
 import { linkMotion } from "./link-motion.js";
 import { shape, circle, arcPoints } from "./shapes.js";
@@ -30,6 +31,7 @@ export function valveGear(theta, state) {
 export const states = Object.keys(SHIFT);
 const REST_TOP = valveGear(0, "mid").arcTop;
 ARM.pivot[1] = REST_TOP - 0.15;
+const GUIDE_Y = -0.35; // 閥桿導套的高度(閥桿上下行程中始終穿過它)
 
 // 連桿畫成直的(原圖略彎):滑塊的位置是在連桿兩端之間直線內插的,槽是直的才對得上
 const linkShape = shape(
@@ -62,7 +64,7 @@ export default {
     { id: "link", kind: "group", posed: true, arrow: false, pieces: [{ kind: "plate", shape: linkShape, thickness: 0.12 }] },
     { id: "valveRod", kind: "group", pieces: [{ kind: "box", size: [0.1, VALVE_ROD, 0.08], at: [0, -VALVE_ROD / 2, 0] }, { kind: "cylinder", radius: 0.055, length: 0.16, at: [0, 0, 0.23] }] }, // 滑塊畫成一根在連桿槽裡滑的銷(閥桿在連桿後面)
     { id: "arcPiece", kind: "plate", shape: arcPiece, thickness: 0.15 },
-    { id: "arm", kind: "group", center: ARM.pivot, arrow: false, pieces: [{ kind: "box", size: [ARM.length, 0.12, 0.08], at: [ARM.length / 2, 0, 0.36] }, { kind: "cylinder", radius: 0.06, length: 0.6, at: [0, 0, 0.2] }, { kind: "cylinder", radius: 0.15, inner: 0.06, length: 0.2 }] },
+    { id: "arm", kind: "group", center: ARM.pivot, arrow: false, pieces: [{ kind: "box", size: [ARM.length, 0.12, 0.08], at: [ARM.length / 2, 0, 0.36] }, { kind: "cylinder", radius: 0.06, length: 0.85, at: [0, 0, 0.075] }, { kind: "cylinder", radius: 0.15, inner: 0.06, length: 0.2 }] },
     {
       id: "trunnion",
       kind: "group",
@@ -70,6 +72,16 @@ export default {
         { kind: "plate", shape: shape(circle(0.42), [circle(0.25).reverse()]), thickness: 0.3, at: TRUNNION },
         { kind: "box", size: [0.12, 2.6, 0.12], at: [-1.45, TRUNNION[1] + 0.9, -0.2] },
         { kind: "box", size: [0.12, 2.6, 0.12], at: [1.45, TRUNNION[1] + 0.9, -0.2] },
+        // 閥桿的導套:橫樑架在兩根立柱上,中間圍住閥桿
+        { kind: "box", size: [1.3, 0.12, 0.1], at: [-0.8, GUIDE_Y, 0.27] },
+        { kind: "box", size: [1.3, 0.12, 0.1], at: [0.8, GUIDE_Y, 0.27] },
+        { kind: "box", size: [0.3, 0.12, 0.06], at: [0, GUIDE_Y, 0.34] },
+        { kind: "box", size: [0.3, 0.12, 0.06], at: [0, GUIDE_Y, 0.2] },
+        { kind: "box", size: [0.12, 0.12, 0.47], at: [-1.45, GUIDE_Y, 0.06] },
+        { kind: "box", size: [0.12, 0.12, 0.47], at: [1.45, GUIDE_Y, 0.06] },
+        // 搖臂軸的軸承,托在左邊的立柱上
+        { kind: "cylinder", radius: 0.13, inner: 0.06, length: 0.14, at: [ARM.pivot[0], ARM.pivot[1], -0.26] },
+        { kind: "box", size: [0.2, 0.1, 0.1], at: [-1.47, ARM.pivot[1], -0.24] },
       ],
     },
   ],

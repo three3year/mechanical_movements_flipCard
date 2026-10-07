@@ -1,7 +1,8 @@
 // 第 161 種:蒸汽引擎的離心式調速器。中央心軸連同搖臂與球,由引擎經頂部的斜齒輪帶動;心軸轉動時球因離心力往外飛。
 // 引擎越快,球飛得越開,把底部的滑塊抬高,減少調節閥(接在滑塊上的槓桿)的開度;變慢時相反。
 // 主動件是虛擬的「轉速」(平衡型)。原圖的虛線是球飛開時的位置。
-import { Y, deg } from "./kit.js";
+// 頂部正對著讀者的斜齒輪是引擎帶動的那一個(軸朝前伸);主動件是轉速本身,心軸在模型裡不轉。
+import { Z, Y, deg } from "./kit.js";
 import { flyBall } from "./governor.js";
 
 const GOV = flyBall({ top: 2.4, arm: 2.3, at: 1.15, link: 1.6, ball: 0.45, range: [deg(16), deg(48)] });
@@ -22,12 +23,23 @@ export default {
       kind: "group",
       pieces: [
         { kind: "cylinder", axis: Y, radius: 0.07, length: 4.0, at: [0, 0.9, 0] },
-        { kind: "gear", teeth: 24, radius: 0.5, cone: deg(45), width: 0.2, axis: [0, -1, 0], at: [0, 3.15, 0] },
+        { kind: "gear", teeth: 20, radius: 0.55, cone: deg(45), width: 0.18, axis: [0, 1, 0], at: [0, 3.15, 0] },
         { kind: "cylinder", axis: Y, radius: 0.18, length: 0.2, at: [0, 2.85, 0] },
         { kind: "sphere", radius: 0.1, at: [0, -1.15, 0] },
       ],
     },
     ...GOV.parts(),
+    // 引擎經這根朝前的軸與斜齒輪帶動心軸
+    {
+      id: "driveShaft",
+      kind: "group",
+      axis: Z,
+      center: [0, 3.65, 0.5],
+      pieces: [
+        { kind: "gear", teeth: 20, radius: 0.55, cone: deg(45), width: 0.18, axis: [0, 0, -1], at: [0, 0, 0] },
+        { kind: "cylinder", radius: 0.07, length: 1.2, at: [0, 0, 0.6] },
+      ],
+    },
     {
       id: "lever",
       kind: "group",

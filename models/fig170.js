@@ -1,6 +1,7 @@
 // 第 170 種:另一種蒸汽引擎調速器。搖臂不接在心軸的滑塊上,而是彼此交叉,往上延伸過心軸頂部,
 // 再以兩根短連桿接到閥桿。球飛開時,交叉的搖臂上端往外張開並下降,經短連桿把閥桿往下拉。主動件是虛擬的「轉速」(平衡型)。
-import { Y, deg, clamp } from "./kit.js";
+// 心軸由下方左邊的水平軸經一對斜齒輪帶動(原圖畫在底部);主動件是轉速本身,心軸在模型裡不轉。
+import { X, Y, deg, clamp } from "./kit.js";
 
 const PIVOT = [0, 1.35, 0]; // 兩支搖臂交叉處的樞軸
 const ARM = 2.15; // 樞軸到球心
@@ -9,6 +10,7 @@ const LINK = 0.62;
 const MAX = 10;
 const RANGE = [deg(18), deg(48)];
 const C = MAX * MAX * Math.cos(RANGE[1]);
+const GEAR_Y = -1.25; // 心軸上的斜齒輪
 
 /** 轉速 s:張角(搖臂與垂直線的夾角)與閥桿的高度 */
 export function governor(s) {
@@ -30,8 +32,19 @@ export default {
       kind: "group",
       pieces: [
         { kind: "cylinder", axis: Y, radius: 0.07, length: 3.8, at: [0, 0.1, 0] },
-        { kind: "gear", teeth: 24, radius: 0.5, cone: deg(45), width: 0.2, axis: [0, 1, 0], at: [0, -1.25, 0] },
+        { kind: "gear", teeth: 20, radius: 0.55, cone: deg(45), width: 0.18, axis: [0, -1, 0], at: [0, GEAR_Y, 0] },
         { kind: "cylinder", radius: 0.05, length: 0.4, at: [0, PIVOT[1], 0] }, // 兩支搖臂共用的樞軸銷(橫穿心軸)
+      ],
+    },
+    // 帶動心軸的水平軸與斜齒輪(引擎經它驅動調速器)
+    {
+      id: "driveShaft",
+      kind: "group",
+      axis: X,
+      center: [-0.5, GEAR_Y - 0.5, 0],
+      pieces: [
+        { kind: "gear", teeth: 20, radius: 0.55, cone: deg(45), width: 0.18, axis: [0, 0, 1], at: [0, 0, 0] },
+        { kind: "cylinder", radius: 0.07, length: 2.0, at: [0, 0, -1.0] },
       ],
     },
     { id: "armL", kind: "link", width: 0.1, thickness: 0.06 },

@@ -1,5 +1,8 @@
 // 第 159 種:第 158 種的變形,以繩索與滑輪取代連桿。繩從圓盤上的曲柄銷往上繞過上方的滑輪,再往下接到踏板;
-// 踩下踏板時繩把曲柄銷往上拉,帶圓盤轉。為了讓模型通過死點,主動件取圓盤,由「繩長不變」反推踏板的位置。
+// 踩下踏板時繩把曲柄銷往上拉,帶圓盤轉;另外半圈靠圓盤的慣性轉回(繩只能拉)。由「繩長不變」算踏板的位置。
+// 原文的輸入是踏板:主動件是踏板、目標件是圓盤。主動量取圓盤的相位(driver.cycle 的一程是半圈),
+// 播放時圓盤等速轉、踏板跟著上下,經過死點時不會跳。
+// 滑輪的支柱與軸、圓盤的軸是推斷(原圖的滑輪懸在空中、圓盤只畫出軸孔)。
 import { Z, deg, polar, add, dist, routeRope } from "./kit.js";
 import { solve } from "./linkage.js";
 import { shape, circle } from "./shapes.js";
@@ -24,6 +27,8 @@ export function treadle(theta) {
   const psi = solve((p) => ropeLength(pin, jAt(p)), L0, deg(150), deg(230));
   return { pin, psi, j: jAt(psi) };
 }
+/** 主動量 v:圓盤的轉角(起點是原圖的位置,曲柄銷在右下方) */
+export const discAngle = (v) => v;
 export const ropeLengthAt = (theta) => {
   const { pin, j } = treadle(theta);
   return ropeLength(pin, j);
@@ -58,13 +63,18 @@ export default {
         { kind: "plate", shape: shape([[-2.9, -1.56], [-1.0, -1.56], [-1.0, -1.2], [-1.45, -0.9], [-1.5, 0.75], [-1.9, 1.05], [-2.3, 0.75], [-2.35, -0.9], [-2.9, -1.2]]), thickness: 0.3, at: [0, 0, -0.35] },
         { kind: "plate", shape: shape([[2.75, -1.56], [4.0, -1.56], [4.0, -1.2], [3.65, -0.4], [3.4, 0.7], [3.15, -0.4], [2.75, -1.2]]), thickness: 0.3, at: [0, 0, 0.1] },
         { kind: "box", size: [7.4, 0.08, 1.4], at: [0.55, -1.6, 0] },
+        { kind: "cylinder", radius: 0.1, length: 0.6, at: [DISC.center[0], DISC.center[1], -0.1] }, // 圓盤的軸
+        // 滑輪的支柱(在繩的後面)與軸
+        { kind: "box", size: [0.24, PULLEY.center[1] + 1.56, 0.2], at: [PULLEY.center[0], (PULLEY.center[1] - 1.56) / 2, -0.05] },
+        { kind: "cylinder", radius: 0.05, length: 0.6, at: [PULLEY.center[0], PULLEY.center[1], 0.2] },
       ],
     },
   ],
-  driver: { part: "disc", type: "rotation" },
-  target: "treadle", // 原文是踏板帶動圓盤;模型以圓盤為主動件,目標件標另一端的踏板
+  driver: { part: "treadle", type: "rotation", cycle: [0, Math.PI] },
+  target: "disc", // 踏板踩動的目的:讓圓盤轉
   view: { direction: [0.06, 0.05, 1] },
-  pose(theta) {
+  pose(v) {
+    const theta = discAngle(v);
     const { pin, psi, j } = treadle(theta);
     const rope = routeRope([
       { point: [pin[0], pin[1], 0.3] },

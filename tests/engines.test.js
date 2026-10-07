@@ -3,11 +3,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep } from "./helpers.js";
 import { dist } from "../models/kit.js";
-import { feed as feed155, step as step155, stroke as stroke155 } from "../models/fig155.js";
-import { bellCrank as crank156 } from "../models/fig156.js";
-import { bellCrank as crank157 } from "../models/fig157.js";
-import { treadle as treadle158 } from "../models/fig158.js";
-import { treadle as treadle159, ropeLengthAt } from "../models/fig159.js";
+import { feed as feed155, step as step155, stroke as stroke155, advance as advance155, contactAt as contact155 } from "../models/fig155.js";
+import { bellCrank as crank156, guides as guides156, slideLength as slide156 } from "../models/fig156.js";
+import { bellCrank as crank157, guides as guides157, slideLength as slide157 } from "../models/fig157.js";
+import fig158, { treadle as treadle158 } from "../models/fig158.js";
+import fig159, { treadle as treadle159, ropeLengthAt } from "../models/fig159.js";
+import { penetrationDepth } from "../models/contact.js";
 import { lathe as lathe160 } from "../models/fig160.js";
 import { oval as oval172 } from "../models/fig172.js";
 import { traverse as traverse173 } from "../models/fig173.js";
@@ -31,10 +32,26 @@ import fig182 from "../models/fig182.js";
 const TAU = 2 * Math.PI;
 
 test("第 155 種:往復的桿經肘節槓桿上的棘爪使齒輪間歇轉動;棘爪換邊時齒輪反向", () => {
-  const cw = sweep(stroke155 * 6, 300).map((v) => feed155(v, 1).gear);
-  for (let i = 1; i < cw.length; i++) assert.ok(cw[i] <= cw[i - 1] + 1e-12, "單向");
-  close(feed155(stroke155 * 2, 1).gear - feed155(0, 1).gear, -step155, "每次往復推進一次");
-  close(feed155(stroke155 * 2, -1).gear - feed155(0, -1).gear, step155, "換邊後反向");
+  const cw = sweep(stroke155 * 6, 600).map((v) => feed155(v, 1).gear);
+  for (let i = 1; i < cw.length; i++) assert.ok(cw[i] <= cw[i - 1] + 1e-9, "單向");
+  close(feed155(stroke155 * 2, 1).gear - feed155(0, 1).gear, advance155(1), "每次往復推進的量固定");
+  assert.ok(advance155(1) < -step155 / 2, "棘爪在右側:齒輪順時針轉,每個來回至少一齒");
+  close(advance155(-1), -advance155(1), "換邊後反向、推進量相同", 1e-9);
+});
+
+test("第 155 種:棘爪只在推程推齒輪,回程時滑過齒背、齒輪停住;爪與齒不互相穿入,落進齒間時不是瞬移", () => {
+  // 原文:往復直線運動轉換為間歇性的圓周運動
+  for (const side of [1, -1]) {
+    const back = side > 0 ? [stroke155 * 3, stroke155 * 4] : [stroke155 * 2, stroke155 * 3]; // 回程
+    close(feed155(back[1], side).gear, feed155(back[0], side).gear, "回程齒輪不動", 1e-9);
+    for (const v of sweep(stroke155 * 4, 400)) {
+      const { pawl, gear } = contact155(v, side);
+      for (const tooth of gear) assert.ok(penetrationDepth(pawl, tooth) < 0.01, `主動量 ${v.toFixed(3)} 棘爪穿入齒輪`);
+    }
+    // 播放時每秒 30 格、一程 1.2 秒:棘爪每格轉不到 0.15 弧度
+    const frames = sweep(stroke155 * 4, 144).map((v) => feed155(v, side).pawl);
+    for (let i = 1; i < frames.length; i++) assert.ok(Math.abs(frames[i] - frames[i - 1]) < 0.15, "棘爪落下有過程");
+  }
 });
 
 test("第 156 種:圓盤上的曲柄銷在曲柄搖臂的溝槽內作動,搖臂來回擺動(變速的交替運動)", () => {
@@ -43,11 +60,41 @@ test("第 156 種:圓盤上的曲柄銷在曲柄搖臂的溝槽內作動,搖臂�
   close(ys[0], ys[ys.length - 1], "一圈回到原處", 1e-9);
 });
 
+test("第 156、157 種:搖臂端沿圓弧擺,經短連桿帶動的直桿走直線,始終穿過兩個導套", () => {
+  for (const [crank, guides, length] of [[crank156, guides156, slide156], [crank157, guides157, slide157]]) {
+    for (const t of sweep(TAU, 72)) {
+      const top = crank(t).slide;
+      assert.ok(top > guides[0] + 0.1 && top - length < guides[1] - 0.1, `轉角 ${t.toFixed(2)} 直桿離開導套`);
+    }
+  }
+});
+
 test("第 157 種:以連桿取代溝槽,曲柄搖臂同樣來回擺動,連桿長度不變", () => {
   const ref = crank157(0);
   for (const t of sweep(TAU, 36)) {
     const { pin, top } = crank157(t);
     close(dist(pin, top), dist(ref.pin, ref.top), "連桿長度", 1e-9);
+  }
+});
+
+// 往復件當主動件:一程(driver.cycle)走完,往復件從一端到另一端,轉動的零件轉半圈
+function reciprocates(def, reciprocator, rotor, msg) {
+  const span = def.driver.cycle[1] - def.driver.cycle[0];
+  const at = (v) => def.pose(v).parts;
+  const ends = sweep(4 * span, 400).map((v) => at(v)[reciprocator].angle ?? at(v)[reciprocator].position[1]);
+  let turns = 0;
+  for (let i = 2; i < ends.length; i++) if ((ends[i] - ends[i - 1]) * (ends[i - 1] - ends[i - 2]) < 0) turns++;
+  assert.ok(turns >= 3 && turns <= 5, `${msg}:四程之內往復件折返 ${turns} 次`);
+  const angles = sweep(4 * span, 400).map((v) => at(v)[rotor].angle);
+  for (let i = 1; i < angles.length; i++) assert.ok(angles[i] >= angles[i - 1] - 1e-9, `${msg}:只朝一個方向轉`);
+  close(angles[angles.length - 1] - angles[0], 2 * TAU, `${msg}:往返兩次轉兩圈`, 1e-6);
+}
+
+test("第 158、159 種:原文是踏板帶動圓盤——主動件是踏板,踏板踩下、抬起一次,圓盤朝同一方向轉一圈", () => {
+  for (const def of [fig158, fig159]) {
+    assert.equal(def.driver.part, "treadle");
+    assert.equal(def.target, "disc");
+    reciprocates(def, "treadle", "disc", `第 ${def.figure} 種`);
   }
 });
 
@@ -76,8 +123,8 @@ test("第 160 種:踩下踏板,繞在皮帶輪上的帶子使它轉動;放開時
 });
 
 import fig161, { governor as gov161 } from "../models/fig161.js";
-import { regulator as reg162 } from "../models/fig162.js";
-import { regulator as reg163 } from "../models/fig163.js";
+import fig162, { regulator as reg162, pinY as pin162, studs as studs162 } from "../models/fig162.js";
+import fig163, { regulator as reg163, pulleys as pulleys163 } from "../models/fig163.js";
 import { governor as gov170 } from "../models/fig170.js";
 
 test("第 161 種:引擎速度增加,球向外飛出,把底部的滑塊抬升;速度降低時相反", () => {
@@ -90,16 +137,55 @@ test("第 161 種:引擎速度增加,球向外飛出,把底部的滑塊抬升;�
   assert.equal(fig161.driver.label, "轉速");
 });
 
-test("第 162 種:速度正常時兩個斜齒輪靜止;過快與過慢時下方水平軸朝相反方向轉", () => {
-  assert.equal(reg162(0.7, "normal").gate, 0);
-  assert.ok(reg162(0.7, "fast").gate * reg162(0.7, "slow").gate < 0);
+test("第 162 種:速度正常時兩個斜齒輪靜止;過快時銷帶動上齒輪、過慢時帶動下齒輪,下方水平軸朝相反方向轉", () => {
+  assert.equal(fig162.states, undefined, "速度的起伏在播放時自己呈現,不靠狀態按鈕");
+  const P = fig162.driver.range[1];
+  const states = sweep(P, 480).map((p) => reg162(p).state);
+  // 原文的順序:正常 → 過快 → 正常 → 過慢 → 正常
+  const order = states.filter((st, i) => i === 0 || st !== states[i - 1]);
+  assert.deepEqual(order, ["normal", "fast", "normal", "slow", "normal"]);
+  const gateIn = (st) => {
+    const ps = sweep(P, 480).filter((p) => reg162(p).state === st);
+    return reg162(ps[ps.length - 1]).gate - reg162(ps[0]).gate;
+  };
+  assert.ok(gateIn("fast") < -1 && gateIn("slow") > 1, "過快、過慢時水平軸各轉好幾圈,方向相反");
+  const normal = sweep(P, 480).filter((p) => reg162(p).state === "normal");
+  for (let i = 1; i < normal.length; i++) if (normal[i] - normal[i - 1] < 0.1) close(reg162(normal[i]).upper, reg162(normal[i - 1]).upper, "正常時兩齒輪靜止", 1e-9);
+  for (const p of sweep(P, 480)) close(reg162(p).lower, -reg162(p).upper, "兩個鬆套的齒輪同咬水平軸的齒輪,轉向相反", 1e-12);
 });
 
-test("第 163 種:皮帶在鬆動輪上時不傳動;過快時移到下輪、過慢時移到上輪,傳動方向相反", () => {
-  assert.equal(reg163(0.5, "normal").travel, 0);
-  assert.ok(reg163(0.5, "fast").y < reg163(0.5, "normal").y && reg163(0.5, "slow").y > reg163(0.5, "normal").y);
-  assert.ok(reg163(0.5, "fast").travel !== 0 && reg163(0.5, "slow").travel !== 0);
-  assert.ok(reg163(0.5, "fast").direction * reg163(0.5, "slow").direction < 0);
+test("第 162 種:銷只在升到凸柱那一層時才推動齒輪,推著時兩者相碰不穿入", () => {
+  const P = fig162.driver.range[1];
+  for (const p of sweep(P, 2400)) {
+    const r = reg162(p);
+    if (r.state !== "fast") continue;
+    // 上齒輪的凸柱在局部角 0、半徑 studs.radius:銷(在心軸轉角處)不會轉進凸柱裡
+    const ahead = (((r.upper - r.spindle) % TAU) + TAU) % TAU;
+    assert.ok(ahead > (0.04 + studs162.half) / studs162.radius - 0.05, `進程 ${p.toFixed(2)} 銷穿進凸柱`);
+  }
+  assert.ok(pin162(0) + 0.04 < studs162.upperBottom && pin162(0) - 0.04 > studs162.lowerTop, "正常時銷在兩個凸柱之間");
+});
+
+test("第 163 種:皮帶在鬆動輪上時不傳動;過快時撥到下輪、過慢時撥到上輪,閘門軸轉向相反", () => {
+  assert.equal(fig163.states, undefined, "速度的起伏在播放時自己呈現,不靠狀態按鈕");
+  const P = fig163.driver.range[1];
+  const ps = sweep(P, 960);
+  const ons = ps.map((p) => reg163(p).on).filter(Boolean);
+  const order = ons.filter((o, i) => i === 0 || o !== ons[i - 1]);
+  assert.deepEqual(order, ["middle", "lower", "middle", "upper", "middle"], "原文:正常在鬆動輪,過快移到下輪,過慢移到上輪");
+  const span = (on) => {
+    const at = ps.filter((p) => reg163(p).on === on);
+    return reg163(at[at.length - 1]).gate - reg163(at[0]).gate;
+  };
+  for (let i = 1; i < ps.length; i++) {
+    const [a, b] = [reg163(ps[i - 1]), reg163(ps[i])];
+    if (a.on === "middle" && b.on === "middle") close(b.gate, a.gate, "鬆動輪上不傳動", 1e-9);
+  }
+  assert.ok(span("lower") > 1 && span("upper") < -1, "上下兩輪帶動閘門軸的方向相反");
+  for (const p of ps) {
+    const r = reg163(p);
+    if (r.on === "lower") close(r.y, pulleys163.lower, "皮帶整個在下輪上", 0.05);
+  }
 });
 
 test("第 170 種:交叉的搖臂隨轉速張開,經短連桿移動閥桿", () => {
@@ -111,9 +197,9 @@ test("第 170 種:交叉的搖臂隨轉速張開,經短連桿移動閥桿", () =
 import fig164, { knee } from "../models/fig164.js";
 import { rocker, wave } from "../models/fig165.js";
 import { moldX, pinDistance, slot as slot166 } from "../models/fig166.js";
-import { rodY as rod167, stroke as stroke167 } from "../models/fig167.js";
-import { mainCrank as main168 } from "../models/fig168.js";
-import { mainCrank as main169, sizes as sizes169 } from "../models/fig169.js";
+import fig167, { rodY as rod167, stroke as stroke167 } from "../models/fig167.js";
+import fig168, { mainCrank as main168 } from "../models/fig168.js";
+import fig169, { mainCrank as main169, sizes as sizes169 } from "../models/fig169.js";
 
 test("第 164 種:膝節槓桿——抬起長柄,撐桿越接近直立、壓塊越往下,越接近伸直時每單位轉角的下移越小(力越大)", () => {
   const [lo, hi] = fig164.driver.range;
@@ -146,6 +232,28 @@ test("第 167 種:鼓輪的無端螺旋溝使桿往復一次、鼓輪轉一圈",
   const ys = sweep(TAU, 720).map(rod167);
   close(Math.max(...ys) - Math.min(...ys), stroke167, "行程", 1e-6);
   close(rod167(0), rod167(TAU), "一圈回到原處", 1e-9);
+});
+
+test("第 167 種:原文的輸入是往復的桿——主動件是桿、目標件是鼓輪;桿往返一次,鼓輪朝同一方向轉一圈", () => {
+  assert.equal(fig167.driver.part, "rod");
+  assert.equal(fig167.target, "drum");
+  reciprocates(fig167, "rod", "drum", "第 167 種");
+  for (const v of sweep(TAU, 40)) close(fig167.pose(v).parts.rod.position[1], rod167(fig167.pose(v).parts.drum.angle), "凸柱始終在溝裡", 1e-9);
+});
+
+test("第 168、169 種:原文的輸入是往復動力——主動件是擺動的搖桿,搖桿往返一次,主曲柄轉一圈", () => {
+  for (const def of [fig168, fig169]) {
+    assert.equal(def.driver.part, "rod");
+    assert.equal(def.target, "main");
+    let turn = 0;
+    const as = sweep(TAU, 720).map((v) => def.pose(v).parts.main.angle);
+    for (let i = 1; i < as.length; i++) turn += ((as[i] - as[i - 1] + 3 * Math.PI) % TAU) - Math.PI;
+    close(Math.abs(turn), TAU, `第 ${def.figure} 種主曲柄轉一圈`, 1e-6);
+    const swings = sweep(TAU, 360).map((v) => def.pose(v).parts.rod.angle);
+    let turns = 0;
+    for (let i = 2; i < swings.length; i++) if ((swings[i] - swings[i - 1]) * (swings[i - 1] - swings[i - 2]) < 0) turns++;
+    assert.ok(turns >= 1 && turns <= 2, "搖桿往返一次");
+  }
 });
 
 test("第 168 種:抽送桿末端的銷走橢圓形的軌跡,主曲柄轉一圈,曲柄長(銷在溝槽中的位置)隨之改變", () => {

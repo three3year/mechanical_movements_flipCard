@@ -1,7 +1,8 @@
 // 第 168、169 種共用:抽送桿(pitman)的中段裝在一支半徑不變的第二曲柄上,右端接著往復動力
 // (一根往上接到樑的直立連桿,右端因此沿以樑端為圓心的弧上下);左端的銷因此走一條橢圓形的軌跡,帶動左邊引擎主軸上的主曲柄——
 // 第 168 種的主曲柄開了溝槽讓銷滑動(曲柄長隨之改變),第 169 種以一根短連桿接到半徑固定的主曲柄。
-// 為了讓模型通過死點,主動件取第二曲柄,由它推算抽送桿的位置。
+// 原文的輸入是往復動力:主動件是那根擺動的直立連桿(樑端的搖桿,繞上端的樞軸往復擺動),目標件是主曲柄。
+// 主動量取第二曲柄的相位 φ(driver.cycle 的一程是半圈),播放時曲柄等速轉、搖桿跟著擺;死點靠飛輪的慣性轉過去。
 import { polar, add, sub, scale, norm, dist } from "./kit.js";
 import { circleCircle, angleOf } from "./linkage.js";
 
@@ -19,6 +20,12 @@ export function pitman(phi) {
   const p = add(m, scale(norm(sub(m, r)), LEFT));
   return { m, r, p };
 }
+
+/** 第二曲柄轉 phi:往復動力的搖桿(從樞軸 BEAM 指向抽送桿右端)的轉角 */
+export const leverAngle = (phi) => angleOf(BEAM, pitman(phi).r);
+export const ROD_LENGTH = ROD;
+/** 主動量 v:第二曲柄的轉角 */
+export const secondAngle = (v) => v;
 
 // 主曲柄的軸:左端的銷所走的封閉曲線的中心
 export const C1 = (() => {

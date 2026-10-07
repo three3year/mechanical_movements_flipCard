@@ -94,7 +94,10 @@ export function replay(def) {
         if (!collider) continue;
         collider.setFriction(FRICTION).setActiveHooks(RAPIER.ActiveHooks.FILTER_CONTACT_PAIRS);
         try {
-          world.createCollider(collider, body).partId = part.id;
+          const created = world.createCollider(collider, body);
+          created.partId = part.id;
+          // 幾乎沒有體積的細長凸包(擠出面三角化時的狹長三角形)質量近於 0,慣量算不出來,會讓整個零件凍住不動
+          if (free && !(created.mass() > 1e-9)) world.removeCollider(created, false);
         } catch {
           // 退化的凸包
         }

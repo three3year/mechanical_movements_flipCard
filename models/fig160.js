@@ -1,6 +1,7 @@
 // 第 160 種:交替的曲線運動轉換為交替的圓周運動(彈竿車床)。踏板左端樞接在地上;一條帶子從踏板往上,
 // 在皮帶輪上繞一圈,上端繫在頂部的彈性竿上。踩下踏板,帶子拉動皮帶輪轉、把竿頭拉彎;放開時竿把踏板抬起,
 // 皮帶輪反轉。主動件是踏板。皮帶輪轉過的弧長等於帶子被拉下的長度。
+// 皮帶輪是車床主軸上的輪:軸裝在後面的床頭座上;彈性竿的根部夾在左邊的立柱頂上。床頭座與立柱是推斷(原圖沒畫)。
 import { Z, deg, polar, add, TAU } from "./kit.js";
 import { shape } from "./shapes.js";
 
@@ -57,6 +58,18 @@ export default {
     { id: "strap", kind: "rope" },
     { id: "stand", kind: "plate", center: [PIVOT[0], -2.11, 0.1], shape: shape([[-0.5, 0], [0.5, 0], [0.25, 0.56], [-0.25, 0.56]]), thickness: 0.3 },
     { id: "ground", kind: "box", center: [0, -2.15, 0], size: [6.6, 0.08, 1.4] }, // 地面在踏板踩到底的下方
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        // 床頭座:在帶子後面,軸往前穿過皮帶輪
+        { kind: "box", size: [0.5, PULLEY.center[1] + 2.11 - 0.25, 0.3], at: [PULLEY.center[0], (PULLEY.center[1] - 0.25 - 2.11) / 2, -0.5] },
+        { kind: "cylinder", radius: 0.32, length: 0.3, at: [PULLEY.center[0], PULLEY.center[1], -0.5] },
+        { kind: "cylinder", radius: 0.07, length: 0.85, at: [PULLEY.center[0], PULLEY.center[1], -0.2] },
+        // 彈性竿根部的立柱與夾塊
+        { kind: "box", size: [0.3, POLE.base[1] + 2.11 + 0.2, 0.3], at: [POLE.base[0] - 0.05, (POLE.base[1] + 0.2 - 2.11) / 2, 0] },
+      ],
+    },
   ],
   driver: { part: "treadle", type: "rotation", range: RANGE, initial: REST },
   target: "pulley",
