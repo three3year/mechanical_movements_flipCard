@@ -1,6 +1,8 @@
 // 第 126 種:曲柄搖臂(bell-crank)槓桿,用來改變力的方向。繩從左邊垂下、繞過上方的滑輪往下接到搖臂的橫臂端;
 // 往下拉左邊的繩,橫臂端被拉起,搖臂繞樞軸轉,直臂下端往左擺、把接在它上面的水平繩往左拉。主動件是左邊的繩端。
+// 滑輪與搖臂的軸都裝在後面的軸承座上(原圖畫出了軸,沒畫軸裝在什麼上面;軸承座是推斷)。
 import { Z, routeRope } from "./kit.js";
+import { pedestal } from "./supports.js";
 
 const PULLEY = { center: [-1.4, 1.6, 0], radius: 0.95 };
 const PIVOT = [1.45, -0.95, 0];
@@ -30,6 +32,7 @@ export default {
       center: PULLEY.center,
       radius: PULLEY.radius,
       width: 0.3,
+      pieces: [{ kind: "cylinder", radius: 0.1, length: 0.8, at: [0, 0, -0.3] }],
     },
     {
       id: "crank",
@@ -42,6 +45,15 @@ export default {
         { kind: "cylinder", radius: 0.24, inner: 0.1, length: 0.2 },
         { kind: "cylinder", radius: 0.16, inner: 0.06, length: 0.2, at: [-ARM.across, 0, 0] },
         { kind: "cylinder", radius: 0.16, inner: 0.06, length: 0.2, at: [0, -ARM.down, 0] },
+        { kind: "cylinder", radius: 0.1, length: 0.7, at: [0, 0, -0.25] }, // 樞軸:往後伸進軸承座
+      ],
+    },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        ...pedestal({ at: PULLEY.center, z: -0.55, bore: 0.1, floor: -3.0 }),
+        ...pedestal({ at: PIVOT, z: -0.55, bore: 0.1, floor: -3.0 }),
       ],
     },
     { id: "handle", kind: "ropeEnd", center: LEFT_END0, size: 0.14 },

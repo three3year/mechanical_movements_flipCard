@@ -2,6 +2,7 @@
 // 各以一根直立的連桿往上接到兩層槓桿:右邊兩根接在下層槓桿的兩端,下層槓桿的中點與左邊那根連桿
 // 再接在上層槓桿的兩端,上層槓桿的中點帶動頂端只能上下移動的桿。三個曲柄銷的相位不斷錯開,頂桿做變化的上下運動。
 // 槓桿以「端點高度取平均」計算(連桿近乎直立、槓桿擺角小時的近似;為推斷的簡化),連桿長度不變。主動件是左邊的小齒輪。
+// 三個齒輪的軸裝在後面一根橫樑的軸承上,橫樑兩端有腳;頂桿穿在橫樑上立起的柱子伸出的導套裡(都是推斷)。
 import { polar, add } from "./kit.js";
 import { meshAngle } from "./gears.js";
 
@@ -47,8 +48,14 @@ const gear = (id, g, pin) => ({
   width: 0.22,
   bore: 0.1,
   web: false,
-  pieces: [{ kind: "cylinder", radius: 0.08, length: 0.6, at: [...polar(pin.r, pin.at).slice(0, 2), 0.25], accent: id === "g1" }],
+  pieces: [
+    { kind: "cylinder", radius: 0.08, length: 0.6, at: [...polar(pin.r, pin.at).slice(0, 2), 0.25], accent: id === "g1" },
+    { kind: "cylinder", radius: 0.1, length: 0.6, at: [0, 0, -0.2] }, // 往後伸進橫樑的軸承
+  ],
 });
+const FLOOR = -2.0;
+const GUIDE_Y = 5.3; // 頂桿導套的高度:頂桿在整個行程裡都穿過它
+const HEAD_X = (PINS[0].gear.center[0] + PINS[0].r * Math.cos(PINS[0].at) + ((PINS[1].gear.center[0] + PINS[1].r * Math.cos(PINS[1].at)) + (PINS[2].gear.center[0] + PINS[2].r * Math.cos(PINS[2].at))) / 2) / 2;
 const z = (p, d = 0.3) => [p[0], p[1], d];
 
 export default {
@@ -64,7 +71,23 @@ export default {
     // 槓桿兩端的水平位置固定、只取端點高度(近似,見檔頭),所以長度隨擺角略變
     { id: "lower", kind: "link", width: 0.3, thickness: 0.1, stretch: true },
     { id: "upper", kind: "link", width: 0.3, thickness: 0.1, stretch: true },
-    { id: "head", kind: "group", pieces: [{ kind: "box", size: [0.12, 0.5, 0.2], at: [0, 0.42, 0] }, { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 1.1, at: [0, 1.0, 0] }] }, // 頂桿的座坐在上層槓桿的上緣
+    { id: "head", kind: "group", pieces: [{ kind: "box", size: [0.12, 0.5, 0.2], at: [0, 0.42, 0] }, { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 1.8, at: [0, 1.35, 0] }] }, // 頂桿的座坐在上層槓桿的上緣
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        { kind: "box", size: [G3.center[0] - G1.center[0] + 1.0, 0.4, 0.1], at: [(G1.center[0] + G3.center[0]) / 2, 0, -0.55] },
+        ...[G1, G2, G3].map((g) => ({ kind: "cylinder", radius: 0.24, inner: 0.1, length: 0.1, at: [g.center[0], 0, -0.45] })),
+        ...[G1.center[0] - 0.3, G3.center[0] + 0.3].flatMap((x) => [
+          { kind: "box", size: [0.25, -FLOOR - 0.2, 0.1], at: [x, (FLOOR - 0.2) / 2, -0.55] },
+          { kind: "box", size: [0.8, 0.18, 0.6], at: [x, FLOOR - 0.09, -0.45] },
+        ]),
+        // 頂桿的立柱(在槓桿後面)與導套
+        { kind: "box", size: [0.25, GUIDE_Y - 0.2, 0.1], at: [HEAD_X, GUIDE_Y / 2 + 0.1, -0.55] },
+        { kind: "box", size: [0.25, 0.2, 0.82], at: [HEAD_X, GUIDE_Y, -0.14] },
+        { kind: "cylinder", axis: [0, 1, 0], radius: 0.2, inner: 0.1, length: 0.3, at: [HEAD_X, GUIDE_Y, 0.46] },
+      ],
+    },
   ],
   driver: { part: "g1", type: "rotation" },
   target: "head", // 上下變化運動的頂桿

@@ -2,8 +2,11 @@
 // 立桿中點樞接在一根水平桿上,水平桿在導軌中只能左右移動。兩輪轉速不同(齒數 26 : 22),
 // 兩個手腕的相位不斷錯開,水平桿因此做變速的交替橫移。主動件是上輪。
 // 立桿的位置由兩根連桿長度不變的條件以牛頓法解出(以立桿直立、水平桿在原位為起點)。
+// 兩輪的軸裝在後面一塊立板的軸承上;水平桿穿在右邊一個固定的軸套裡(原文說「水平桿」,原圖只畫出桿頭;
+// 立板與軸套是推斷)。
 import { deg, polar, add } from "./kit.js";
 import { meshAngle } from "./gears.js";
+import { shape } from "./shapes.js";
 
 export const TOP = { center: [0, 0.95, 0], teeth: 26, radius: 1.3 };
 // 下輪在上輪的右下方、與它咬合(中心距 = 兩節圓半徑和)
@@ -57,12 +60,15 @@ export function linkage(theta) {
 export const rods = REST;
 
 const gear = (id, g) => ({ id, kind: "gear", center: g.center, teeth: g.teeth, radius: g.radius, width: 0.24, bore: 0.18, web: false });
+const axle = { kind: "cylinder", radius: 0.18, length: 0.7, at: [0, 0, -0.25] }; // 往後伸進立板的軸承
+const FLOOR = -3.0;
+const SLEEVE_X = 5.2; // 水平桿的軸套:桿在行程兩端都穿過它
 
 export default {
   figure: 122,
   parts: [
-    { ...gear("top", TOP), pieces: [{ kind: "cylinder", radius: 0.1, length: 0.6, at: [...polar(WRIST.top.r, WRIST.top.at).slice(0, 2), 0.2], accent: true }] },
-    { ...gear("bottom", BOTTOM), pieces: [{ kind: "cylinder", radius: 0.1, length: 0.6, at: [...polar(WRIST.bottom.r, WRIST.bottom.at).slice(0, 2), 0.2] }] },
+    { ...gear("top", TOP), pieces: [{ kind: "cylinder", radius: 0.1, length: 0.6, at: [...polar(WRIST.top.r, WRIST.top.at).slice(0, 2), 0.2], accent: true }, axle] },
+    { ...gear("bottom", BOTTOM), pieces: [{ kind: "cylinder", radius: 0.1, length: 0.6, at: [...polar(WRIST.bottom.r, WRIST.bottom.at).slice(0, 2), 0.2] }, axle] },
     { id: "rodTop", kind: "link", width: 0.2, thickness: 0.08 },
     { id: "rodBottom", kind: "link", width: 0.2, thickness: 0.08 },
     { id: "lever", kind: "link", width: 0.24, thickness: 0.1 },
@@ -71,8 +77,23 @@ export default {
       kind: "group",
       pieces: [
         { kind: "box", size: [0.5, 0.3, 0.2], at: [0.25, 0, 0.4] },
-        { kind: "cylinder", axis: [1, 0, 0], radius: 0.13, length: 1.6, at: [1.2, 0, 0.4] },
+        { kind: "cylinder", axis: [1, 0, 0], radius: 0.13, length: 2.8, at: [1.8, 0, 0.4] },
         { kind: "cylinder", radius: 0.2, inner: 0.1, length: 0.25, at: [0, 0, 0.4] },
+      ],
+    },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        // 兩輪後面的立板與軸承
+        { kind: "plate", shape: shape([[-0.5, 1.5], [0.5, 1.5], [BOTTOM.center[0] + 0.5, FLOOR], [-0.5, FLOOR]]), thickness: 0.1, at: [0, 0, -0.6] },
+        { kind: "cylinder", radius: 0.33, inner: 0.18, length: 0.2, at: [TOP.center[0], TOP.center[1], -0.45] },
+        { kind: "cylinder", radius: 0.33, inner: 0.18, length: 0.2, at: [BOTTOM.center[0], BOTTOM.center[1], -0.45] },
+        { kind: "box", size: [2.2, 0.18, 1.0], at: [0.2, FLOOR - 0.09, -0.4] },
+        // 水平桿的軸套與立柱
+        { kind: "cylinder", axis: [1, 0, 0], radius: 0.22, inner: 0.13, length: 0.3, at: [SLEEVE_X, LINK.y, 0.4] },
+        { kind: "box", size: [0.2, LINK.y - 0.22 - FLOOR, 0.2], at: [SLEEVE_X, (LINK.y - 0.22 + FLOOR) / 2, 0.4] },
+        { kind: "box", size: [0.8, 0.18, 0.6], at: [SLEEVE_X, FLOOR - 0.09, 0.4] },
       ],
     },
   ],

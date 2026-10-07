@@ -63,3 +63,27 @@ export function outlineForRoller(pitchAt, roller, samples = 360) {
     return [best * ux, best * uy];
   });
 }
+
+/**
+ * 凸輪外形(輪局部座標的折線,依極角排列)上的弧長:回傳 S(φ)——從極角 0 量到極角 φ 的外形長度,
+ * φ 可超過一圈(每圈加一個周長)。滾子貼著凸輪滾動時,經過接觸點的外形長度 ÷ 滾子半徑就是滾子轉過的角度。
+ */
+export function outlineArc(outline) {
+  const pts = outline.map(([x, y]) => ({ a: (Math.atan2(y, x) + TAU) % TAU, x, y })).sort((p, q) => p.a - q.a);
+  const cum = [0];
+  for (let i = 1; i <= pts.length; i++) {
+    const [p, q] = [pts[i - 1], pts[i % pts.length]];
+    cum.push(cum[i - 1] + Math.hypot(q.x - p.x, q.y - p.y));
+  }
+  const total = cum[pts.length];
+  return (phi) => {
+    const k = Math.floor(phi / TAU);
+    const a = phi - k * TAU;
+    const n = pts.length;
+    let i = pts.findIndex((p) => p.a > a); // a 落在第 i − 1 與第 i 點之間
+    if (i < 0) i = n;
+    const [a0, s0] = i === 0 ? [pts[n - 1].a - TAU, cum[n - 1] - total] : [pts[i - 1].a, cum[i - 1]];
+    const [a1, s1] = i === n ? [pts[0].a + TAU, total] : [pts[i].a, cum[i]];
+    return k * total + s0 + ((s1 - s0) * (a - a0)) / (a1 - a0 || 1);
+  };
+}

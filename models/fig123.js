@@ -2,8 +2,12 @@
 // 半圓形齒扇形段上;每個扇形段固定著一個正齒輪,兩個正齒輪都咬著中央齒輪(這裡把中央齒輪與正齒輪畫在齒條後方)。
 // 齒條往上時左扇形段咬合、往下時右扇形段咬合(原文的擋止裝置使兩者交替嚙合),兩個扇形段都朝同一方向轉,
 // 中央齒輪因此一直朝同一方向轉。主動量是齒條的累計行程。
+// 原文的擋止裝置(齒條上的擋塊被中央齒輪上的曲線片抓住)沒有做:兩個扇形段經正齒輪與中央齒輪一直咬著,
+// 換邊的時機已由齒輪決定,擋止只是防止錯位的保險。
+// 三根軸都裝在後面立板的軸承上;齒條上下兩端的桿穿在立板伸出的軸套裡(立板、軸套是推斷)。
 import { swing } from "./kit.js";
 import { rackOffset, meshAngle, circularPitch } from "./gears.js";
+import { shape } from "./shapes.js";
 
 const RS = 1.15; // 扇形段節圓半徑
 const NS = 24;
@@ -20,6 +24,9 @@ const GEAR_L = { center: [LEFT.center[0], 0, Z_BACK], teeth: NG, radius: RG };
 const GEAR_R = { center: [RIGHT.center[0], 0, Z_BACK], teeth: NG, radius: RG };
 const PITCH = circularPitch(LEFT);
 const STROKE = Math.PI * RS; // 一程:扇形段轉半圈
+const BOARD_Z = -1.0; // 後面立板的深度
+const ROD = { length: 4.2, from: STROKE + 0.85 }; // 齒條上下兩端的桿(從齒條中心量起)
+const SLEEVE_Y = ROD.from + ROD.length / 2; // 軸套的高度:桿在行程兩端都穿過它
 
 /** 主動量 v(累計行程):齒條高度、兩個扇形段的轉角(同向,逆時針)與中央齒輪的轉角 */
 export function substitute(v) {
@@ -53,7 +60,7 @@ const sector = (id, g, spur = 0) => ({
   pieces: [
     { kind: "gear", teeth: NS, radius: RS, span: [-Math.PI / 2, Math.PI / 2], width: 0.2 },
     { kind: "gear", teeth: NG, radius: RG, width: 0.2, web: false, at: [0, 0, Z_BACK], angle: spur },
-    { kind: "cylinder", radius: 0.16, length: 0.9, at: [0, 0, Z_BACK / 2] },
+    { kind: "cylinder", radius: 0.16, length: 1.15, at: [0, 0, -0.33] }, // 軸往後伸進立板的軸承
   ],
 });
 
@@ -62,7 +69,7 @@ export default {
   parts: [
     sector("left", LEFT),
     sector("right", RIGHT, SPUR_R),
-    { id: "central", kind: "gear", center: CENTRAL.center, teeth: NC, radius: RC, width: 0.2, web: false },
+    { id: "central", kind: "gear", center: CENTRAL.center, teeth: NC, radius: RC, width: 0.2, web: false, pieces: [{ kind: "cylinder", radius: 0.16, length: 0.55, at: [0, 0, -0.27] }] },
     {
       id: "rack",
       kind: "group",
@@ -72,8 +79,22 @@ export default {
         { kind: "rack", teeth: 25, pitch: PITCH, depth: 0.05, width: 0.25, at: [W, PHASE_R, 0], angle: -Math.PI / 2 },
         { kind: "box", size: [1.3, 0.12, 0.25], at: [0, STROKE + 0.85, 0] },
         { kind: "box", size: [1.3, 0.12, 0.25], at: [0, -STROKE - 0.85, 0] },
-        { kind: "cylinder", axis: [0, 1, 0], radius: 0.18, length: 1.4, at: [0, STROKE + 1.55, 0] },
-        { kind: "cylinder", axis: [0, 1, 0], radius: 0.18, length: 1.4, at: [0, -STROKE - 1.55, 0] },
+        { kind: "cylinder", axis: [0, 1, 0], radius: 0.18, length: ROD.length, at: [0, SLEEVE_Y, 0] },
+        { kind: "cylinder", axis: [0, 1, 0], radius: 0.18, length: ROD.length, at: [0, -SLEEVE_Y, 0] },
+      ],
+    },
+    {
+      id: "board",
+      kind: "group",
+      pieces: [
+        // 立板:一條橫帶撐三根軸,一條直帶往上下伸到兩個軸套
+        { kind: "plate", shape: shape([[-W - 2 * RS - 0.2, -0.5], [W + 2 * RS + 0.2, -0.5], [W + 2 * RS + 0.2, 0.5], [-W - 2 * RS - 0.2, 0.5]]), thickness: 0.1, at: [0, 0, BOARD_Z] },
+        { kind: "box", size: [0.5, 2 * SLEEVE_Y + 0.4, 0.1], at: [0, 0, BOARD_Z] },
+        ...[LEFT.center[0], 0, RIGHT.center[0]].map((x) => ({ kind: "cylinder", radius: 0.3, inner: 0.16, length: 0.12, at: [x, 0, BOARD_Z + 0.11] })),
+        ...[-1, 1].flatMap((side) => [
+          { kind: "cylinder", axis: [0, 1, 0], radius: 0.3, inner: 0.18, length: 0.3, at: [0, side * SLEEVE_Y, 0] },
+          { kind: "box", size: [0.3, 0.3, -BOARD_Z - 0.3], at: [0, side * SLEEVE_Y, BOARD_Z / 2 - 0.15] },
+        ]),
       ],
     },
   ],

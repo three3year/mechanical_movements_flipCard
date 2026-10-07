@@ -2,6 +2,8 @@
 // 下方的軸上有兩個小齒輪,小的咬外齒扇形段、大的咬內齒扇形段。轉動這根軸時,外咬合的扇形段與小齒輪反向轉、
 // 內咬合的與小齒輪同向轉,兩支夾爪因此朝相反方向擺動,以極大的力道併攏。
 // 兩對齒輪的齒數比相同(1 : 4),兩爪擺動的角度相等。主動件是小齒輪軸(在開合的範圍內)。
+// 夾爪的樞軸銷與小齒輪軸都裝在後面一支固定的連接板上(推斷:原圖沒畫出撐著小齒輪軸的東西,
+// 兩支夾爪都會擺動,軸必須掛在不動的零件上,才能讓兩爪相對它轉)。
 import { deg } from "./kit.js";
 import { meshAngle } from "./gears.js";
 import { internalSectorShape, shape, circle, stadium } from "./shapes.js";
@@ -52,7 +54,7 @@ export default {
       pieces: [
         { kind: "gear", teeth: P1.teeth, radius: P1.radius, width: 0.22, at: [0, 0, 0.18], web: false },
         { kind: "gear", teeth: P2.teeth, radius: P2.radius, width: 0.22, at: [0, 0, -0.18], web: false },
-        { kind: "cylinder", radius: 0.12, length: 0.8 },
+        { kind: "cylinder", radius: 0.12, length: 1.0, at: [0, 0, -0.1] }, // 往後伸進連接板
       ],
     },
     {
@@ -77,7 +79,17 @@ export default {
         { kind: "plate", shape: crescent(-1), thickness: 0.16, at: [0, 0, -0.18] },
       ],
     },
-    { id: "hinge", kind: "cylinder", center: PIVOT, radius: 0.14, length: 0.6 }, // 兩支夾爪共用的樞軸銷
+    {
+      id: "hinge",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.14, length: 1.0, at: [PIVOT[0], PIVOT[1], -0.1] }, // 兩支夾爪共用的樞軸銷
+        // 連接板:從樞軸銷往下到小齒輪軸,在夾爪後面
+        { kind: "box", size: [0.3, D, 0.1], at: [0, (PIVOT[1] + SHAFT[1]) / 2, -0.55] },
+        { kind: "cylinder", radius: 0.26, length: 0.1, at: [PIVOT[0], PIVOT[1], -0.55] },
+        { kind: "cylinder", radius: 0.26, inner: 0.12, length: 0.1, at: [SHAFT[0], SHAFT[1], -0.55] },
+      ],
+    },
   ],
   driver: { part: "pinions", type: "rotation", range: [-1.4, 0.4], initial: 0 },
   targets: ["jawA", "jawB"], // 反向擺動併攏的兩支夾爪

@@ -2,6 +2,8 @@
 // 使桿往復直線運動。小齒輪的軸在固定的直立開槽桿內上下移動、由它引導:在上方時把齒條往左推,
 // 繞過右端時小齒輪沿槽往下移,到下方後把齒條往右推,再繞過左端回到上方。
 // 小齒輪純滾動地繞著齒條的節曲線走,所以它的中心以等速沿「節曲線往外平移一個節圓半徑」的長圓走。主動件是小齒輪(順時針)。
+// 小齒輪的軸往前伸進開槽桿的槽裡。齒條背面一根貫通的桿(原文:承載齒條的桿),穿在後面兩個固定的軸套裡,
+// 軸套由兩根立柱撐在上下兩根橫樑之間(軸套、立柱是推斷;原圖只畫出桿的兩端)。
 import { TAU } from "./kit.js";
 import { arcPoints, shape, circle } from "./shapes.js";
 import { toothedLoop, resample } from "./noncircular.js";
@@ -57,15 +59,14 @@ const teeth = toothedLoop(pitchLoop, { pitch: PITCH, addendum: M, dedendum: 1.2 
 export default {
   figure: 119,
   parts: [
-    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.28, bore: 0.08, web: false },
+    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.28, bore: 0.08, web: false, pieces: [{ kind: "cylinder", radius: 0.075, length: 0.55, at: [0, 0, 0.2] }] }, // 軸伸進前面開槽桿的槽
     {
       id: "rack",
       kind: "group",
       pieces: [
         { kind: "plate", shape: shape(teeth, [circle(0.08, -A - 0.25, 0.18).reverse(), circle(0.08, -A - 0.25, -0.18).reverse(), circle(0.08, A + 0.25, 0.18).reverse(), circle(0.08, A + 0.25, -0.18).reverse()]), thickness: 0.22 },
-        // 兩端的桿接在齒條板的背面:小齒輪繞過端頭時從桿的前方通過
-        { kind: "cylinder", axis: [1, 0, 0], radius: 0.16, length: 1.4, at: [-A - RE - 0.7, 0, -0.32] },
-        { kind: "cylinder", axis: [1, 0, 0], radius: 0.16, length: 1.4, at: [A + RE + 0.7, 0, -0.32] },
+        // 承載齒條的桿貫通齒條板的背面:小齒輪繞過端頭時從桿的前方通過
+        { kind: "cylinder", axis: [1, 0, 0], radius: 0.16, length: 2 * (A + RE + 1.4), at: [0, 0, -0.32] },
       ],
     },
     {
@@ -76,6 +77,13 @@ export default {
         { kind: "box", size: [0.08, 2 * RHO + 1.2, 0.08], at: [0.12, 0, 0.35] },
         { kind: "box", size: [5.2, 0.32, 0.4], at: [0, RHO + 0.85, 0] },
         { kind: "box", size: [5.2, 0.22, 0.4], at: [0, -RHO - 0.75, 0] },
+        // 齒條桿的兩個軸套與撐著它們的立柱(在齒條板後面)
+        ...[-0.5, 0.5].flatMap((x) => [
+          { kind: "cylinder", axis: [1, 0, 0], radius: 0.2, inner: 0.16, length: 0.3, at: [x, 0, -0.32] },
+          { kind: "box", size: [0.2, 2 * RHO + 1.7, 0.2], at: [x, 0.05, -0.62] },
+          { kind: "box", size: [0.2, 0.2, 0.55], at: [x, RHO + 0.85, -0.4] },
+          { kind: "box", size: [0.2, 0.2, 0.55], at: [x, -RHO - 0.75, -0.4] },
+        ]),
       ],
     },
   ],
