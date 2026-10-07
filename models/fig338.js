@@ -5,6 +5,7 @@
 import { deg, clamp } from "./kit.js";
 import { sameSideLinkage } from "./parallel-motion.js";
 import { shape, circle } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 export const RANGE = [deg(-26), deg(-2)];
 const O1 = [-2.0, 0.9, 0];
@@ -15,7 +16,17 @@ const PISTON_ROD = 2.0;
 export default {
   figure: 338,
   parts: [
-    { id: "pivot", kind: "group", pieces: [{ kind: "cylinder", radius: 0.1, length: 0.4, at: watt.O2 }, { kind: "cylinder", radius: 0.2, length: 0.5, at: watt.O1 }] }, // 樑的樞軸也是固定的軸(支座沒畫,推斷)
+    {
+      // 兩個固定樞軸的銷與支座(原圖沒畫支座,推斷)
+      id: "pivot",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.1, length: 1.0, at: [watt.O2[0], watt.O2[1], -0.35] },
+        { kind: "cylinder", radius: 0.2, length: 0.7, at: [watt.O1[0], watt.O1[1], -0.1] },
+        ...pedestal({ at: [watt.O1[0], watt.O1[1]], z: -0.4, bore: 0.2, floor: -3.4 }),
+        ...pedestal({ at: [watt.O2[0], watt.O2[1]], z: -0.75, bore: 0.1, floor: -3.4 }),
+      ],
+    },
     {
       id: "beam",
       kind: "plate",

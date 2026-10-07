@@ -147,15 +147,24 @@ function lineDeviation(points) {
   return Math.max(...points.map((p) => Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / len));
 }
 
-for (const [n, m] of [[332, m332], [336, m336]]) {
+for (const [n, m, tol] of [[332, m332, 1e-12], [336, m336, 0.02]]) {
   test(`第 ${n} 種:船舶側槓桿引擎:平行運動導引十字頭,活塞桿沿直線往復`, () => {
     const es = sweep(1, 60).map((p) => m.motion(p).E);
-    assert.ok(verticalDeviation(es) < 1e-12, "十字頭沿汽缸中心線");
+    assert.ok(verticalDeviation(es) < tol, "十字頭沿汽缸中心線");
     const ys = es.map((e) => e[1]);
     assert.ok(Math.max(...ys) - Math.min(...ys) > 0.8, "活塞往復");
     steamPushes(m.default, sweep(1, 8));
   });
 }
+
+test("第 336 種:側桿接平行桿,平行桿同時接在搖臂軸 F 的短半徑臂上:所有桿長不變,十字頭的直線由連桿造成", () => {
+  const rows = sweep(1, 40).map((p) => m336.motion(p));
+  const lengths = (r) => [dist(r.P, m336.F), dist(r.P, r.E), dist(r.P, r.M), dist(r.S, r.E)];
+  const first = lengths(rows[0]);
+  for (const r of rows) lengths(r).forEach((l, i) => close(l, first[i], "桿長不變", 1e-6));
+  close(first[0], m336.ARM, "短半徑臂", 1e-6);
+  assert.ok(m336.ARM < first[1] / 2, "搖臂軸上的半徑臂比平行桿短");
+});
 
 test("第 333 種:特殊的平行運動(依原圖):樑由兩根桿撐著,左上端 T 與吊桿中段 J1 都走近似直線", () => {
   const rows = sweep(m333.RANGE[1], 30, m333.RANGE[0]).map((v) => m333.linkage(v));

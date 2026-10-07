@@ -39,6 +39,11 @@ export default {
         // 汽缸頂上的開槽導件(倒 U 形)
         { kind: "plate", shape: shape(thickLine([[-0.35, CYL.top + 0.15], [-0.35, CYL.top + 2.9], [0, CYL.top + 3.15], [0.35, CYL.top + 2.9], [0.35, CYL.top + 0.15]], 0.12)), thickness: 0.2 },
         { kind: "cylinder", radius: 0.14, length: 2 * SIDE + 0.1, at: CRANK }, // 曲柄軸只到前後兩片曲柄臂(側連桿在臂的外側,不掃過軸)
+        // 曲柄軸的兩個吊架:從桌面底下垂下來托著軸(推斷,原圖桌下的軸承看不清楚)
+        ...[1, -1].flatMap((s) => [
+          { kind: "box", size: [0.3, -1.45 - CRANK[1], 0.14], at: [CRANK[0], (-1.45 + CRANK[1]) / 2, s * 0.42] },
+          { kind: "cylinder", radius: 0.26, inner: 0.13, length: 0.14, at: [CRANK[0], CRANK[1], s * 0.42] },
+        ]),
       ],
     },
     { id: "pipe", ...steamPipe(CYL) },

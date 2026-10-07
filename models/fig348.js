@@ -3,8 +3,10 @@
 // 桿 B 只能平移(不轉),兩個滑塊在碟片上像橢圓規一樣滑動,所以碟片轉一圈,桿上每一點繞小圓轉兩圈,
 // 桿的上下運動也就往復兩次。主動件是碟片 A。
 // 推斷:桿 B 保持方向(只平移不轉動,桿上每一點畫小圓,上下的分量就是往復);兩滑塊的間距。
+// 碟片的軸與軸承座(原圖只畫出碟片);滑塊以銷裝在桿 B 上。
 import { TAU, deg } from "./kit.js";
 import { shape, circle, rect } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const D = 0.95; // 兩滑塊的間距
 const R = 2.1;
@@ -37,14 +39,16 @@ export default {
       labelOffset: [-1.1, -0.3, 0.3],
       pieces: [
         { kind: "plate", shape: shape(circle(R), [circle(0.12).reverse()]), thickness: 0.12 },
+        { kind: "cylinder", radius: 0.12, length: 0.6, at: [0, 0, -0.27] }, // 中央旋轉軸,往後伸進軸承座
         ...groove(deg(30)),
         ...groove(deg(120)),
         { kind: "box", size: [0.2, 0.2, 0.15], at: [R - 0.2, 0, 0.08], accent: true },
       ],
     },
+    { id: "bearing", kind: "group", pieces: pedestal({ at: [0, 0], z: -0.42, bore: 0.13, floor: -2.6 }) },
     { id: "labelA1", kind: "group", center: [-1.3, -0.75, 0.3], label: "a", labelOffset: [0, 0, 0] },
     { id: "labelA2", kind: "group", center: [-0.8, 1.25, 0.3], label: "a", labelOffset: [0, 0, 0] },
-    { id: "barB", kind: "group", arrow: false, label: "B", labelOffset: [0.15, 2.6, 0.4], pieces: [{ kind: "box", size: [0.5, 4.2, 0.1], at: [0, 1.6, 0.25] }] },
+    { id: "barB", kind: "group", arrow: false, label: "B", labelOffset: [0.15, 2.6, 0.4], pieces: [{ kind: "box", size: [0.5, 4.2, 0.1], at: [0, 1.6, 0.25] }, ...[1, -1].map((s) => ({ kind: "cylinder", radius: 0.05, length: 0.18, at: [0, (s * D) / 2, 0.17] }))] }, // 滑塊 c、c 的銷
     { id: "sliderC1", kind: "box", size: [0.3, 0.2, 0.14], label: "c", labelOffset: [0.3, 0.1, 0.3] },
     { id: "sliderC2", kind: "box", size: [0.3, 0.2, 0.14], label: "c", labelOffset: [0.3, 0.1, 0.3] },
   ],

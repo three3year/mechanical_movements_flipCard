@@ -4,6 +4,7 @@
 import { deg, clamp } from "./kit.js";
 import { wattLinkage } from "./parallel-motion.js";
 import { shape, circle } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 export const watt = wattLinkage({ line: 0, y1: 1.0, y2: 0.0, a: 3.0, b: 2.6, beamSide: 1 });
 export const RANGE = [deg(-14), deg(14)];
@@ -12,7 +13,17 @@ const PISTON_ROD = 2.6;
 export default {
   figure: 337,
   parts: [
-    { id: "pivots", kind: "group", pieces: [{ kind: "cylinder", radius: 0.12, length: 0.4, at: watt.O2 }, { kind: "box", size: [0.4, 0.4, 0.3], at: [watt.O2[0] - 0.3, watt.O2[1], -0.2] }, { kind: "cylinder", radius: 0.19, length: 0.5, at: watt.O1 }] }, // 樑的樞軸也是固定的軸(支座沒畫,推斷)
+    {
+      // 兩個固定樞軸的銷與支座(原圖沒畫支座,推斷)
+      id: "pivots",
+      kind: "group",
+      pieces: [
+        { kind: "cylinder", radius: 0.12, length: 0.75, at: [watt.O2[0], watt.O2[1], -0.15] },
+        { kind: "cylinder", radius: 0.19, length: 0.7, at: [watt.O1[0], watt.O1[1], -0.1] },
+        ...pedestal({ at: [watt.O1[0], watt.O1[1]], z: -0.4, bore: 0.19, floor: -2.4 }),
+        ...pedestal({ at: [watt.O2[0], watt.O2[1]], z: -0.4, bore: 0.12, floor: -2.4 }),
+      ],
+    },
     {
       id: "beam",
       kind: "plate",

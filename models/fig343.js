@@ -1,12 +1,13 @@
 // 第 343 種:直立式引擎的平行運動。A、A 是半徑桿,一端接在框架上,另一端接在活塞桿頂的振動件(一根短桿)的兩端;
 // 兩根半徑桿從左右兩側伸來,振動件中點(活塞桿頂)走的是近似直線(瓦特直線連桿)。活塞桿頂經連桿接到頂上的曲柄。
 // 主動件是虛擬的「進程」(下方汽缸的蒸汽推動);汽缸內的蒸汽以流體示意。
-// 推斷:各桿長依原圖比例;連桿接在振動件的中點。
+// 推斷:各桿長依原圖比例;連桿接在振動件的中點。後方的大輪是曲柄軸上的飛輪(依原圖,跟著曲柄轉);
+// 曲柄軸穿過頂上橫樑中間的軸承(原圖橫樑上的方塊)。
 import { TAU } from "./kit.js";
 import { solve } from "./linkage.js";
 import { wattLinkage } from "./parallel-motion.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
-import { shape, thickLine, arcPoints } from "./shapes.js";
+import { shape, thickLine, arcPoints, circle } from "./shapes.js";
 
 export const watt = wattLinkage({ line: 0, y1: 0.75, y2: -0.35, a: 1.4, b: 1.4, beamSide: -1 });
 const CRANK = [0, 2.75, 0];
@@ -36,10 +37,12 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.3, 5.0, 0.3], at: [-1.6, 0.2, -0.3] },
-        { kind: "box", size: [0.3, 5.0, 0.3], at: [1.6, 0.2, -0.3] },
-        { kind: "box", size: [3.6, 0.3, 0.3], at: [0, 2.75, -0.3] },
-        { kind: "plate", shape: shape([...arcPoints(2.6, 0.25, Math.PI - 0.25), ...arcPoints(2.35, Math.PI - 0.25, 0.25)]), thickness: 0.15, at: [0, 0.5, -0.5] },
+        { kind: "box", size: [0.3, 5.6, 0.3], at: [-1.6, -0.1, -0.3] },
+        { kind: "box", size: [0.3, 5.6, 0.3], at: [1.6, -0.1, -0.3] },
+        // 頂上橫樑:中間是曲柄軸的軸承(軸承座的方塊開著軸孔)
+        { kind: "box", size: [1.45, 0.3, 0.3], at: [-1.075, 2.75, -0.3] },
+        { kind: "box", size: [1.45, 0.3, 0.3], at: [1.075, 2.75, -0.3] },
+        { kind: "plate", shape: shape([[-0.35, -0.3], [0.35, -0.3], [0.35, 0.3], [-0.35, 0.3]], [circle(0.13).reverse()]), thickness: 0.4, at: [0, 2.75, -0.2] },
         { kind: "box", size: [3.6, 0.18, 0.8], at: [0, -3.0, 0] },
         { kind: "cylinder", radius: 0.1, length: 0.4, at: watt.O1 },
         { kind: "cylinder", radius: 0.1, length: 0.4, at: watt.O2 },
@@ -47,7 +50,20 @@ export default {
     },
     { id: "pipe", ...steamPipe(CYL) },
     ...cylinderParts(CYL),
-    { id: "crank", kind: "group", center: CRANK, spin: CR + 0.2, pieces: [{ kind: "box", size: [0.7, 0.6, 0.4], at: [0, 0, -0.1] }, { kind: "box", size: [CR, 0.14, 0.08], at: [CR / 2, 0, 0.2] }, { kind: "cylinder", radius: 0.06, length: 0.3, at: [CR, 0, 0.25], accent: true }] },
+        {
+      id: "crank",
+      kind: "group",
+      center: CRANK,
+      spin: CR + 0.2,
+      pieces: [
+        { kind: "cylinder", radius: 0.12, length: 0.95, at: [0, 0, -0.3] }, // 曲柄軸,往後穿過軸承接飛輪
+        { kind: "box", size: [CR, 0.14, 0.08], at: [CR / 2, 0, 0.2] },
+        { kind: "cylinder", radius: 0.06, length: 0.3, at: [CR, 0, 0.25], accent: true },
+        // 飛輪:輪緣與輪輻,在機架後面
+        { kind: "plate", shape: shape([...arcPoints(2.6, 0, TAU).slice(0, -1)], [arcPoints(2.38, 0, TAU).slice(0, -1).reverse()]), thickness: 0.12, at: [0, 0, -0.7] },
+        ...[0, 1, 2].map((i) => ({ kind: "box", size: [4.9, 0.12, 0.08], at: [0, 0, -0.7], angle: (i * Math.PI) / 3 + 0.3 })),
+      ],
+    },
     { id: "rod", kind: "link", width: 0.1, thickness: 0.06 },
     { id: "radiusL", kind: "link", width: 0.1, thickness: 0.06, label: "A", labelOffset: [0.6, -0.2, 0.3] },
     { id: "radiusR", kind: "link", width: 0.1, thickness: 0.06, label: "A", labelOffset: [-0.6, 0.2, 0.3] },
@@ -79,6 +95,5 @@ export default {
   waivers: [
     { check: "interference", parts: ["radiusR", "pistonRod"], reason: "接合處的簡化畫法:半徑桿的端頭鉸接在活塞桿上,軸眼與桿重疊 0.04" },
     { check: "interference", parts: ["piston", "pistonRod"], reason: "接合處的簡化畫法:活塞桿的下端伸進活塞 0.11(桿與活塞一起走,桿另外隨平行運動略為擺動)" },
-    { check: "interference", parts: ["frame", "crank"], reason: "簡化畫法:曲柄軸的軸承座畫成機架橫樑上的一塊,曲柄的軸頸與橫樑重疊 0.15" },
   ],
 };

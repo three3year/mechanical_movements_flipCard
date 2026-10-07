@@ -1,7 +1,7 @@
 // 第 340 種:另一種平行運動。樑 D–C 架在搖動立柱 B–F 的頂上,立柱繞底下的中心 F 擺動;活塞桿接在樑的 C 端,
 // 半徑桿 E–A(E 是固定樞軸)接在樑上的 A 點,產生平行運動。A 是 B、C 的中點,EA = AB = AC,而立柱很長、
 // B 幾乎沿水平線來回,所以 C 走的是近似鉛直的直線(司各特‧羅素的原理)。主動件是樑(連同立柱)。
-// 推斷:各桿長依原圖比例,滿足 EA = AB = AC;擺幅。
+// 推斷:各桿長依原圖比例,滿足 EA = AB = AC;擺幅。F 的軸承座與底座(原圖只畫出 F 的轂)。
 import { deg, clamp } from "./kit.js";
 import { circleCircle } from "./linkage.js";
 import { shape, circle, thickLine } from "./shapes.js";
@@ -28,7 +28,7 @@ export function beam(phi0) {
 export default {
   figure: 340,
   parts: [
-    { id: "ground", kind: "group", pieces: [{ kind: "cylinder", radius: 0.3, inner: 0.12, length: 0.3, at: F }, { kind: "box", size: [0.15, 0.9, 0.4], at: [E[0] + 0.3, E[1], -0.1] }, { kind: "cylinder", radius: 0.09, length: 0.4, at: E }] },
+    { id: "ground", kind: "group", pieces: [{ kind: "cylinder", radius: 0.3, inner: 0.12, length: 0.3, at: [F[0], F[1], -0.2] }, { kind: "box", size: [0.4, 0.42, 0.3], at: [F[0], F[1] - 0.38, -0.2] }, { kind: "box", size: [1.4, 0.2, 0.7], at: [F[0], F[1] - 0.69, -0.1] }, { kind: "cylinder", radius: 0.11, length: 0.5, at: [F[0], F[1], -0.05] }, { kind: "box", size: [0.15, 0.9, 0.4], at: [E[0] + 0.3, E[1], -0.1] }, { kind: "cylinder", radius: 0.09, length: 0.4, at: E }] },
     { id: "labelF", kind: "group", center: F, label: "F", labelOffset: [0.45, -0.1, 0.3] },
     { id: "labelE", kind: "group", center: E, label: "E", labelOffset: [0, 0.3, 0.3] },
     { id: "pillar", kind: "link", width: 0.36, thickness: 0.12, label: "B", labelOffset: [0, 0.35, 0.3] },

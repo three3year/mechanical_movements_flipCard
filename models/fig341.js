@@ -6,6 +6,7 @@ import { TAU } from "./kit.js";
 import { circleCircle, solve } from "./linkage.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
 import { shape, circle, thickLine } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const G = [2.3, -2.4, 0]; // 立柱 A 的底樞軸
 const PILLAR = 4.0;
@@ -53,7 +54,9 @@ export default {
         { kind: "box", size: [0.5, 0.3, 0.4], at: [E[0] - 0.4, E[1], -0.1] },
         { kind: "box", size: [5.6, 0.15, 0.9], at: [0.2, -2.55, 0] },
         { kind: "cylinder", radius: 0.14, length: 0.4, at: G },
-        { kind: "cylinder", radius: 0.14, length: 0.4, at: [K[0], K[1], -0.15] }, // 曲柄軸只往後伸(連桿從曲柄前面掃過軸心)
+        { kind: "cylinder", radius: 0.14, length: 0.7, at: [K[0], K[1], -0.3] }, // 曲柄軸只往後伸(連桿從曲柄前面掃過軸心)
+        // 曲柄軸的軸承座(原圖曲柄下方畫著軸承座)
+        ...pedestal({ at: [K[0], K[1]], z: -0.55, bore: 0.14, floor: -2.475 }),
       ],
     },
     { id: "pipe", ...steamPipe(CYL), center: [0, 0, -0.45] }, // 蒸汽管走在後面一層(曲柄從它前方轉過)
