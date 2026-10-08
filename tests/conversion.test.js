@@ -29,7 +29,7 @@ test("第 152 種:往回轉時軌跡跟著縮回(軌跡是主動量的函式)", 
 
 import { frameX as frame128, bounds as bounds128 } from "../models/fig128.js";
 import { pulleyY, radii as radii129 } from "../models/fig129.js";
-import fig130, { shears, camCenter as camCenter130, camRadius as camRadius130 } from "../models/fig130.js";
+import fig130, { shears, jawGap, camCenter as camCenter130, camRadius as camRadius130 } from "../models/fig130.js";
 import { placeOutline, circlePolygon, penetrationDepth, polygonsOverlap } from "../models/contact.js";
 import { perimeter } from "./helpers.js";
 import { swingRack } from "../models/fig131.js";
@@ -59,8 +59,11 @@ test("第 129 種:中式絞盤每轉一圈,滑輪移動大小圓周差的一半"
 
 test("第 130 種:剪具的夾爪靠長臂的重量張開,凸輪轉到高處時閉合", () => {
   const angles = sweep(TAU, 360).map(shears);
-  assert.ok(Math.min(...angles) > -0.02, "閉合時剛好合攏、不交叉");
-  assert.ok(Math.max(...angles) > 0.15, "張開");
+  // 起始(原圖):凸輪的軸在圓的正上方、凸輪最低,長臂水平擱在凸輪頂上、夾爪張開;轉半圈凸輪最高,刃口合攏
+  near(shears(0), 0, "起始時長臂水平", 0.01);
+  assert.ok(jawGap(0) > 0.4, "張開");
+  assert.ok(Math.abs(jawGap(Math.PI)) < 0.02, "閉合時上夾爪的刃口壓到下夾爪的刃口");
+  assert.ok(Math.min(...angles) < -0.15 && Math.max(...angles) < 0.01, "長臂只在水平與頂起之間擺");
   // 由接觸算:長臂整圈都貼著凸輪(靠自重壓在上面,不懸空也不穿入)
   const arm = fig130.parts.find((p) => p.id === "arm");
   for (const t of sweep(TAU, 72)) {

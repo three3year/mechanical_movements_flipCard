@@ -119,6 +119,19 @@ test("第 98 種:圓盤上的曲柄銷始終在振動臂的環形溝槽內,臂�
   for (const t of sweep(2 * Math.PI, 36)) assert.ok(arm98(t).err < 1e-6, "銷在溝槽中心線上");
   assert.ok(strokeOf(psis) > 0.1, "臂會擺動");
   close(psis[0], psis[psis.length - 1], "轉一圈回到原處", 1e-6);
+  // 無端溝槽:圓盤轉一圈,銷在臂上繞完整條溝(溝的參數 u 單調走完 0 → 1),臂的轉角沒有跳動
+  const us = sweep(2 * Math.PI, 720).map((t) => arm98(t).u);
+  let travelled = 0;
+  for (let i = 1; i < us.length; i++) {
+    const du = ((us[i] - us[i - 1]) % 1 + 1) % 1;
+    assert.ok(du < 0.01, `銷沿溝連續移動(第 ${i} 步跳了 ${du.toFixed(3)})`);
+    travelled += du;
+    assert.ok(Math.abs(psis[Math.floor(i / 2)] - psis[Math.floor((i - 1) / 2)]) < 0.02, "臂的轉角連續");
+  }
+  close(travelled, 1, "銷繞溝一圈", 1e-3);
+  // 直線段與半圓段的擺動快慢不同(不規則)
+  const rates = sweep(2 * Math.PI, 72).map((t) => arm98(t + 0.01).psi - arm98(t).psi);
+  assert.ok(Math.max(...rates.map(Math.abs)) > 3 * Math.min(...rates.map(Math.abs)) + 1e-9, "擺動快慢不均");
 });
 
 import { rodHeight, stroke as stroke95 } from "../models/fig095.js";

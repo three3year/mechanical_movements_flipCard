@@ -30,8 +30,9 @@ const loop = (h) => [...arcPoints(h, -Math.PI / 2, Math.PI / 2, W, 0), ...arcPoi
 export default {
   figure: 115,
   parts: [
-    { id: "upper", kind: "gear", center: UPPER.center, teeth: UPPER.teeth, radius: R, width: 0.3, bore: 0.18, web: false, pieces: [axle] },
-    { id: "lower", kind: "gear", center: LOWER.center, teeth: LOWER.teeth, radius: R, width: 0.3, bore: 0.18, web: false, pieces: [axle] },
+    // 兩輪被框架緊緊圍住,轉向箭頭放在輪面前方(spinOffset)、半徑縮到節圓內,正視時才不會被框架與齒條蓋住
+    { id: "upper", kind: "gear", center: UPPER.center, teeth: UPPER.teeth, radius: R, width: 0.3, bore: 0.18, web: false, pieces: [axle], spin: 0.4, spinOffset: 0.32 },
+    { id: "lower", kind: "gear", center: LOWER.center, teeth: LOWER.teeth, radius: R, width: 0.3, bore: 0.18, web: false, pieces: [axle], spin: 0.4, spinOffset: 0.32 },
     {
       id: "frame",
       kind: "group",

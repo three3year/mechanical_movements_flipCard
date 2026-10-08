@@ -50,7 +50,7 @@ test("第 111 種:千分螺桿——外側空心螺桿每轉一圈,模具只移�
 import { rodX as rod106, amp as amp106 } from "../models/fig106.js";
 import { rodX as rod107, waves as waves107 } from "../models/fig107.js";
 import { slideY, travel as travel108, pitch as pitch108 } from "../models/fig108.js";
-import { traverse, pitch as pitch110 } from "../models/fig110.js";
+import { traverse, pitch as pitch110, nutOffsets } from "../models/fig110.js";
 import { drillAngle, lead as lead112 } from "../models/fig112.js";
 
 // 往返次數:位移方向改變的次數 ÷ 2
@@ -83,6 +83,12 @@ test("第 108 種:兩道反向的螺旋溝使尖點從圓筒一端均勻橫移�
 test("第 110 種:槓桿扳向右或向左,換一個半螺帽嚙合,心軸朝相反方向均勻橫移", () => {
   close(traverse(TAU, "right"), pitch110);
   close(traverse(TAU, "left"), -pitch110);
+  // 「當其中一個半螺帽嚙合時,另一個便脫離」:扣上的那個鞍與螺紋同心,另一個離開螺紋
+  const right = nutOffsets("right");
+  const left = nutOffsets("left");
+  close(right.upper, 0, "扳向右:上方半螺帽扣上", 1e-9);
+  close(left.lower, 0, "扳向左:下方半螺帽扣上", 1e-9);
+  assert.ok(right.lower > 0.06 && left.upper > 0.06, "另一個半螺帽離開螺紋");
 });
 
 test("第 112 種:波斯鑽——螺帽沿快螺紋上下拉動,柄部交替向右、向左旋轉;螺帽移動一個導程,柄轉一圈", () => {

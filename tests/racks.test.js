@@ -59,11 +59,17 @@ test("第 116 種:雙齒條框架往復,總有一個小齒輪經棘輪帶動軸,
   const a = motion116(0.3);
   const b = motion116(0.5);
   assert.ok((b.front - a.front) * (b.back - a.back) < 0);
-  // 由接觸算:帶動的那支爪整程貼著棘輪(爪尖到輪面的距離 ≈ 0),兩支爪都不穿進棘輪
+  // 由接觸算:帶動的那支爪整程貼著棘輪(爪尖到輪面的距離 ≈ 0),兩支爪都不穿進棘輪;
+  // 換程的那一刻爪尖剛越過上一個齒尖、還在往齒根落,前 5% 的行程容許它還沒落到底
   for (const v of sweep(stroke116, 200)) {
+    if (v < 0.05 * stroke116) continue;
     assert.ok(Math.abs(pawlGap116(v, "front")) < 0.002, "框架往右時前爪頂著棘輪");
     assert.ok(Math.abs(pawlGap116(stroke116 + v, "back")) < 0.002, "框架往左時後爪頂著棘輪");
   }
+  // 兩支爪輪流:每一程由不同的爪帶動——空轉的那支被齒背頂起(離齒根遠),帶動的那支一直在齒根
+  const [rootF, rootB] = [motion116(0.5 * stroke116).pawls.front, motion116(1.5 * stroke116).pawls.back];
+  assert.ok(sweep(stroke116, 50).some((v) => motion116(stroke116 + v).pawls.front - rootF > 0.1), "第二程前爪空轉、被齒背頂起");
+  assert.ok(sweep(stroke116, 50).some((v) => motion116(v).pawls.back - rootB > 0.1), "第一程後爪空轉、被齒背頂起");
   for (const v of sweep(stroke116 * 4, 800)) for (const w of ["front", "back"]) assert.ok(pawlGap116(v, w) > -0.002, "爪不穿進棘輪");
   // 空轉的爪滑過齒背、一格一格落下(轉角有起伏),而且是加速落下,不是一下子跳回
   const idle = sweep(stroke116, 400).map((v) => motion116(v).pawls.back);

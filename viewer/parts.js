@@ -582,6 +582,12 @@ export function buildPart(part, material, mark) {
  * 不轉的零件回傳 null。
  */
 export function spinPlacement(part) {
+  const placed = defaultSpinPlacement(part);
+  // 定義可用 spin / spinOffset 覆蓋預設的半徑與軸向位置(例如齒輪被框架圍住時,把箭頭放到零件前面)
+  return placed && { radius: part.spin ?? placed.radius, offset: part.spinOffset ?? placed.offset };
+}
+
+function defaultSpinPlacement(part) {
   switch (part.kind) {
     case "pulley":
     case "bevel":
