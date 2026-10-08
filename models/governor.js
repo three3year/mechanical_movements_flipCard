@@ -1,5 +1,7 @@
 // 離心式(飛球)調速器共用:搖臂在心軸頂部樞接,末端是球;連桿從搖臂中段接到在心軸上滑動的套筒。
-// 心軸轉得越快,球飛得越開(圓錐擺:cos α = g / (ω²L),α 有上下限),套筒被拉得越高。純函式,平面在 xy。
+// 心軸轉得越快,球飛得越開、套筒被拉得越高。純函式,平面在 xy。
+// 張角對轉速:離心力與轉速平方成正比,張角以 (s / max)² 在 range 之間變化——真實圓錐擺(cos α = g / (ω²L))
+// 只在很窄的一段轉速裡有反應,滑桿會大半段沒有動靜,所以不照它算。
 import { Y, deg, clamp } from "./kit.js";
 
 /**
@@ -10,12 +12,8 @@ import { Y, deg, clamp } from "./kit.js";
 const PLANE = 0.26; // 搖臂與連桿所在的那一層(套筒半徑 0.22 的前面)
 
 export function flyBall({ top = 2.4, arm = 2.2, at = 1.1, link = 1.25, spread = 0.18, ball = 0.42, range = [deg(14), deg(52)], max = 10, below = true }) {
-  const c = max * max * Math.cos(range[1]);
   /** 轉速 s:張角 */
-  const angleAt = (s) => {
-    const w2 = Math.max(1e-9, s * s);
-    return clamp(Math.acos(clamp(c / w2, -1, 1)), range[0], range[1]);
-  };
+  const angleAt = (s) => range[0] + (range[1] - range[0]) * clamp(s / max, 0, 1) ** 2;
   /** 張角 α:兩邊搖臂、球、連桿接點與套筒高度 */
   function geometry(alpha) {
     const side = (k) => {

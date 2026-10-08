@@ -2,10 +2,10 @@
 // 抽送桿的中段接在半徑不變的第二曲柄上,一端經短連桿帶動半徑固定的主曲柄(目標件)。
 // 主動件是往復動力:左邊從樞軸垂下的搖桿,往復擺動(見 pitman-crank.js;搖桿上端的樞軸與吊架是推斷)。
 // 原圖與第 168 種左右相反(主曲柄在右),這裡把第 168 種的幾何左右翻轉。
-// 結構推斷:原圖的兩個虛線圓是兩支曲柄銷的軌跡,圓心各有一支固定的軸;抽送桿中段套在第二曲柄的銷上,
+// 結構推斷:原圖的兩個虛線圓是兩支曲柄銷的軌跡(預覽運動的線,不是零件,模型裡不畫),圓心各有一支固定的軸;抽送桿中段套在第二曲柄的銷上,
 // 左端(翻轉後在右)的銷同時接著短連桿。原本的模型只有曲柄板、沒有銷與軸,各層之間看不出相連:這裡在兩支曲柄的
 // 銷位置補上穿過抽送桿/短連桿的銷,抽送桿與短連桿的共用端補一支銷,兩支曲柄的軸往後延伸進機架上的軸承座
-// (兩座立在同一塊底板上),並以細圓畫出兩個銷的軌跡(原圖的虛線圓)。不改曲柄半徑與連桿長。
+// (兩座立在同一塊底板上)。不改曲柄半徑與連桿長。
 import { pitman, linked, secondAngle, C1, C2, R2, BEAM, ROD_LENGTH } from "./pitman-crank.js";
 import { angleOf } from "./linkage.js";
 import { shape, circle, stadium, arcPoints } from "./shapes.js";
@@ -37,7 +37,6 @@ const seat = (c, bore) => ({
   thickness: 0.3,
   at: [c[0], c[1], SEAT_Z],
 });
-const orbit = (c, r) => ({ kind: "tube", points: circle(r).map(([x, y]) => [x, y, 0]), radius: 0.015, closed: true, at: [c[0], c[1], -0.38] });
 
 export default {
   figure: 169,
@@ -87,8 +86,6 @@ export default {
         { kind: "box", size: [7.2, 0.12, 1.0], at: [-0.4, FLOOR_TOP - 0.06, -0.2] },
         seat(MC1, 0.11),
         seat(MC2, 0.09),
-        orbit(MC1, R1),
-        orbit(MC2, R2),
         // 搖桿上端的樞軸:從後面的吊架伸出
         { kind: "cylinder", radius: 0.07, length: 1.3, at: [MBEAM[0], MBEAM[1], 0.0] },
         { kind: "box", size: [0.3, 1.0, 0.2], at: [MBEAM[0], MBEAM[1] + 0.4, -0.65] },
