@@ -6,13 +6,14 @@
 // 撥爪輪被撥多少由接觸算:固定銷(圓柱)隨圓盤的轉動從撥爪輪的上半齒旁掃過,頂到哪一顆齒就推著它轉,
 // 直到齒尖轉到銷的高度以下、銷滑過去為止;其餘時間螺桿靠軸承的摩擦停住。每圈大約撥一齒。
 // 推斷:撥爪輪 8 齒;螺紋的旋向取讓螺帽往中心走(行程逐圈縮短);小齒輪齒數。主動件是圓盤。
-// 結構推斷(分層):原本螺桿、夾螺桿的框、螺帽、T 形桿擠在同一層看不清。照原圖由後往前分成:圓盤(背面是冠狀齒輪)
+// 結構推斷(分層):原本螺桿、夾螺桿的框、螺帽、T 形桿擠在同一層看不清。照原圖由後往前分成:圓盤(背面是傘齒輪,
+// 齒圈略大於盤面;右上方的小齒輪在盤面後方與它咬合,軸沿徑向伸到機架板的軸承孔——原圖畫在右上方,軸略斜)
 // → 盤面上的長條底板與兩端的軸承塊(螺桿架在兩塊之間、離盤面有空隙)→ 螺桿與螺帽 → 螺帽上的手腕銷往前伸
 // → T 形桿(在撥爪輪掃過的範圍之外,銷穿進它的直槽)。固定銷照原文是機架上的一支銷,碰撥爪輪的上半齒:
 // 這裡在圓盤右側立一片機架板(有小齒輪軸的軸承孔,下方開一道槽讓 T 形桿的橫臂穿過、兼作導座),
 // 固定銷由機架板伸出的托架上沿徑向伸到撥爪輪上方。不改齒數、螺距、行程。
 import { deg, polar, add, sub, X, Z, TAU, quatAxisAngle, quatMul, quatFromZ, quatRotate, screwAdvance } from "./kit.js";
-import { meshAngle } from "./gears.js";
+import { meshAngle, bevelGear, pitchCones, bevelContact } from "./gears.js";
 import { shape, circle, rect, gearProfile } from "./shapes.js";
 import { polygonsOverlap, circlePolygon } from "./contact.js";
 
@@ -26,10 +27,17 @@ const WRIST0 = -0.6; // 原圖:手腕銷在中心左下方 0.6
 const REVS = { back: 6, ahead: 4 };
 const SLOT_X = 0; // T 形桿的直立槽在 x = 手腕銷的 x
 
-const M = 0.12;
-const CROWN = { center: [0, 0, -0.2], axis: [0, 0, -1], teeth: 28, radius: (28 * M) / 2 };
-const PINION = { center: [CROWN.radius - 0.15, 0, -0.2 - 0.28 - (12 * M) / 2], axis: X, teeth: 12, radius: (12 * M) / 2 };
-const CONTACT = [CROWN.radius - 0.15, 0, -0.2 - 0.28];
+// 圓盤背面的傘齒輪與小齒輪:兩輪的節錐共用錐頂(在圓盤軸上、盤面後方);小齒輪在圓盤右上方,軸沿徑向往外
+const M = 0.14;
+const BEVEL = { teeth: 28, pinion: 14, width: 0.2 };
+const [GAMMA_DISC, GAMMA_PINION] = pitchCones(BEVEL.teeth, BEVEL.pinion);
+const PINION_DIR = deg(12); // 小齒輪在圓盤上的方位
+const HEEL_Z = -0.36; // 圓盤齒輪的大端:離盤面的背面(z = −0.18)留一段,小齒輪的齒頂才不會頂到盤面;中間以一圈墊圈填滿
+const APEX_Z = HEEL_Z - ((BEVEL.teeth * M) / 2) / Math.tan(GAMMA_DISC);
+const DISC_GEAR = bevelGear({ apex: [0, 0, APEX_Z], axis: [0, 0, -1], teeth: BEVEL.teeth, radius: (BEVEL.teeth * M) / 2, cone: GAMMA_DISC, width: BEVEL.width });
+const PINION_FIT = bevelGear({ apex: [0, 0, APEX_Z], axis: polar(-1, PINION_DIR), teeth: BEVEL.pinion, radius: (BEVEL.pinion * M) / 2, cone: GAMMA_PINION, width: BEVEL.width });
+const PINION = { ...PINION_FIT, center: add(PINION_FIT.center, polar(0.015, PINION_DIR)) }; // 沿徑向退開一點(簡化齒形的齒頂才不會頂到圓盤齒輪的齒根)
+const CONTACT = bevelContact(DISC_GEAR, PINION);
 
 // z 分層(由後往前):圓盤面 −0.06 → 底板 −0.06–0.04、軸承塊到 0.335 → 螺桿軸心 0.2 → 撥爪輪齒尖到 0.6 → T 形桿 0.65–0.75
 const SCREW_Z = 0.2;
@@ -122,9 +130,10 @@ const BLOCK_AT = 1.75; // 兩端軸承塊離盤心的距離(螺帽行程 −1.2�
 const WALL_X = 4.05; // 機架板在 T 形桿寬的那一段走到最右時的外側 // 機架板的位置(圓盤右側,yz 平面)
 // 機架板的輪廓(局部 x = 世界 −z、局部 y = 世界 y):小齒輪軸的軸承孔,下方一道槽讓 T 形桿的橫臂穿過(兼作導座)
 const WALL = shape(
-  [[1.5, -1.75], [1.5, 0.5], [0.3, 1.3], [-0.95, 1.3], [-0.95, -1.75]],
-  [circle(0.14, -PINION.center[2], 0).reverse(), rect(0.24, 0.8, -LEVER_Z, -1.05).reverse()],
+  [[1.5, -1.75], [1.5, 1.3], [-0.95, 1.3], [-0.95, -1.75]],
+  [circle(0.17, -APEX_Z, WALL_X * Math.tan(PINION_DIR)).reverse(), rect(0.24, 0.8, -LEVER_Z, -1.05).reverse()],
 );
+const PINION_SHAFT = WALL_X / Math.cos(PINION_DIR) + 0.3 - (DISC_GEAR.radius - BEVEL.width / 2); // 小齒輪到機架板外側
 
 export default {
   figure: 173,
@@ -136,7 +145,8 @@ export default {
       spin: RADIUS + 0.1,
       pieces: [
         { kind: "plate", shape: shape(circle(RADIUS), [circle(0.12).reverse()]), thickness: 0.12, at: [0, 0, -0.12] },
-        { kind: "gear", crown: true, teeth: CROWN.teeth, radius: CROWN.radius, width: 0.16, toothDepth: 0.16, faceWidth: 0.35, axis: CROWN.axis, at: [0, 0, -0.12] },
+        { kind: "cylinder", radius: DISC_GEAR.radius - 0.4, length: -0.18 - HEEL_Z, at: [0, 0, (HEEL_Z - 0.18) / 2] }, // 盤面與齒輪之間的墊圈
+        { kind: "gear", teeth: BEVEL.teeth, radius: DISC_GEAR.radius, cone: GAMMA_DISC, width: BEVEL.width, axis: DISC_GEAR.axis, at: DISC_GEAR.center },
         // 盤面上承載螺桿的底板與兩端的軸承塊(螺桿穿過兩塊)
         { kind: "plate", shape: STRIP, thickness: 0.1, angle: SCREW_DIR, at: [0, 0, -0.01], accent: true },
         { kind: "box", size: [0.3, 0.5, 0.45], angle: SCREW_DIR, at: polar(BLOCK_AT, SCREW_DIR, 0.11), accent: true },
@@ -175,8 +185,9 @@ export default {
       axis: PINION.axis,
       teeth: PINION.teeth,
       radius: PINION.radius,
-      width: 0.2,
-      pieces: [{ kind: "cylinder", radius: 0.1, length: 2.9, at: [0, 0, 1.45] }], // 軸:往右穿過機架板的軸承孔
+      cone: GAMMA_PINION,
+      width: BEVEL.width,
+      pieces: [{ kind: "cylinder", radius: 0.1, length: PINION_SHAFT, at: [0, 0, -PINION_SHAFT / 2 - 0.05] }], // 軸:沿徑向往外穿過機架板的軸承孔
     },
   ],
   driver: { part: "disc", type: "rotation", range: [-REVS.back * TAU, REVS.ahead * TAU], speed: 1.5 },
@@ -191,7 +202,7 @@ export default {
         screw: { position: [0, 0, SCREW_Z], rotation: quatMul(q, quatAxisAngle(Z, screw + SPIN0)) },
         nut: { position: [wrist[0], wrist[1], SCREW_Z], angle: SCREW_DIR + theta },
         lever: { position: [SLOT_X + wrist[0], 0, LEVER_Z] },
-        pinion: { angle: meshAngle(CROWN, PINION, theta, CONTACT) },
+        pinion: { angle: meshAngle(DISC_GEAR, PINION, -theta, CONTACT) }, // 圓盤齒輪的軸朝後,圓盤轉 theta 是它繞自己的軸轉 −theta
       },
       readouts: [],
     };
