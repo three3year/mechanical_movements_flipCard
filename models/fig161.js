@@ -5,7 +5,8 @@
 import { Z, Y, deg } from "./kit.js";
 import { flyBall } from "./governor.js";
 
-const GOV = flyBall({ top: 2.4, arm: 2.3, at: 1.15, link: 1.6, ball: 0.45, range: [deg(24), deg(50)] });
+const GOV = flyBall({ top: 2.4, arm: 2.3, at: 1.15, link: 1.6, ball: 0.45, range: [deg(16), deg(48)] });
+const LEVER = { pivot: [-2.0, -0.46, 0], length: 2.0 };
 
 /** 轉速 s:張角與滑塊的高度 */
 export function governor(s) {
@@ -13,7 +14,6 @@ export function governor(s) {
   return { alpha, sleeve: GOV.geometry(alpha).sleeve };
 }
 const REST = governor(0).sleeve;
-const LEVER = { pivot: [-2.0, REST - 0.2, 0], length: 2.0 }; // 槓桿的樞軸:停住時叉形的端頭剛好托在套筒下面
 
 export default {
   figure: 161,
@@ -52,10 +52,10 @@ export default {
         { kind: "box", size: [0.2, 0.06, 0.08], at: [LEVER.length, 0.06, -0.14] },
       ],
     },
-    { id: "bracket", kind: "group", pieces: [{ kind: "box", size: [2.0, 0.12, 0.3], at: [-1.1, LEVER.pivot[1] - 0.34, 0] }, { kind: "box", size: [0.12, 0.26, 0.3], at: [-2.0, LEVER.pivot[1] - 0.21, 0] }] }, // 支架不碰心軸,立柱托著槓桿的樞軸
+    { id: "bracket", kind: "group", pieces: [{ kind: "box", size: [2.0, 0.12, 0.3], at: [-1.1, -0.8, 0] }, { kind: "box", size: [0.12, 0.26, 0.3], at: [-2.0, -0.67, 0] }] }, // 支架不碰心軸,立柱托著槓桿的樞軸
   ],
   powered: ["ballL", "ballR"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, 10], initial: 7 },
+  driver: { type: "virtual", label: "轉速", mode: "balance", range: [0, 10], initial: 8.8 },
   target: "lever",
   view: { direction: [0.04, 0.06, 1] },
   pose(s) {

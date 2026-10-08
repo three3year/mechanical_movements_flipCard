@@ -8,19 +8,20 @@ const LEFT = -3.2;
 const RIGHT = 3.2;
 const GROUND = -R - 0.06;
 
-/** 鼓輪轉 theta(逆時針為正):繩前進的距離(往左為正) */
+/** 鼓輪轉 theta(逆時針為正):繩沿路徑前進的距離(從左端往右端為正) */
 export const ropeTravel = (theta) => R * theta;
 export const radius = R;
 
-// 繩的路徑:左端 → 底部 → 繞輪一整圈(逆時針)→ 底部 → 右端;繞輪的那一圈略往外,畫在輪緣外
+// 繩的路徑照材料前進的方向排:左端 → 底部 → 繞輪一整圈(逆時針,和鼓輪同向)→ 底部 → 右端。
+// 鼓輪逆時針轉時輪底往右走,繩就跟著從左端走向右端;繞輪的那一圈略往外,畫在輪緣外,沿軸向錯開 0.1 讓進出兩段不重疊
 const loop = (() => {
   const r = R + 0.06;
-  const pts = [[RIGHT, GROUND, 0.05]];
+  const pts = [[LEFT, GROUND, -0.05]];
   for (let i = 0; i <= 96; i++) {
     const a = -Math.PI / 2 + (TAU * i) / 96;
-    pts.push([r * Math.cos(a), r * Math.sin(a), 0.05 - 0.1 * (i / 96)]);
+    pts.push([r * Math.cos(a), r * Math.sin(a), -0.05 + 0.1 * (i / 96)]);
   }
-  pts.push([LEFT, GROUND, -0.05]);
+  pts.push([RIGHT, GROUND, 0.05]);
   return pts;
 })();
 
@@ -42,7 +43,7 @@ export default {
   driver: { part: "drum", type: "rotation" },
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
-    // 繩從右端走向左端(逆時針轉時往左)
+    // 相位為正時色段沿路徑方向(往右)走,和輪緣轉過的弧長相同
     return { parts: { drum: { angle: theta } }, paths: { rope: { points: loop, closed: false, phase: ropeTravel(theta) } }, readouts: [] };
   },
 };

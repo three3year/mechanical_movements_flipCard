@@ -25,7 +25,16 @@ export default {
     { id: "leftRod", kind: "group", pieces: [{ kind: "cylinder", axis: [1, 0, 0], radius: 0.07, length: 2.6, at: [-1.5, 0, 0] }, { kind: "box", size: [0.42, 0.38, 0.18] }] },
     // 每個交叉點有兩根桿(上斜、下斜);最左、最右兩個節點只有半根
     ...linkIds.map((id) => ({ id, kind: "link", width: 0.1, thickness: 0.05 })),
-    { id: "post", kind: "box", center: [FIX[0], -0.65, -0.2], size: [0.6, 1.2, 0.2] },
+    // 支座:立板從地面伸到交叉點上方,板上的樞銷穿過第四個交叉點的兩根桿,剪架就以它為支點
+    {
+      id: "post",
+      kind: "group",
+      pieces: [
+        { kind: "box", size: [0.6, 1.7, 0.2], at: [FIX[0], -0.5, -0.2] },
+        { kind: "cylinder", radius: 0.07, length: 0.5, at: [FIX[0], 0, -0.1] },
+        { kind: "cylinder", radius: 0.14, length: 0.06, at: [FIX[0], 0, 0.12] }, // 銷頭
+      ],
+    },
     {
       id: "sleeves",
       kind: "group",

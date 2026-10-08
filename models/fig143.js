@@ -64,7 +64,7 @@ export default {
       ],
     },
   ],
-  driver: { part: "shaft", type: "rotation", speed: 6 },
+  driver: { part: "shaft", type: "rotation", speed: 6, grips: ["worm"] }, // 蝸桿隨軸轉,也是主動件的抓取處(同色)
   target: "carriage",
   view: { direction: [0.06, 0.07, 1] },
   pose(theta) {

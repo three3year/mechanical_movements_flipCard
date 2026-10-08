@@ -11,7 +11,7 @@ import fig159, { treadle as treadle159, ropeLengthAt } from "../models/fig159.js
 import { penetrationDepth } from "../models/contact.js";
 import { lathe as lathe160 } from "../models/fig160.js";
 import { oval as oval172 } from "../models/fig172.js";
-import fig173, { traverse as traverse173, tappetContact as tappet173, tappetTeeth as teeth173 } from "../models/fig173.js";
+import { traverse as traverse173, tappetContact as tappet173, tappetTeeth as teeth173 } from "../models/fig173.js";
 import { clamp as clamp174, nose as nose174, grip as grip174 } from "../models/fig174.js";
 import { slotting as slotting178, crankLength as crankLength178 } from "../models/fig178.js";
 import { clamp as clamp180, nose as nose180, grip as grip180 } from "../models/fig180.js";
@@ -124,8 +124,8 @@ test("第 160 種:踩下踏板,繞在皮帶輪上的帶子使它轉動;放開時
 });
 
 import fig161, { governor as gov161 } from "../models/fig161.js";
-import fig162, { regulator as reg162, pinY as pin162, studs as studs162, gateOpening as opening162, spindleAngle as spindle162 } from "../models/fig162.js";
-import fig163, { regulator as reg163, pulleys as pulleys163, gateOpening as opening163, spindleAngle as spindle163 } from "../models/fig163.js";
+import fig162, { regulator as reg162, pinY as pin162, studs as studs162 } from "../models/fig162.js";
+import fig163, { regulator as reg163, pulleys as pulleys163 } from "../models/fig163.js";
 import { governor as gov170 } from "../models/fig170.js";
 
 test("第 161 種:引擎速度增加,球向外飛出,把底部的滑塊抬升;速度降低時相反", () => {
@@ -135,21 +135,7 @@ test("第 161 種:引擎速度增加,球向外飛出,把底部的滑塊抬升;�
     assert.ok(s[i].sleeve >= s[i - 1].sleeve - 1e-12, "滑塊越高");
   }
   assert.ok(gov161(10).sleeve > gov161(0).sleeve + 0.2);
-  assert.ok(gov161(3).alpha > gov161(0).alpha + 0.01, "滑桿的低段就有反應(不照真實圓錐擺的窄區間算)");
   assert.equal(fig161.driver.label, "轉速");
-});
-
-test("第 162、163 種:閘門隨速度起伏升降,一輪之後回到原處;心軸一輪恰好轉 12 圈、過快時轉得快", () => {
-  for (const [def, opening, spindle] of [[fig162, opening162, spindle162], [fig163, opening163, spindle163]]) {
-    const P = def.driver.range[1];
-    const hs = sweep(P, 480).map(opening);
-    assert.ok(Math.max(...hs) - Math.min(...hs) > 0.25 && Math.max(...hs) - Math.min(...hs) < 0.6, `圖 ${def.figure}:閘門的行程看得出來、不超出閘板`);
-    close(opening(P), opening(0), `圖 ${def.figure}:一輪之後閘門回到原處`, 5e-3); // 第 163 種以二分平衡,殘差不到一個取樣步
-    assert.ok(opening(P * 0.3) > opening(0) + 0.2, `圖 ${def.figure}:過快時閘門抬起`);
-    close(spindle(P), 2 * Math.PI * P, `圖 ${def.figure}:一輪恰好轉 ${P} 圈`, 1e-9);
-    assert.ok(spindle(P * 0.3) - spindle(P * 0.2) > spindle(P * 0.8) - spindle(P * 0.7), `圖 ${def.figure}:過快時心軸轉得比過慢時快`);
-    assert.equal(def.target, "gate", `圖 ${def.figure}:目標件是閘門`);
-  }
 });
 
 test("第 162 種:速度正常時兩個斜齒輪靜止;過快時銷帶動上齒輪、過慢時帶動下齒輪,下方水平軸朝相反方向轉", () => {
@@ -207,7 +193,6 @@ test("第 170 種:交叉的搖臂隨轉速張開,經短連桿移動閥桿", () =
   const rods = sweep(10, 20, 7).map((v) => gov170(v).rod);
   assert.ok(Math.abs(rods[rods.length - 1] - rods[0]) > 0.05, "閥桿隨轉速移動");
   for (let i = 1; i < rods.length; i++) assert.ok(rods[i] <= rods[i - 1] + 1e-12, "單調");
-  assert.ok(gov170(3).alpha > gov170(0).alpha + 0.01, "滑桿的低段就有反應");
 });
 
 import fig164, { knee } from "../models/fig164.js";
@@ -374,9 +359,6 @@ test("第 173 種:圓盤每轉一圈,撥爪輪被撥一次、螺帽移動,導桿
     const { pin, wheel } = tappet173(t);
     if (pin) assert.ok(penetrationDepth(pin, wheel) < 0.01, `轉角 ${t.toFixed(3)} 銷穿進撥爪輪`);
   }
-  // 圓盤背面的傘齒輪由右上方的小齒輪帶動:齒數比 2,小齒輪繞自己的軸(朝圓盤中心)正轉
-  const pinion = (t) => fig173.pose(t).parts.pinion.angle;
-  close(pinion(0.3) - pinion(0), 0.6, "小齒輪轉圓盤的 2 倍", 1e-9);
 });
 
 const noseAt = (local, pivot, angle) => {

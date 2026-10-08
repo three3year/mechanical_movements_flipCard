@@ -25,10 +25,11 @@ export function crank(a) {
   return { big, psi };
 }
 
+// 溝槽兩側的凸條立在輪輻上(z 0.09–0.19);淨寬 0.18,銷的直徑 0.16
 const groove = (d) =>
   Array.from({ length: 200 }, (_, i) => {
     const phi = (i / 200) * TAU;
-    return [(grooveAt(phi) + d) * Math.cos(phi), (grooveAt(phi) + d) * Math.sin(phi), 0.15];
+    return [(grooveAt(phi) + d) * Math.cos(phi), (grooveAt(phi) + d) * Math.sin(phi), 0.14];
   });
 
 export default {
@@ -44,9 +45,9 @@ export default {
       bore: 0.15,
       web: false,
       pieces: [
-        { kind: "tube", points: groove(0.12), radius: 0.035, closed: true },
-        { kind: "tube", points: groove(-0.12), radius: 0.035, closed: true },
-        ...[0, 1, 2, 3].map((k) => ({ kind: "box", size: [3.6, 0.1, 0.08], at: [0, 0, 0.05], angle: (k * Math.PI) / 4 })),
+        { kind: "tube", points: groove(0.14), radius: 0.05, closed: true },
+        { kind: "tube", points: groove(-0.14), radius: 0.05, closed: true },
+        ...[0, 1, 2, 3].map((k) => ({ kind: "box", size: [3.6, 0.1, 0.12], at: [0, 0, 0.04], angle: (k * Math.PI) / 4 })),
       ],
     },
     {
@@ -56,7 +57,7 @@ export default {
       arrow: false,
       pieces: [
         { kind: "box", size: [ARM, 0.12, 0.08], at: [ARM / 2, 0, 0] },
-        { kind: "cylinder", radius: 0.08, length: 0.3, at: [ARM, 0, -0.1], accent: true }, // 銷比溝槽窄
+        { kind: "cylinder", radius: 0.08, length: 0.28, at: [ARM, 0, -0.09], accent: true }, // 銷在凸條之間,底端 z 0.12,離輪輻 0.02
         { kind: "cylinder", radius: 0.16, inner: 0.07, length: 0.15 },
       ],
     },
@@ -67,6 +68,10 @@ export default {
         { kind: "plate", shape: shape(rect(1.1, 1.8, -2.6, 0)), thickness: 0.1, at: [0, 0, -0.3] },
         { kind: "plate", shape: shape(rect(1.1, 1.8, 2.75, 0)), thickness: 0.1, at: [0, 0, -0.3] },
         { kind: "box", size: [6.4, 0.25, 0.1], at: [0.05, 0, -0.3] },
+        // 兩個齒輪的軸與曲柄的樞銷都立在機架上
+        { kind: "cylinder", radius: 0.09, length: 0.5, at: [SMALL.center[0], 0, -0.05] },
+        { kind: "cylinder", radius: 0.14, length: 0.5, at: [0, 0, -0.05] },
+        { kind: "cylinder", radius: 0.065, length: 0.75, at: [R_PIVOT[0], R_PIVOT[1], 0.1] },
       ],
     },
   ],
