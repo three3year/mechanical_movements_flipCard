@@ -136,20 +136,21 @@ export function gearShape({ teeth, radius, internal = false, rim, bore = 0, mask
 /**
  * 扇形齒輪:只有 span = [a0, a1](局部角)範圍內的齒,兩側直線收到軸心。
  * 齒 i 的中心在 i·齒距,與完整齒輪相同,所以咬合計算照用 gears.meshAngle。
+ * tips(可省):削低齒頂的齒,{ 從 a0 起算的第幾齒(0 起): 剩下的齒冠高(以模數為 1)},齒側照原來的斜度。
  */
-export function sectorShape({ teeth, radius, span, bore = 0 }) {
+export function sectorShape({ teeth, radius, span, bore = 0, tips = {} }) {
   const { m, addendum, dedendum, pitch } = gearSize(radius, teeth);
-  const tip = radius + addendum;
   const root = radius - dedendum;
   const [a0, a1] = span;
   const first = Math.ceil(a0 / pitch + 0.5 - 1e-9);
   const last = Math.floor(a1 / pitch - 0.5 + 1e-9);
   const wr = halfWidth(radius, m, root, false);
-  const wt = halfWidth(radius, m, tip, false);
   const pts = [[0, 0]];
   let at = a0;
   for (let i = first; i <= last; i++) {
     const a = i * pitch;
+    const tip = radius + (tips[i - first] ?? 1) * addendum;
+    const wt = halfWidth(radius, m, tip, false);
     pts.push(...arcPoints(root, at, a - wr).slice(0, -1));
     pts.push([root * Math.cos(a - wr), root * Math.sin(a - wr)]);
     pts.push(...arcPoints(tip, a - wt, a + wt));

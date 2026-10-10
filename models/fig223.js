@@ -1,73 +1,109 @@
-// 第 223 種:得到變速圓周運動的一種配置。兩根軸各裝兩個扇形齒輪段,分在前後兩個平面:前面一對是上大下小、
-// 後面一對是上小下大。上軸等速轉時,先由前面一對咬合(下軸快),接著換後面一對(下軸慢);兩軸各轉一圈回到原處。
-// 相對速度依各扇形段的直徑而變。主動件是上軸。
-// 推斷:兩對扇形的半徑比 1.6;扇形的角度讓上軸一圈時下軸也剛好一圈(前面一對 138°、後面一對 222°)。
+// 第 223 種:得到變速圓周運動的一種配置。照原圖每根軸各裝四個扇形齒輪段,相鄰的扇形分在前後兩個平面輪流:
+// 上軸四個 90° 扇形(右上大、左上與右下中、左下小),下軸四個 30°、60°、210°、60°(朝上的窄楔形、左、下方大半圈、右)。
+// 上軸等速轉一圈時,兩軸連線上依序是 小帶楔形(下軸慢,1/3)、中帶中(2/3)、大帶下方小扇形(快,7/3)、中帶中(2/3);
+// 相對速度依各扇形段的直徑而變。兩軸各轉一圈回到原處。主動件是上軸,從原圖的姿勢(兩對剛好在換對處)起轉。
+// 推斷:半徑照 507movements 動畫的速度比(上軸節圓 2.8、1.6、1.0、1.6 比中心距 4);每對齒數合計 80,齒距相同。
+// 換對處:507movements 註記說實物要改幾個齒才嚙合得上(動畫裡不改就撞齒卡死)。這裡讓下軸各扇形的齒從邊緣讓開半個齒距、
+// 上軸各扇形的邊緣不放齒,接手那對的第一齒剛好對著對方的齒槽;換對前後兩對的轉速比不同,靠近邊緣的幾個齒會在
+// 對方齒間滑過而相撞,所以把這些齒的齒頂削低(推斷:削多少由逐姿勢量穿入、削到不穿入為止定出,見 tips)。
 import { TAU, deg } from "./kit.js";
 import { pedestal } from "./supports.js";
 import { sectorShape, circle } from "./shapes.js";
 
-const C = 2.6;
-const BIG = 48;
-const SMALL = 30;
-const K = BIG / SMALL;
-const PITCH = (TAU * C) / (BIG + SMALL);
-const r = (n) => (n * PITCH) / TAU;
-const SPAN_A = TAU / (K + 1); // 前面一對(上大下小)在上軸上的角度
-const SPAN_B = TAU - SPAN_A;
+const C = 3.2;
+const S = C / 4; // 動畫的比例尺(中心距 4)換到這裡
 const UPPER = [0, C / 2, 0];
 const LOWER = [0, -C / 2, 0];
-const Z = { A: 0.14, B: -0.14 };
+const Z = { front: 0.14, back: -0.14 };
 
-/** 上軸轉 t(逆時針;t = 0 時前面一對剛開始咬合):下軸的轉角與目前咬合的一對 */
+/**
+ * 扇形段:span 是局部角(原圖姿勢時就是世界角);齒數 = 半徑 / 模數 × 2,模數 0.1 × S。
+ * tips:削低齒頂的齒 { 從 span[0] 起第幾齒: 剩下的齒冠高(模數為 1)}
+ */
+const sector = (radius, span, z, { offset = false, tips = {} } = {}) => {
+  const teeth = Math.round((2 * radius) / 0.1);
+  const r = radius * S;
+  const h = offset ? Math.PI / teeth : 0; // 齒從邊緣讓開半個齒距
+  const shape = sectorShape({ teeth, radius: r, span: [deg(span[0]) - h, deg(span[1]) - h], tips });
+  const turn = (p) => [p[0] * Math.cos(h) - p[1] * Math.sin(h), p[0] * Math.sin(h) + p[1] * Math.cos(h)];
+  return { teeth, radius: r, span: [deg(span[0]), deg(span[1])], z, shape: { outline: shape.outline.map(turn), holes: [] } };
+};
+
+// 依角度順序排;前後平面輪流。每個 tips 的兩端分別是換對時最後離開與最先接手的齒
+const UP = {
+  big: sector(2.8, [0, 90], Z.front, { tips: { 0: 0.38, 12: 0.63 } }),
+  left: sector(1.6, [90, 180], Z.back, { tips: { 0: 0.39, 6: 0.87 } }),
+  small: sector(1.0, [180, 270], Z.front, { tips: { 0: 0.93, 3: 0 } }),
+  right: sector(1.6, [270, 360], Z.back, { tips: { 0: 0.45, 6: 0.07 } }),
+};
+const LO = {
+  right: sector(2.4, [30, 90], Z.back, { offset: true, tips: { 0: 0.3 } }),
+  wedge: sector(3.0, [90, 120], Z.front, { offset: true, tips: { 0: 0.53, 4: 0 } }),
+  left: sector(2.4, [120, 180], Z.back, { offset: true, tips: { 1: 0.16, 7: 0 } }),
+  small: sector(1.2, [180, 390], Z.front, { offset: true, tips: { 1: 0.64 } }),
+};
+export const SECTORS = { upper: Object.values(UP), lower: Object.values(LO), UPPER, LOWER };
+
+// 上軸逆時針轉:兩軸連線上的上扇形依序是 小、左中、大、右中,各 90°
+const STAGES = [
+  [UP.small, LO.wedge],
+  [UP.left, LO.left],
+  [UP.big, LO.small],
+  [UP.right, LO.right],
+];
+const QUARTER = TAU / 4;
+const ratioText = (u, l) => ({ 1: "1/3", 2: "2/3", 7: "7/3" })[Math.round((u.radius / l.radius) * 3)];
+
+/** 上軸轉 t(逆時針;t = 0 是原圖的姿勢):下軸的轉角(順時針為負)與目前咬合的一對 */
 export function sectors(t) {
   const k = Math.floor(t / TAU);
-  const f = t - k * TAU;
-  if (f < SPAN_A) return { lower: -k * TAU - K * f, pair: "A" };
-  return { lower: -k * TAU - K * SPAN_A - (f - SPAN_A) / K, pair: "B" };
+  let f = t - k * TAU;
+  let lower = -k * TAU;
+  for (const [u, l] of STAGES) {
+    const a = Math.min(f, QUARTER);
+    lower -= (a * u.radius) / l.radius;
+    f -= a;
+    if (f <= 0) return { lower, stage: [u, l] };
+  }
+  return { lower, stage: STAGES[3] };
 }
-export const geometry = { K, SPAN_A, SPAN_B };
 
-// 上軸的接觸點在局部角 −π/2 − t;下軸在 π/2 − 下軸轉角
-const pieces = (sectorsDef) =>
-  sectorsDef.map(({ teeth, span, z }) => ({ kind: "plate", shape: sectorShape({ teeth, radius: r(teeth), span }), thickness: 0.12, at: [0, 0, z] }));
-const upperSectors = pieces([
-  { teeth: BIG, span: [-Math.PI / 2 - SPAN_A, -Math.PI / 2], z: Z.A },
-  { teeth: SMALL, span: [-Math.PI / 2 - TAU, -Math.PI / 2 - SPAN_A], z: Z.B },
-]);
-const lowerSectors = pieces([
-  { teeth: SMALL, span: [Math.PI / 2, Math.PI / 2 + K * SPAN_A], z: Z.A },
-  { teeth: BIG, span: [Math.PI / 2 + K * SPAN_A, Math.PI / 2 + TAU], z: Z.B },
-]);
-const START = deg(200); // 原圖:上軸前面的大扇形在右上方
+const pieces = (list) => list.map(({ shape, z }) => ({ kind: "plate", shape, thickness: 0.12, at: [0, 0, z] }));
 
-const shaft = (id, center, list) => ({
+const shaft = (id, center, list, spin) => ({
   id,
   kind: "group",
   center,
-  spin: r(BIG) + 0.2,
-  pieces: [...list, { kind: "cylinder", radius: 0.32, inner: 0.15, length: 0.5, mark: true }, { kind: "plate", shape: { outline: circle(0.15), holes: [] }, thickness: 0.6 }],
+  spin,
+  spinOffset: 0.3, // 箭頭放在前面一層扇形的前方,不被對面軸的大扇形擋住
+  pieces: [...pieces(list), { kind: "cylinder", radius: 0.32, inner: 0.15, length: 0.5, mark: true }, { kind: "plate", shape: { outline: circle(0.15), holes: [] }, thickness: 0.6 }],
 });
+
+const FLOOR = -C / 2 - 3.0 * S - 0.35; // 下軸的窄楔形朝下時掃到 −4.08,底座再往下
 
 export default {
   figure: 223,
   parts: [
-    shaft("upper", UPPER, upperSectors),
-    shaft("lower", LOWER, lowerSectors),
+    shaft("upper", UPPER, SECTORS.upper, 2.8 * S + 0.25),
+    shaft("lower", LOWER, SECTORS.lower, 1.2 * S + 0.25),
     {
       id: "bearings",
       kind: "group",
       // 推斷(原圖只畫出輪轂):每個輪的固定軸往後伸進一座落地的軸承座
       pieces: [UPPER, LOWER].flatMap(([x, y]) => [
         { kind: "cylinder", radius: 0.1, length: 0.7, at: [x, y, -0.25] },
-        ...pedestal({ at: [x, y], z: -0.6, bore: 0.1, floor: -3.84, depth: 0.2 }),
+        ...pedestal({ at: [x, y], z: -0.6, bore: 0.1, floor: FLOOR, depth: 0.2 }),
       ]),
     },
   ],
-  driver: { part: "upper", type: "rotation", initial: START },
+  driver: { part: "upper", type: "rotation", initial: 0 },
   target: "lower",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
-    const { lower } = sectors(theta);
-    return { parts: { upper: { angle: theta }, lower: { angle: lower } }, readouts: [] };
+    const { lower, stage } = sectors(theta);
+    return {
+      parts: { upper: { angle: theta }, lower: { angle: lower } },
+      readouts: [{ label: "下軸轉速", value: `上軸的 ${ratioText(...stage)} 倍` }],
+    };
   },
 };

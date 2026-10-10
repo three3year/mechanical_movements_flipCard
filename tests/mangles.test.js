@@ -1062,12 +1062,70 @@ test("第 220 種:腕銷在開槽曲柄的槽內作動,離後者軸心的距離�
   close(steps.reduce((x, y) => x + y, 0), 2 * Math.PI, "開槽曲柄也轉一整圈", 1e-6);
 });
 
-test("第 223 種:兩對扇形輪流咬合,下軸一快一慢;上軸一圈時下軸也是一圈", () => {
-  const { K, SPAN_A } = m223.geometry;
-  const rate = (t) => (m223.sectors(t + 1e-4).lower - m223.sectors(t - 1e-4).lower) / 2e-4;
-  close(rate(SPAN_A / 2), -K, "大扇形帶小扇形:快", 1e-6);
-  close(rate(SPAN_A + 0.5), -1 / K, "小扇形帶大扇形:慢", 1e-6);
-  close(m223.sectors(2 * Math.PI).lower, -2 * Math.PI, "一圈對一圈", 1e-9);
+/** 第 223 種:下軸對上軸的轉速比(數值微分) */
+const rate223 = (t) => (m223.sectors(t + 1e-4).lower - m223.sectors(t - 1e-4).lower) / 2e-4;
+/** 第 223 種:軸轉到 angle 時,在世界方向 contact(兩軸連線上)的那一個扇形 */
+const sectorAt223 = (list, angle, contact) =>
+  list.find((s) => ((((contact - angle - s.span[0]) % TAU) + TAU) % TAU) < s.span[1] - s.span[0]);
+
+test("第 223 種:相對速度依扇形段各自的直徑而變化——照原圖每軸四個扇形,上軸一圈內下軸四種速度輪流,也轉一圈", () => {
+  // 507movements 動畫:上軸四個 90° 扇形,下軸的速度在上軸的 1/3、2/3、7/3、2/3 倍之間輪流(從原圖的姿勢起算)
+  [1 / 3, 2 / 3, 7 / 3, 2 / 3].forEach((k, i) => close(rate223((Math.PI / 2) * (i + 0.5)), -k, `第 ${i + 1} 段`, 1e-6));
+  close(m223.sectors(TAU).lower, -TAU, "一圈對一圈(扇形輪流接手必須的條件)", 1e-9);
+});
+
+test("第 223 種:扇形段配置於不同平面——每根軸相鄰的扇形在前後兩平面輪流,咬合的一對在同一平面", () => {
+  const { upper, lower } = m223.SECTORS;
+  for (const list of [upper, lower]) {
+    assert.equal(list.length, 4, "每根軸四個扇形");
+    list.forEach((s, i) => assert.notEqual(s.z, list[(i + 1) % 4].z, "相鄰的扇形不在同一平面"));
+  }
+  // 每一段由兩軸連線上的那對扇形咬合:同一平面,速度比 = 直徑比
+  for (let i = 0; i < 4; i++) {
+    const t = (Math.PI / 2) * (i + 0.5);
+    const up = sectorAt223(upper, t, -Math.PI / 2);
+    const low = sectorAt223(lower, m223.sectors(t).lower, Math.PI / 2);
+    assert.equal(up.z, low.z, `第 ${i + 1} 段咬合的一對在同一平面`);
+    close(-rate223(t), up.radius / low.radius, `第 ${i + 1} 段速度比 = 扇形直徑比`, 1e-6);
+  }
+});
+
+test("第 223 種:全程沒有扇形的齒互相穿入,咬合的一對真的咬著(下軸少轉半齒就穿入)", () => {
+  const { upper, lower, UPPER, LOWER } = m223.SECTORS;
+  const worst = (t, shift = 0) => {
+    const lw = m223.sectors(t).lower + shift;
+    let d = 0;
+    for (const u of upper)
+      for (const l of lower)
+        if (u.z === l.z) d = Math.max(d, penetrationDepth(placeOutline(u.shape.outline, UPPER, t), placeOutline(l.shape.outline, LOWER, lw)));
+    return d;
+  };
+  // 換對處(每 90°)前後加密取樣
+  const ts = [...sweep(TAU, 1440), ...[1, 2, 3, 4].flatMap((k) => sweep((k * Math.PI) / 2 + 0.05, 100, (k * Math.PI) / 2 - 0.05))];
+  for (const t of ts) assert.ok(worst(t) < 0.003, `上軸 ${t.toFixed(4)}:扇形的齒穿入 ${worst(t)}`);
+  for (let i = 0; i < 4; i++) {
+    const t = (Math.PI / 2) * (i + 0.5);
+    const low = sectorAt223(lower, m223.sectors(t).lower, Math.PI / 2);
+    assert.ok(worst(t, Math.PI / low.teeth) > 0.02, `第 ${i + 1} 段:下軸少轉半齒就穿入`);
+  }
+  // 換對處削低了幾個齒頂,仍要一直有齒推著下軸:下軸落後 3° 就穿入(換對處以外約 0.5°)
+  for (const t of sweep(TAU, 720)) assert.ok(worst(t, (3 * Math.PI) / 180) > 0.003, `上軸 ${t.toFixed(4)}:沒有齒推著下軸`);
+});
+
+test("第 223 種:換對時接手那對的第一齒對著齒槽", () => {
+  const { upper, lower, UPPER, LOWER } = m223.SECTORS;
+  for (let k = 0; k < 4; k++) {
+    // 第 k 段開頭再多轉一個齒距:接手的上扇形第一齒的中心在兩軸連線上,同平面的下扇形在那裡是齒槽
+    // (取節圓內 0.3 模數的一點:第一齒的齒頂可能削到節圓)
+    const t0 = (Math.PI / 2) * k;
+    const up = sectorAt223(upper, t0 + 1e-6, -Math.PI / 2);
+    const t = t0 + TAU / up.teeth;
+    const P = [UPPER[0], UPPER[1] - up.radius * (1 - 0.6 / up.teeth)];
+    assert.ok(pointInPolygon(P, placeOutline(up.shape.outline, UPPER, t)), `第 ${k + 1} 段:上扇形第一齒在兩軸連線上`);
+    const lw = m223.sectors(t).lower;
+    for (const l of lower.filter((s) => s.z === up.z))
+      assert.ok(!pointInPolygon(P, placeOutline(l.shape.outline, LOWER, lw)), `第 ${k + 1} 段:下扇形在節點上是齒槽`);
+  }
 });
 
 test("第 224 種:轉動小齒輪 d,輪 c 經曲線槽把凸柱往外或往內推,皮帶輪變大或變小", () => {
