@@ -6,7 +6,8 @@
 // 齒輪只能往放行的方向轉,往回只能轉到爪落定的位置;兩支都放下(原圖畫的樣子)時兩個方向都擋住。主動件是齒輪。
 // 推斷:原文只有一句;爪的作用方式、彈簧與齒數依原圖;撐銷、樞軸銷、彈簧座、托架(兩根立柱落到底板)與齒輪軸的支座。
 // 接觸(由接觸算,共用 pawl-drive.js):彈簧把爪尖往齒輪壓;齒把爪頂起多高、何時越過齒尖,由外形相碰算出,
-// 越過之後爪從當下的速度起加速彈回、落進下一個齒間。擋住的位置是爪落定的位置(落下時齒輪只再轉了極小的一段)。
+// 越過之後爪從當下的速度起加速彈回、落進下一個齒間。擋住的位置是爪落到齒間最深處的位置(端面貼著剛越過的那一齒);
+// 爪正在落下時往回轉,當下就擋住。兩支都放下時兩支爪在同一個齒輪轉角落到底,兩個擋止處重合,齒輪轉不動。
 import { TAU, deg, rot2 } from "./kit.js";
 import { shape, circle, gearProfile, gearSize, toothOutline } from "./shapes.js";
 import { resample } from "./noncircular.js";
@@ -20,10 +21,13 @@ const TIP = R + addendum;
 const ROOT = R - dedendum;
 const PITCH = TAU / N;
 // 擋爪:樞軸、爪尖落在哪一個齒間(齒輪轉角 0 時的方位)、端面朝哪一側(沿齒輪逆時針為 +1)、彈簧把爪往哪邊壓、
-// 擋住齒輪往哪個方向轉(逆時針 +1)
+// 擋住齒輪往哪個方向轉(逆時針 +1)。
+// 右爪整組(樞軸與齒間)繞齒輪中心轉 RIGHT_SHIFT:讓兩支爪在同一個齒輪轉角落到齒間最深處,兩支都放下時兩個擋止處重合
+// (不轉的話兩支爪落到底的齒輪轉角差約 2.2°,兩支都放下時總有一支停在半空)。值由兩支爪各自落到底的位置量出
+const RIGHT_SHIFT = -0.0376;
 const PAWLS = {
   left: { pivot: [-2.45, 0.6], gap: 4.5 * PITCH, face: -1, into: -1, blocks: 1 },
-  right: { pivot: [3.4, 0.55], gap: 2.5 * PITCH, face: 1, into: 1, blocks: -1 },
+  right: { pivot: rot2([3.4, 0.55], RIGHT_SHIFT), gap: 2.5 * PITCH + RIGHT_SHIFT, face: 1, into: 1, blocks: -1 },
 };
 
 // 齒間兩側的齒腹(齒輪轉角 0、齒間中線為 0 的局部座標):沿中線的距離 x 處,齒腹離中線多遠
@@ -76,22 +80,34 @@ const DRIVES = Object.fromEntries(
 );
 /** 爪 which 放下時,齒輪轉角 theta 下的轉角(齒輪先前往它放行的方向轉過來) */
 const downAngle = (which, theta) => DRIVES[which].at(-PAWLS[which].blocks * theta).angles[which];
-// 爪落定的位置(爪的主動量,一個齒距內):轉角驟變(落下)之後,第一個不再往下落的取樣
-const LANDING = Object.fromEntries(
-  Object.keys(PAWLS).map((w) => {
+// 爪越過齒尖後落下的一段(爪的主動量,一個齒距內):FALL 是開始快速落下的取樣(落得比最快時的兩成還快),
+// LANDING 是落到齒間最深處(端面靠著剛越過的那一齒;之後被下一齒的斜面頂起)
+const [FALL, LANDING] = (() => {
+  const fall = {};
+  const landing = {};
+  for (const w of Object.keys(PAWLS)) {
     const n = 720;
-    const at = (i) => PAWLS[w].into * DRIVES[w].at((PITCH * i) / n).angles[w];
-    let [start, best] = [0, 0];
+    const at = (i) => PAWLS[w].into * DRIVES[w].at((PITCH * i) / n).angles[w]; // 越大爪越深
+    let [start, best] = [1, 0];
     for (let i = 1; i <= n; i++) if (at(i) - at(i - 1) > best) [best, start] = [at(i) - at(i - 1), i];
     let i = start;
-    while (at(i + 1) - at(i) > 1e-7 && i < start + n / 4) i++;
-    return [w, ((PITCH * i) / n) % PITCH];
-  }),
-);
-/** 爪 which 擋住齒輪的轉角:從 theta 往它擋住的方向轉,碰到的第一個爪落定的位置 */
+    while (at(i - 1) - at(i - 2) > 0.2 * best) i--;
+    fall[w] = ((PITCH * (i - 1)) / n) % PITCH;
+    i = start;
+    while (at(i + 1) - at(i) > 1e-7) i++;
+    landing[w] = ((PITCH * i) / n) % PITCH;
+  }
+  return [fall, landing];
+})();
+/**
+ * 爪 which 擋住齒輪的轉角:從 theta 往它擋住的方向轉,碰到的第一個爪落到底的位置。爪正在落下(越過齒尖之後、
+ * 落到底之前)時,端面已經對著剛越過的那一齒,往回就撞上,所以擋在當下的轉角(往回轉不會讓爪倒著飛回齒尖上)
+ */
 export function stopAt(which, theta) {
   const { blocks } = PAWLS[which];
   const t = -blocks * theta; // 爪的主動量;往擋住的方向轉 = t 減少
+  const phase = (x) => x - Math.floor(x / PITCH) * PITCH;
+  if (phase(t - FALL[which]) <= phase(LANDING[which] - FALL[which]) + 1e-12) return theta;
   const last = LANDING[which] + Math.floor((t - LANDING[which]) / PITCH + 1e-9) * PITCH;
   return -blocks * last;
 }

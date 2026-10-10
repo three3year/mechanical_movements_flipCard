@@ -8,7 +8,7 @@
 // 推斷:兩個擋止的樞軸銷與托架(立柱落在連到輪軸承座的底板上)、滾子的短銷、輪軸與後面的軸承座(原圖只畫輪轂)。
 import { TAU, deg, polar, rot2 } from "./kit.js";
 import { circle, stadium, shape } from "./shapes.js";
-import { circlePolygon, lastStop } from "./contact.js";
+import { circlePolygon, lastStop, placeOutline, polygonsOverlap } from "./contact.js";
 import { pawlDrive } from "./pawl-drive.js";
 import { pedestal } from "./supports.js";
 
@@ -60,9 +60,10 @@ const headAt = (w) => {
   const [x, y] = rot2(LEVER.head, leverAngle(w));
   return [LEVER.pivot[0] + x, LEVER.pivot[1] + y];
 };
+// 滾子靠在銷上:用接觸算時同樣的外形(端頭與銷的多邊形),槓桿再往下壓 0.3° 就和那根銷相交
+const touching = (w, pin) => polygonsOverlap(placeOutline(LEVER_HEAD, LEVER.pivot, leverAngle(w) - deg(0.3)), circlePolygon(pin, WHEEL.pin));
 const ROLL = (() => {
   const n = 720;
-  const touching = 0.012; // 外形以多邊形算接觸,兩個圓的中心距可能比半徑和小一點
   const table = [0];
   for (let i = 1; i <= n; i++) {
     const [w0, w1] = [(PERIOD * (i - 1)) / n, (PERIOD * i) / n];
@@ -73,7 +74,7 @@ const ROLL = (() => {
     const pin = pins.reduce((a, b) => (Math.hypot(b[0] - c[0], b[1] - c[1]) < Math.hypot(a[0] - c[0], a[1] - c[1]) ? b : a));
     const d = Math.hypot(pin[0] - c[0], pin[1] - c[1]);
     let turn = 0;
-    if (d - LEVER.headRadius - WHEEL.pin < touching) {
+    if (touching(wm, pin)) {
       const nrm = [(pin[0] - c[0]) / d, (pin[1] - c[1]) / d];
       const t = [-nrm[1], nrm[0]];
       const q = [c[0] + LEVER.headRadius * nrm[0], c[1] + LEVER.headRadius * nrm[1]];
