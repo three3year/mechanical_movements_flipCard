@@ -33,6 +33,9 @@ import * as m215 from "../models/fig215.js";
 import { pointInPolygon } from "../models/contact.js";
 import { signedAngle } from "../models/kit.js";
 import * as m202 from "../models/fig202.js";
+import { edgeDistance, pointInPolygon } from "../models/contact.js";
+import { gearProfile, gearSize } from "../models/shapes.js";
+import { rot2 } from "../models/kit.js";
 import * as m208 from "../models/fig208.js";
 import * as m216 from "../models/fig216.js";
 import { woolComb, STEP as WOOL_STEP, PHASE as WOOL_PHASE, geometry as woolGeometry } from "../models/wool-comb.js";
@@ -160,6 +163,23 @@ test("第 196 種:小齒輪 B 等速轉,承載輪 A 的搖臂不規則地擺動,
   for (const s of states.slice(0, 50)) assert.ok(dist(s.center, [0, 0, 0]) > RB + 0.6, "A 在 B 上方");
 });
 
+test("第 196 種:輪 A 裝在搖臂的末端——A 的軸穿過 A、伸到 A 的背面,前端穿過搖臂端的軸眼", () => {
+  const def = m196.default;
+  const wheel = def.parts.find((p) => p.id === "wheelA");
+  const arm = def.parts.find((p) => p.id === "arm");
+  const axle = (wheel.pieces ?? []).find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9 && (p.axis ?? [0, 0, 1])[2] === 1);
+  assert.ok(axle, "A 的中心有軸");
+  const [back, front] = [axle.at[2] - axle.length / 2, axle.at[2] + axle.length / 2];
+  assert.ok(back < -wheel.thickness / 2, "軸伸到 A 的背面");
+  for (const v of sweep(40, 160)) {
+    const pose = def.pose(v).parts;
+    close(pose.arm.from[0], pose.wheelA.position[0], `主動量 ${v.toFixed(2)}:搖臂端在 A 的軸線上(x)`, 1e-9);
+    close(pose.arm.from[1], pose.wheelA.position[1], `主動量 ${v.toFixed(2)}:搖臂端在 A 的軸線上(y)`, 1e-9);
+    const z = pose.arm.from[2];
+    assert.ok(back <= z - arm.thickness / 2 && front >= z + arm.thickness / 2, `主動量 ${v.toFixed(2)}:A 的軸穿過搖臂端的軸眼`);
+  }
+});
+
 test("第 201 種:小齒輪(由不規則齒輪帶動)使水平臂變速擺動、桿 A 變速往復", () => {
   const rods = sweep(-2 * Math.PI, 600).map((a) => m201.motion(a).rodA);
   assert.ok(Math.max(...rods) - Math.min(...rods) > 0.3, "桿 A 往復");
@@ -167,6 +187,22 @@ test("第 201 種:小齒輪(由不規則齒輪帶動)使水平臂變速擺動、
   assert.ok(spread(rods) > 3, "變速");
   const pinions = sweep(-2 * Math.PI, 600).map((a) => m201.motion(a).pinion);
   for (let i = 1; i < pinions.length; i++) assert.ok(pinions[i] > pinions[i - 1], "小齒輪連續朝同一方向轉");
+});
+
+test("第 201 種:桿 A 整個行程都穿過兩個導套,升到最高時下端仍伸出下導套", () => {
+  const def = m201.default;
+  const rod = def.parts.find((p) => p.id === "rodA");
+  const body = rod.pieces.find((p) => p.kind === "box" && p.size[1] > 1); // 桿身
+  const guides = def.parts.find((p) => p.id === "frame").pieces.filter((p) => p.kind === "cylinder" && p.axis?.[1] === 1);
+  assert.ok(guides.length >= 2, "桿 A 有上下兩個導套");
+  for (const v of sweep(-2 * Math.PI, 360)) {
+    const y = def.pose(v).parts.rodA.position[1] + body.at[1];
+    const [lo, hi] = [y - body.size[1] / 2, y + body.size[1] / 2];
+    for (const g of guides) {
+      const [gLo, gHi] = [g.at[1] - g.length / 2, g.at[1] + g.length / 2];
+      assert.ok(lo < gLo - g.length && hi > gHi + g.length, `主動量 ${v.toFixed(2)}:桿身(${lo.toFixed(2)}~${hi.toFixed(2)})沒有整段穿過 y ${g.at[1]} 的導套`);
+    }
+  }
 });
 
 test("第 203 種:曲面開槽臂規則地擺動,直臂得到變速的擺動", () => {
@@ -505,6 +541,65 @@ test("第 215 種:「該擋止裝置的其他變形」:星形輪那一格凸弧�
 test("第 202 種:沙漏形蝸桿每轉一圈,蝸輪轉過一齒", () => {
   const { N } = m202.geometry;
   close(m202.wheelAngle(2 * Math.PI) - m202.wheelAngle(0), -(2 * Math.PI) / N, "一圈一齒", 1e-12);
+});
+
+/**
+ * 第 202 種:蝸桿螺紋(tube 附件,沿蝸桿局部 z = 世界 x)在蝸輪中央平面 z = 0、朝蝸輪那一側的截面,
+ * 各為 { center(世界 xy), r }。蝸桿的 axis 是 X:局部 (x, y, z) 轉到世界 (z, y, −x)。
+ */
+function wormSection202(theta) {
+  const def = m202.default;
+  const worm = def.parts.find((p) => p.id === "worm");
+  const angle = def.pose(theta).parts.worm.angle;
+  const hits = [];
+  for (const tube of worm.pieces.filter((p) => p.kind === "tube")) {
+    const world = tube.points.map(([lx, ly, lz]) => {
+      const [x, y] = rot2([lx, ly], angle);
+      return [worm.center[0] + lz, worm.center[1] + y, worm.center[2] - x];
+    });
+    for (let i = 1; i < world.length; i++) {
+      const [a, b] = [world[i - 1], world[i]];
+      if (a[2] * b[2] > 0 || a[2] === b[2] || a[1] < worm.center[1]) continue;
+      const f = a[2] / (a[2] - b[2]);
+      hits.push({ center: [a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1])], r: tube.radius });
+    }
+  }
+  return hits;
+}
+
+test("第 202 種:蝸桿的螺紋是螺旋,蝸輪的齒落在螺紋槽裡——蝸桿轉一圈中螺紋不穿入齒、貼著齒側推齒", () => {
+  const def = m202.default;
+  const wheel = def.parts.find((p) => p.id === "wheel");
+  const local = gearProfile(wheel);
+  for (const theta of sweep(2 * Math.PI, 72)) {
+    const poly = local.map((p) => rot2(p, def.pose(theta).parts.wheel.angle));
+    const ridges = wormSection202(theta);
+    assert.ok(ridges.length > 0, "蝸桿有螺紋");
+    let snug = Infinity;
+    for (const { center, r } of ridges) {
+      assert.ok(!pointInPolygon(center, poly), `蝸桿轉 ${theta.toFixed(2)}:螺紋在齒裡`);
+      const clear = edgeDistance(center, poly) - r;
+      assert.ok(clear > -1e-3, `蝸桿轉 ${theta.toFixed(2)}:螺紋穿入齒 ${(-clear).toFixed(3)}`);
+      snug = Math.min(snug, clear);
+    }
+    assert.ok(snug < 0.02, `蝸桿轉 ${theta.toFixed(2)}:螺紋離齒側 ${snug.toFixed(3)},沒有貼著齒`);
+  }
+});
+
+test("第 202 種:沙漏形蝸桿包住蝸輪的圓周,同時與好幾個齒咬合(穩定、能傳大力)", () => {
+  const def = m202.default;
+  const wheel = def.parts.find((p) => p.id === "wheel");
+  const { addendum, pitch } = gearSize(wheel.radius, wheel.teeth);
+  for (const theta of sweep(2 * Math.PI, 12)) {
+    const a = def.pose(theta).parts.wheel.angle;
+    // 伸進齒頂圓以內的螺紋,各在哪一個齒槽(以齒槽中心的角度編號)
+    const gaps = new Set(
+      wormSection202(theta)
+        .filter(({ center, r }) => Math.hypot(center[0], center[1]) - r < wheel.radius + addendum - 0.02)
+        .map(({ center }) => Math.round((Math.atan2(center[1], center[0]) - a) / pitch - 0.5)),
+    );
+    assert.ok(gaps.size >= 5, `蝸桿轉 ${theta.toFixed(2)}:只咬到 ${gaps.size} 個齒槽`);
+  }
 });
 
 test("第 208 種:開槽小齒輪移到三圈銷中的任一圈,得到三種速度(與那一圈的銷數成正比)", () => {

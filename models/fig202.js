@@ -1,32 +1,53 @@
 // 第 202 種:蝸桿(無端螺桿)與蝸輪,是第 31 種的變形(原書誤作第 30 種,依 507movements 更正),用在需要穩定或極大力量的地方。蝸桿做成中間細、兩端粗的
 // 沙漏形,沿著蝸輪的圓周包住它,同時與好幾個齒咬合,所以穩固、能傳大力。蝸桿每轉一圈,蝸輪轉過一齒。主動件是蝸桿。
-// 推斷:螺紋以一圈圈的環表示(原圖的直線紋);齒數依原圖約 48。
+// 推斷:齒數依原圖約 48;螺紋的剖面(三條疊起的凸條,做成梯形的螺牙)。
+// 沙漏形蝸桿的螺紋是繞蝸輪圓周的螺旋(原圖蝸桿上的斜紋):蝸桿轉 φ,螺紋在蝸輪中央平面上沿蝸輪圓周走 φ / N,
+// 所以每一段螺紋都對著蝸輪的一個齒槽,轉起來螺紋往一側走、推著齒槽裡的齒。
 import { TAU, X } from "./kit.js";
 import { pedestal } from "./supports.js";
+import { gearSize } from "./shapes.js";
 
 const N = 48;
 const RW = 2.3;
-const PITCH = (TAU * RW) / N;
 const THROAT = 0.5;
 const C = RW + THROAT; // 兩軸距離
 const HALF = 1.3; // 蝸桿半長
-const DEPTH = 0.12;
 
 /** 蝸桿轉 theta(繞 +x):蝸輪的轉角(每轉一圈一齒) */
 export const wheelAngle = (theta) => -theta / N;
 export const geometry = { N };
 
-// 沙漏形蝸桿:半徑 = 中心距 − 蝸輪在該處的半徑,再加上鋸齒形的螺紋
-const profile = [[0, -HALF - 0.01]];
-const steps = Math.round((2 * HALF) / PITCH) * 8;
-for (let i = 0; i <= steps; i++) {
-  const z = -HALF + (2 * HALF * i) / steps;
-  const base = C - Math.sqrt(RW * RW - z * z);
-  const u = (((z + HALF) / PITCH) % 1 + 1) % 1;
-  const ridge = u < 0.5 ? u * 2 : (1 - u) * 2;
-  profile.push([base + DEPTH * (ridge - 0.5), z]);
+// 以蝸輪中心為圓心、半徑 ρ 的圓繞蝸桿軸轉一圈得到的環面:在蝸輪角 ψ(從正下方量起,往 +x 為正)處,
+// 離蝸桿軸 C − ρ·cos ψ、沿蝸桿軸 ρ·sin ψ。蝸桿的芯是 ρ 比齒頂圓大一點的環面(沙漏形),
+// 螺紋是三條沿螺旋 ψ = φ / N 的凸條(φ 是蝸桿上的角),由芯往蝸輪伸進齒槽:外寬內窄,貼著齒側
+const { addendum, dedendum } = gearSize(RW, N);
+const CORE = RW + addendum + 0.035; // 芯:離齒頂留一點間隙
+const RIDGES = [
+  { rho: CORE - 0.01, radius: 0.07 },
+  { rho: RW + 0.03, radius: 0.08 },
+  { rho: RW - dedendum + 0.065, radius: 0.045 }, // 螺牙頂:離齒根留一點間隙
+];
+const toWorm = (rho, psi) => [C - rho * Math.cos(psi), rho * Math.sin(psi)]; // [離蝸桿軸, 沿蝸桿軸]
+
+const profile = [[0, -HALF]];
+for (let i = 0; i <= 64; i++) {
+  const psi = Math.asin(HALF / CORE) * (2 * i / 64 - 1);
+  const [r, z] = toWorm(CORE, psi);
+  profile.push([r, z]);
 }
-profile.push([0, HALF + 0.01]);
+profile.push([0, HALF]);
+
+// 蝸桿局部座標:z 沿蝸桿軸(世界 x),φ = 0 朝蝸輪(局部 +y);φ 增加的方向就是蝸桿轉動的正向
+const STEP = TAU / 24;
+const thread = ({ rho, radius }) => {
+  const end = N * Math.asin((HALF - radius) / rho);
+  const points = [];
+  for (let phi = -end; phi <= end + 1e-9; phi += STEP) {
+    const [r, z] = toWorm(rho, phi / N);
+    points.push([-r * Math.sin(phi), r * Math.cos(phi), z]);
+  }
+  return { kind: "tube", points, radius };
+};
 
 const FLOOR = -C - 1.1; // 蝸桿(沙漏形)最低處之下
 export default {
@@ -38,9 +59,12 @@ export default {
       kind: "group",
       center: [0, -C, 0],
       axis: X,
-      spin: 0.9,
+      // 轉向箭頭繞在右邊露出的軸上(放在蝸桿中段會和螺紋疊在一起)
+      spin: 0.3,
+      spinOffset: 1.85,
       pieces: [
         { kind: "lathe", profile },
+        ...RIDGES.map(thread),
         { kind: "cylinder", radius: 0.16, length: 5.2, mark: true },
       ],
     },
@@ -63,9 +87,7 @@ export default {
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
-    return { parts: { worm: { angle: theta }, wheel: { angle: Math.PI / N / 2 + wheelAngle(theta) } }, readouts: [] };
+    // 蝸桿轉角 0 時,螺紋在正下方的齒槽裡(齒 i 在局部角 i·2π/N,正下方差半個齒距)
+    return { parts: { worm: { angle: theta }, wheel: { angle: Math.PI / N + wheelAngle(theta) } }, readouts: [] };
   },
-  waivers: [
-    { check: "interference", parts: ["wheel", "worm"], reason: "簡化齒形:沙漏形蝸桿畫成旋轉體(沒有刻出螺紋的齒槽),蝸輪的齒伸進它的表面 0.13;實物的齒是落在螺紋槽裡" },
-  ],
 };

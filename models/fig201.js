@@ -55,7 +55,8 @@ export default {
         { kind: "cylinder", radius: 0.55, inner: 0.15, length: 0.3 },
       ],
     },
-    { id: "rodA", kind: "group", label: "A", labelOffset: [-0.3, -1.5, 0], pieces: [{ kind: "box", size: [0.14, 1.8, 0.14], at: [0, -1.0, 0.35] }, { kind: "box", size: [0.3, 0.3, 0.3], at: [0, 0, 0.35] }, { kind: "cylinder", radius: 0.15, length: 0.5, at: [0, 0, 0.4] }] },
+    // 桿身往下伸得夠長,升到最高時下端仍穿出下導套
+    { id: "rodA", kind: "group", label: "A", labelOffset: [-0.3, -1.5, 0], pieces: [{ kind: "box", size: [0.14, 2.1, 0.14], at: [0, -1.15, 0.35] }, { kind: "box", size: [0.3, 0.3, 0.3], at: [0, 0, 0.35] }, { kind: "cylinder", radius: 0.15, length: 0.5, at: [0, 0, 0.4] }] },
     {
       id: "frame",
       kind: "group",

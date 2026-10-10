@@ -34,10 +34,12 @@ const bevel = (id, g, extra = {}) => ({ id, kind: "gear", center: g.center, axis
 export default {
   figure: 200,
   parts: [
-    bevel("drive", drive, { pieces: [{ kind: "cylinder", radius: 0.1, length: 3.4, at: [0, 0, -0.9] }] }),
+    // 轉向箭頭(spin、spinOffset 沿各輪的軸):放在齒的外側、不被另兩個輪擋住——上輪在輪背上方、下輪在輪背下方、
+    // 驅動輪繞在驅動軸往外伸的那一段
+    bevel("drive", drive, { spin: 0.3, spinOffset: -1.4, pieces: [{ kind: "cylinder", radius: 0.1, length: 3.4, at: [0, 0, -0.9] }] }),
     // 上方大輪裝在套筒上,下方小輪固定在軸上
-    bevel("upper", upper, { pieces: [{ kind: "cylinder", radius: 0.3, length: 0.9, at: [0, 0, -0.65] }] }),
-    bevel("lower", lower, { pieces: [{ kind: "cylinder", radius: 0.14, length: 5.0, at: [0, 0, 1.6] }] }),
+    bevel("upper", upper, { spin: 1.2, spinOffset: -0.35, pieces: [{ kind: "cylinder", radius: 0.3, length: 0.9, at: [0, 0, -0.65] }] }),
+    bevel("lower", lower, { spin: 1.13, spinOffset: -0.39, pieces: [{ kind: "cylinder", radius: 0.14, length: 5.0, at: [0, 0, 1.6] }] }),
     {
       id: "frame",
       kind: "group",
