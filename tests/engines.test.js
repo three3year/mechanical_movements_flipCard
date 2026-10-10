@@ -15,7 +15,7 @@ import fig173, { traverse as traverse173, tappetContact as tappet173, tappetTeet
 import { clamp as clamp174, nose as nose174, grip as grip174 } from "../models/fig174.js";
 import { slotting as slotting178, crankLength as crankLength178 } from "../models/fig178.js";
 import { clamp as clamp180, nose as nose180, grip as grip180 } from "../models/fig180.js";
-import { screwClamp as clamp190 } from "../models/fig190.js";
+import { screwClamp as clamp190, FOOT_BLOCK as FOOT190, BENCH as BENCH190, HOOK as HOOK190, POST_LAYER as POST190, SCREW as SCREW190, TINES as TINES190 } from "../models/fig190.js";
 import { rot2 } from "../models/kit.js";
 import { coupling, grooveCenter, ARM as ARM176, FLANGE as FLANGE176, GROOVE as GROOVE176, WRIST as WRIST176 } from "../models/uncoupling.js";
 import { cornish, crossing, valves, ANGLES as CORNISH, TAPPET, SPAN as SPAN181 } from "../models/cornish-gear.js";
@@ -452,6 +452,44 @@ test("第 190 種:轉動手柄,螺桿往上頂住槓桿,支點另一側的壓腳
   assert.ok(tight.lift < loose.lift, "壓腳隨之下降");
   close(tight.foot[1] - 0.45, -0.45, "旋緊時壓腳底面貼著木塊頂面", 1e-9);
   assert.ok(tight.foot[0] < 0, "壓腳在支點另一側(左),螺桿在右");
+});
+
+const shiftY = (poly, dy) => poly.map(([x, y]) => [x, y + dy]);
+
+test("第 190 種:「螺桿往上頂住壓桿」——旋緊時肩頂面貼著叉齒底面,螺桿再升一點就穿入叉齒", () => {
+  const { tines, shoulder } = clamp190(0);
+  assert.ok(SCREW190.shoulder > TINES190.z[0] + 0.02, "肩的半徑超過叉縫的一半,伸到叉齒底下(和叉齒在同一個深度)");
+  assert.ok(!polygonsOverlap(tines, shoulder), "肩不穿入叉齒");
+  assert.ok(polygonsOverlap(tines, shiftY(shoulder, 0.005)), "肩頂面和叉齒底面的間隙接近 0");
+});
+
+test("第 190 種:旋緊、放鬆的全程叉齒都不穿入肩與軸環;放鬆時軸環把右臂往下帶,壓腳離開木塊", () => {
+  for (const a of sweep(-6 * Math.PI, 240)) {
+    const c = clamp190(a);
+    assert.equal(penetrationDepth(c.tines, c.shoulder), 0, `叉齒不穿入肩(${a.toFixed(2)})`);
+    assert.equal(penetrationDepth(c.tines, c.collar), 0, `叉齒不穿入軸環(${a.toFixed(2)})`);
+  }
+  const loose = clamp190(-6 * Math.PI);
+  assert.ok(SCREW190.collar > TINES190.z[0] + 0.02, "軸環的半徑超過叉縫的一半,蓋在叉齒上面");
+  assert.ok(!polygonsOverlap(loose.tines, loose.collar), "放到底:軸環不穿入叉齒");
+  assert.ok(polygonsOverlap(loose.tines, shiftY(loose.collar, -0.005)), "放到底:軸環底面壓著叉齒頂面");
+  assert.ok(loose.lift > 0.1, `放到底:壓腳離開木塊(升起 ${loose.lift.toFixed(3)})`);
+});
+
+test("第 190 種:螺桿旋在支柱的腳座裡——全程下端都在腳座裡,沒有伸進台面", () => {
+  assert.ok(FOOT190.x[0] < SCREW190.x - SCREW190.r && SCREW190.x + SCREW190.r < FOOT190.x[1], "螺桿在腳座的寬度內");
+  assert.ok(FOOT190.z[0] < -SCREW190.r && SCREW190.r < FOOT190.z[1], "腳座和螺桿在同一層");
+  for (const a of sweep(-6 * Math.PI, 60)) {
+    const { screwEnd } = clamp190(a);
+    assert.ok(screwEnd >= BENCH190.top - 1e-9, `下端沒有伸進台面(${screwEnd.toFixed(3)})`);
+    assert.ok(screwEnd < FOOT190.y[1] - 0.1, `下端旋進腳座裡(${screwEnd.toFixed(3)})`);
+  }
+  close(FOOT190.y[0], BENCH190.top, "腳座坐在台面上", 1e-9);
+});
+
+test("第 190 種:支柱穿過台面,下端的鉤貼著台面底面;柄和支柱板在同一層", () => {
+  close(HOOK190.top, BENCH190.bottom, "鉤貼著台面底面", 1e-9);
+  assert.ok(POST190.z[0] <= HOOK190.z[0] && HOOK190.z[1] <= POST190.z[1], "柄在支柱板的深度範圍內");
 });
 
 test("第 176、177 種:溝槽在第 176 種位置時腕銷帶動曲柄;轉到第 177 種位置時腕銷穿過溝槽、曲柄不動", () => {
