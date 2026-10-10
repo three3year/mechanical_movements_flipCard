@@ -169,24 +169,98 @@ test("第 270 種:皮帶輪的抗摩擦軸承:滾子在不動的軸與輪孔之�
 });
 
 test("第 247 種:頂桿撞到海底時被相對地推上去,把卡榫從錘下方抽出,錘脫落,桿不帶錘被拉起", () => {
-  const { SEA, BALL, REST } = m247.geometry;
+  const { SEA, REST, REST_ANGLE } = m247.geometry;
   const lowering = m247.sounding(0.2);
   assert.ok(lowering.attached && lowering.push === 0, "放下途中錘掛在桿上,頂桿沒被推");
   const pushed = m247.sounding(0.42);
-  assert.ok(pushed.push > 0 && pushed.catchAngle < 0, "觸底後頂桿被推上,卡榫轉開");
+  assert.ok(pushed.push > 0 && pushed.catchAngle < REST_ANGLE, "觸底後頂桿被推上,卡榫轉開");
   const fallen = m247.sounding(0.55);
-  close(fallen.weight - BALL, SEA, "錘落在海底", 1e-9);
+  close(Math.min(...m247.section(0.55).weight.flat().map(([, y]) => y)), SEA, "錘落在海底", 1e-9);
   const raised = m247.sounding(0.88);
   assert.ok(raised.rod > fallen.weight + 2, "桿被拉起");
   close(raised.weight, REST, "錘留在海底", 1e-9);
-  // 由接觸算:托腳退進錘孔以內的那一刻錘才脫落,之後加速落下
-  const { T_RELEASE, footReach, HOLE } = m247.geometry;
+  // 由接觸算:托腳退進錘孔以內(卡榫背面那一層的孔)的那一刻錘才脫落,之後加速落下
+  const { T_RELEASE, footReach, HOLE_AT_CATCH } = m247.geometry;
   const before = m247.sounding(T_RELEASE - 0.005);
-  assert.ok(before.attached && footReach(before.catchAngle) >= HOLE, "托腳還在錘孔外時錘掛著");
+  assert.ok(before.attached && footReach(before.catchAngle) >= HOLE_AT_CATCH, "托腳還在錘孔外時錘掛著");
   const after = m247.sounding(T_RELEASE + 0.001);
-  assert.ok(!after.attached && footReach(after.catchAngle) < HOLE, "托腳退進錘孔,錘脫落");
+  assert.ok(!after.attached && footReach(after.catchAngle) < HOLE_AT_CATCH, "托腳退進錘孔,錘脫落");
   const w = [0, 1, 2].map((k) => m247.sounding(T_RELEASE + 0.01 * k).weight);
   assert.ok(w[1] - w[2] > w[0] - w[1], "錘加速落下");
+});
+
+// 第 247 種的剖面(桿、錘、卡榫、頂桿在剖切面上的外形)兩組之間最深的穿入、是否相交
+import { polygonsOverlap } from "../models/contact.js";
+const deepest247 = (a, b) => Math.max(0, ...a.flatMap((x) => b.map((y) => penetrationDepth(x, y))));
+const touches247 = (a, b) => a.some((x) => b.some((y) => polygonsOverlap(x, y)));
+
+test("第 247 種:自桿底部凸出的頂桿穿過桿底的孔、在桿下段的槽裡滑動,撞到海底被推上時,上端頂著卡榫把它轉開", () => {
+  const { SEA, ROD_BOTTOM, BLOCK_TOP, REST_ANGLE, T_RELEASE, P } = m247.geometry;
+  for (const p of sweep(0.999, 300)) {
+    const s = m247.sounding(p);
+    const sec = m247.section(p);
+    const ys = sec.plunger.flat().map(([, y]) => y);
+    // 一根直桿:上端在槽裡(高過底塊頂面),下段從桿底伸出
+    assert.ok(Math.max(...ys) > s.rod + BLOCK_TOP && Math.min(...ys) < s.rod + ROD_BOTTOM, `進程 ${p}:頂桿要穿過桿底的孔`);
+    // 在孔與槽裡滑:不穿進桿的左壁與底塊,也不穿進海底
+    assert.ok(deepest247(sec.plunger, sec.rod) < 1e-3, `進程 ${p}:頂桿穿進桿`);
+    assert.ok(Math.min(...ys) > SEA - 1e-9, `進程 ${p}:頂桿穿進海底`);
+  }
+  // 觸底:腳底貼著海底;卡榫轉開是頂桿上端頂的——兩者相碰,卡榫少轉一點就會被頂桿穿入
+  const p = (P.touch + T_RELEASE) / 2 + 0.01;
+  const s = m247.sounding(p);
+  assert.ok(s.push > 0 && s.catchAngle < REST_ANGLE - 0.02, "觸底後頂桿被推上,卡榫轉開");
+  const sec = m247.section(p);
+  close(Math.min(...sec.plunger.flat().map(([, y]) => y)), SEA, "頂桿的腳底貼著海底", 1e-9);
+  assert.ok(deepest247(sec.catch, sec.plunger) < 1e-3, "頂桿不穿進卡榫");
+  const less = m247.section(p, { catchAngle: s.catchAngle + 0.01 });
+  assert.ok(touches247(less.catch, less.plunger), "卡榫少轉一點就會被頂桿穿入:是頂桿推開的");
+});
+
+test("第 247 種:卡榫用銷裝在桿下段的槽裡,托腳和錘同一層、從錘的下方托住;收回時托腳被錘孔壁壓回,出了錘頂才張開", () => {
+  const def = m247.default;
+  const { T_RELEASE, REST_ANGLE, HOLE, footReach, P } = m247.geometry;
+  const pose = def.pose(0.2).parts;
+  const catchPart = def.parts.find((q) => q.id === "catch");
+  const weight = def.parts.find((q) => q.id === "weight");
+  // 錘只畫後半(z ≤ 0,剖面);卡榫的厚度要跨進這一半,托腳才托得到錘
+  const z = pose.catch.position[2];
+  assert.ok(weight.sweep === Math.PI && z - catchPart.thickness / 2 < -0.04, "卡榫和錘在同一層");
+  // 卡榫裝在桿上的銷:銷在卡榫的樞軸上,長度跨過卡榫的厚度
+  const pin = def.parts.find((q) => q.id === "rod").pieces.find((q) => q.kind === "cylinder");
+  close(pin.at[0], pose.catch.position[0] - pose.rod.position[0], "銷在卡榫樞軸上(x)", 1e-9);
+  close(pin.at[1], pose.catch.position[1] - pose.rod.position[1], "銷在卡榫樞軸上(y)", 1e-9);
+  assert.ok(pin.at[2] - pin.length / 2 < z - catchPart.thickness / 2 && pin.at[2] + pin.length / 2 > z + catchPart.thickness / 2, "銷穿過卡榫");
+  // 托住:頂桿觸底前,錘靠在托腳上(不穿入,錘再低一點就會穿進托腳)
+  for (const p of [0.05, 0.2, T_RELEASE - 0.002]) {
+    const s = m247.sounding(p);
+    const sec = m247.section(p);
+    assert.ok(s.attached, `進程 ${p}:錘還掛著`);
+    assert.ok(deepest247(sec.catch, sec.weight) < 1e-3, `進程 ${p}:托腳不穿進錘`);
+    const lower = m247.section(p, { weight: s.weight - 0.01 });
+    assert.ok(touches247(lower.catch, lower.weight), `進程 ${p}:錘靠在托腳上`);
+  }
+  // 全程:卡榫不穿進錘,也不穿進桿(槽的左壁、底塊、槽頂)
+  for (const p of sweep(0.999, 400)) {
+    const sec = m247.section(p);
+    assert.ok(deepest247(sec.catch, sec.weight) < 1e-3, `進程 ${p}:卡榫穿進錘`);
+    assert.ok(deepest247(sec.catch, sec.rod) < 1e-3, `進程 ${p}:卡榫穿進桿`);
+  }
+  // 收回:頂桿離開海底後,托腳還在錘孔裡時被孔壁壓著(卡榫多張開一點就會穿進錘);出了錘頂才張開到原位
+  let pressed = 0;
+  let opened = false;
+  for (const p of sweep(P.back, 300, P.lift)) {
+    const s = m247.sounding(p);
+    if (s.push > 0) continue;
+    if (s.catchAngle < REST_ANGLE - 1e-6) {
+      assert.ok(!opened, `進程 ${p}:托腳張開後又被壓回`);
+      const more = m247.section(p, { catchAngle: s.catchAngle + 0.01 });
+      assert.ok(touches247(more.catch, more.weight), `進程 ${p}:卡榫被壓回是錘孔壁擋住的`);
+      pressed++;
+    } else if (pressed) opened = true;
+  }
+  assert.ok(pressed > 0 && opened, "收回途中托腳先被壓回,出了錘頂才張開");
+  assert.ok(footReach(m247.sounding(P.back).catchAngle) > HOLE, "張開後托腳伸出錘孔,下一輪托得住新的錘");
 });
 
 test("第 251 種:重物被抬到夠高時,鉤 A 的上端被框架頂部的槽 B 兩側往內壓,重物突然被釋放", () => {
