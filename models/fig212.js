@@ -1,39 +1,43 @@
 // 第 212 種:日內瓦式擋止(Geneva-stop),用於瑞士錶中限制上發條的圈數。輪 A(下)上有一個齒,每轉一圈進入
 // 輪 B(上)的一道槽一次,把 B 推過一格;其餘時間 A 的圓盤卡在 B 兩槽之間的內凹圓弧上,B 不動。
-// B 上的凸曲部分 a、b 之間不挖鎖定圓弧,是擋止:B 走完四格後,A 的齒再也推不動 B,A 就被擋住。主動件是輪 A。
-// 推斷:B 有六格(五道開槽可用其四、凸弧佔一格);A 上齒旁的缺口是讓 B 的尖角通過;A 可轉約四圈多。
+// B 上的凸曲部分 a、b 之間不挖鎖定圓弧,是擋止:A 的齒推著 B 往那一格換格時,凸弧 a–b 轉過來頂到 A 的圓盤,
+// A 就轉不動了。可轉的範圍由兩者外形相碰的角度決定。主動件是輪 A。
+// 照原圖:B 有五道槽(相鄰槽之間四段內凹鎖定弧、a–b 一段凸弧),所以 B 走三整格,兩端各再走一部分被擋住。
+// A 齒兩旁的缺口照 B 的槽角在換格途中掃過的範圍挖出(geneva.js 的 disk)。
+// 偏離插圖(實物可行):原圖的齒是圓盤上的一個凸出部分;但換格時 B 的槽角會掃過齒根,同一片板上的齒連不回圓盤。
+// 這裡把齒做成圓銷,由圓盤後面(B 的後方)的曲柄臂托著——日內瓦機構的常見做法;正面看仍是缺口中間的一個齒。
+// 推斷:曲柄臂;兩輪的軸承座。
 import { TAU, rot2 } from "./kit.js";
 import { pedestal } from "./supports.js";
-import { geneva, genevaWheel } from "./geneva.js";
+import { geneva, genevaWheel, convexArc } from "./geneva.js";
 import { shape, circle } from "./shapes.js";
+import { circlePolygon } from "./contact.js";
 
 const C = 2.8;
 const RB = 1.45;
-const N = 6;
-const STEPS = 4;
+const N = 5;
 const RA = 1.55; // A 的鎖定圓盤
+const PIN = 0.11; // 齒(圓銷)的半徑:槽寬 0.24,兩邊各留 0.01
+const CONVEX = 4; // a–b 那一格
 const G = geneva({ C, rb: RB, n: N });
 const A = [0, -C, 0];
 
 export const stop = G.at;
-export const range = G.range(STEPS);
-export const geometry = { C, RB, RA, N, STEPS, a: G.a };
 
-const wheelB = genevaWheel({ C, rb: RB, n: N, width: 0.24, bottom: C - G.a - 0.12, lock: RA + 0.03, convex: [5] });
-// A:鎖定圓盤,齒(朝上,θ = 0 時正對 B)兩旁各一個缺口
-const diskA = Array.from({ length: 240 }, (_, i) => {
-  const t = (i / 240) * TAU;
-  let r = RA;
-  for (const side of [1, -1]) {
-    const c = rot2([0, RA], side * 0.42);
-    const b = c[0] * Math.cos(t) + c[1] * Math.sin(t);
-    const disc = b * b - RA * RA + 0.26 * 0.26;
-    if (disc > 0 && b > 0) r = Math.min(r, b - Math.sqrt(disc));
-  }
-  return [r * Math.cos(t), r * Math.sin(t)];
-});
-// B 上 a、b 兩點:凸弧(第 5 格)的兩端,在 B 的局部座標
-const arcEnd = (sign) => rot2([0, RB + 0.18], Math.PI / 2 + sign * 0.42);
+const slot = { C, rb: RB, n: N, width: 0.24, bottom: C - G.a - 0.12, lock: RA + 0.03 };
+const wheelB = genevaWheel({ ...slot, convex: [CONVEX] });
+// A 的鎖定圓盤(齒朝上,θ = 0 時正對 B):齒兩旁挖去 B 的槽角掃過的範圍
+const diskA = G.disk({ wheel: genevaWheel(slot), lock: RA });
+const pinA = circlePolygon([0, G.a], PIN, 32);
+/** 平面上 A(圓盤、齒)與 B 的外形,各在自己的局部座標;測試用來量接觸 */
+export const outlines = { A: [diskA, pinA], B: wheelB };
+const INITIAL = 2 * TAU - 0.85 * G.phiE; // 原圖:齒剛進右下方的槽,凸弧 a–b 在右上
+export const range = G.stopRange({ parts: outlines.A, wheel: wheelB, from: INITIAL });
+const [arcFrom, arcTo] = convexArc(slot, CONVEX);
+export const geometry = { C, RB, RA, N, a: G.a, convexArc: [arcFrom, arcTo] };
+
+// B 上 a、b 兩點:凸弧的兩端(a 在上方的槽旁、b 在右邊的槽旁),在 B 的局部座標
+const arcEnd = (t) => [(RB + 0.18) * Math.cos(t), (RB + 0.18) * Math.sin(t)];
 
 export default {
   figure: 212,
@@ -47,7 +51,9 @@ export default {
       labelOffset: [-0.65, 0, 0.3],
       pieces: [
         { kind: "plate", shape: shape(diskA, [circle(0.22).reverse()]), thickness: 0.2 },
-        { kind: "box", size: [0.2, G.a - RA + 0.12, 0.2], at: [0, (G.a + RA - 0.12) / 2, 0], accent: true },
+        // 推斷:托著齒的曲柄臂,在 B 的後方(B 的槽角從它前面掃過)
+        { kind: "box", size: [0.26, G.a - 0.03, 0.2], at: [0, (G.a + 0.29) / 2, -0.22] },
+        { kind: "cylinder", radius: PIN, length: 0.43, at: [0, G.a, -0.105], accent: true },
         { kind: "cylinder", radius: 0.3, inner: 0.15, length: 0.35 },
       ],
     },
@@ -74,7 +80,7 @@ export default {
       ]),
     },
   ],
-  driver: { part: "wheelA", type: "rotation", range, initial: 2 * TAU }, // 原圖:第三格推到一半,凸弧 a–b 在右上
+  driver: { part: "wheelA", type: "rotation", range, initial: INITIAL },
   target: "wheelB",
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
@@ -83,14 +89,10 @@ export default {
       parts: {
         wheelA: { angle: theta },
         wheelB: { angle: b },
-        tagA: { position: [...rot2(arcEnd(1), b), 0.2] },
-        tagB: { position: [...rot2(arcEnd(-1), b), 0.2] },
+        tagA: { position: [...rot2(arcEnd(arcTo), b), 0.2] },
+        tagB: { position: [...rot2(arcEnd(arcFrom), b), 0.2] },
       },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["wheelA", "wheelB"], reason: "簡化齒形:兩輪的節曲線分段(每段半徑不同),換段的瞬間兩邊的齒頂重疊 0.20(96 個取樣中 12 個);實物在換段處把齒修短" },
-  ],
 };
-

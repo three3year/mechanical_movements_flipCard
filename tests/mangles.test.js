@@ -30,6 +30,8 @@ import * as m212 from "../models/fig212.js";
 import * as m213 from "../models/fig213.js";
 import * as m214 from "../models/fig214.js";
 import * as m215 from "../models/fig215.js";
+import { pointInPolygon } from "../models/contact.js";
+import { signedAngle } from "../models/kit.js";
 import * as m202 from "../models/fig202.js";
 import * as m208 from "../models/fig208.js";
 import * as m216 from "../models/fig216.js";
@@ -398,13 +400,60 @@ test("第 211 種:大輪連續旋轉,小齒輪間歇轉動:轉過有齒部分時
   assert.ok(still > 300, "大半時間鎖住不動");
 });
 
-test("第 212 種:日內瓦式擋止:A 每轉一圈 B 走一格,其餘時間不動;B 走完四格後 A 被擋住", () => {
-  const { N, STEPS } = m212.geometry;
-  close(m212.stop(2 * Math.PI).b - m212.stop(0).b, -(2 * Math.PI) / N, "每圈一格", 1e-9);
+/**
+ * 日內瓦式擋止(第 212、215 種):主動量 v 時 A(各塊)與 B 在平面上的外形(世界座標,照姿勢放好),
+ * 以及兩者互相伸進對方的頂點以 B 的中心看的角度(弧度,世界座標)。
+ */
+function genevaContact(m, target, v) {
+  const def = m.default;
+  const p = def.pose(v).parts;
+  const center = (id) => part(def, id).center ?? [0, 0, 0];
+  const as = m.outlines.A.map((o) => placeOutline(o, center("wheelA"), p.wheelA.angle));
+  const b = placeOutline(m.outlines.B, center(target), p[target].angle);
+  const depth = Math.max(...as.map((a) => penetrationDepth(a, b)));
+  const c = center(target);
+  const angles = as
+    .flatMap((a) => [...b.filter((q) => pointInPolygon(q, a)), ...a.filter((q) => pointInPolygon(q, b))])
+    .map(([x, y]) => Math.atan2(y - c[1], x - c[0]));
+  return { depth, angles, p };
+}
+/** 角度 t 是否在 from 到 to 這段(較短的)弧上 */
+const onArc = (t, from, to) => {
+  const span = Math.abs(signedAngle(to - from));
+  return Math.abs(signedAngle(t - from)) <= span + 1e-6 && Math.abs(signedAngle(t - to)) <= span + 1e-6;
+};
+
+test("第 212 種:日內瓦式擋止:A 每轉一圈 B 走一格(原圖 B 有五道槽,一格五分之一圈),其餘時間不動", () => {
+  close(m212.stop(2 * Math.PI).b - m212.stop(0).b, -(2 * Math.PI) / 5, "每圈一格", 1e-9);
   close(m212.stop(Math.PI).b, m212.stop(Math.PI + 0.5).b, "鎖住時不動", 1e-12);
+});
+
+test("第 212 種:「輪 B 上的凸曲部分 a、b 起到擋止的作用」:A 轉到範圍兩端,凸弧 a–b 頂在 A 上,再轉一點就穿入", () => {
   const [lo, hi] = m212.range;
-  close(m212.stop(hi).b - m212.stop(lo).b, -STEPS * ((2 * Math.PI) / N), "可轉範圍內 B 走完四格", 1e-9);
-  assert.ok(hi - lo > 4 * 2 * Math.PI && hi - lo < 5 * 2 * Math.PI, "A 約可轉四圈多");
+  for (const [end, dir] of [[lo, -1], [hi, 1]]) {
+    const at = genevaContact(m212, "wheelB", end);
+    assert.ok(at.depth < 0.002, `範圍端 ${end.toFixed(3)} 不穿入(${at.depth.toFixed(4)})`);
+    const beyond = genevaContact(m212, "wheelB", end + dir * 0.01);
+    assert.ok(beyond.depth > 0.004, `再轉 0.01 就穿入(${beyond.depth.toFixed(4)})`);
+    const [a, b] = ["tagA", "tagB"].map((id) => Math.atan2(beyond.p[id].position[1], beyond.p[id].position[0]));
+    assert.ok(beyond.angles.length > 0 && beyond.angles.every((t) => onArc(t, a, b)), "碰到的地方在凸弧 a–b 上");
+  }
+});
+
+test("第 212 種:換格時 B 的槽角落在 A 齒旁的缺口裡:可轉範圍內 A 與 B 全程不穿入", () => {
+  const [lo, hi] = m212.range;
+  for (const v of sweep(hi, 1200, lo)) {
+    const { depth } = genevaContact(m212, "wheelB", v);
+    assert.ok(depth < 0.002, `v=${v.toFixed(3)} 穿入 ${depth.toFixed(4)}`);
+  }
+});
+
+test("第 212 種:B 走三整格;兩端被擋住時 A 的齒還在槽裡推著 B(507movements 動畫:最後一格走了一部分才停)", () => {
+  const [lo, hi] = m212.range;
+  const step = (2 * Math.PI) / 5;
+  const travel = (m212.stop(lo).b - m212.stop(hi).b) / step;
+  assert.ok(travel > 3.2 && travel < 4.8, `B 從一端到另一端走 ${travel.toFixed(2)} 格`);
+  for (const end of [lo, hi]) assert.ok(m212.stop(end).engaged, "範圍端 A 的齒在槽裡");
 });
 
 test("第 213 種:擋輪只有一段齒,下輪轉到那段齒的盡頭、齒頂到齒頂高度的輪緣就被擋住", () => {
@@ -428,6 +477,24 @@ test("第 214 種:兩個齒數不同的齒輪,轉了幾圈後面上的指片相�
 test("第 215 種:環上的銷每轉一圈把星形輪推過一格(六分之一圈)", () => {
   close(m215.step(2 * Math.PI).b - m215.step(0).b, -(2 * Math.PI) / 6, "每圈一格", 1e-9);
   close(m215.step(2.5).b, m215.step(3.5).b, "鎖住時不動", 1e-12);
+});
+
+test("第 215 種:「該擋止裝置的其他變形」:星形輪那一格凸弧轉過來頂到月牙板,環轉到範圍兩端就被擋住", () => {
+  const range = m215.default.driver.range;
+  assert.ok(range, "主動件有可轉的範圍");
+  const [lo, hi] = range;
+  const [from, to] = m215.geometry.convexArc;
+  for (const [end, dir] of [[lo, -1], [hi, 1]]) {
+    assert.ok(genevaContact(m215, "star", end).depth < 0.002, `範圍端 ${end.toFixed(3)} 不穿入`);
+    const beyond = genevaContact(m215, "star", end + dir * 0.01);
+    assert.ok(beyond.depth > 0.004, `再轉 0.01 就穿入(${beyond.depth.toFixed(4)})`);
+    const star = beyond.p.star.angle;
+    assert.ok(beyond.angles.length > 0 && beyond.angles.every((t) => onArc(t, from + star, to + star)), "碰到的地方在凸弧上");
+  }
+  for (const v of sweep(hi, 1200, lo)) {
+    const { depth } = genevaContact(m215, "star", v);
+    assert.ok(depth < 0.002, `v=${v.toFixed(3)} 穿入 ${depth.toFixed(4)}`);
+  }
 });
 
 test("第 202 種:沙漏形蝸桿每轉一圈,蝸輪轉過一齒", () => {
