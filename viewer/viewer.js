@@ -325,8 +325,8 @@ class Session {
   // ── 每一幀 ────────────────────────────
 
   advance(dt) {
-    // 狀態可以改自動播放的方向(direction:−1 反向、0 不動,例如擋止只放行另一個方向或兩個方向都擋住)
-    const sign = this.option()?.direction ?? 1;
+    // 狀態可以改自動播放的方向(play:−1 反向、0 不動,例如擋止只放行另一個方向或兩個方向都擋住)
+    const sign = this.option()?.play ?? 1;
     const step = this.defaultSpeed() * this.speedFactor * dt * sign;
     if (!this.bounds) {
       this.value += step;
@@ -512,8 +512,8 @@ class Session {
     const prevAngles = { ...this.lastAngles };
     if (this.playing && !this.drag) this.advance(dt);
     this.apply(this.pose(this.value), now);
-    // 拖動在 pointermove 裡改主動量,所以跟上一幀套用的值比;狀態讓主動件不動(direction 0)時,播放中也收起箭頭
-    this.updateArrows(prevAngles, this.value !== this.frameValue || (this.playing && this.option()?.direction === 0));
+    // 拖動在 pointermove 裡改主動量,所以跟上一幀套用的值比;狀態讓主動件不動(play 0)時,播放中也收起箭頭
+    this.updateArrows(prevAngles, this.value !== this.frameValue || (this.playing && this.option()?.play === 0));
     this.frameValue = this.value;
     this.syncSlider();
     const { lineart, camera } = getShared();

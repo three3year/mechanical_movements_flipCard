@@ -587,8 +587,8 @@ test("第 239 種:擋止裝置(原文「用於正齒輪的擋止裝置配置方�
   const def = m239.default;
   const { PITCH, PAWLS } = m239.geometry;
   const option = (id) => def.states.options.find((o) => o.id === id);
-  assert.equal(option("left").direction, -1, "只放下左爪:自動播放往順時針(放行的方向)");
-  assert.equal(option("right").direction ?? 1, 1, "只放下右爪:自動播放往逆時針");
+  assert.equal(option("left").play, -1, "只放下左爪:自動播放往順時針(放行的方向)");
+  assert.equal(option("right").play ?? 1, 1, "只放下右爪:自動播放往逆時針");
   for (const [state, other] of [["left", "right"], ["right", "left"]]) {
     const { blocks } = PAWLS[state];
     for (const theta of sweep(PITCH, 7, 0.01)) {
@@ -627,7 +627,7 @@ test("第 239 種:擋止裝置(原文「用於正齒輪的擋止裝置配置方�
 test("第 239 種:兩支都放下(原圖畫的樣子)時兩個方向都擋住,齒輪只能在兩個擋止處之間", () => {
   const def = m239.default;
   const { PITCH } = m239.geometry;
-  assert.equal(def.states.options.find((o) => o.id === "both").direction, 0, "自動播放不轉");
+  assert.equal(def.states.options.find((o) => o.id === "both").play, 0, "自動播放不轉");
   for (const theta of sweep(PITCH, 9)) {
     const [lo, hi] = def.driver.backstop(theta, "both");
     assert.ok(lo <= theta + 1e-9 && theta <= hi + 1e-9 && hi - lo < 2 * PITCH, `轉角 ${theta.toFixed(3)}:兩邊都有擋止`);

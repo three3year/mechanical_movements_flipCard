@@ -193,9 +193,9 @@ export default {
   },
   states: {
     options: [
-      { id: "left", label: "只放下左爪(擋逆時針)", direction: -1 },
+      { id: "left", label: "只放下左爪(擋逆時針)", play: -1 },
       { id: "right", label: "只放下右爪(擋順時針)" },
-      { id: "both", label: "兩支都放下(兩個方向都擋住)", direction: 0 },
+      { id: "both", label: "兩支都放下(兩個方向都擋住)", play: 0 },
     ],
     initial: "left",
   },

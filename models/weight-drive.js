@@ -38,3 +38,12 @@ export function weightDrive({ drum, pulleys = [], eye, reserve, spare, pitch }) 
     return { eye: low, drop, rope: [...free.points, ...coil], pulleys: turns };
   };
 }
+
+/**
+ * 每隔 every 的主動量上鍊一次:wheelAt(v) 是主動量 v 時輪的轉角,回傳 weightAt(v)——
+ * 以上次上鍊以來輪往前轉的角度呼叫 hang(weightDrive 的回傳)。
+ */
+export const rewound = (hang, wheelAt, every) => (v) => {
+  const wound = Math.floor(v / every + 1e-12) * every; // 上次上鍊時的主動量
+  return hang(wheelAt(v) - wheelAt(wound));
+};

@@ -10,7 +10,8 @@ export const placeOutline = (outline, pivot, angle) =>
     return [pivot[0] + x, pivot[1] + y];
   });
 
-function segmentsCross(a, b, c, d) {
+/** 兩線段是否相交(只碰到端點不算) */
+export function segmentsCross(a, b, c, d) {
   const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
   const d1 = o(c, d, a);
   const d2 = o(c, d, b);

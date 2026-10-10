@@ -13,7 +13,7 @@
 // 輪每轉一圈(叉瓦架擺六個來回)重錘捲回最高處一次(上鍊,畫面上一下子回到上面)。
 import { TAU, deg, polar, rot2, swing as swingAt, Y, Z } from "./kit.js";
 import { escapeDrive } from "./pawl-drive.js";
-import { weightDrive } from "./weight-drive.js";
+import { weightDrive, rewound } from "./weight-drive.js";
 import { shape, circle, thickLine } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
@@ -89,10 +89,7 @@ const hang = weightDrive({
   spare: 0.8 * TAU * DRUM.radius,
   pitch: 2 * ROPE_R,
 });
-const weightAt = (v) => {
-  const wound = Math.floor(v / REWIND + 1e-12) * REWIND; // 上次上鍊時的主動量
-  return hang(drive.at(v) - drive.at(wound));
-};
+const weightAt = rewound(hang, drive.at, REWIND);
 
 /** 叉瓦架累計擺動 v:擒縱輪的轉角(自起點,逆時針為正) */
 export const wheelAngle = (v) => drive.at(v) - W0;

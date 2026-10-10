@@ -1,8 +1,8 @@
 // 第十二章「接頭與器具」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { penetrationDepth, circlePolygon, pointInPolygon } from "../models/contact.js";
-import { close, turned, part } from "./helpers.js";
+import { penetrationDepth, circlePolygon, pointInPolygon, polygonsOverlap } from "../models/contact.js";
+import { close, turned, part, sweep } from "./helpers.js";
 
 import fig243, { turns as turns243 } from "../models/fig243.js";
 import * as m254 from "../models/fig254.js";
@@ -17,7 +17,6 @@ import * as m249 from "../models/fig249.js";
 import * as m250 from "../models/fig250.js";
 import * as m267 from "../models/fig267.js";
 import * as m270 from "../models/fig270.js";
-import { sweep } from "./helpers.js";
 import * as m247 from "../models/fig247.js";
 import * as m271 from "../models/fig271.js";
 import * as m274 from "../models/fig274.js";
@@ -287,7 +286,6 @@ test("第 247 種:頂桿撞到海底時被相對地推上去,把卡榫從錘下�
 });
 
 // 第 247 種的剖面(桿、錘、卡榫、頂桿在剖切面上的外形)兩組之間最深的穿入、是否相交
-import { polygonsOverlap } from "../models/contact.js";
 const deepest247 = (a, b) => Math.max(0, ...a.flatMap((x) => b.map((y) => penetrationDepth(x, y))));
 const touches247 = (a, b) => a.some((x) => b.some((y) => polygonsOverlap(x, y)));
 

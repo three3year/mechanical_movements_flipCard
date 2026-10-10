@@ -12,7 +12,7 @@
 import { TAU, deg, X, Y, Z, rot2, swing } from "./kit.js";
 import { sawCrown } from "./escapement.js";
 import { escapeDrive } from "./pawl-drive.js";
-import { weightDrive } from "./weight-drive.js";
+import { weightDrive, rewound } from "./weight-drive.js";
 
 const N = 15;
 const R = 1.6;
@@ -81,10 +81,7 @@ const hang = weightDrive({
   spare: 2 * Math.PI * DRUM.radius,
   pitch: 2.1 * ROPE_R,
 });
-const weightAt = (v) => {
-  const wound = Math.floor(v / REWIND + 1e-12) * REWIND; // 上次上鍊時的主動量
-  return hang(drive.at(v) - drive.at(wound));
-};
+const weightAt = rewound(hang, drive.at, REWIND);
 
 /** 心軸累計擺動 v:冠狀輪的轉角(自起點,繞 +y) */
 export const wheelAngle = (v) => drive.at(v) - W0;

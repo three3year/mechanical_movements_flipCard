@@ -3,6 +3,7 @@
 // 凸弧轉過來頂到 A 的鎖定圓盤,A 就被擋住——這就是限制上發條圈數的「擋止」。擋住的角度由外形相碰算(stopRange)。純函式。
 // 指銷的半徑 a 由 B 的外半徑 rb 決定:指銷剛好在 B 的外圓上、與連心線夾 π/n 處進出槽,B 每格轉 2π/n。
 import { TAU, rot2 } from "./kit.js";
+import { segmentsCross } from "./contact.js";
 
 /**
  * C:兩輪中心距(A 在 B 正下方);rb:B 的外半徑;n:B 的格數。
@@ -108,12 +109,6 @@ function segmentReach(p, q, o = [0, 0]) {
   const e = [q[0] - p[0], q[1] - p[1]];
   const t = Math.max(0, Math.min(1, -(px * e[0] + py * e[1]) / (e[0] * e[0] + e[1] * e[1] || 1)));
   return Math.hypot(px + t * e[0], py + t * e[1]);
-}
-
-/** 兩線段是否相交(只碰到端點不算) */
-function segmentsCross(a, b, c, d) {
-  const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
-  return o(c, d, a) * o(c, d, b) < 0 && o(a, b, c) * o(a, b, d) < 0;
 }
 
 /** 從原點沿方向 t 的射線第一次碰到邊(edges:[[p, q], …])的距離(碰不到 = Infinity) */
