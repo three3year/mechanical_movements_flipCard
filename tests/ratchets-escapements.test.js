@@ -2,9 +2,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { sweep } from "./helpers.js";
-import { placeOutline, polygonsOverlap, penetrationDepth } from "../models/contact.js";
+import { placeOutline, polygonsOverlap, penetrationDepth, pointInPolygon, edgeDistance } from "../models/contact.js";
 import { ratchetObstacles } from "../models/ratchets.js";
-import fig233, { barAngle, leverAngle, pinPolygons, barOutline } from "../models/fig233.js";
+import fig233, { barAngle, leverAngle, pinPolygons, barOutline, geometry as fig233Geometry } from "../models/fig233.js";
 import fig240, { WHEEL, DROPS, STOP_OUTLINES, stopAngle } from "../models/fig240.js";
 
 import * as m225 from "../models/fig225.js";
@@ -23,6 +23,9 @@ import * as m241 from "../models/fig241.js";
 import * as m242 from "../models/fig242.js";
 
 const PIN_PERIOD = (2 * Math.PI) / 16;
+// 板件的深度範圍(z 是板的中面)與兩個深度範圍是否相接
+const plateDepth = (p) => [(p.at?.[2] ?? 0) - p.thickness / 2, (p.at?.[2] ?? 0) + p.thickness / 2];
+const depthsOverlap = ([a0, a1], [b0, b1]) => Math.min(a1, b1) - Math.max(a0, b0) > 1e-6;
 
 test("第 233 種:燈籠輪逆時針轉時,平桿擋止被銷頂起、滑過,不穿進銷", () => {
   for (const w of sweep(2 * PIN_PERIOD, 60)) {
@@ -55,9 +58,64 @@ test("第 233 種:平桿越過銷之後是加速落下(不瞬移),落到下一�
   assert.ok(run[run.length - 1] > run[0], "越落越快");
 });
 
-test("第 233 種:圓盤端頭的槓桿只定位、不擋,兩個方向都被銷頂起", () => {
+test("第 233 種:滾子端頭的槓桿只定位、不擋,兩個方向都被銷頂起", () => {
   const angles = sweep(PIN_PERIOD, 40).map(leverAngle);
   assert.ok(Math.max(...angles) - Math.min(...angles) > 0.02);
+});
+
+test("第 233 種:槓桿端頭是套在短銷上的滾子,經過燈籠輪的銷時在銷上滾、不滑(轉角由接觸點的弧長算)", () => {
+  const { PIN_CIRCLE, PIN_RADIUS, ROLLER } = fig233Geometry;
+  const lever = fig233.parts.find((p) => p.id === "lever");
+  const roller = fig233.parts.find((p) => p.id === "roller");
+  // 滾子套在槓桿端頭的銷上:銷比滾子的孔細一點,深度範圍相接
+  const axle = lever.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - ROLLER.at[0], p.at[1] - ROLLER.at[1]) < 1e-9);
+  assert.ok(axle && axle.radius < ROLLER.bore && ROLLER.bore - axle.radius < 0.01, "滾子的孔套在端頭的銷上");
+  assert.ok(roller.shape.holes.some((h) => h.every(([x, y]) => Math.abs(Math.hypot(x, y) - ROLLER.bore) < 1e-9)), "滾子中間開著套銷的孔");
+  const start = fig233.driver.initial;
+  const rz = fig233.pose(start).parts.roller.position[2];
+  const axleDepth = [lever.center[2] + axle.at[2] - axle.length / 2, lever.center[2] + axle.at[2] + axle.length / 2];
+  assert.ok(depthsOverlap(axleDepth, [rz - roller.thickness / 2, rz + roller.thickness / 2]), "銷穿過滾子的深度範圍");
+  // 經過銷時不滑:接觸點上,滾子表面的速度沿切線方向等於銷(跟著輪轉)的速度
+  const h = 1e-4;
+  let checked = 0;
+  for (const w of sweep(2 * PIN_PERIOD, 400, start)) {
+    const a = fig233.pose(w).parts.roller;
+    const b = fig233.pose(w + h).parts.roller;
+    const pin = Array.from({ length: 16 }, (_, i) => [PIN_CIRCLE * Math.cos(w + i * PIN_PERIOD), PIN_CIRCLE * Math.sin(w + i * PIN_PERIOD)]).sort(
+      (p, q) => Math.hypot(p[0] - a.position[0], p[1] - a.position[1]) - Math.hypot(q[0] - a.position[0], q[1] - a.position[1]),
+    )[0];
+    const d = Math.hypot(pin[0] - a.position[0], pin[1] - a.position[1]);
+    if (d - ROLLER.radius - PIN_RADIUS > 0.005) continue; // 沒靠在銷上
+    const n = [(pin[0] - a.position[0]) / d, (pin[1] - a.position[1]) / d];
+    const t = [-n[1], n[0]];
+    const q = [a.position[0] + ROLLER.radius * n[0], a.position[1] + ROLLER.radius * n[1]];
+    const pinSpeed = (-q[1] * t[0] + q[0] * t[1]) * h; // 銷上的點跟著輪(逆時針)轉
+    const rollerSpeed = (b.position[0] - a.position[0]) * t[0] + (b.position[1] - a.position[1]) * t[1] + (b.angle - a.angle) * ROLLER.radius;
+    assert.ok(Math.abs(rollerSpeed - pinSpeed) < 0.02 * h + 1e-7, `轉角 ${w.toFixed(4)}:接觸點滑了 ${((rollerSpeed - pinSpeed) / h).toFixed(4)}`);
+    checked++;
+  }
+  assert.ok(checked > 50, `靠在銷上的取樣 ${checked}`);
+  const turned = fig233.pose(start + 2 * PIN_PERIOD).parts.roller.angle - fig233.pose(start).parts.roller.angle;
+  assert.ok(Math.abs(turned) > 0.2, `兩根銷經過時滾子轉了 ${turned.toFixed(3)} 弧度`);
+});
+
+test("第 233 種:兩個擋止的樞軸銷穿進托架的橫臂,托架的立柱落在接到輪軸承座的底板上(機架是一件)", () => {
+  const frame = fig233.parts.find((p) => p.id === "frame").pieces;
+  const box = (p) => {
+    const half = p.kind === "box" ? p.size.map((s) => s / 2) : [p.radius, p.radius, p.length / 2];
+    return [p.at.map((c, i) => c - half[i]), p.at.map((c, i) => c + half[i])];
+  };
+  const touch = ([a0, a1], [b0, b1]) => [0, 1, 2].every((i) => a0[i] <= b1[i] + 1e-6 && b0[i] <= a1[i] + 1e-6);
+  const boxes = frame.map(box);
+  const seen = new Set([0]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    boxes.forEach((b, i) => {
+      if (!seen.has(i) && [...seen].some((j) => touch(b, boxes[j]))) [grew] = [true, seen.add(i)];
+    });
+  }
+  const loose = frame.map((_, i) => i).filter((i) => !seen.has(i));
+  assert.deepEqual(loose, [], `和機架主體不相連的塊:pieces[${loose.join(", ")}]`);
 });
 
 test("第 240 種:棘輪逆時針轉時,三種擋止爪都靠在輪上、不穿進齒裡", () => {
@@ -113,6 +171,15 @@ for (const [def, pins] of [[fig227, 1.82], [fig228, 2.02], [fig229, 2.3]]) {
   });
 }
 
+test("第 227 種:滑輪每轉一圈鍊條剛好走整數個鏈節,齒一直落在同一種鏈節的空隙裡(原文:鏈節之間會留有空隙,讓皮帶輪的齒能夠嵌入)", () => {
+  const { pitch } = fig227.parts.find((p) => p.id === "chain");
+  const phase = (a) => fig227.pose(a).paths.chain.phase;
+  for (const turns of [1, 3, 10]) {
+    const links = (phase(0) - phase(turns * 2 * Math.PI)) / pitch;
+    close(links, 12 * turns, `轉 ${turns} 圈走 ${12 * turns} 節(6 齒,每齒隔兩節,內外節不會對調)`, 1e-9);
+  }
+});
+
 test("第 225 種:搖臂擺動,棘爪推棘輪間歇地轉(原文:由承載棘爪的搖臂之擺動運動所產生的棘輪之間歇圓周運動)", () => {
   const S = m225.swing;
   const ws = sweep(4 * S, 400).map((v) => m225.ratchet(v).wheel);
@@ -129,14 +196,23 @@ test("第 225 種:搖臂擺動,棘爪推棘輪間歇地轉(原文:由承載棘�
   }
 });
 
-test("第 226 種:B 轉一圈,框架 A 轉一圈;移除 C 的齒輪且 D 不自轉時 E 只隨框架轉一圈,裝回後 E 多轉", () => {
+test("第 226 種:B 轉一圈,框架 A 轉一圈;移除 C 的齒輪且 D 不自轉時 E 只隨框架轉一圈,裝回後 D 自轉、E 多轉", () => {
   const turns = (state, key) => (m226.train(2 * Math.PI, state)[key] - m226.train(0, state)[key]) / (2 * Math.PI);
+  // 原文:B 上的齒輪旋轉一圈會使框架 A 也接收到一圈旋轉
   close(turns("installed", "a"), 1, "A 一圈", 1e-3);
+  close(turns("removed", "a"), 1, "移除時 A 也是一圈", 1e-3);
+  // 原文:將空心軸 C 上的兩個齒輪移除,並防止 D 繞其自身軸旋轉……E 會接收到一圈旋轉
   close(turns("removed", "e"), 1, "E 隨框架一圈", 1e-3);
-  close(turns("installed", "c"), -1, "空心軸 C 反向一圈", 1e-3);
-  // 差速關係 E = 2A − C(原文說兩圈,依原圖的等大齒輪是三圈,見票的 Comments)
-  close(turns("installed", "e"), 2 * turns("installed", "a") - turns("installed", "c"), "E = 2A − C", 1e-3);
-  assert.ok(turns("installed", "e") > turns("removed", "e") + 0.9, "裝回 C 的齒輪後 E 轉得更多");
+  close(turns("removed", "d"), 0, "D 不自轉", 1e-9);
+  // 原文:若將空心軸 C 上的齒輪重新裝回,則 D 在 B 旋轉一圈的期間會同時繞其自身軸旋轉……產生 E 的兩圈旋轉
+  assert.ok(Math.abs(turns("installed", "d")) > 0.9, "裝回後 D 繞自身軸旋轉");
+  assert.ok(turns("installed", "e") > turns("removed", "e") + 0.9, "裝回後 E 比移除時多轉(雙倍以上的速度)");
+  // 和原文不同(維護者 2026-10-10 決定維持):原圖三組傘齒輪等大,空心軸 C 與 F 反向轉,E 轉三圈;
+  // 原文的「D 自轉一圈、E 兩圈」等於把 C 當成不動
+  close(turns("installed", "e"), 3, "照原圖的等大齒輪 E 轉三圈", 1e-3);
+  const text = (state) => m226.default.pose(0, state).readouts.map((r) => r.label + r.value).join(" ");
+  assert.match(text("installed"), /原文.*兩圈/, "讀數旁說明和原文「兩圈」的落差");
+  assert.doesNotMatch(text("removed"), /原文/, "移除時沒有落差,不說明");
 });
 
 test("第 230 種:兩對曲柄相差直角,一對在死點時另一對在直角位置", () => {
@@ -144,6 +220,40 @@ test("第 230 種:兩對曲柄相差直角,一對在死點時另一對在直角�
     const { disc, crank } = m230.cranks(t);
     close(disc * disc + crank * crank, 1, "兩者正交", 1e-9);
     assert.ok(Math.max(disc, crank) >= Math.SQRT1_2 - 1e-9, "至少一對離死點夠遠");
+  }
+});
+
+test("第 230 種:從預設視角看,兩對曲柄與兩根連桿整段都不被推斷的支架擋住(讀者要同時看到一對在死點、另一對在直角)", () => {
+  const def = m230.default;
+  const dir = def.view.direction;
+  // 支架各塊的外接盒(圓柱沿 z)
+  const boxes = def.parts.find((p) => p.id === "standard").pieces.map((q) => {
+    const half = q.kind === "box" ? q.size.map((s) => s / 2) : [q.radius, q.radius, q.length / 2];
+    return [q.at.map((c, i) => c - half[i]), q.at.map((c, i) => c + half[i])];
+  });
+  // 從點 p 往相機(+dir)的射線是否穿過盒子(slab 法)
+  const blocked = (p) =>
+    boxes.some(([lo, hi]) => {
+      let [t0, t1] = [0, Infinity];
+      for (let i = 0; i < 3; i++) {
+        if (Math.abs(dir[i]) < 1e-12) {
+          if (p[i] < lo[i] || p[i] > hi[i]) return false;
+          continue;
+        }
+        const [a, b] = [(lo[i] - p[i]) / dir[i], (hi[i] - p[i]) / dir[i]].sort((x, y) => x - y);
+        [t0, t1] = [Math.max(t0, a), Math.min(t1, b)];
+      }
+      return t0 <= t1;
+    });
+  for (const theta of sweep(2 * Math.PI, 24)) {
+    const { parts } = def.pose(theta);
+    for (const id of ["rodCrank", "rodDisc"]) {
+      const { from, to } = parts[id];
+      for (let k = 0; k <= 10; k++) {
+        const p = from.map((c, i) => c + ((to[i] - c) * k) / 10);
+        assert.ok(!blocked(p), `轉角 ${theta.toFixed(2)}:${id} 第 ${k}/10 點被支架擋住`);
+      }
+    }
   }
 });
 
@@ -157,6 +267,27 @@ test("第 231 種:拖曳連桿:兩支曲柄都轉整圈,連桿長度不變,從�
   const steps = states.slice(1).map((s, i) => Math.atan2(Math.sin(s.angle - states[i].angle), Math.cos(s.angle - states[i].angle)));
   close(steps.reduce((a, b) => a + b, 0), 2 * Math.PI, "從動曲柄也轉一整圈", 1e-6);
   assert.ok(Math.max(...steps) / Math.min(...steps) > 1.3, "變速");
+});
+
+test("第 232 種:C 是一件——伸進齒間的楔形爪尖和弧形桿身在同一深度範圍內相連,平面上外形重疊", () => {
+  const [body, tip] = m232.default.parts.find((p) => p.id === "pawlC").pieces.filter((p) => p.kind === "plate");
+  assert.ok(depthsOverlap(plateDepth(body), plateDepth(tip)), `深度:桿身 ${plateDepth(body)}、爪尖 ${plateDepth(tip)}`);
+  assert.ok(polygonsOverlap(body.shape.outline, tip.shape.outline), "平面上爪尖和桿身末端重疊");
+});
+
+test("第 232 種:C 抬到頂靠住的擋銷立在 A 上(A 的耳片托著它),C 的桿身上緣剛好碰到擋銷", () => {
+  const { STOP, LIFT_MAX, C_PIVOT } = m232.geometry;
+  const A = m232.default.parts.find((p) => p.id === "plateA").pieces;
+  const pin = A.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - STOP[0], p.at[1] - STOP[1]) < 1e-9);
+  const pinDepth = [pin.at[2] - pin.length / 2, pin.at[2] + pin.length / 2];
+  const holders = A.filter((p) => p.kind === "plate" && pointInPolygon(STOP, p.shape.outline) && depthsOverlap(plateDepth(p), pinDepth));
+  assert.ok(holders.length > 0, "擋銷的位置在 A 的板件上、深度相接");
+  // 桿身在 C 抬到頂時碰到擋銷:間隙接近 0;再多抬一點就壓進擋銷
+  const body = m232.default.parts.find((p) => p.id === "pawlC").pieces.find((p) => p.kind === "plate");
+  const gapAt = (lift) => edgeDistance(STOP, placeOutline(body.shape.outline, C_PIVOT, lift)) - pin.radius;
+  assert.ok(Math.abs(gapAt(LIFT_MAX)) < 0.01, `抬到頂時間隙 ${gapAt(LIFT_MAX).toFixed(4)}`);
+  assert.ok(!pointInPolygon(STOP, placeOutline(body.shape.outline, C_PIVOT, LIFT_MAX)), "擋銷不在桿身裡");
+  assert.ok(gapAt(LIFT_MAX + 0.05) < -0.005 || pointInPolygon(STOP, placeOutline(body.shape.outline, C_PIVOT, LIFT_MAX + 0.05)), "多抬一點就壓進擋銷");
 });
 
 test("第 232 種:B 抬起時 C 先抬出齒間、再帶著 A 往後越過圓周;B 下降時 C 落入齒間、帶著輪轉(由接觸算)", () => {

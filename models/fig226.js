@@ -3,7 +3,9 @@
 // 跟著繞 F 轉;E 在 F 上鬆動旋轉,與 D 咬合;D 另一邊與空心軸左端的齒輪 C 咬合。
 // 狀態「移除 C 的齒輪」:空心軸上的兩個齒輪拿掉、D 不能自轉,B 轉一圈 → A 轉一圈 → E 被帶著轉一圈。
 // 狀態「裝上 C 的齒輪」:空心軸反向轉,D 在框架裡自轉,E 在被帶著轉之外又多轉。主動件是軸 B。
-// 依原圖的配置(三組等大的傘齒輪,差速器的關係 E = 2A − C),B 轉一圈時 E 轉三圈;原文說兩圈(見票的 Comments)。
+// 依原圖的配置(三組等大的傘齒輪,差速器的關係 E = 2A − C),B 轉一圈時 E 轉三圈;原文說兩圈。原文同一句說 D 只自轉
+// 一圈,兩個數字都等於把空心軸 C 當成不動——但 C 的齒輪由 B 帶動,和 F 反向轉一圈,D 相對框架其實轉兩圈,E 才是
+// 1 + 2 = 3 圈。原書少算了框架反向的那一圈;維持三圈(維護者 2026-10-10 決定),讀數旁註明和原文的落差。
 // 推斷:軸 F 兩端與軸 B 頂上的軸承座(原圖沒畫支架,只畫軸端)。
 import { X, Z, TAU, quatAxisAngle, quatMul, quatFromZ, quatRotate } from "./kit.js";
 import { meshAngle, bevelGear, bevelContact } from "./gears.js";
@@ -119,6 +121,7 @@ export default {
       readouts: [
         { label: "B 轉了", value: `${(beta / TAU).toFixed(2)} 圈` },
         { label: "E 轉了", value: `${((t.e - (removed ? 0 : ZERO.e)) / TAU).toFixed(2)} 圈` },
+        ...(removed ? [] : [{ label: "原文說兩圈", value: "把空心軸 C 當成不動" }]),
       ],
     };
   },

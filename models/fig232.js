@@ -33,12 +33,14 @@ const cArc = Array.from({ length: 12 }, (_, i) => {
   const r = R + 0.75 - (0.36 * i) / 11;
   return [r * Math.cos(a) - C_PIVOT[0], r * Math.sin(a) - C_PIVOT[1]];
 });
-// 爪尖:楔形,兩側斜度和齒槽的齒側一樣,底部在齒根圓上方一點(世界座標下,齒間居中、C 落到底時)
+// 爪尖:楔形,兩側斜度和齒槽的齒側一樣,底部在齒根圓上方一點(世界座標下,齒間居中、C 落到底時);
+// 上緣往桿身末端那一側伸上去(neck),和桿身末端重疊,爪尖與桿身是一件(高出齒頂很多,碰不到齒)
 const TIP_WORLD = (() => {
   const at = (r, da) => [r * Math.cos(GAP + da / r), r * Math.sin(GAP + da / r)];
   const lo = ROOT + 0.03;
   const hi = R + addendum + 0.12;
-  return [at(lo, -0.05), at(lo, 0.05), at(hi, 0.15), at(hi, -0.15)];
+  const neck = hi + 0.1;
+  return [at(lo, -0.05), at(lo, 0.05), at(hi, 0.15), at(neck, 0.3), at(neck, 0.05), at(hi, -0.15)];
 })();
 const TIP = TIP_WORLD.map(([x, y]) => [x - C_PIVOT[0], y - C_PIVOT[1]]);
 
@@ -158,7 +160,6 @@ export function motion(v) {
   // A、C 每個來回回到同一個位置;輪每個來回前進一齒
   return { b: swingPhase(v, LOW, HIGH).at, a: lerp("a"), lift: lerp("lift"), wheel: lerp("theta") - TABLE[0].theta + k * ADVANCE };
 }
-export const geometry = { PITCH, SWING, LIFT_MAX };
 /** 檢查用:主動量 v 時 C 的爪尖與輪的齒(世界座標 2D) */
 export function contactAt(v) {
   const { a, lift, wheel } = motion(v);
@@ -180,6 +181,13 @@ const STOP = (() => {
   const off = 0.15 + 0.07; // 桿身半寬 + 銷半徑
   return [C_PIVOT[0] + x - (dy / l) * off, C_PIVOT[1] + y + (dx / l) * off];
 })();
+// A 頂端往右上伸的耳片,擋銷立在它上面(和 A 同一層,在 C 的桿身後面、齒的前面;C 抬起時桿身碰的是擋銷,不是耳片)
+const EAR = (() => {
+  const d = [STOP[0] - C_PIVOT[0], STOP[1] - C_PIVOT[1]];
+  const l = Math.hypot(...d);
+  return thickLine([C_PIVOT, [STOP[0] + (d[0] / l) * 0.1, STOP[1] + (d[1] / l) * 0.1]], 0.24);
+})();
+export const geometry = { PITCH, SWING, LIFT_MAX, STOP, C_PIVOT };
 
 export default {
   figure: 232,
@@ -202,7 +210,8 @@ export default {
       pieces: [
         { kind: "plate", shape: plateA, thickness: 0.1, at: [0, 0, 0.18] },
         { kind: "cylinder", radius: 0.06, length: 0.32, at: [...C_PIVOT, 0.3] }, // C 的樞軸銷
-        { kind: "cylinder", radius: 0.07, length: 0.28, at: [...STOP, 0.3] }, // 擋銷:C 抬起的上限
+        { kind: "plate", shape: shape(EAR), thickness: 0.1, at: [0, 0, 0.18] }, // 耳片:托著擋銷
+        { kind: "cylinder", radius: 0.07, length: 0.28, at: [...STOP, 0.3] }, // 擋銷:C 抬起的上限,立在耳片上
       ],
     },
     {
@@ -214,7 +223,7 @@ export default {
       labelOffset: [1.3, -0.55, 0.3],
       pieces: [
         { kind: "plate", shape: cShape, thickness: 0.1 },
-        { kind: "plate", shape: shape(TIP), thickness: 0.36, at: [0, 0, -0.25] }, // 爪尖往後伸到齒輪那一層
+        { kind: "plate", shape: shape(TIP), thickness: 0.36, at: [0, 0, -0.2] }, // 爪尖往後伸到齒輪那一層,前緣和桿身重疊 0.03
         { kind: "cylinder", radius: 0.06, length: 0.14, at: [C_ARM[0], C_ARM[1], 0.11] }, // 掛連桿的銷往前伸到連桿
       ],
     },
