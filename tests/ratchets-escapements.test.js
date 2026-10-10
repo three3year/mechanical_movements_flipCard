@@ -1,7 +1,7 @@
 // 第十一章「棘輪與擒縱」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sweep } from "./helpers.js";
+import { sweep, part } from "./helpers.js";
 import { placeOutline, polygonsOverlap, penetrationDepth, pointInPolygon, edgeDistance } from "../models/contact.js";
 import { ratchetObstacles } from "../models/ratchets.js";
 import fig233, { barAngle, leverAngle, pinPolygons, barOutline, geometry as fig233Geometry } from "../models/fig233.js";
@@ -12,7 +12,7 @@ import * as m226 from "../models/fig226.js";
 import * as m230 from "../models/fig230.js";
 import * as m231 from "../models/fig231.js";
 import * as m232 from "../models/fig232.js";
-import { dist } from "../models/kit.js";
+import { dist, dot, quatRotate } from "../models/kit.js";
 import * as m234 from "../models/fig234.js";
 import * as m235 from "../models/fig235.js";
 import * as m236 from "../models/fig236.js";
@@ -393,22 +393,82 @@ test("第 236 種:槓桿 a 擺動,兩根棘爪 b、c 輪流推,棘輪近乎連�
   }
 });
 
-test("第 237 種:搖臂往復轉動,棘爪帶冠狀鋸齒輪間歇地轉;回程時棘爪沿斜面滑過齒(由接觸算)", () => {
-  const { SPAN, PITCH, H } = m237.geometry;
-  // 原文:頂端搖臂的往復圓周運動,會使其附帶的棘爪產生冠狀棘輪或稱鋸齒輪的間歇圓周運動
-  close(m237.motion(SPAN).wheel - m237.motion(0).wheel, -2 * PITCH, "推程:輪被推兩齒", 1e-6);
-  close(m237.motion(2 * SPAN).wheel, m237.motion(SPAN).wheel, "回程:輪不動", 1e-12);
-  assert.ok(Math.abs(m237.motion(0.1 * SPAN).wheel - m237.motion(0).wheel) < 1e-9, "推程開頭棘爪還沒頂到直面,輪不動(空行程)");
-  const lifts = sweep(2 * SPAN, 200, SPAN).map((v) => m237.motion(v).lift);
-  assert.ok(Math.max(...lifts) > H - 0.01, "回程時棘爪被齒的斜面抬到齒尖");
-  // 越過齒尖後是加速落下(不瞬移):每一小步落下的量越來越大
-  const fall = sweep(2 * SPAN, 2000, SPAN).map((v) => m237.motion(v).lift);
-  const drops = fall.slice(1).map((h, i) => fall[i] - h);
-  assert.ok(Math.max(...drops) < 0.1, "沒有一步就落到底");
+test("第 237 種:頂端搖臂的往復圓周運動使棘爪帶冠狀鋸齒輪間歇地轉(原文);推程輪轉、回程不動、每個來回推整數齒", () => {
+  const { SPAN, PITCH } = m237.geometry;
+  const w = (v) => m237.motion(v).wheel;
+  // 原文:頂端搖臂的往復圓周運動,會使其附帶的棘爪產生冠狀棘輪或稱鋸齒輪的間歇圓周運動(原文沒有每程幾齒)
+  assert.ok(w(SPAN) - w(0) < -PITCH / 2, "推程:棘爪推輪轉");
+  close(w(2 * SPAN), w(SPAN), "回程:輪不動", 1e-12);
+  const teeth = (w(2 * SPAN) - w(0)) / PITCH;
+  assert.ok(Math.abs(teeth) >= 1 && Math.abs(teeth - Math.round(teeth)) < 1e-6, `每個來回推整數齒(${teeth.toFixed(3)})`);
+  const ws = sweep(2 * SPAN, 200).map(w);
+  assert.ok(ws.slice(1).filter((x, i) => x === ws[i]).length > 100, "間歇:大半時間輪不動");
+});
+
+test("第 237 種:棘爪是套在臂桿上的彎爪(原圖),靠自重繞臂桿擺:推程爪尖頂著齒的直面,回程被斜面抬到齒尖再加速落下(由接觸算)", () => {
+  const def = m237.default;
+  const { SPAN, H, ARC, EYE_R, THICK, ROD_END } = m237.geometry;
+  const rod = part(def, "arm").pieces.find((p) => p.axis);
+  assert.ok(ROD_END > ARC + 0.3 && Math.abs(rod.at[0] + rod.length / 2 - ROD_END) < 1e-9, "臂桿伸到輪緣外,穿過爪的眼");
+  for (const v of sweep(2 * SPAN, 40)) {
+    const pose = def.pose(v).parts;
+    const radial = [Math.cos(pose.arm.angle), 0, -Math.sin(pose.arm.angle)];
+    const [x, y, z] = pose.pawl.position;
+    close(Math.hypot(x - EYE_R * radial[0], z - EYE_R * radial[2]), 0, `主動量 ${v.toFixed(3)}:爪的眼在臂桿上`, 1e-9);
+    close(y, part(def, "arm").pieces.find((p) => p.axis).at[2], "眼和臂桿同高", 1e-9);
+    const normal = quatRotate(pose.pawl.rotation, [0, 0, 1]);
+    close(Math.abs(dot(normal, radial)), 1, `主動量 ${v.toFixed(3)}:爪繞臂桿擺(爪的平面和臂桿垂直)`, 1e-9);
+  }
+  // 推程:爪尖頂著齒的直面推(間隙接近 0)
+  for (const v of sweep(0.9 * SPAN, 6, 0.5 * SPAN)) {
+    const { pawl, teeth } = m237.contactAt(v);
+    const gap = Math.min(...teeth.flatMap((t) => [...pawl.map((q) => edgeDistance(q, t)), ...t.map((q) => edgeDistance(q, pawl))]));
+    assert.ok(gap < 0.01, `主動量 ${v.toFixed(3)}:推程爪尖貼著齒(間隙 ${gap.toFixed(4)})`);
+  }
+  // 回程:爪尖被斜面抬到齒尖,越過後加速落下(不瞬移)
+  const tip = (v) => Math.min(...m237.contactAt(v).pawl.map((q) => q[1]));
+  const lifts = sweep(2 * SPAN, 400, SPAN).map(tip);
+  assert.ok(Math.max(...lifts) > H - 0.02, "回程時爪尖被齒的斜面抬到齒尖");
+  const swings = sweep(2 * SPAN, 400, SPAN).map((v) => m237.motion(v).swing);
+  assert.ok(Math.max(...swings) - Math.min(...swings) > 0.3, "爪繞臂桿翻上去又落下");
+  const drops = lifts.slice(1).map((h, i) => lifts[i] - h);
+  assert.ok(Math.max(...drops) < 0.12, "沒有一步就落到底");
+  const fall = drops.map((d, i) => [d, i]).filter(([d]) => d > 1e-4);
+  assert.ok(fall.length > 3 && fall[2][0] > fall[0][0], "越落越快");
+  // 爪是平板、在臂桿處和圓周相切:爪尖(在眼前面 d 處)真正的半徑要落在鋸齒那一圈(sawCrown 的齒板,厚 0.12)裡
+  const ring = [ARC * Math.cos(m237.geometry.PITCH / 2) - 0.06, ARC + 0.06];
   for (const v of sweep(4 * SPAN, 160)) {
     const { pawl, teeth } = m237.contactAt(v);
-    for (const t of teeth) assert.ok(penetrationDepth(pawl, t) < 1e-3, `主動量 ${v.toFixed(3)}:棘爪不穿進齒`);
+    const tip = pawl.reduce((a, b) => (b[1] < a[1] ? b : a));
+    const d = tip[0] - m237.motion(v).arm * ARC;
+    const r = [Math.hypot(EYE_R - THICK / 2, d), Math.hypot(EYE_R + THICK / 2, d)];
+    assert.ok(Math.min(r[1], ring[1]) - Math.max(r[0], ring[0]) > 0.03, `主動量 ${v.toFixed(3)}:爪尖和鋸齒在同一圈(爪尖半徑 ${r.map((x) => x.toFixed(3))})`);
+    for (const t of teeth) assert.ok(penetrationDepth(pawl, t) < 1e-3, `主動量 ${v.toFixed(3)}:爪不穿進齒`);
+    assert.ok(Math.min(...pawl.map((q) => q[1])) > -1e-3, `主動量 ${v.toFixed(3)}:爪不穿進輪緣頂面`);
   }
+});
+
+test("第 237 種:輪軸上端從搖臂的轂中間穿出當作銷,臂轂坐在輪轂頂上,輪軸下端插在底座的軸承裡", () => {
+  const def = m237.default;
+  const { PIN, HUB } = m237.geometry;
+  const wheel = part(def, "wheel").pieces;
+  const span = (p) => [p.at[2] - p.length / 2, p.at[2] + p.length / 2];
+  const shaft = wheel.find((p) => p.mark);
+  const hub = wheel.find((p) => p.kind === "cylinder" && p.radius === 0.2);
+  const disc = wheel.find((p) => p.kind === "cylinder" && p.length === 0.04);
+  const armHub = part(def, "arm").pieces.find((p) => p.inner);
+  close(armHub.inner, PIN, "臂轂的孔套在輪軸上");
+  close(span(armHub)[0], span(hub)[1], "臂轂坐在輪轂頂上");
+  close(span(hub)[1], HUB, "輪轂頂");
+  assert.ok(span(hub)[0] <= span(disc)[1], "輪轂從圓盤立起");
+  assert.ok(span(shaft)[1] > span(armHub)[1] + 0.1, "輪軸上端從臂轂穿出");
+  const frame = part(def, "frame").pieces;
+  const bearing = frame.find((p) => p.inner);
+  const base = frame.find((p) => p.kind === "box");
+  close(bearing.inner, PIN, "軸承的孔套在輪軸上");
+  // 輪軸(局部 z)= 世界 y
+  assert.ok(span(shaft)[0] < bearing.at[1] + bearing.length / 2 && span(shaft)[0] > bearing.at[1] - bearing.length / 2, "輪軸下端插在軸承裡");
+  close(bearing.at[1] - bearing.length / 2, base.at[1] + base.size[1] / 2, "軸承立在底座上");
 });
 
 test("第 238 種:叉瓦架往復擺動,叉瓦 B、C 輪流擋住、放走擒縱輪 D:每擺一程半個齒(由接觸算)", () => {
@@ -425,18 +485,96 @@ test("第 238 種:叉瓦架往復擺動,叉瓦 B、C 輪流擋住、放走擒縱
   }
 });
 
-test("第 239 種:正齒輪的擋止爪:爪尖落在齒間,齒轉過時被頂起、越過齒尖再彈回下一個齒間(由接觸算)", () => {
+test("第 239 種:兩支擋爪是單向的止回爪,齒輪往放行的方向轉時爪被斜面頂起、越過齒尖再彈回下一個齒間(由接觸算)", () => {
   const { PITCH } = m239.geometry;
-  for (const w of ["left", "right"]) {
-    const lifts = sweep(PITCH, 120).map((t) => m239.liftOf(w, t));
-    assert.ok(Math.max(...lifts) > 0.12, `${w}:被齒頂起`);
-    close(m239.liftOf(w, PITCH), m239.liftOf(w, 0), `${w}:轉過一齒後落回同樣深的齒間`, 1e-9);
+  for (const [w, dir] of [["left", -1], ["right", 1]]) {
+    const lifts = sweep(dir * PITCH, 120).map((t) => m239.liftOf(w, t));
+    assert.ok(Math.max(...lifts) - Math.min(...lifts) > 0.12, `${w}:被齒頂起`);
+    close(m239.liftOf(w, dir * PITCH), m239.liftOf(w, 0), `${w}:轉過一齒後落回同樣深的齒間`, 1e-9);
     const steps = lifts.slice(1).map((x, i) => lifts[i] - x);
     assert.ok(Math.max(...steps) < 0.12, `${w}:彈回的過程不是一步到位`);
   }
-  for (const t of sweep(2 * PITCH, 120)) {
-    const { pawls, teeth } = m239.contactAt(t);
-    for (const p of pawls) for (const tooth of teeth) assert.ok(penetrationDepth(p, tooth) < 2e-3, `轉角 ${t.toFixed(3)}:爪不穿進齒`);
+  for (const state of ["left", "right", "both"])
+    for (const t of sweep(2 * PITCH, 120, -PITCH)) {
+      const { pawls, teeth } = m239.contactAt(t, state);
+      for (const p of Object.values(pawls)) for (const tooth of teeth) assert.ok(penetrationDepth(p.outline, tooth) < 2e-3, `${state} 轉角 ${t.toFixed(3)}:爪不穿進齒`);
+    }
+});
+
+test("第 239 種:擋止裝置(原文「用於正齒輪的擋止裝置配置方式」)——只放下一支爪時,齒輪往回只能轉到端面貼上齒的側面", () => {
+  const def = m239.default;
+  const { PITCH, PAWLS } = m239.geometry;
+  const option = (id) => def.states.options.find((o) => o.id === id);
+  assert.equal(option("left").direction, -1, "只放下左爪:自動播放往順時針(放行的方向)");
+  assert.equal(option("right").direction ?? 1, 1, "只放下右爪:自動播放往逆時針");
+  for (const [state, other] of [["left", "right"], ["right", "left"]]) {
+    const { blocks } = PAWLS[state];
+    for (const theta of sweep(PITCH, 7, 0.01)) {
+      const range = def.driver.backstop(theta, state);
+      const stop = blocks > 0 ? range[1] : range[0];
+      assert.equal(blocks > 0 ? range[0] : range[1], blocks > 0 ? -Infinity : Infinity, `${state}:放行的方向不擋`);
+      const ahead = blocks * (stop - theta);
+      assert.ok(ahead >= -1e-9 && ahead < PITCH, `${state}:往擋住的方向最多轉到一個齒距內的擋止處`);
+      // 擋止處:端面和齒之間的間隙接近 0,齒輪再往擋住的方向轉一點(爪不動)就穿進爪
+      const { pawls, teeth } = m239.contactAt(stop, state);
+      const [a, b] = pawls[state].face;
+      const gap = Math.min(...teeth.flatMap((t) => t.map((q) => edgeDistance(q, [a, b]))));
+      assert.ok(gap < 0.02, `${state}:擋止處端面和齒的間隙 ${gap.toFixed(4)} 接近 0`);
+      const further = m239.contactAt(stop + blocks * 0.02, state).teeth;
+      assert.ok(further.some((t) => polygonsOverlap(pawls[state].outline, t)), `${state}:再轉一點齒就撞進端面`);
+      // 端面整段靠在齒的側面上(原圖:端面靠在旁邊那一齒的側面):端面的底端與中段離那一齒都接近 0
+      const tooth = teeth.reduce((best, t) => (Math.min(...t.map((q) => edgeDistance(q, [a, b]))) < Math.min(...best.map((q) => edgeDistance(q, [a, b]))) ? t : best));
+      for (const f of [0, 0.3]) {
+        const p = [b[0] + (a[0] - b[0]) * f, b[1] + (a[1] - b[1]) * f];
+        assert.ok(edgeDistance(p, tooth) < 0.03, `${state}:端面在 ${f} 處貼著齒的側面`);
+      }
+    }
+    // 另一支抬起,靠在撐銷上,碰不到齒輪
+    const prop = part(def, state === "left" ? "propRight" : "propLeft");
+    const pawl = part(def, other === "left" ? "pawlLeft" : "pawlRight");
+    for (const theta of sweep(PITCH, 12)) {
+      const pose = def.pose(theta, state).parts;
+      assert.equal(pose[prop.id].visible, true, `${state}:撐銷插著`);
+      const outline = placeOutline(pawl.shape.outline, PAWLS[other].pivot, pose[pawl.id].angle);
+      assert.ok(!m239.contactAt(theta, state).teeth.some((t) => polygonsOverlap(outline, t)), `${state}:抬起的 ${other} 爪碰不到齒`);
+      close(edgeDistance(prop.center, outline), prop.radius, `${state}:抬起的 ${other} 爪靠在撐銷上`, 0.01);
+    }
+  }
+});
+
+test("第 239 種:兩支都放下(原圖畫的樣子)時兩個方向都擋住,齒輪只能在兩個擋止處之間", () => {
+  const def = m239.default;
+  const { PITCH } = m239.geometry;
+  assert.equal(def.states.options.find((o) => o.id === "both").direction, 0, "自動播放不轉");
+  for (const theta of sweep(PITCH, 9)) {
+    const [lo, hi] = def.driver.backstop(theta, "both");
+    assert.ok(lo <= theta + 1e-9 && theta <= hi + 1e-9 && hi - lo < 2 * PITCH, `轉角 ${theta.toFixed(3)}:兩邊都有擋止`);
+    close(lo, def.driver.backstop(theta, "right")[0], "順時針擋在右爪", 1e-12);
+    close(hi, def.driver.backstop(theta, "left")[1], "逆時針擋在左爪", 1e-12);
+    for (const id of ["propLeft", "propRight"]) assert.equal(def.pose(theta, "both").parts[id].visible, false, "撐銷拔掉");
+  }
+});
+
+test("第 239 種:托架落到底板,彈簧座銷往後插進短柱", () => {
+  const frame = part(m239.default, "frame").pieces;
+  const boxes = frame.filter((p) => p.kind === "box");
+  const base = boxes.reduce((a, b) => (b.at[1] < a.at[1] ? b : a)); // 最底下的底板
+  const beam = boxes.reduce((a, b) => (b.size[0] > a.size[0] && b.at[1] > 0 ? b : a));
+  const posts = boxes.filter((p) => p.size[1] > 4);
+  assert.equal(posts.length, 2, "橫樑兩端各一根立柱");
+  for (const p of posts) {
+    const top = p.at[1] + p.size[1] / 2;
+    assert.ok(top >= beam.at[1] - beam.size[1] / 2 && top <= beam.at[1] + beam.size[1] / 2 + 1e-9, "立柱頂到橫樑");
+    assert.ok(Math.abs(p.at[0] - beam.at[0]) <= (beam.size[0] - p.size[0]) / 2 + 1e-9, "立柱在橫樑底下");
+    close(p.at[1] - p.size[1] / 2, base.at[1] + base.size[1] / 2, "立柱落到底板上", 1e-9);
+    assert.ok(Math.abs(p.at[0] - base.at[0]) <= (base.size[0] - p.size[0]) / 2 + 1e-9, "立柱站在底板上");
+  }
+  const zRange = (p) => (p.kind === "box" ? [p.at[2] - p.size[2] / 2, p.at[2] + p.size[2] / 2] : [p.at[2] - p.length / 2, p.at[2] + p.length / 2]);
+  const seats = frame.filter((p) => p.kind === "cylinder" && p.radius === 0.06);
+  assert.equal(seats.length, 2);
+  for (const s of seats) {
+    const post = boxes.find((b) => Math.abs(b.at[0] - s.at[0]) < 1e-9 && b.size[1] < 1);
+    assert.ok(depthsOverlap(zRange(s), zRange(post)), "彈簧座銷插進短柱");
   }
 });
 

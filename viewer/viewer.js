@@ -325,7 +325,9 @@ class Session {
   // ── 每一幀 ────────────────────────────
 
   advance(dt) {
-    const step = this.defaultSpeed() * this.speedFactor * dt;
+    // 狀態可以改自動播放的方向(direction:−1 反向、0 不動,例如擋止只放行另一個方向或兩個方向都擋住)
+    const sign = this.option()?.direction ?? 1;
+    const step = this.defaultSpeed() * this.speedFactor * dt * sign;
     if (!this.bounds) {
       this.value += step;
       return;
@@ -351,12 +353,22 @@ class Session {
     return (this.bounds[1] - this.bounds[0]) / (d.type === "rotation" ? 2.5 : 4);
   }
 
-  // 拖動改主動量:有範圍就夾住;有擋止(driver.backstop)時往回只能轉到最近的擋止位置
+  // 拖動改主動量:有範圍就夾住;有擋止(driver.backstop)時往回只能轉到最近的擋止位置。
+  // backstop(v, 狀態) 回傳數值是往回的下限;回傳 [下限, 上限] 則兩邊都夾住(擋止依狀態擋住不同的方向)
   setValue(next) {
     const d = this.def.driver;
     if (this.bounds) next = clamp(next, ...this.bounds);
-    if (d.backstop && next < this.value) next = Math.max(next, d.backstop(this.value));
+    if (d.backstop) {
+      const stop = d.backstop(this.value, this.state);
+      if (Array.isArray(stop)) next = clamp(next, ...stop);
+      else if (next < this.value) next = Math.max(next, stop);
+    }
     this.value = next;
+  }
+
+  /** 目前狀態的選項(沒有狀態時是 undefined) */
+  option() {
+    return this.def.states?.options.find((o) => o.id === this.state);
   }
 
   // 拖動時一次事件最多改變的主動量,以及數值微分的步長
@@ -500,8 +512,8 @@ class Session {
     const prevAngles = { ...this.lastAngles };
     if (this.playing && !this.drag) this.advance(dt);
     this.apply(this.pose(this.value), now);
-    // 拖動在 pointermove 裡改主動量,所以跟上一幀套用的值比
-    this.updateArrows(prevAngles, this.value !== this.frameValue);
+    // 拖動在 pointermove 裡改主動量,所以跟上一幀套用的值比;狀態讓主動件不動(direction 0)時,播放中也收起箭頭
+    this.updateArrows(prevAngles, this.value !== this.frameValue || (this.playing && this.option()?.direction === 0));
     this.frameValue = this.value;
     this.syncSlider();
     const { lineart, camera } = getShared();
