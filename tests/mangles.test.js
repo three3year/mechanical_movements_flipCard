@@ -545,6 +545,52 @@ test("第 210 種:轉動開槽臂的軸,垂直桿得到變速的直線運動", (
   }
 });
 
+// 第 210 種的方塊(不轉的 box)在世界座標的範圍 [[x0, x1], [y0, y1], [z0, z1]]
+const extent210 = (q, offset = [0, 0, 0]) => q.size.map((s, k) => [offset[k] + q.at[k] - s / 2, offset[k] + q.at[k] + s / 2]);
+
+test("第 210 種:「垂直桿只能在導座中上下滑動」:整個行程桿都穿過上下兩個導座(#210-1)", () => {
+  const def = m210.default;
+  const bar = part(def, "rod").pieces.find((q) => q.kind === "box");
+  const [from, to] = m210.range;
+  for (const a of sweep(to, 60, from)) {
+    const v = a - from; // 主動量從 from 起算,一程是 to − from
+    const { position } = def.pose(v).parts.rod;
+    const [, [y0, y1]] = extent210(bar, position);
+    for (const g of m210.guides) {
+      const [lo, hi] = [g.y - g.height / 2, g.y + g.height / 2];
+      assert.ok(y0 <= lo && y1 >= hi, `主動量 ${v.toFixed(2)}:桿 ${y0.toFixed(2)}–${y1.toFixed(2)} 穿過導座 ${lo.toFixed(2)}–${hi.toFixed(2)}`);
+    }
+  }
+});
+
+test("第 210 種:每個導座是圍住桿的中空方框,兩個導座由同一根立柱接到地面(#210-2,推斷)", () => {
+  const def = m210.default;
+  const bar = part(def, "rod").pieces.find((q) => q.kind === "box");
+  const [[rx0, rx1], , [rz0, rz1]] = extent210(bar, [m210.geometry.X_ROD, 0, 0]);
+  const pieces = part(def, "guides").pieces.map((q) => extent210(q));
+  const touch = (a, b) => [0, 1, 2].every((k) => a[k][0] <= b[k][1] + 1e-9 && b[k][0] <= a[k][1] + 1e-9);
+  for (const g of m210.guides) {
+    const walls = pieces.filter(([, [y0, y1]]) => Math.abs((y0 + y1) / 2 - g.y) < 1e-9 && Math.abs(y1 - y0 - g.height) < 1e-9);
+    const side = (test) => walls.find(test);
+    // 四面各一片板,貼著桿的四個面(不穿進桿),彼此相連成框
+    const left = side(([[, x1], , [z0, z1]]) => Math.abs(x1 - rx0) < 0.03 && x1 <= rx0 + 1e-9 && z0 <= rz0 && z1 >= rz1);
+    const right = side(([[x0], , [z0, z1]]) => Math.abs(x0 - rx1) < 0.03 && x0 >= rx1 - 1e-9 && z0 <= rz0 && z1 >= rz1);
+    const back = side(([[x0, x1], , [, z1]]) => Math.abs(z1 - rz0) < 0.03 && z1 <= rz0 + 1e-9 && x0 <= rx0 && x1 >= rx1);
+    const front = side(([[x0, x1], , [z0]]) => Math.abs(z0 - rz1) < 0.03 && z0 >= rz1 - 1e-9 && x0 <= rx0 && x1 >= rx1);
+    assert.ok(left && right && back && front, `高度 ${g.y} 的導座四面都有板`);
+    for (const [a, b] of [[left, back], [back, right], [right, front], [front, left]]) assert.ok(touch(a, b), "框的四片板相連");
+  }
+  // 立柱:從地面一直到上導座,貼著兩個導座
+  const top = Math.max(...m210.guides.map((g) => g.y));
+  const bottom = Math.min(...m210.guides.map((g) => g.y));
+  const floor = Math.min(...pieces.map(([, [y0]]) => y0));
+  const post = pieces.find(([, [y0, y1]]) => y0 < bottom && y1 >= top);
+  assert.ok(post, "有一根立柱通過兩個導座的高度");
+  for (const y of [top, bottom]) assert.ok(pieces.some((w) => Math.abs((w[1][0] + w[1][1]) / 2 - y) < 1e-9 && touch(w, post)), `立柱接到高度 ${y} 的導座`);
+  assert.ok(pieces.some((w) => w[1][0] === floor && touch(w, post)), "立柱下端接到地面的底板");
+  close(floor, m210.geometry.FLOOR - 0.18, "底板和開槽臂的軸承座站在同一個地面上", 1e-9);
+});
+
 test("第 205 種:兩個凸輪組成的「兩齒小齒輪」,交替推動輪兩面交錯的齒;小齒輪每轉一圈,輪走兩格", () => {
   const { STEP } = m205.geometry;
   close(m205.wheelAngle(2 * Math.PI) - m205.wheelAngle(0), -2 * STEP, "一圈兩格", 1e-12);
@@ -653,11 +699,55 @@ test("第 213 種:擋輪只有一段齒,下輪轉到那段齒的盡頭、齒頂�
   assert.ok(du < 0, "咬合反向");
 });
 
-test("第 214 種:兩個齒數不同的齒輪,轉了幾圈後面上的指片相碰而擋住", () => {
+test("第 213 種:擋輪的輪圈從內圓到外緣真的切開一道直槽,輪圈套在內圓的輪轂上(#213-1)", () => {
+  const def = m213.default;
+  const upper = part(def, "upper");
+  const ring = upper.pieces.find((q) => q.kind === "plate" && !q.accent);
+  const hub = upper.pieces.find((q) => q.kind === "cylinder" && q.inner);
+  const angle = def.pose(0).parts.upper.angle;
+  const outline = placeOutline(ring.shape.outline, [0, 0], angle);
+  const solid = (p) => pointInPolygon(p, outline) && !(ring.shape.holes ?? []).some((h) => pointInPolygon(p, placeOutline(h, [0, 0], angle)));
+  const outer = Math.max(...outline.map(([x, y]) => Math.hypot(x, y)));
+  const inner = Math.min(...outline.map(([x, y]) => Math.hypot(x, y)));
+  close(hub.radius, inner, "輪圈的內緣就是輪轂的外緣(原圖的內圓)", 1e-6);
+  // 原圖的槽在擋輪正上方(下緣是有齒的那段)
+  for (const r of sweep(outer - 0.03, 20, inner + 0.01)) {
+    assert.ok(!solid([0, r]), `正上方半徑 ${r.toFixed(2)} 處是槽(沒有材料)`);
+    assert.ok(solid([0.12, r]) && solid([-0.12, r]), `半徑 ${r.toFixed(2)} 處槽的兩邊是輪圈`);
+  }
+  assert.ok(!solid([0, -inner + 0.05]), "內圓裡是輪轂,不是輪圈");
+  assert.ok(solid([0, -(inner + outer) / 2 + 0.05]), "下緣是完整的輪圈");
+});
+
+/** 第 214 種:主動量 theta 時兩支指片的外形(世界座標),由定義裡的板件與姿勢放好 */
+function fingers214(theta) {
+  const def = m214.default;
+  const p = def.pose(theta).parts;
+  return Object.fromEntries(
+    ["left", "right"].map((id) => {
+      const g = part(def, id);
+      const finger = g.pieces.find((q) => q.kind === "plate" && q.accent);
+      return [id, placeOutline(finger.shape.outline, g.center, p[id].angle + finger.angle)];
+    }),
+  );
+}
+/** 兩個多邊形外形之間的間隙(相交時為 0) */
+const gap = (a, b) => (polygonsOverlap(a, b) ? 0 : Math.min(...a.map((q) => edgeDistance(q, b)), ...b.map((q) => edgeDistance(q, a))));
+
+test("第 214 種:兩個齒數不同的齒輪,轉了幾圈後面上的指片外形相碰而擋住(#214-1)", () => {
   const [lo, hi] = m214.range;
   assert.ok(lo < -2 * Math.PI && hi > 2 * Math.PI, "可轉一圈以上");
-  assert.ok(m214.touching(hi + 0.02) && m214.touching(lo - 0.02), "兩端指片相碰");
-  for (const t of sweep(hi, 200, lo)) assert.ok(!m214.touching(t), "範圍內不相碰");
+  for (const [end, dir] of [[lo, -1], [hi, 1]]) {
+    const at = fingers214(end);
+    const g = gap(at.left, at.right);
+    assert.ok(!polygonsOverlap(at.left, at.right) && g < 0.005, `範圍端 ${end.toFixed(3)} 兩支指片的外形間隙 ${g.toFixed(4)} 接近 0`);
+    const beyond = fingers214(end + dir * 0.01);
+    assert.ok(polygonsOverlap(beyond.left, beyond.right), "再轉 0.01 就穿入");
+  }
+  for (const t of sweep(hi, 2000, lo)) {
+    const f = fingers214(t);
+    assert.ok(!polygonsOverlap(f.left, f.right), `主動量 ${t.toFixed(3)} 範圍內指片不相碰`);
+  }
 });
 
 test("第 215 種:環上的銷每轉一圈把星形輪推過一格(六分之一圈)", () => {
@@ -751,6 +841,22 @@ test("第 208 種:開槽小齒輪移到三圈銷中的任一圈,得到三種速�
   const speeds = ["outer", "middle", "inner"].map((ring) => Math.abs(m208.pinion(1, ring).angle));
   assert.ok(speeds[0] > speeds[1] && speeds[1] > speeds[2], "外圈最快、內圈最慢");
   close(speeds[0] / speeds[2], m208.rings.outer / m208.rings.inner, "比例 = 銷數比", 1e-12);
+});
+
+test("第 208 種:小齒輪軸兩端的軸承立柱站在底板上(#208-1,推斷)", () => {
+  const frame = part(m208.default, "frame");
+  const extent = (q) => q.size.map((s, k) => [q.at[k] - s / 2, q.at[k] + s / 2]);
+  const boxes = frame.pieces.filter((q) => q.kind === "box");
+  const base = boxes.reduce((a, b) => (b.size[0] * b.size[2] > a.size[0] * a.size[2] ? b : a)); // 底板:面積最大的那塊
+  const [bx, by, bz] = extent(base);
+  const posts = boxes.filter((q) => q !== base && Math.abs(Math.abs(q.at[0]) - 2.3) < 1e-9);
+  assert.equal(posts.length, 2, "兩根立柱");
+  for (const post of posts) {
+    const [px, py, pz] = extent(post);
+    close(py[0], by[1], "立柱底端落在底板頂面", 1e-9);
+    assert.ok(px[0] >= bx[0] && px[1] <= bx[1], "立柱的寬度在底板範圍內");
+    assert.ok(pz[0] >= bz[0] && pz[1] <= bz[1], `立柱的深度 ${pz.map((z) => z.toFixed(2))} 在底板 ${bz.map((z) => z.toFixed(2))} 範圍內`);
+  }
 });
 
 test("第 216 種:外側與內側缺齒式齒輪交替與小齒輪咬合:一個方向慢、另一個方向快", () => {

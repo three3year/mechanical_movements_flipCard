@@ -1,7 +1,7 @@
 // 第 210 種:轉動承載曲面開槽臂的軸,可給垂直桿變速的直線運動。垂直桿在上下兩個導座中只能上下滑動,
 // 桿上的銷伸進開槽臂的彎曲長槽;臂轉動時銷沿槽滑動,槽在不同部位的斜度不同,桿上下移動的速度就時快時慢。
 // 主動件是開槽臂的軸(在槽容許的範圍內往復轉動)。
-// 推斷:槽的形狀依原圖描出;臂轉動的範圍。
+// 推斷:槽的形狀依原圖描出;臂轉動的範圍;導座做成圍住桿的方框,由桿後面一根立柱接到地面。
 import { swing, rot2 } from "./kit.js";
 import { pedestal } from "./supports.js";
 import { shape, circle, thickLine, arcPoints } from "./shapes.js";
@@ -12,6 +12,9 @@ const X_ROD = 0.45;
 const FROM = -1.1;
 const TO = 0.15;
 const ROD = { top: 3.35, bottom: -2.45 }; // 兩個導座的高度
+const GUIDE = { height: 0.3, wall: 0.06 };
+const BAR = { width: 0.2, depth: 0.15 }; // 桿的截面(x × z)
+const FLOOR = -3.97;
 
 /** 開槽臂轉 alpha 時:銷的位置(槽與垂直桿的交點)、銷在槽中的弧長位置 */
 export function pin(alpha) {
@@ -31,7 +34,29 @@ export function pin(alpha) {
   return { ...best, length: along };
 }
 export const range = [FROM, TO];
-const Y0 = pin(0).y;
+export const guides = [ROD.top, ROD.bottom].map((y) => ({ y, height: GUIDE.height }));
+export const geometry = { X_ROD, FLOOR };
+
+// 桿的長度與在銷之上的位置:整個行程桿都穿過上下兩個導座(兩端各再伸出 0.1,像原圖桿頭露在導座外)
+const PIN_Y = Array.from({ length: 201 }, (_, i) => pin(FROM + ((TO - FROM) * i) / 200).y);
+const [LOW, HIGH] = [Math.min(...PIN_Y), Math.max(...PIN_Y)];
+const REACH = { top: ROD.top + GUIDE.height / 2 + 0.1, bottom: ROD.bottom - GUIDE.height / 2 - 0.1 };
+const BAR_LENGTH = REACH.top - REACH.bottom + (HIGH - LOW);
+const BAR_CENTER = (REACH.top + REACH.bottom - LOW - HIGH) / 2; // 相對於銷
+
+/** 導座:圍住桿的方框(四片板),桿在中間上下滑;後面那片接到立柱 */
+const guide = (y) => {
+  const { height: h, wall: t } = GUIDE;
+  const [hx, hz] = [BAR.width / 2 + t / 2, BAR.depth / 2 + t / 2];
+  return [
+    { kind: "box", size: [t, h, BAR.depth + 2 * t], at: [X_ROD - hx, y, 0] },
+    { kind: "box", size: [t, h, BAR.depth + 2 * t], at: [X_ROD + hx, y, 0] },
+    { kind: "box", size: [BAR.width + 2 * t, h, t], at: [X_ROD, y, -hz] },
+    { kind: "box", size: [BAR.width + 2 * t, h, t], at: [X_ROD, y, hz] },
+  ];
+};
+// 立柱:在桿後面、貼著兩個導座的後片,從上導座一直到地面
+const POST = { depth: 0.15, z: -(BAR.depth / 2 + GUIDE.wall) - 0.075 };
 
 const body = shape(thickLine(SLOT, 0.62), [thickLine([[-0.8, 0.28], ...SLOT.slice(1, -1), [0.95, 2.15]], 0.17).reverse()]);
 
@@ -53,15 +78,20 @@ export default {
       id: "rod",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.2, ROD.top - ROD.bottom + 0.6, 0.15], at: [0, (ROD.top + ROD.bottom) / 2 - Y0, 0] },
+        { kind: "box", size: [BAR.width, BAR_LENGTH, BAR.depth], at: [0, BAR_CENTER, 0] },
         { kind: "cylinder", radius: 0.09, length: 0.45, at: [0, 0, 0.2] },
       ],
     },
     {
       id: "guides",
       kind: "group",
-      // 每個導座是夾著桿的兩塊(桿從中間滑過)
-      pieces: [ROD.top, ROD.bottom].flatMap((y) => [-1, 1].map((s) => ({ kind: "box", size: [0.14, 0.3, 0.35], at: [X_ROD + s * 0.2, y, 0] }))),
+      // 推斷(原圖只畫出兩個導座):導座是圍住桿的方框,桿後面一根立柱把兩個導座接到地面,下端一塊底板
+      pieces: [
+        ...guide(ROD.top),
+        ...guide(ROD.bottom),
+        { kind: "box", size: [0.24, ROD.top + GUIDE.height / 2 - FLOOR, POST.depth], at: [X_ROD, (ROD.top + GUIDE.height / 2 + FLOOR) / 2, POST.z] },
+        { kind: "box", size: [0.6, 0.18, 0.3], at: [X_ROD + 0.1, FLOOR - 0.09, -0.15] }, // 後緣貼著軸承座的底板
+      ],
     },
     {
       id: "bearings",
@@ -69,7 +99,7 @@ export default {
       // 推斷(原圖只畫出輪轂):開槽臂的固定軸往後伸進一座落地的軸承座
       pieces: [
         { kind: "cylinder", radius: 0.1, length: 0.7, at: [0, 0, -0.25] },
-        ...pedestal({ at: [0, 0], z: -0.6, bore: 0.1, floor: -3.97, depth: 0.2 }),
+        ...pedestal({ at: [0, 0], z: -0.6, bore: 0.1, floor: FLOOR, depth: 0.2 }),
       ],
     },
   ],

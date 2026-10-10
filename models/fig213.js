@@ -1,11 +1,12 @@
 // 第 213 種:另一種同樣用途(限制上發條的圈數)的擋止裝置。下方的輪套在發條軸(方孔)上,帶動上方的擋輪;
 // 擋輪只在下緣一段切有齒,其餘輪緣是完整的圓(齒頂高度),下輪的齒碰到那裡就推不動——擋止。
-// 擋輪上方的直槽與內圓是原圖的樣子(推斷:槽讓擋輪有一點彈性)。主動件是下輪。
+// 擋輪的輪圈套在一個圓轂上(原圖的內圓),輪圈上方從內圓到外緣切開一道直槽(推斷:槽讓輪圈有一點彈性,
+// 套在轂上夾緊)。主動件是下輪。
 // 推斷:兩輪的齒數(下輪原圖是鋸齒形,這裡用一般的齒形以便咬合);可轉的範圍由擋輪那段齒的齒數決定。
 import { TAU, Z } from "./kit.js";
 import { pedestal } from "./supports.js";
 import { meshAngle } from "./gears.js";
-import { shape, rect, gearShape } from "./shapes.js";
+import { shape, gearShape, gearProfile, gearSize, toothOutline, arcPoints } from "./shapes.js";
 import { penetrationDepth, placeOutline } from "./contact.js";
 
 const NL = 18;
@@ -27,9 +28,25 @@ export const upperAngle = (theta) => meshAngle(LOWER, UPPER, theta);
 // 擋輪 5 齒之間只有 4 個齒槽,下輪在原圖位置時兩齒各在中間兩個齒槽裡,所以兩邊各只能再走一個多齒槽
 // (不是「那段齒的兩端各留半齒」——那樣末端的齒會整個嵌進輪緣裡)。
 const lowerShape = gearShape({ teeth: NL, radius: LOWER.radius });
-const upperShape = gearShape({ teeth: NU, radius: UPPER.radius, mask: (i) => TEETH.includes(i), blank: "tip" });
+
+// 擋輪的輪圈(擋輪局部座標):外緣是只有那段齒的齒廓(其餘是齒頂高度的圓),內緣是半徑 RIN 的內圓;
+// 原圖位置的正上方切開一道寬 SLOT 的直槽,從內圓一直通到外緣,所以輪圈是一個開口的環(一個多邊形,沒有孔)
+const RIN = 0.62;
+const SLOT = 0.12;
+const { addendum, dedendum } = gearSize(UPPER.radius, NU);
+const TIP = UPPER.radius + addendum;
+const SLOT_AT = Math.PI / 2 - U0; // 原圖位置時朝正上方的方向
+const ringOutline = (() => {
+  const profile = gearProfile({ teeth: NU, radius: UPPER.radius, has: (i) => TEETH.includes(i), blank: "tip" });
+  const rel = ([x, y]) => (((Math.atan2(y, x) - SLOT_AT) % TAU) + TAU) % TAU; // 從槽逆時針量的角度
+  const [ho, hi] = [Math.asin(SLOT / 2 / TIP), Math.asin(SLOT / 2 / RIN)];
+  const outer = profile.filter((p) => rel(p) > ho && rel(p) < TAU - ho).sort((a, b) => rel(a) - rel(b));
+  const at = (r, a) => [r * Math.cos(SLOT_AT + a), r * Math.sin(SLOT_AT + a)];
+  // 槽左壁的外端 → 外緣逆時針繞一圈到槽右壁 → 內圓順時針繞回槽左壁
+  return [at(TIP, ho), ...outer, at(TIP, -ho), ...arcPoints(RIN, SLOT_AT - hi + TAU, SLOT_AT + hi)];
+})();
 /** 下輪轉 theta 時,下輪的齒是否頂到擋輪的輪緣(正常咬合時齒頂只互相擦到 0.001 左右,頂到輪緣就深得多) */
-export const touching = (theta) => penetrationDepth(placeOutline(lowerShape.outline, LOWER.center, theta), placeOutline(upperShape.outline, UPPER.center, upperAngle(theta))) > 0.004;
+export const touching = (theta) => penetrationDepth(placeOutline(lowerShape.outline, LOWER.center, theta), placeOutline(ringOutline, UPPER.center, upperAngle(theta))) > 0.004;
 const LIMIT = (() => {
   let lo = 0;
   let hi = (TOOTHED * TAU) / NL;
@@ -56,17 +73,13 @@ export default {
     },
     {
       id: "upper",
-      kind: "gear",
-      teeth: NU,
-      radius: UPPER.radius,
-      width: 0.2,
-      toothed: TEETH,
-      blank: "tip",
-      hub: false,
-      bore: 0.08,
+      kind: "group",
+      spin: TIP + dedendum * 0.2,
       pieces: [
-        { kind: "plate", shape: shape(rect(0.16, 0.62, 0, UPPER.radius - 0.2)), thickness: 0.22, at: [0, 0, 0.02] },
-        { kind: "cylinder", radius: 0.66, inner: 0.6, length: 0.24 },
+        { kind: "plate", shape: shape(ringOutline), thickness: 0.2 },
+        // 圓轂:前後各比輪圈凸出 0.11,內圓的界線描得出來;中間的孔套在固定軸上
+        { kind: "cylinder", radius: RIN, inner: 0.1, length: 0.42 },
+        { kind: "plate", shape: shape(toothOutline(UPPER, TEETH[0])), thickness: 0.216, accent: true },
       ],
     },
     {

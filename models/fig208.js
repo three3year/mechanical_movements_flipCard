@@ -14,6 +14,7 @@ const RP = (SLOTS * PITCH) / TAU;
 const PIN = { radius: 0.08, length: 0.3 };
 const Z = 0.1 + PIN.length * 0.6 + RP; // 小齒輪軸的高度(在輪面之上)
 const FLOOR = -radiusOf(RINGS.outer) - 0.75;
+const BASE = [-0.8, Z + 0.2]; // 底板的深度範圍(z):後緣蓋住輪的軸承座底板,前緣伸到小齒輪軸的立柱底下
 
 /** 輪轉 theta、小齒輪在 ring:小齒輪的轉角(繞 +x)與轉速比 */
 export function pinion(theta, ring) {
@@ -73,7 +74,8 @@ export default {
           { kind: "cylinder", axis: X, radius: 0.18, inner: 0.1, length: 0.16, at: [x, 0, Z] },
           { kind: "box", size: [0.16, -0.16 - FLOOR, 0.16], at: [x, (-0.16 + FLOOR) / 2, Z] },
         ]),
-        { kind: "box", size: [5.2, 0.12, 1.4], at: [0, FLOOR - 0.06, 0] },
+        // 底板往前伸到小齒輪軸的立柱底下(立柱在軸的深度,比輪的軸承座前面),兩根立柱都站在底板上
+        { kind: "box", size: [5.2, 0.12, BASE[1] - BASE[0]], at: [0, FLOOR - 0.06, (BASE[0] + BASE[1]) / 2] },
       ],
     },
   ],
