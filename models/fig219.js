@@ -1,4 +1,4 @@
-// 第 219 種:由冠狀輪與小齒輪產生的變速圓周運動。冠狀輪(齒朝上的齒圈,以十字輻條裝在直立軸上)相對於軸偏心,
+// 第 219 種:由冠狀輪與小齒輪產生的變速圓周運動。冠狀輪(齒朝上的齒圈,中央開空,以三支輻條接到直立軸上的輪轂)相對於軸偏心,
 // 所以與小齒輪接觸處離軸的距離(相對半徑)一直在變;小齒輪做得很長,接觸點沿著它來回移動也一直咬合。
 // 冠狀輪等速轉,小齒輪時快時慢。主動件是冠狀輪。
 // 推斷:偏心距;小齒輪的軸沿著過直立軸的一條水平線(往右後方)。
@@ -15,6 +15,7 @@ const RP = (NP * PITCH) / TAU;
 const BETA = deg(30); // 小齒輪軸的方向(冠狀輪局部座標中)
 const WIDTH = 0.3;
 const DEPTH = 0.22;
+const RING = 1.55; // 齒圈的內半徑(中央開空)
 const PITCH_Z = WIDTH / 2 + DEPTH / 2; // 齒的節面高度(局部 z,朝上)
 
 /** 冠狀輪轉 theta:接觸點離軸的距離 */
@@ -47,7 +48,8 @@ export default {
       axis: Y,
       spin: R + E + 0.2,
       pieces: [
-        { kind: "gear", crown: true, teeth: N, radius: R, width: WIDTH, toothDepth: DEPTH, faceWidth: 0.25, at: [E, 0, 0] },
+        // 只畫齒圈(內半徑 RING)、不帶自己的輪轂:齒圈的圓心不在軸上,輪轂畫在直立軸上,看得出偏心
+        { kind: "gear", crown: true, teeth: N, radius: R, width: WIDTH, toothDepth: DEPTH, faceWidth: 0.25, ring: RING, hub: false, at: [E, 0, 0] },
         ...spokes,
         { kind: "cylinder", radius: 0.22, length: 0.3, mark: true },
         { kind: "cylinder", radius: 0.13, length: 3.2, at: [0, 0, -1.6] },

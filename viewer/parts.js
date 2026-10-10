@@ -288,14 +288,19 @@ function taper(geometry, part, w) {
   return geometry;
 }
 
-// 冠狀齒輪:圓盤的 +Z 面上一圈徑向的齒
+// 冠狀齒輪:圓盤的 +Z 面上一圈徑向的齒。ring:只畫內半徑 ring 以外的齒圈(中央開空,由別的塊接到軸);
+// hub: false 不畫自帶的輪轂(齒圈偏心擺放時,輪轂畫在真正的軸上)
 function crown(part, material, mark) {
   const g = new THREE.Group();
   const w = part.width ?? 0.25;
   const depth = part.toothDepth ?? (2.2 * part.radius) / part.teeth;
   const inner = part.radius - (part.faceWidth ?? part.radius * 0.22);
-  g.add(mesh(cylinder(part.radius + depth * 0.2, w), material));
-  g.add(mesh(cylinder(part.hub ?? part.radius * 0.18, w * 2), material));
+  if (part.ring) {
+    const geometry = ring(part.radius + depth * 0.2, part.ring, w);
+    delete geometry.userData.tube; // 齒圈不是軸:實體驗證照一般板件拆成凸塊
+    g.add(mesh(geometry, material));
+  } else g.add(mesh(cylinder(part.radius + depth * 0.2, w), material));
+  if (part.hub !== false) g.add(mesh(cylinder(part.hub ?? part.radius * 0.18, w * 2), material));
   const pitch = (2 * Math.PI) / part.teeth;
   const thick = 0.42 * pitch * part.radius;
   for (let i = 0; i < part.teeth; i++) {

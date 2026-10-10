@@ -31,7 +31,7 @@ import * as m213 from "../models/fig213.js";
 import * as m214 from "../models/fig214.js";
 import * as m215 from "../models/fig215.js";
 import * as m202 from "../models/fig202.js";
-import { gearProfile, gearSize, circle } from "../models/shapes.js";
+import { gearProfile, gearSize, circle, rect } from "../models/shapes.js";
 import * as m208 from "../models/fig208.js";
 import * as m216 from "../models/fig216.js";
 import { woolComb, STEP as WOOL_STEP, PHASE as WOOL_PHASE, geometry as woolGeometry } from "../models/wool-comb.js";
@@ -437,6 +437,23 @@ test("第 222 種:偏心轉動的普通正齒輪,以連桿維持節距;輪 A 同
     assert.ok(dist(s.cc, m222.centerA) > rA + rC + 0.2, "A 與 C 不咬合,齒頂之間留有空隙");
   }
   assert.ok(spread(states.map((s) => s.thetaA)) > 1.5, "A 的轉動不規則");
+});
+
+test("第 222 種:虛線圓是 C 外緣掃過的預覽線,不做成零件;連桿「將輪的中心與小齒輪中心相連」,銷穿過連桿", () => {
+  const def = m222.default;
+  const sweepR = m222.radii.ECC + m222.radii.C;
+  const rings = def.parts.filter((p) => p.kind === "plate" && p.shape?.holes?.length && Math.abs(Math.max(...p.shape.outline.map((q) => Math.hypot(...q))) - sweepR) < 0.3);
+  assert.equal(rings.length, 0, "沒有沿 C 外緣掃過範圍的圓環零件");
+  const link = part(def, "link");
+  const pose = def.pose(0).parts;
+  const C = part(def, "gearC");
+  // C 的中心銷:在 C 自己的座標原點、沿軸的圓柱
+  const pin = C.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at?.[0] ?? 0, p.at?.[1] ?? 0) < 1e-9);
+  const z = pose.link.to[2];
+  close(Math.hypot(pose.link.to[0] - pose.gearC.position[0], pose.link.to[1] - pose.gearC.position[1]), 0, "連桿一端在 C 的中心");
+  const z0 = (pin.at?.[2] ?? 0) - pin.length / 2;
+  const z1 = (pin.at?.[2] ?? 0) + pin.length / 2;
+  assert.ok(z0 <= z - link.thickness / 2 && z1 >= z + link.thickness / 2, `C 的中心銷 z ${z0}–${z1} 穿過連桿 ${z - link.thickness / 2}–${z + link.thickness / 2}`);
 });
 
 test("第 195 種:兩個相同的輪與中間的蝸桿咬合,相對的表面朝同一方向走;蝸桿每轉一圈輪轉一齒", () => {
@@ -1106,6 +1123,28 @@ test("第 219 種:冠狀輪偏心,與小齒輪接觸處的相對半徑一直在�
   assert.ok(RP > 0);
 });
 
+test("第 219 種:冠狀輪「相對於軸偏心」看得出來:齒圈中央開空,三支輻條把它接到直立軸上的輪轂", () => {
+  const { R, E } = m219.geometry;
+  const crown = part(m219.default, "crown");
+  const ring = crown.pieces.find((p) => p.kind === "gear");
+  const hub = crown.pieces.find((p) => p.kind === "cylinder" && Math.hypot(...(p.at ?? [0, 0, 0])) < 1e-9);
+  const center = ring.at.slice(0, 2);
+  close(Math.hypot(...center), E, "齒圈的圓心偏離直立軸 E");
+  assert.equal(ring.hub, false, "齒圈不帶自己的輪轂(輪轂只在直立軸上)");
+  assert.ok(ring.ring > 0 && ring.ring < R - ring.faceWidth, "齒圈中央開空,齒仍在環上");
+  assert.ok(ring.ring > E + hub.radius, "直立軸上的輪轂整個落在空的中央,沒被齒圈蓋住");
+  const spokes = crown.pieces.filter((p) => p.kind === "plate");
+  assert.equal(spokes.length, 3, "原圖是三支輻條");
+  for (const s of spokes) {
+    const pts = s.shape.outline.map(([x, y]) => [x + (s.at?.[0] ?? 0), y + (s.at?.[1] ?? 0)]);
+    assert.ok(Math.min(...pts.map((p) => Math.hypot(...p))) < hub.radius, "輻條從直立軸的輪轂伸出");
+    const far = Math.max(...pts.map(([x, y]) => Math.hypot(x - center[0], y - center[1])));
+    assert.ok(far > ring.ring && far < R, "輻條伸進齒圈的環裡");
+    const z = s.at?.[2] ?? 0;
+    assert.ok(Math.abs(z - (ring.at[2] ?? 0)) + s.thickness / 2 <= ring.width / 2 + 1e-9, "輻條和齒圈在同一個深度範圍內");
+  }
+});
+
 test("第 220 種:腕銷在開槽曲柄的槽內作動,離後者軸心的距離一直在變,所以等速轉動傳成變速轉動", () => {
   const { SLOT } = m220.geometry;
   const states = sweep(2 * Math.PI, 720).map((t) => m220.cranks(t));
@@ -1190,4 +1229,40 @@ test("第 224 種:轉動小齒輪 d,輪 c 經曲線槽把凸柱往外或往內�
   assert.ok(Math.sign(big.c - small.c) !== Math.sign(hi - lo), "c 與 d 反向轉");
   const rims = sweep(hi, 50, lo).map((a) => m224.expand(a).rim);
   for (let i = 1; i < rims.length; i++) assert.ok(rims[i] > rims[i - 1], "連續地變大");
+});
+
+test("第 224 種:輻臂沿固定的導槽 b 滑動(滑塊夾在導槽裡、導槽接到中央輪轂),凸柱穿過輪 c 的曲線槽", () => {
+  const def = m224.default;
+  const span = (z, t) => [z - t / 2, z + t / 2];
+  const guides = part(def, "guides");
+  const hub = guides.pieces.find((p) => p.kind === "cylinder");
+  const hubZ = span(hub.at[2], hub.length);
+  const rails = guides.pieces.filter((p) => p.kind === "plate").map((p) => ({ z: span(p.at[2], p.thickness), poly: placeOutline(p.shape.outline, p.at, p.angle ?? 0) }));
+  for (const r of rails) assert.ok(polygonsOverlap(r.poly, circlePolygon(hub.at, hub.radius, 48)) && r.z[0] < hubZ[1] && r.z[1] > hubZ[0], "每條導槽的內端接到中央輪轂");
+  const arm = part(def, "arm0");
+  const slider = arm.pieces.find((p) => p.kind === "box" && p.size[1] > 0.2);
+  const stud = arm.pieces.find((p) => p.kind === "cylinder");
+  const [plate] = plateLayers(part(def, "wheelC"));
+  const [lo, hi] = m224.range;
+  for (const a of sweep(hi, 40, lo)) {
+    const pose = def.pose(a).parts;
+    for (let i = 0; i < 6; i++) {
+      const { position: o, angle } = pose[`arm${i}`];
+      const sz = span(o[2] + slider.at[2], slider.size[2]);
+      const near = rails.filter((r) => r.z[0] < sz[1] && r.z[1] > sz[0]);
+      assert.ok(near.length >= 2, "滑塊和導槽在同一層");
+      const poly = placeOutline(rect(slider.size[0], slider.size[1], slider.at[0], slider.at[1]), o, angle);
+      for (const r of near) assert.ok(penetrationDepth(poly, r.poly) < 1e-6, `主動量 ${a.toFixed(2)}:滑塊穿進導槽`);
+      const [cx, cy] = rot2([slider.at[0], 0], angle);
+      for (const s of [1, -1]) {
+        const q = [o[0] + cx - s * Math.sin(angle) * (slider.size[1] / 2 + 0.03), o[1] + cy + s * Math.cos(angle) * (slider.size[1] / 2 + 0.03)];
+        assert.ok(near.some((r) => pointInPolygon(q, r.poly)), "滑塊兩側都被導槽壁夾住(間隙小於 0.03)");
+      }
+      const studZ = span(o[2] + (stud.at?.[2] ?? 0), stud.length);
+      assert.ok(studZ[0] <= Math.min(plate.z0, sz[1]) + 1e-9 && studZ[1] >= Math.max(plate.z1, sz[0]) - 1e-9, "凸柱從臂那一層穿過 c 的整個厚度");
+      for (const r of rails) assert.ok(penetrationDepth(circlePolygon(o, stud.radius, 24), r.poly) < 1e-6 || r.z[1] <= studZ[0] || r.z[0] >= studZ[1], "凸柱在導槽之間,不碰導槽壁");
+      const g = guidedBetween(rot2(o, -pose.wheelC.angle), stud.radius, [plate.solid]);
+      assert.ok(g.depth < 1e-3 && g.sides && g.open, `主動量 ${a.toFixed(2)}:凸柱在曲線槽裡、兩側都有槽壁、不穿入`);
+    }
+  }
 });

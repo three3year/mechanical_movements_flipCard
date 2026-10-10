@@ -1,4 +1,4 @@
-// 第 222 種:把第 221 種的橢圓輪換成一個繞偏心點轉動的普通正齒輪 C(虛線是它的外緣掃過的圓)。
+// 第 222 種:把第 221 種的橢圓輪換成一個繞偏心點轉動的普通正齒輪 C(原圖的虛線圓是它的外緣掃過的範圍,是預覽線,不做成零件)。
 // 中間的齒輪 B 同時與 C 和左上的輪 A 咬合;B 的軸心由兩根簡單的連桿定位:一根接到 A 的中心(繞 A 擺動的框架),
 // 一根接到 C 的中心——比用溝槽更簡單地維持齒的適當嚙合深度。C 等速轉動時它的中心繞偏心點走圓,
 // B 被連桿帶著來回擺,A 因此得到不規則的轉動。主動件是 C。
@@ -9,7 +9,6 @@ import { TAU, Z } from "./kit.js";
 import { pedestal } from "./supports.js";
 import { circleCircle } from "./linkage.js";
 import { meshAngle } from "./gears.js";
-import { circle } from "./shapes.js";
 
 const PITCH = 0.27;
 const gearOf = (teeth) => ({ teeth, radius: (teeth * PITCH) / TAU });
@@ -47,11 +46,10 @@ export default {
   parts: [
     gear("gearA", A, { center: A.center, pieces: [{ kind: "cylinder", radius: 0.13, inner: 0.06, length: 0.5 }] }),
     gear("gearB", B, { pieces: [{ kind: "cylinder", radius: 0.12, inner: 0.05, length: 0.5 }] }),
-    // C 的偏心軸孔:在 C 自己的座標裡是固定的一點
-    gear("gearC", C, { pieces: [{ kind: "cylinder", radius: 0.13, inner: 0.06, length: 0.5, at: [-ECC * Math.cos(C0), ECC * Math.sin(C0), 0] }, { kind: "cylinder", radius: 0.13, inner: 0.06, length: 0.4 }] }),
+    // C 的偏心軸孔:在 C 自己的座標裡是固定的一點;C 中心的銷往前穿過連桿(連桿鉸在 C 的中心)
+    gear("gearC", C, { pieces: [{ kind: "cylinder", radius: 0.13, inner: 0.06, length: 0.5, at: [-ECC * Math.cos(C0), ECC * Math.sin(C0), 0] }, { kind: "cylinder", radius: 0.13, inner: 0.06, length: 0.7 }] }),
     { id: "link", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "frame", kind: "link", width: 0.12, thickness: 0.06 },
-    { id: "envelope", kind: "plate", shape: { outline: circle(ECC + C.radius + 0.1), holes: [circle(ECC + C.radius + 0.085).reverse()] }, thickness: 0.01, center: [0, 0, -0.3] },
     { id: "pivot", kind: "cylinder", center: [...E.slice(0, 2), 0.08], radius: 0.12, length: 0.26 }, // 樞軸不伸到連桿那一層
     {
       id: "bearings",
