@@ -1,7 +1,7 @@
 // 第十二章「接頭與器具」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { penetrationDepth, circlePolygon } from "../models/contact.js";
+import { penetrationDepth, circlePolygon, pointInPolygon } from "../models/contact.js";
 import { close, turned, part } from "./helpers.js";
 
 import fig243, { turns as turns243 } from "../models/fig243.js";
@@ -48,7 +48,7 @@ import * as m244 from "../models/fig244.js";
 import * as m246 from "../models/fig246.js";
 import * as m252 from "../models/fig252.js";
 import * as m273 from "../models/fig273.js";
-import { dist, sub, len } from "../models/kit.js";
+import { dist, sub, len, partPoint } from "../models/kit.js";
 import * as m251 from "../models/fig251.js";
 import * as m253 from "../models/fig253.js";
 import * as m277 from "../models/fig277.js";
@@ -126,6 +126,48 @@ test("第 248 種:螺帽 B 旋進 C 的螺紋,把管 A 的凸緣壓緊在 C 上,
   close(m248.union(99).gap, 0, "旋到底就停住");
 });
 
+test("第 248 種:管接頭是右旋螺紋:從上往下看順時針轉螺帽 B 是旋緊(B 與 A 往下、A 壓向 C)", () => {
+  const def = m248.default;
+  const marks = def.parts.filter((p) => p.id.startsWith("nutMark"));
+  assert.ok(marks.length > 0);
+  const end = m248.TURNS * 2 * Math.PI;
+  for (const m of marks) {
+    assert.deepEqual(m.axis, [0, 1, 0], "記號繞 +Y(朝上)轉,轉角為正是從上往下看逆時針");
+    for (const [a, b] of [[0, 1], [3, 3.5], [end - 1, end]]) {
+      const pa = def.pose(a).parts;
+      const pb = def.pose(b).parts;
+      assert.ok(pb[m.id].angle < pa[m.id].angle, `主動量 ${a}→${b}:${m.id} 從上往下看順時針轉`);
+      assert.ok(pb.nutB.position[1] < pa.nutB.position[1], `主動量 ${a}→${b}:螺帽往下旋進`);
+      // 右旋:繞 +Y 轉 θ 沿 +Y 前進 pitch·θ/2π
+      close(pb.nutB.position[1] - pa.nutB.position[1], (m248.PITCH * (pb[m.id].angle - pa[m.id].angle)) / (2 * Math.PI), "右旋螺紋的導程", 1e-9);
+    }
+  }
+});
+
+test("第 248 種:螺帽剖掉前半,頂面的轉動記號只出現在留下的後半(不浮在剖掉的空間),任何時刻都看得到一個", () => {
+  const def = m248.default;
+  const marks = def.parts.filter((p) => p.id.startsWith("nutMark"));
+  for (const v of sweep(m248.TURNS * 2 * Math.PI, 400)) {
+    const pose = def.pose(v).parts;
+    let shown = 0;
+    for (const m of marks) {
+      const p = pose[m.id];
+      if (p.visible === false) continue;
+      shown++;
+      for (const piece of m.pieces) {
+        const [sx, sy] = piece.size;
+        for (const dx of [-sx / 2, sx / 2]) {
+          for (const dy of [-sy / 2, sy / 2]) {
+            const w = partPoint(p.position, m.axis, p.angle, [piece.at[0] + dx, piece.at[1] + dy, piece.at[2]]);
+            assert.ok(w[2] < 0, `主動量 ${v.toFixed(2)}:${m.id} 的角落 z = ${w[2].toFixed(3)} 在剖掉的前半`);
+          }
+        }
+      }
+    }
+    assert.ok(shown >= 1, `主動量 ${v.toFixed(2)}:至少看得到一個記號`);
+  }
+});
+
 test("第 249 種:球窩接頭:上管繞球心偏擺,球心不動", () => {
   const def = m249.default;
   const center = def.parts.find((p) => p.id === "pipe").center;
@@ -138,12 +180,67 @@ test("第 249 種:球窩接頭:上管繞球心偏擺,球心不動", () => {
   assert.notDeepEqual(def.pose(m249.TILT).parts.pipe.rotation, def.pose(0).parts.pipe.rotation, "偏擺時朝向改變");
 });
 
+test("第 249 種:為配置給管路使用:上管的管孔通進空心球的內腔,球殼底部的開口通到下管,偏擺到哪裡都通", () => {
+  const def = m249.default;
+  const pipe = part(def, "pipe");
+  const socket = part(def, "socket").pieces.filter((p) => p.kind === "lathe");
+  // 旋轉體(軸 Y、中心在原點)在局部座標 (x, y, z) 的點是否在實體裡
+  const inLathe = (profile, [x, y, z]) => pointInPolygon([Math.hypot(x, z), y], profile);
+  for (const t of [-m249.TILT, -m249.TILT / 2, 0, m249.TILT / 2, m249.TILT]) {
+    const [c, s] = [Math.cos(t), Math.sin(t)];
+    const toPipe = ([x, y, z]) => [x * c + y * s, -x * s + y * c, z]; // 世界 → 上管局部(繞 Z 轉 −t)
+    const toWorld = ([x, y, z]) => [x * c - y * s, x * s + y * c, z];
+    const path = [];
+    for (const off of [-0.2, 0, 0.2]) {
+      for (let h = 2.6; h >= 0; h -= 0.05) path.push(toWorld([off, h, 0])); // 沿上管的管孔往下到球心
+      for (let d = 0; d <= 2.5; d += 0.05) path.push([off, -d, 0]); // 從球心直直往下穿過下管
+    }
+    for (const w of path) {
+      const at = w.map((n) => n.toFixed(2)).join(", ");
+      assert.ok(!inLathe(pipe.profile, toPipe(w)), `偏擺 ${t.toFixed(2)}:(${at}) 被上管或球擋住`);
+      for (const piece of socket) assert.ok(!inLathe(piece.profile, w), `偏擺 ${t.toFixed(2)}:(${at}) 被球窩擋住`);
+    }
+  }
+});
+
+test("第 249 種:偏擺的極限由球窩的開口決定:擺到極限時管身靠上窩口(不穿入),擺不到極限時離開", () => {
+  const def = m249.default;
+  const outer = part(def, "pipe").profile.at(-1)[0]; // 上管外半徑
+  const lathes = part(def, "socket").pieces.filter((p) => p.kind === "lathe");
+  // 上半球窩的窩口內緣:球窩內壁上最高的那一點
+  const [cr, cz] = lathes.flatMap((p) => p.profile).filter(([r, z]) => z > 0 && Math.hypot(r, z) < 1.05).reduce((a, b) => (b[1] > a[1] ? b : a));
+  // 上管偏擺 t 時,管的外壁離窩口內緣(左右兩側取近的)多遠
+  const gap = (t) => Math.min(...[-1, 1].map((s) => Math.abs(s * cr * Math.cos(t) + cz * Math.sin(t)) - outer));
+  for (const t of [-m249.TILT, m249.TILT]) {
+    const g = gap(t);
+    assert.ok(g >= 0 && g < 0.03, `擺到極限 ${t.toFixed(2)} 時管身靠上窩口(間隙 ${g.toFixed(3)})`);
+  }
+  assert.ok(gap(m249.TILT * 0.8) > 0.05, "擺不到極限時管身離開窩口");
+});
+
 test("第 250 種:軸由輪的圓周支撐:軸轉動時支撐輪反向轉,接觸點線速度相等(無滑動)", () => {
   const { WHEEL, JOURNAL } = m250.geometry;
   const a = 0.8;
   const b = m250.supportAngle(a);
   assert.ok(b < 0, "支撐輪反向轉");
   close(Math.abs(b) * WHEEL, a * JOURNAL, "接觸點線速度相等");
+});
+
+test("第 250 種:軸上帶著被托著轉的大輪(約為支撐輪的 0.8 倍),在兩支撐輪後面;支架在兩輪前面", () => {
+  const def = m250.default;
+  const { WHEEL } = m250.geometry;
+  const wheels = ["left", "right"].map((id) => part(def, id));
+  const front = Math.max(...wheels.map((w) => w.center[2] + w.width / 2));
+  const back = Math.min(...wheels.map((w) => w.center[2] - w.width / 2));
+  // 軸上最大的那片板就是大輪(507movements 的動畫:半徑 4 對支撐輪 5)
+  const plates = part(def, "shaft").pieces.filter((p) => p.kind === "plate");
+  const radiusOf = (p) => Math.max(...p.shape.outline.map(([x, y]) => Math.hypot(x, y)));
+  assert.ok(plates.length > 0, "軸上有大輪");
+  const big = plates.reduce((a, b) => (radiusOf(a) >= radiusOf(b) ? a : b));
+  assert.ok(Math.abs(radiusOf(big) / WHEEL - 0.8) < 0.05, `大輪約為支撐輪的 0.8 倍(實際 ${(radiusOf(big) / WHEEL).toFixed(2)})`);
+  assert.ok(big.at[2] + (big.thickness ?? 0.2) / 2 < back, "大輪在兩支撐輪後面,不和它們同一層");
+  const frame = part(def, "frame");
+  assert.ok(frame.center[2] - frame.thickness / 2 > front, "支架板在兩輪前面(原圖支架擋住兩輪的下半)");
 });
 
 test("第 267 種:輪緣逆箭頭轉時,偏心臂把運動傳給軸;朝箭頭方向轉時,臂繞樞軸讓開,軸保持靜止", () => {

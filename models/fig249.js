@@ -1,4 +1,4 @@
-// 第 249 種:管路用的球窩接頭(剖面圖)。上管末端是一顆球,夾在下管的球窩裡;球窩分上下兩半,
+// 第 249 種:管路用的球窩接頭(剖面圖)。上管末端是一顆空心球,夾在下管的球窩裡;球窩分上下兩半,
 // 在左右兩側的耳片上以螺栓鎖合。球在窩裡可以轉,上管因此能朝各方向偏擺,而接頭不漏。
 // 主動件是上管:在圖面內左右偏擺。
 // 推斷:接頭被使用時的動作(原文只有名稱);偏擺的範圍由上半球窩的開口決定。
@@ -23,8 +23,19 @@ const lower = [
 // 上半球窩:從赤道到開口(開口留給上管偏擺)
 const OPEN = deg(40);
 const upper = [[BALL, 0], [SHELL, 0], ...arc(SHELL, 0, OPEN), ...arc(BALL, OPEN, 0)];
-// 上管+球:球心在原點
-const ball = [[0, -BALL], ...arc(BALL, deg(-90), deg(60)).slice(1), [PIPE.outer, 2.7], [0, 2.7]];
+// 上管+球:球心在原點。給管路用,所以球是空心的球殼(原圖內圓是球殼的內壁),上管的管孔一直通進球的
+// 內腔;球殼底部在弦線 CUT 的高度切開(原圖內圓下方的那條橫弦),流體從這裡進出下管。
+// 推斷:球殼厚度與弦線高度(依原圖比例)。
+const CAVITY = 0.85; // 球殼內半徑
+const CUT = -0.67; // 球殼底部開口的高度(原圖弦線在內圓半徑的 0.79 倍處)
+const OUTER = BALL - 0.01; // 球殼外半徑:和球窩之間留一點配合間隙,球才轉得動
+const ball = [
+  [PIPE.inner, 2.7],
+  [PIPE.inner, Math.sqrt(CAVITY ** 2 - PIPE.inner ** 2)],
+  ...arc(CAVITY, Math.acos(PIPE.inner / CAVITY), Math.asin(CUT / CAVITY)).slice(1),
+  ...arc(OUTER, Math.asin(CUT / OUTER), Math.acos(PIPE.outer / OUTER)),
+  [PIPE.outer, 2.7],
+];
 
 /** 上管偏擺 t(圖面內,逆時針為正)的朝向 */
 export const pipeRotation = (t) => quatMul(quatAxisAngle(Z, t), quatFromZ(Y));
@@ -50,7 +61,8 @@ export default {
         ...ear(-1),
       ],
     },
-    { id: "pipe", kind: "lathe", axis: Y, center: [0, 0, 0], profile: ball },
+    // 上管與球和球窩一樣剖開,看得到管孔與球的內腔
+    { id: "pipe", kind: "lathe", axis: Y, center: [0, 0, 0], profile: ball, ...HALF },
   ],
   driver: { part: "pipe", type: "rotation", range: [-TILT, TILT], initial: 0 },
   target: "socket", // 接頭的另一半:夾住球的球窩
@@ -58,7 +70,4 @@ export default {
   pose(t) {
     return { parts: { pipe: { rotation: pipeRotation(t) } }, readouts: [] };
   },
-  waivers: [
-    { check: "interference", parts: ["socket", "pipe"], reason: "球接頭擺到極限時,管身的肩部碰到球窩的窩口(極限位置就是由這裡擋住的);重疊 0.06(96 個取樣中 8 個)" },
-  ],
 };
