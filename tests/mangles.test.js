@@ -35,7 +35,12 @@ import { signedAngle } from "../models/kit.js";
 import * as m202 from "../models/fig202.js";
 import * as m208 from "../models/fig208.js";
 import * as m216 from "../models/fig216.js";
-import { woolComb, STEP as WOOL_STEP } from "../models/wool-comb.js";
+import { woolComb, STEP as WOOL_STEP, PHASE as WOOL_PHASE, geometry as woolGeometry } from "../models/wool-comb.js";
+import fig217 from "../models/fig217.js";
+import fig218 from "../models/fig218.js";
+import { partPoint, rot2, TAU } from "../models/kit.js";
+import { pointInPolygon, edgeDistance } from "../models/contact.js";
+import { circle } from "../models/shapes.js";
 import * as m219 from "../models/fig219.js";
 import * as m220 from "../models/fig220.js";
 import * as m223 from "../models/fig223.js";
@@ -520,20 +525,139 @@ test("第 216 種:外側與內側缺齒式齒輪交替與小齒輪咬合:一個�
   assert.ok(RI / RP > RS / RP);
 });
 
-test("第 217、218 種:凸柱從 C 到 D 使滾軸後退,從 D 到 e 前進(後退一份、前進兩份);e 到 C 時卡榫抬起、滾軸不動", () => {
+test("第 217、218 種:凸柱從 C 到 D 使滾軸後退,從 D 到 e 前進(後退一份、前進兩份);e 到 C 時滾軸不動", () => {
   const states = sweep(1, 1000).map((u) => woolComb(u));
   const rollers = states.map((s) => s.roller);
   const minBack = Math.min(...rollers);
   close(minBack, -WOOL_STEP, "先後退", 1e-9);
   close(Math.max(...rollers) - minBack, 2 * WOOL_STEP, "再前進兩倍", 1e-9);
   close(rollers[rollers.length - 1], WOOL_STEP, "每一循環淨前進一格,卡榫落進下一個凹槽", 1e-9);
-  for (const s of states) {
-    if (s.stage === "e→C") {
-      assert.equal(s.lift, 1, "卡榫抬起");
-      close(s.roller, WOOL_STEP, "滾軸不動", 1e-12);
-    }
+  for (const s of states) if (s.stage === "e→C") close(s.roller, WOOL_STEP, "滾軸不動", 1e-12);
+});
+
+// 第 217 種凸輪盤的各塊(凸輪在原位):世界中的平面輪廓與深度範圍
+function camLayers() {
+  const cam = part(fig217, "cam");
+  const world = (local) => partPoint(cam.center, cam.axis, 0, [local[0], local[1], 0]).slice(0, 2);
+  return cam.pieces.map((p) => {
+    const z = partPoint(cam.center, cam.axis, 0, [0, 0, p.at?.[2] ?? 0])[2];
+    const half = (p.thickness ?? p.length) / 2;
+    const solid = p.shape && { outline: p.shape.outline.map(world), holes: (p.shape.holes ?? []).map((h) => h.map(world)) };
+    return { piece: p, z: [z - half, z + half], solid };
+  });
+}
+const inSolid = (pt, s) => pointInPolygon(pt, s.outline) && !(s.holes ?? []).some((h) => pointInPolygon(pt, h));
+
+test("第 217 種:開槽的凸輪盤是一件——溝槽只開到盤的前半厚度,溝底貼在盤背面接住外圈與內島,機架的軸頭伸進輪轂", () => {
+  const layers = camLayers();
+  const front = layers.filter((l) => l.solid && l.z[0] < 0 && l.z[1] > 0);
+  const back = layers.filter((l) => l.solid && front.every((f) => Math.abs(l.z[1] - f.z[0]) < 1e-9));
+  assert.ok(front.length === 2 && back.length === 1, "前面一層是外圈與內島,緊貼著背面一片溝底");
+  const K = woolGeometry.K;
+  for (const g of woolGeometry.groove) {
+    const w = [K[0] + g[0], K[1] + g[1]];
+    for (const l of front) assert.ok(!inSolid(w, l.solid), "溝槽穿過盤的前半");
+    assert.ok(inSolid(w, back[0].solid), "溝底接在溝的下面");
   }
-  assert.equal(woolComb(0).lift, 0, "在 C 時卡榫已落下");
+  // 機架的軸頭從軸承座往前伸進凸輪的輪轂
+  const hub = layers.find((l) => l.piece.kind === "cylinder" && l.piece.inner);
+  const stub = part(fig217, "frame").pieces.find((p) => p.kind === "cylinder" && p.radius === hub.piece.inner && Math.hypot(p.at[0] - K[0], p.at[1] - K[1]) < 1e-9);
+  assert.ok(stub.at[2] + stub.length / 2 > hub.z[0] + 0.05, "軸頭伸進輪轂");
+});
+
+test("第 217 種:凸柱 A 到 e 時,凸輪盤背面的凸出部分轉到撞擊處,撐到卡榫越過凹槽邊緣(第 218 種)才離開", () => {
+  const cam = part(fig217, "cam");
+  const layers = camLayers();
+  const plate = layers.filter((l) => l.solid);
+  const backmost = Math.min(...plate.map((l) => l.z[0]));
+  const bump = plate.find((l) => l.z[0] === backmost && plate.every((o) => o === l || o.z[0] >= l.z[1] - 1e-9));
+  assert.ok(bump, "凸輪盤背面有凸出部分");
+  const { forward, release } = WOOL_PHASE;
+  const K = woolGeometry.K;
+  // 撞擊處:A 到 e 時 A 所在的徑向線上、凸出部分的半徑處(第 218 種 G 的凸出片在這裡被撞)
+  const A = fig217.pose(TAU * forward).parts.stud.position;
+  const radii = bump.solid.outline.map((p) => Math.hypot(p[0] - K[0], p[1] - K[1]));
+  const r = (Math.max(...radii) + Math.min(...radii)) / 2;
+  const dir = Math.atan2(A[1] - K[1], A[0] - K[0]);
+  const S = [K[0] + r * Math.cos(dir), K[1] + r * Math.sin(dir)];
+  const covers = (u) => {
+    const angle = fig217.pose(TAU * u).parts.cam.angle;
+    return pointInPolygon(S, bump.piece.shape.outline.map((p) => partPoint(cam.center, cam.axis, angle, [p[0], p[1], 0]).slice(0, 2)));
+  };
+  assert.ok(!covers(forward - 0.01), "A 到 e 之前還沒轉到");
+  for (const u of sweep(release - 0.005, 20, forward + 0.005)) assert.ok(covers(u), `凸輪轉了 ${u.toFixed(3)} 圈:凸出部分在撞擊處`);
+  assert.ok(!covers(release + 0.01), "卡榫越過凹槽邊緣後離開");
+});
+
+// 第 218 種:卡榫爪尖的銷(往後伸進 F 的那一根)與凹槽輪 F 在姿勢下的平面幾何
+function catchOnF(u) {
+  const pose = fig218.pose(u).parts;
+  const G = part(fig218, "catch");
+  const pin = G.pieces.reduce((a, b) => ((b.at?.[2] ?? 0) < (a.at?.[2] ?? 0) ? b : a));
+  const at = rot2(pin.at, pose.catch.angle);
+  const c = [pose.catch.position[0] + at[0], pose.catch.position[1] + at[1]];
+  const F = part(fig218, "wheelF");
+  const poly = placeOutline(F.shape.outline, [0, 0], pose.wheelF.angle);
+  const RF = Math.max(...F.shape.outline.map((p) => Math.hypot(p[0], p[1])));
+  const d = edgeDistance(c, poly);
+  const gap = pointInPolygon(c, poly) ? -d - pin.radius : d - pin.radius;
+  return { gap, radius: Math.hypot(c[0], c[1]), r: pin.radius, RF, F: pose.wheelF.angle };
+}
+
+test("第 218 種:凹槽輪 F 裝在滾軸的軸 H 上,H 跟著 F 轉;槓桿以大於 H 的軸眼套在 H 上", () => {
+  const H = part(fig218, "shaftH");
+  const angles = sweep(1, 200).map((u) => {
+    const p = fig218.pose(u).parts;
+    assert.ok(p.shaftH, "H 有姿勢");
+    close(p.shaftH.angle, p.wheelF.angle, "H 和 F 一起轉", 1e-12);
+    return p.shaftH.angle;
+  });
+  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.5, "滾軸的軸 H 真的轉");
+  const lever = part(fig218, "lever");
+  for (const p of lever.kind === "group" ? lever.pieces : [lever]) {
+    const off = p.at ?? [0, 0, 0];
+    if (p.shape) for (const q of circle(H.radius - 1e-6)) assert.ok(!inSolid([q[0] - off[0], q[1] - off[1]], p.shape), "槓桿的板不壓進 H");
+    if (p.kind === "cylinder" && Math.hypot(off[0], off[1]) < 1e-9) assert.ok(p.inner >= H.radius - 1e-9, "軸眼不小於 H");
+  }
+});
+
+test("第 218 種:A 從 C 到 e 時卡榫的銷落在 F 的凹槽底,把槓桿的擺動傳給 F", () => {
+  for (const u of sweep(WOOL_PHASE.forward - 0.005, 120)) {
+    const s = catchOnF(u);
+    assert.ok(Math.abs(s.gap) < 0.01, `凸輪轉了 ${u.toFixed(3)} 圈:銷靠在凹槽底(間隙 ${s.gap.toFixed(4)})`);
+    assert.ok(s.radius < s.RF, "銷在凹槽裡");
+  }
+});
+
+test("第 218 種:A 到 e 時凸出部分撞擊 G 上的凸出片,把卡榫抬出凹槽;e 到 C 期間卡榫靠自重壓在 F 的光面上滑過,F 不動", () => {
+  const { lift, release, ret } = WOOL_PHASE;
+  const lifted = catchOnF(lift);
+  assert.ok(lifted.radius - lifted.r > lifted.RF, "抬出凹槽");
+  const after = sweep(ret - 0.06, 120, release);
+  let resting = 0;
+  for (const u of after) {
+    const s = catchOnF(u);
+    close(s.F, lifted.F, "F 不動", 1e-12);
+    assert.ok(s.radius > s.RF, `凸輪轉了 ${u.toFixed(3)} 圈:卡榫不落回剛離開的凹槽`);
+    if (Math.abs(s.gap) < 0.01) resting++;
+  }
+  assert.ok(resting / after.length > 0.8, `大半時間壓在光面上(${resting}/${after.length})`);
+});
+
+test("第 218 種:A 回到 C 時卡榫已落入下一個凹槽,F 前進一格;落下有加速過程", () => {
+  const start = catchOnF(0);
+  const end = catchOnF(1);
+  assert.ok(end.radius < end.RF && Math.abs(end.gap) < 0.01, "落在凹槽底");
+  close(Math.abs(end.F - start.F), WOOL_STEP, "F 前進一格", 1e-9);
+  const falling = sweep(1, 400, WOOL_PHASE.ret - 0.1).map(catchOnF).filter((s) => s.radius < s.RF + s.r - 0.03 && s.radius > end.radius + 0.03);
+  assert.ok(falling.length >= 2, "落下途中有中間的位置,不是一瞬間");
+});
+
+test("第 218 種:卡榫的銷全程不穿進 F", () => {
+  for (const u of sweep(2, 2000)) {
+    const s = catchOnF(u);
+    assert.ok(s.gap > -0.004, `凸輪轉了 ${u.toFixed(3)} 圈:穿入 ${(-s.gap).toFixed(4)}`);
+  }
 });
 
 test("第 219 種:冠狀輪偏心,與小齒輪接觸處的相對半徑一直在變,小齒輪的轉速也跟著變", () => {
