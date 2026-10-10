@@ -609,6 +609,95 @@ test("第 183、184 種:兩個象限器輪流以圓弧擋住對方的一角,彼�
   assert.ok(polygonsOverlap(held.upper, held.lower), "B:下方被擋住");
 });
 
+// 第 186–188 種的零件在原圖位置(主動量 0:桿與手柄都沒轉)的各塊:世界座標的 xy 外形與前後範圍
+function gabPieces(def, id) {
+  const part = def.parts.find((x) => x.id === id);
+  const at0 = def.pose(0).parts[id]?.position ?? part.center ?? [0, 0, 0];
+  assert.ok(Math.abs(def.pose(0).parts[id]?.angle ?? 0) < 1e-9, `${id} 在原圖位置沒轉`);
+  const depthOf = (q) => (q.kind === "plate" ? q.thickness : q.kind === "cylinder" ? q.length : q.size[2]);
+  return (part.pieces ?? [part]).map((q) => {
+    const [x, y, z] = [0, 1, 2].map((k) => at0[k] + (q.at?.[k] ?? 0));
+    return { ...q, x, y, z: [z - depthOf(q) / 2, z + depthOf(q) / 2], outline: q.shape?.outline.map(([u, v]) => [u + x, v + y]) };
+  });
+}
+
+test("第 186–188 種:手柄的樞軸有一根偏心桿上的銷,穿過桿、手柄(第 188 種還有頰板),手柄套在銷上轉、貼著桿面", () => {
+  for (const [fig, m] of [[186, gab186], [187, gab187], [188, gab188]]) {
+    const def = m.default;
+    const pivot = def.pose(0).parts.handle.position;
+    const atPivot = (q) => Math.hypot(q.x - pivot[0], q.y - pivot[1]) < 1e-6;
+    const rod = gabPieces(def, "rod");
+    const handle = gabPieces(def, "handle");
+    const pin = rod.find((q) => q.kind === "cylinder" && !q.inner && atPivot(q));
+    assert.ok(pin, `第 ${fig} 種:偏心桿上有樞軸的銷`);
+    assert.ok(!handle.some((q) => q.kind === "cylinder" && !q.inner && atPivot(q)), `第 ${fig} 種:銷不是手柄自帶的`);
+    // 手柄在樞軸處的孔(環的內徑或板上的孔)剛好套住銷
+    const ring = handle.find((q) => q.kind === "cylinder" && q.inner && atPivot(q));
+    const plateHole = handle.flatMap((q) => (q.shape?.holes ?? []).map((h) => Math.min(...h.map(([u, v]) => Math.hypot(u + q.x - pivot[0], v + q.y - pivot[1])))));
+    const hole = ring ? ring.inner : Math.min(...plateHole);
+    assert.ok(pin.radius < hole && pin.radius > hole - 0.02, `第 ${fig} 種:手柄的孔(${hole})套在銷(${pin.radius})上`);
+    // 銷穿過樞軸處的每一片(桿身、頰板)與整個手柄
+    const plates = rod.filter((q) => q.kind === "plate" && pointInPolygon(pivot, q.outline));
+    const handleZ = [Math.min(...handle.map((q) => q.z[0])), Math.max(...handle.map((q) => q.z[1]))];
+    for (const z of [...plates.map((q) => q.z), handleZ]) assert.ok(pin.z[0] <= z[0] + 1e-9 && pin.z[1] >= z[1] - 1e-9, `第 ${fig} 種:銷(z ${pin.z})穿過 z ${z}`);
+    // 手柄背面貼著桿身的正面(不浮在前面)
+    const body = Math.max(...plates.filter((q) => q.z[1] <= handleZ[0] + 1e-9).map((q) => q.z[1]));
+    assert.ok(handleZ[0] - body >= 0 && handleZ[0] - body < 0.02, `第 ${fig} 種:手柄背面(${handleZ[0]})貼著桿面(${body})`);
+  }
+});
+
+test("第 186、188 種:「將下方的彈簧手柄向上拉,直到卡入凹槽 a 中」——手柄拉到頭時卡榫卡進彈簧片的凹槽 a,拉到頭的位置由接觸決定", () => {
+  for (const [fig, m, sign] of [[186, gab186, 1], [188, gab188, -1]]) {
+    const { latch } = m;
+    const max = latch.max; // 帶正負號(第 188 種往後扳是負的)
+    close(sign > 0 ? m.default.driver.range[1] : m.default.driver.range[0], max, `第 ${fig} 種:手柄扳到卡入凹槽為止`, 1e-9);
+    assert.equal(latch.bend(0), 0, `第 ${fig} 種:原圖位置彈簧片不受力`);
+    // 全程:彈簧片被推開到剛好不壓進手柄;推開時是真的被頂著(少推一點就會壓進)
+    let pushed = 0;
+    for (const p of sweep(max, 150)) {
+      const s = latch.bend(p);
+      const spring = latch.springOf(s);
+      const depth = Math.max(...latch.handleOf(p).map((h) => penetrationDepth(h, spring)));
+      assert.ok(depth < 1e-3, `第 ${fig} 種:手柄轉 ${p.toFixed(3)} 時不壓進彈簧片(${depth.toFixed(4)})`);
+      if (Math.abs(s) > 1e-3) {
+        pushed++;
+        assert.ok(latch.handleOf(p).some((h) => polygonsOverlap(h, latch.springOf(s * 0.9))), `第 ${fig} 種:手柄轉 ${p.toFixed(3)} 時卡榫頂著彈簧片`);
+      }
+    }
+    assert.ok(pushed > 3, `第 ${fig} 種:卡榫經過凹槽下緣時把彈簧片推開`);
+    // 拉到頭:彈簧片彈回原形、卡榫在凹槽裡頂著頂壁——再拉一點,彈簧片推到多開都會壓進手柄
+    assert.equal(latch.bend(max), 0, `第 ${fig} 種:卡入凹槽時彈簧片彈回原形`);
+    for (const k of [0, 0.25, 0.5, 0.75, 1]) {
+      const spring = latch.springOf(latch.out * latch.limit * k);
+      assert.ok(latch.handleOf(max + sign * 0.004).some((h) => polygonsOverlap(h, spring)), `第 ${fig} 種:拉不過凹槽的頂壁(彈簧片推開 ${k})`);
+    }
+    // 卡住:往回放,凹槽的下緣擋住卡榫(彈簧片不被推開就放不回去)
+    assert.ok(latch.handleOf(max - sign * 0.05).some((h) => polygonsOverlap(h, latch.springOf(0))), `第 ${fig} 種:往回放被凹槽的下緣擋住`);
+    // 凹槽 a 在手柄那一層(彈簧片和手柄的每一塊板前後重疊)
+    const springZ = gabPieces(m.default, "spring").filter((q) => q.kind === "plate").map((q) => q.z);
+    assert.ok(springZ.length > 0, `第 ${fig} 種:有彈簧片`);
+    for (const h of gabPieces(m.default, "handle").filter((q) => q.kind === "plate"))
+      assert.ok(springZ.some((z) => z[0] < h.z[1] && z[1] > h.z[0]), `第 ${fig} 種:彈簧片和手柄(z ${h.z})同一層`);
+  }
+});
+
+test("第 188 種:桿端隆起的頰板擋在彎指與手柄樞軸圓頭的前面(原圖彎指伸進隆起之後、樞軸圓頭的下緣都是虛線)", () => {
+  const def = gab188.default;
+  const pivot = def.pose(0).parts.handle.position;
+  const handle = gabPieces(def, "handle");
+  const handleFront = Math.max(...handle.map((q) => q.z[1]));
+  const cheek = gabPieces(def, "rod").find((q) => q.kind === "plate" && q.z[0] >= handleFront - 1e-9);
+  assert.ok(cheek, "偏心桿端有一片在手柄前面的頰板");
+  const hidden = (p) => pointInPolygon(p, cheek.outline);
+  // 彎指往下伸到銷頂的那一段在頰板後面,彎指的頂端露在隆起上面
+  const finger = gab188.contact(0).handle[0];
+  assert.ok(finger.filter(([x, y]) => Math.abs(x) < 0.25 && y < 0.5).every(hidden), "彎指往下到銷的一段被頰板擋住");
+  assert.ok(!hidden(finger.reduce((a, b) => (b[1] > a[1] ? b : a))), "彎指的頂端露在隆起上面");
+  // 樞軸圓頭:下緣在頰板後面、上緣露出
+  assert.ok(hidden([pivot[0], pivot[1] - 0.15]), "樞軸圓頭的下緣被頰板擋住");
+  assert.ok(!hidden([pivot[0], pivot[1] + 0.12]), "樞軸圓頭的上緣露出");
+});
+
 test("第 186–189 種:扳動手柄(或槓桿)把偏心桿端抬起,銷從鉤口中脫出", () => {
   for (const [fig, m, sign] of [[186, gab186, 1], [187, gab187, 1], [188, gab188, -1], [189, gab189, 1]]) {
     assert.equal(m.unhook(0).released, false, `第 ${fig} 種:原圖位置銷在鉤口中`);
@@ -618,16 +707,18 @@ test("第 186–189 種:扳動手柄(或槓桿)把偏心桿端抬起,銷從鉤�
     assert.equal(m.unhook(sign * m.max).released, true, `第 ${fig} 種:扳到頭(卡進凹槽)時銷已脫出`);
   }
   // 第 186、187 種:「將下方的彈簧手柄向上拉……該銷便會從偏心桿的鉤口中脫離」——桿端是被手柄的指頭(趾頭)頂著搖臂的
-  // 凸柱抬起的,抬起的量由兩者的外形相碰算(維護者 2026-10-08 決定)
-  for (const [fig, m] of [[186, gab186], [187, gab187]]) {
-    for (const p of sweep(m.max, 40).slice(1)) {
+  // 凸柱抬起的,抬起的量由兩者的外形相碰算(維護者 2026-10-08 決定);第 188 種的彎指同樣由外形相碰壓在搖臂的銷上
+  for (const [fig, m, sign] of [[186, gab186, 1], [187, gab187, 1], [188, gab188, -1]]) {
+    for (const p of sweep(sign * m.max, 40).slice(1)) {
       const { handle, stud } = m.contact(p);
       const depth = Math.max(...handle.map((h) => penetrationDepth(h, stud)));
-      assert.ok(depth < 1e-3, `第 ${fig} 種:手柄不壓進凸柱(${depth.toFixed(4)})`);
-      // 真的頂著:桿端少抬一點,手柄就會壓進凸柱
+      assert.ok(depth < 1e-3, `第 ${fig} 種:手柄不壓進${fig === 188 ? "銷" : "凸柱"}(${depth.toFixed(4)})`);
+      // 真的頂著:桿端少抬一點,手柄就會壓進凸柱(銷)
       const lower = handle.map((h) => h.map(([x, y]) => [x, y - 0.01]));
-      assert.ok(lower.some((h) => penetrationDepth(h, stud) > 1e-3), `第 ${fig} 種:手柄轉 ${p.toFixed(2)} 時指頭頂在凸柱上`);
+      assert.ok(lower.some((h) => penetrationDepth(h, stud) > 1e-3), `第 ${fig} 種:手柄轉 ${p.toFixed(2)} 時指頭頂在${fig === 188 ? "銷" : "凸柱"}上`);
     }
+  }
+  for (const [fig, m] of [[186, gab186], [187, gab187]]) {
     // 凸柱在偏心桿前面一層、和手柄同一層:桿抬起時從凸柱後面過去,整個行程碰不到(量模型裡的零件本身)
     const def = m.default;
     const depthOf = (q) => (q.kind === "plate" ? q.thickness : q.kind === "cylinder" ? q.length : q.size[2]);
@@ -640,7 +731,7 @@ test("第 186–189 種:扳動手柄(或槓桿)把偏心桿端抬起,銷從鉤�
     const studOutline = m.contact(0).stud;
     const studZ = zRange("rocker", (q) => q.shape?.outline === studOutline);
     assert.ok(Number.isFinite(studZ[0]), `第 ${fig} 種:搖臂上有凸柱這個零件`);
-    const [rod, handle] = [zRange("rod"), zRange("handle")];
+    const [rod, handle] = [zRange("rod", (q) => q.kind === "plate"), zRange("handle")];
     assert.ok(studZ[0] > rod[1], `第 ${fig} 種:凸柱(z ${studZ.map((x) => x.toFixed(3))})在偏心桿(z ${rod})前面,不在同一層`);
     assert.ok(studZ[0] < handle[1] && studZ[1] > handle[0], `第 ${fig} 種:凸柱和手柄同一層`);
   }

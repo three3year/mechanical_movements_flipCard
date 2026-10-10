@@ -77,6 +77,49 @@ export function contactLift(outlines, pivot, stud, phi, max = 1.5, step = 0.01) 
 }
 
 /**
+ * 彈簧片卡住手柄(第 186、188 種的凹槽 a),全在桿座標裡算(手柄與彈簧片都裝在桿上):
+ * 手柄的外形 handle(相對手柄樞軸 pivot)轉 phi;彈簧片的外形 spring(相對它的固定端 root)以繞 root 的小轉角
+ * 近似它的彎曲,0 是不受力的形狀,只會被手柄往 out(+1 逆時針 / −1 順時針)那一邊推開,最多彎 limit。
+ * bend(phi):彈簧片被推開到剛好不壓進手柄的轉角(由接觸算);沒碰到時是 0。
+ * max:從 0 往 dir(+1 / −1)扳,第一個推不開彈簧片的轉角——卡榫頂到凹槽的頂壁(推力沿著彈簧片的長度方向,
+ * 彎不開它),手柄拉到頭的轉角由此決定。
+ */
+export function springCatch({ handle, pivot, spring, root, out, limit, dir, step = 0.005, span = 1.5 }) {
+  const handleOf = (phi) => handle.map((o) => placeOutline(o, pivot, phi));
+  const springOf = (s) => placeOutline(spring, root, s);
+  const hit = (phi, s) => {
+    const sp = springOf(s);
+    return handleOf(phi).some((o) => polygonsOverlap(o, sp));
+  };
+  /** 推開的轉角(從原形一點一點往外推,第一個不壓進手柄的位置);推到 limit 仍壓進手柄就回傳 null(被擋住) */
+  function push(phi, n = 40) {
+    if (!hit(phi, 0)) return 0;
+    let k = 1;
+    while (k <= n && hit(phi, (out * limit * k) / n)) k++;
+    if (k > n) return null;
+    let [lo, hi] = [(limit * (k - 1)) / n, (limit * k) / n];
+    for (let j = 0; j < 40; j++) {
+      const mid = (lo + hi) / 2;
+      if (hit(phi, out * mid)) lo = mid;
+      else hi = mid;
+    }
+    return out * hi;
+  }
+  let a = 0;
+  while (push(a + dir * step) !== null) {
+    a += dir * step;
+    if (Math.abs(a) > span) throw new Error("彈簧片擋不住手柄");
+  }
+  let [ok, blocked] = [a, a + dir * step];
+  for (let k = 0; k < 40; k++) {
+    const mid = (ok + blocked) / 2;
+    if (push(mid) === null) blocked = mid;
+    else ok = mid;
+  }
+  return { max: ok, out, limit, bend: (phi) => push(phi) ?? out * limit, handleOf, springOf };
+}
+
+/**
  * 凸柱在原圖位置(手柄沒轉、桿搭在銷上)剛好頂在手柄下面:凸柱的中心在 x,外形是 outlineAt(中心)
  * (預設半徑 0.08 的圓);回傳中心 [x, y] 與外形。
  */
