@@ -6,9 +6,13 @@
 // 各在垂直於心軸的平面裡擺,輪緣上的齒在那裡沿切線走——在這兩個平面上各算叉瓦與齒相碰。心軸往一邊擺時一片叉瓦
 // 伸進齒的路徑、另一片退開;輪轉到齒碰上伸進來的叉瓦就停(被叉瓦推回一點),叉瓦退開時從靜止加速轉到碰上另一片。
 // 推斷:15 齒、擺幅;冠狀輪的轉向(直面在前);心軸兩端的軸承架、冠狀輪下方的軸承(原圖只畫心軸與輪)。
-import { TAU, deg, X, Y, rot2, swing } from "./kit.js";
+// 推斷的驅動(原文只說 S 擺動時輪間歇地轉,沒說輪為什麼往前轉;共用 weight-drive.js):冠狀輪軸上的鼓繞著繩,
+// 繩往右經軸承架上的滑輪垂下吊著重錘,重錘的重量就是讓輪往前轉的固定力矩;輪轉多少,重錘降多少,
+// 被叉瓦擋住時重錘也停。重錘每降一段(心軸擺八個來回)捲回最高處一次(上鍊,畫面上一下子回到上面)。
+import { TAU, deg, X, Y, Z, rot2, swing } from "./kit.js";
 import { sawCrown } from "./escapement.js";
 import { escapeDrive } from "./pawl-drive.js";
+import { weightDrive } from "./weight-drive.js";
 
 const N = 15;
 const R = 1.6;
@@ -61,9 +65,30 @@ const drive = escapeDrive({
 });
 const W0 = drive.at(0);
 
+// 推斷的重錘驅動:鼓在輪軸上、輪的下方;繩從鼓的前面(+z)往右拉到滑輪頂上,再垂下吊重錘
+const ROPE_R = 0.045; // 繩的半徑(畫面上的繩粗)
+const DRUM_R = 0.2;
+const DRUM = { center: [0, -0.66, 0], axis: Y, radius: DRUM_R + ROPE_R, sense: 1 }; // 輪往前轉(繞 +y)時繩從鼓上放出
+const PULLEY_R = 0.15;
+const PULLEY = { center: [2.55, DRUM.center[1] - PULLEY_R - ROPE_R, DRUM.radius], axis: Z, radius: PULLEY_R + ROPE_R, sense: 1 };
+const REWIND = 8 * 4 * SWING; // 心軸擺八個來回上鍊一次
+const WEIGHT = { radius: 0.17, height: 0.45 };
+const hang = weightDrive({
+  drum: DRUM,
+  pulleys: [PULLEY],
+  eye: [PULLEY.center[0] + PULLEY.radius, -1.2, PULLEY.center[2]],
+  reserve: DRUM.radius * 8 * PITCH,
+  spare: 2 * Math.PI * DRUM.radius,
+  pitch: 2.1 * ROPE_R,
+});
+const weightAt = (v) => {
+  const wound = Math.floor(v / REWIND + 1e-12) * REWIND; // 上次上鍊時的主動量
+  return hang(drive.at(v) - drive.at(wound));
+};
+
 /** 心軸累計擺動 v:冠狀輪的轉角(自起點,繞 +y) */
 export const wheelAngle = (v) => drive.at(v) - W0;
-export const geometry = { N, PITCH, SWING };
+export const geometry = { N, PITCH, SWING, DRUM, REWIND };
 /** 檢查用:主動量 v 時兩端平面上的齒與叉瓦(2D;左端的平面在 u + 100) */
 export const contactAt = (v) => {
   const s = drive.shapes(v);
@@ -85,6 +110,7 @@ export default {
         { kind: "cylinder", radius: R - 0.06, length: 0.04, at: [0, 0, 0.02] },
         ...sawCrown({ teeth: N, radius: TEETH_R, height: H, base: BASE }),
         { kind: "cylinder", radius: 0.1, length: 2.6, at: [0, 0, -1.2], mark: true },
+        { kind: "cylinder", radius: DRUM_R, length: 0.32, at: [0, 0, DRUM.center[1] + 0.06] }, // 繞繩的鼓(推斷)
       ],
     },
     {
@@ -108,12 +134,18 @@ export default {
         ]),
         { kind: "box", size: [4.6, 0.12, 1.2], at: [0, -2.5, 0] },
         { kind: "cylinder", axis: Y, radius: 0.2, inner: 0.1, length: 0.3, at: [0, -2.3, 0] },
+        // 右邊軸承架伸出的托臂與滑輪的軸(推斷)
+        { kind: "box", size: [PULLEY.center[0] + 0.04 - 2.23, 0.1, 0.1], at: [(PULLEY.center[0] + 0.04 + 2.23) / 2, PULLEY.center[1], 0] },
+        { kind: "cylinder", radius: 0.04, length: PULLEY.center[2] + 0.1, at: [PULLEY.center[0], PULLEY.center[1], (PULLEY.center[2] + 0.1) / 2 - 0.05] },
       ],
     },
+    { id: "pulley", kind: "pulley", style: "disc", center: PULLEY.center, axis: Z, radius: PULLEY_R, width: 0.1, arrow: false },
+    { id: "rope", kind: "rope", radius: ROPE_R },
+    { id: "weight", kind: "weight", axis: Y, radius: WEIGHT.radius, height: WEIGHT.height },
     { id: "tagA1", kind: "group", center: [-R, ROD_Y - 0.1, 0.35], pieces: [], arrow: false, label: "A" },
     { id: "tagA2", kind: "group", center: [R, ROD_Y - 0.1, 0.35], pieces: [], arrow: false, label: "A" },
   ],
-  // 動力重演:只推心軸;冠狀輪受固定的力矩(發條或重錘),由兩片叉瓦輪流擋住、放行
+  // 動力重演:只推心軸;冠狀輪受重錘的固定力矩(以彈簧代替;重錘、滑輪照模型的姿勢走),由兩片叉瓦輪流擋住、放行
   replay: {
     to: 8 * SWING,
     seconds: 16,
@@ -129,6 +161,17 @@ export default {
   target: "wheel",
   view: { direction: [0.35, 0.55, 1] },
   pose(v) {
-    return { parts: { verge: { angle: vergeAt(v) }, wheel: { angle: drive.at(v) } }, readouts: [] };
+    const w = weightAt(v);
+    const eye = w.eye;
+    return {
+      parts: {
+        verge: { angle: vergeAt(v) },
+        wheel: { angle: drive.at(v) },
+        pulley: { angle: w.pulleys[0] },
+        weight: { position: [eye[0], eye[1] - WEIGHT.height / 2 - WEIGHT.radius * 0.38, eye[2]] },
+      },
+      paths: { rope: { points: w.rope, closed: false, phase: 0 } },
+      readouts: [],
+    };
   },
 };

@@ -6,8 +6,10 @@
 // 接觸(由接觸算,共用 pawl-drive.js):撥爪鉸在臂的銷上,小彈簧把它壓在臂上的擋銷上(原圖的位置);
 // 推程中角壓在鉤裡,撥爪靠在擋銷上不動,輪被推到角從鉤裡滑出為止;回程中鉤背被下一個角頂開(撥爪繞銷轉、
 // 離開擋銷),越過後彈簧把它壓回擋銷。止回爪鉸在左上方的銷上,彈簧把它的尖端壓在星形輪的邊上。
-// 推多遠、何時讓開,都由外形相碰算出。
-// 推斷:止回爪畫成鉸接的彎臂加彈簧(原圖是一片彎彈簧);擋銷的位置;輪軸、臂的樞軸裝在後面的機架上。
+// 推多遠、何時讓開,都由外形相碰算出。擺幅取到臂擺到頂時角剛好從鉤裡滑出:推程全程撥爪都靠在擋銷上
+// (原文「在搖臂上升時保持在圖中所示的位置」),擺幅再大,角滑出後臂還往上,撥爪就會被角的側邊撐開。
+// 推斷:止回爪畫成鉸接的彎臂加彈簧(原圖是一片彎彈簧);擋銷的位置(裝在臂左端伸出的耳板上);擺幅與鉤的位置;
+// 輪軸、臂的樞軸裝在後面的機架上,止回爪的立柱底下有腳座,和輪的軸承座底板相接。
 import { deg, polar, rot2, swingPhase } from "./kit.js";
 import { shape, circle, thickLine } from "./shapes.js";
 import { bodyPoint } from "./linkage.js";
@@ -18,7 +20,7 @@ const STAR = { points: 6, outer: 1.0, inner: 0.5, phase: deg(-30) };
 const STEP = (2 * Math.PI) / STAR.points;
 const PIVOT = [4.56, -1.6];
 const PIN = [-3.6, 0.0]; // 撥爪的銷(相對臂的樞軸,臂水平):在臂的左端
-const SWING = deg(17);
+const SWING = deg(12.6); // 擺到頂(TO)時角剛好從鉤裡滑出
 const FROM = deg(4); // 臂的最低位置略往下斜:鉤回到下一個角的下緣底下
 const TO = FROM - SWING; // 臂往上擺(左端上升 = 順時針)
 const CLICK = { pivot: [-0.15, 1.45] };
@@ -46,7 +48,7 @@ const PAWL = [
   [CLAW - 0.2, 0.1],
   [-0.14, 0.1],
 ];
-const HOOK_AT = [0.5, -0.82]; // 臂水平時爪尖的位置:在角的下緣底下
+const HOOK_AT = [0.5, -0.95]; // 臂水平時爪尖的位置:在角的下緣底下
 const PAWL_REST = Math.atan2(HOOK_AT[1] - (PIVOT[1] + PIN[1]), HOOK_AT[0] - (PIVOT[0] + PIN[0])); // 撥爪靠在擋銷上時的轉角(臂水平)
 
 // 止回爪(局部座標:原點在銷):從銷沿星形輪的左邊彎下,尖端頂在兩個角之間
@@ -74,6 +76,12 @@ const CLICK_OUTLINE = (() => {
 const STOP_PIN = (() => {
   const [x, y] = rot2([0.32, 0.1 + 0.07], PAWL_REST); // 桿身左側(逆時針那一側)
   return [PIN[0] + x, PIN[1] + y];
+})();
+// 臂左端伸出的耳板(從撥爪的銷伸到擋銷底下,再多伸一點),擋銷就裝在上面
+const EAR = (() => {
+  const [dx, dy] = [STOP_PIN[0] - PIN[0], STOP_PIN[1] - PIN[1]];
+  const l = Math.hypot(dx, dy);
+  return thickLine([PIN, [STOP_PIN[0] + (dx / l) * 0.1, STOP_PIN[1] + (dy / l) * 0.1]], 0.22);
 })();
 const armAt = (v) => swingPhase(v, FROM, TO);
 const pinAt = (psi) => bodyPoint([...PIVOT, 0], psi, PIN).slice(0, 2);
@@ -122,6 +130,7 @@ export default {
         { kind: "cylinder", radius: 0.06, length: 0.5, at: [...CLICK.pivot, -0.1] }, // 止回爪的樞軸
         { kind: "box", size: [0.3, 3.9, 0.12], at: [-1.6, -0.45, -0.4] }, // 托住止回爪樞軸的立柱(推斷)
         { kind: "box", size: [1.6, 0.25, 0.12], at: [-0.85, CLICK.pivot[1], -0.4] },
+        { kind: "box", size: [1.6, 0.18, 0.6], at: [-1.0, -2.49, -0.4] }, // 立柱的腳座,和輪的軸承座底板相接
       ],
     },
     {
@@ -138,10 +147,11 @@ export default {
       arrow: false,
       pieces: [
         { kind: "plate", shape: shape(thickLine([[0, 0], [-3.75, 0]], 0.3), [circle(0.08).reverse()]), thickness: 0.1 },
+        { kind: "plate", shape: shape(EAR), thickness: 0.1 }, // 裝擋銷的耳板
         { kind: "cylinder", radius: 0.055, length: 0.32, at: [...PIN, -0.12] }, // 掛撥爪的銷往後伸
       ],
     },
-    // 臂上的擋銷(和臂一起擺;另列一個零件,動力重演裡撥爪才碰得到它——撥爪和它鉸接的臂之間不算碰撞)
+    // 臂耳板上的擋銷(和臂一起擺;另列一個零件,動力重演裡撥爪才碰得到它——撥爪和它鉸接的臂之間不算碰撞)
     { id: "stopPin", kind: "group", center: [...PIVOT, Z.arm], arrow: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.32, at: [...STOP_PIN, -0.12] }] },
     {
       id: "pawl",

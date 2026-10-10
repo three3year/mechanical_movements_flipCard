@@ -7,9 +7,13 @@
 // 兩片叉瓦在輪上的方位差三個半齒距,所以每擺一程放走半齒、一個來回一齒。轉多少、停在哪裡都由齒與叉瓦相碰算出。
 // 推斷:每擺一程放走半齒(原文只說是擒縱機構,沒有比例);擺幅;叉瓦伸進輪齒的深淺與方位(太深時,一片叉瓦還頂著齒、另一片已擋在下一齒前面,輪會被夾住);
 // 輪齒數依原圖為六;叉瓦做成從架子兩端伸向輪心的方塊(原圖畫成架子兩端的尖角);
-// 輪軸與叉瓦架的樞軸在後面的機架上。
-import { TAU, deg, polar, rot2, swing as swingAt } from "./kit.js";
+// 輪軸與叉瓦架的樞軸在後面的機架上;托住輪軸的立柱底下有腳座,和叉瓦架軸承座的底板相接。
+// 推斷的驅動(原文只說是擒縱機構,沒提輪為什麼往前轉;共用 weight-drive.js):輪軸上、輪的後面有一個鼓,繩從鼓頂往左
+// 拉到立柱上的滑輪,再垂下吊著重錘;重錘的重量就是讓輪逆時針轉的固定力矩,輪轉多少重錘降多少,被叉瓦擋住時重錘也停。
+// 輪每轉一圈(叉瓦架擺六個來回)重錘捲回最高處一次(上鍊,畫面上一下子回到上面)。
+import { TAU, deg, polar, rot2, swing as swingAt, Y, Z } from "./kit.js";
 import { escapeDrive } from "./pawl-drive.js";
+import { weightDrive } from "./weight-drive.js";
 import { shape, circle, thickLine } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
@@ -69,9 +73,30 @@ const palletsAt = (v) => {
 const drive = escapeDrive({ period: 4 * SWING, obstacles: teethAt, stops: palletsAt, dir: 1, pitch: PITCH, drop: 0.2 }); // 放開後輪從靜止加速,約一程的一半轉過一個齒距(太快會像跳過去)
 const W0 = drive.at(0);
 
+// 推斷的重錘驅動:鼓在輪的後面,繩從鼓頂往左拉到滑輪頂上,再垂下吊重錘
+const ROPE_R = 0.045; // 繩的半徑(畫面上的繩粗)
+const DRUM_R = 0.15;
+const DRUM = { center: [...D, -0.3], axis: Z, radius: DRUM_R + ROPE_R, sense: 1 }; // 輪往前(逆時針)轉時繩從鼓上放出
+const PULLEY_R = 0.15;
+const PULLEY = { center: [-2.0, D[1] + DRUM.radius - PULLEY_R - ROPE_R, DRUM.center[2]], axis: Z, radius: PULLEY_R + ROPE_R, sense: -1 };
+const REWIND = N * 4 * SWING; // 輪轉一圈(叉瓦架擺六個來回)上鍊一次
+const WEIGHT = { radius: 0.17, height: 0.4 };
+const hang = weightDrive({
+  drum: DRUM,
+  pulleys: [PULLEY],
+  eye: [PULLEY.center[0] - PULLEY.radius, 0.55, PULLEY.center[2]],
+  reserve: DRUM.radius * TAU,
+  spare: 0.8 * TAU * DRUM.radius,
+  pitch: 2 * ROPE_R,
+});
+const weightAt = (v) => {
+  const wound = Math.floor(v / REWIND + 1e-12) * REWIND; // 上次上鍊時的主動量
+  return hang(drive.at(v) - drive.at(wound));
+};
+
 /** 叉瓦架累計擺動 v:擒縱輪的轉角(自起點,逆時針為正) */
 export const wheelAngle = (v) => drive.at(v) - W0;
-export const geometry = { N, PITCH, SWING };
+export const geometry = { N, PITCH, SWING, DRUM, REWIND };
 /** 檢查用:主動量 v 時輪的齒與兩片叉瓦(世界座標 2D) */
 export const contactAt = (v) => {
   const s = drive.shapes(v);
@@ -92,9 +117,28 @@ export default {
         ...pedestal({ at: A, z: -0.45, bore: 0.09, floor: -1.9 }),
         { kind: "box", size: [0.3, 2.9, 0.12], at: [-1.45, -0.45, -0.45] }, // 托住輪軸的立柱與橫臂(推斷)
         { kind: "box", size: [1.0, 0.22, 0.12], at: [-1.05, D[1], -0.45] },
+        { kind: "box", size: [1.5, 0.18, 0.6], at: [-1.05, -1.99, -0.45] }, // 立柱的腳座,和叉瓦架軸承座的底板相接
+        // 立柱頂伸出的托臂與滑輪的軸(推斷)
+        { kind: "box", size: [0.5, 0.1, 0.12], at: [-1.8, PULLEY.center[1], -0.45] },
+        { kind: "cylinder", radius: 0.04, length: 0.32, at: [PULLEY.center[0], PULLEY.center[1], -0.36] },
       ],
     },
-    { id: "wheelD", kind: "plate", center: [...D, 0], shape: star, thickness: 0.16, mark: [0.45, 0], markSize: 0.06, spin: 0.7, label: "D", labelOffset: [-0.1, 0.12, 0.3] },
+    { id: "pulley", kind: "pulley", style: "disc", center: PULLEY.center, axis: Z, radius: PULLEY_R, width: 0.1, arrow: false },
+    { id: "rope", kind: "rope", radius: ROPE_R },
+    { id: "weight", kind: "weight", axis: Y, radius: WEIGHT.radius, height: WEIGHT.height },
+    {
+      id: "wheelD",
+      kind: "plate",
+      center: [...D, 0],
+      shape: star,
+      thickness: 0.16,
+      mark: [0.45, 0],
+      markSize: 0.06,
+      spin: 0.7,
+      label: "D",
+      labelOffset: [-0.1, 0.12, 0.3],
+      pieces: [{ kind: "cylinder", radius: DRUM_R, inner: 0.1, length: 0.3, at: [0, 0, -0.22] }], // 繞繩的鼓(推斷),從輪的背面伸出
+    },
     {
       id: "frame",
       kind: "group",
@@ -112,7 +156,7 @@ export default {
     { id: "tagB", kind: "group", center: [-1.25, 0.25, 0.2], pieces: [], arrow: false, label: "B" },
     { id: "tagC", kind: "group", center: [0.1, 1.95, 0.2], pieces: [], arrow: false, label: "C" },
   ],
-  // 動力重演:只推叉瓦架;擒縱輪受固定的力矩(發條或重錘)往逆時針轉,由叉瓦 B、C 輪流擋住、放行
+  // 動力重演:只推叉瓦架;擒縱輪受重錘的固定力矩往逆時針轉(以彈簧代替;重錘、滑輪照模型的姿勢走),由叉瓦 B、C 輪流擋住、放行
   replay: {
     to: 8 * SWING,
     seconds: 16,
@@ -128,6 +172,17 @@ export default {
   target: "wheelD",
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
-    return { parts: { frame: { angle: frameAngle(v) }, wheelD: { angle: drive.at(v) } }, readouts: [] };
+    const w = weightAt(v);
+    const eye = w.eye;
+    return {
+      parts: {
+        frame: { angle: frameAngle(v) },
+        wheelD: { angle: drive.at(v) },
+        pulley: { angle: w.pulleys[0] },
+        weight: { position: [eye[0], eye[1] - WEIGHT.height / 2 - WEIGHT.radius * 0.38, eye[2]] },
+      },
+      paths: { rope: { points: w.rope, closed: false, phase: 0 } },
+      readouts: [],
+    };
   },
 };

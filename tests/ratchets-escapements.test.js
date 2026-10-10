@@ -1,7 +1,7 @@
 // 第十一章「棘輪與擒縱」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sweep, part } from "./helpers.js";
+import { sweep, part, close } from "./helpers.js";
 import { placeOutline, polygonsOverlap, penetrationDepth, pointInPolygon, edgeDistance } from "../models/contact.js";
 import { ratchetObstacles } from "../models/ratchets.js";
 import fig233, { barAngle, leverAngle, pinPolygons, barOutline, geometry as fig233Geometry } from "../models/fig233.js";
@@ -188,7 +188,6 @@ test("第 240 種:同一主動量下,各擋止爪各自在落進齒間的位置�
 import fig227 from "../models/fig227.js";
 import fig228 from "../models/fig228.js";
 import fig229 from "../models/fig229.js";
-import { close } from "./helpers.js";
 
 for (const [def, pins] of [[fig227, 1.82], [fig228, 2.02], [fig229, 2.3]]) {
   test(`第 ${def.figure} 種:轉動皮帶輪,鍊條跟著走——行進量等於鏈節銷所在圓上轉過的弧長`, () => {
@@ -360,6 +359,52 @@ test("第 234 種:心軸 S 往復擺動,兩片叉瓦輪流擋住冠狀輪,輪間
   }
 });
 
+// 推斷的重錘驅動(第 234、238 種):繩從輪軸上的鼓放出、重錘隨輪下降;重錘的拉力讓輪往前轉,輪停住時重錘也停
+const polylineLength = (pts) => pts.slice(1).reduce((s, p, i) => s + dist(p, pts[i]), 0);
+function assertWeightDrive(def, { drum, wheel, period, every, dir }) {
+  const poses = sweep(every * 0.999, 240).map((v) => ({ v, pose: def.pose(v) }));
+  const lengths = poses.map(({ pose }) => polylineLength(pose.paths.rope.points));
+  for (const l of lengths) close(l, lengths[0], "繩長不變(鼓放出的繩 = 重錘下降的量)", 0.02);
+  for (const { v, pose } of poses) {
+    const pts = pose.paths.rope.points;
+    const eye = pts[0];
+    const w = pose.parts.weight.position;
+    assert.ok(Math.abs(w[0] - eye[0]) < 1e-9 && Math.abs(w[2] - eye[2]) < 1e-9 && w[1] < eye[1], `主動量 ${v.toFixed(3)}:重錘吊在繩的下端`);
+    // 繩繞在鼓上:鼓上那一段離鼓軸的距離是繩中心的半徑(繩貼著鼓面)
+    const onDrum = pts.filter((p) => {
+      const d = [p[0] - drum.center[0], p[1] - drum.center[1], p[2] - drum.center[2]];
+      const along = d[0] * drum.axis[0] + d[1] * drum.axis[1] + d[2] * drum.axis[2];
+      return Math.abs(along) < 0.3 && Math.abs(Math.hypot(...d.map((x, i) => x - along * drum.axis[i])) - drum.radius) < 1e-6;
+    });
+    assert.ok(onDrum.length > 10, `主動量 ${v.toFixed(3)}:鼓上還繞著繩`);
+  }
+  // 繩離開鼓的那一點受重錘往下拉:對輪軸的力矩朝輪往前轉的方向
+  const pts = def.pose(0).paths.rope.points;
+  const k = pts.findIndex((p) => {
+    const d = [p[0] - drum.center[0], p[1] - drum.center[1], p[2] - drum.center[2]];
+    const along = d[0] * drum.axis[0] + d[1] * drum.axis[1] + d[2] * drum.axis[2];
+    return Math.abs(Math.hypot(...d.map((x, i) => x - along * drum.axis[i])) - drum.radius) < 1e-6;
+  });
+  const t = pts[k];
+  const pull = [pts[k - 1][0] - t[0], pts[k - 1][1] - t[1], pts[k - 1][2] - t[2]];
+  const r = [t[0] - drum.center[0], t[1] - drum.center[1], t[2] - drum.center[2]];
+  const torque = [r[1] * pull[2] - r[2] * pull[1], r[2] * pull[0] - r[0] * pull[2], r[0] * pull[1] - r[1] * pull[0]];
+  assert.ok(dir * (torque[0] * drum.axis[0] + torque[1] * drum.axis[1] + torque[2] * drum.axis[2]) > 0, "重錘的拉力讓輪往前轉");
+  // 輪被叉瓦擋住時重錘也停;輪往前轉時重錘下降
+  const ys = poses.map(({ v, pose }) => ({ y: pose.parts.weight.position[1], w: wheel(v) }));
+  for (let i = 1; i < ys.length; i++) {
+    if (Math.abs(ys[i].w - ys[i - 1].w) < 1e-12) close(ys[i].y, ys[i - 1].y, "輪不動,重錘不動", 1e-9);
+    if (ys[i].w - ys[i - 1].w > 1e-3) assert.ok(ys[i].y < ys[i - 1].y, "輪往前轉,重錘下降");
+  }
+  assert.ok(ys[0].y - ys[ys.length - 1].y > 0.3, "上鍊之間重錘降下一段看得出來的距離");
+  assert.ok(every >= 2 * period, "至少擺兩個來回才上鍊一次");
+}
+
+test("第 234 種:推斷的重錘驅動——冠狀輪軸上的鼓放出繩、經滑輪吊著重錘,重錘隨輪下降", () => {
+  const { DRUM, SWING, REWIND } = m234.geometry;
+  assertWeightDrive(m234.default, { drum: DRUM, wheel: m234.wheelAngle, period: 4 * SWING, every: REWIND, dir: 1 });
+});
+
 test("第 235 種:撥爪臂往上擺時推星形輪轉一格,回程撥爪讓開、滑過齒面,輪不動(由接觸算)", () => {
   const S = m235.swing;
   // 原文:撥爪臂的擺動運動,會產生棘輪的間歇性旋轉運動
@@ -380,6 +425,25 @@ test("第 235 種:撥爪臂往上擺時推星形輪轉一格,回程撥爪讓開�
   }
 });
 
+test("第 235 種:小彈簧讓撥爪在搖臂上升的全程保持圖示的位置(靠在擋銷上),擋銷裝在臂的耳板上", () => {
+  const S = m235.swing;
+  // 原文:位於撥爪臂底部的小彈簧會讓撥爪在搖臂上升時保持在圖中所示的位置
+  for (const v of sweep(S, 200)) assert.ok(Math.abs(m235.motion(v).yieldAngle) < 0.01, `主動量 ${v.toFixed(3)}:上擺時撥爪不轉開(${m235.motion(v).yieldAngle.toFixed(4)})`);
+  close(m235.motion(S).star - m235.motion(0).star, m235.step, "擺到頂時剛好推過一格", 1e-6);
+  // 擋銷(另列的零件,和臂一起擺)落在臂的板上:銷心在臂的某一塊板的輪廓裡,深度範圍和那塊板重疊
+  const def = m235.default;
+  const pin = part(def, "stopPin").pieces[0];
+  const arm = part(def, "arm");
+  const pinZ = [pin.at[2] - pin.length / 2, pin.at[2] + pin.length / 2];
+  const plates = arm.pieces.filter((p) => p.kind === "plate");
+  const carrier = plates.find((p) => {
+    const z = p.at?.[2] ?? 0;
+    const t = p.thickness ?? 0.2;
+    return pointInPolygon([pin.at[0] - (p.at?.[0] ?? 0), pin.at[1] - (p.at?.[1] ?? 0)], p.shape.outline) && z + t / 2 > pinZ[0] && z - t / 2 < pinZ[1];
+  });
+  assert.ok(carrier, "擋銷裝在臂的板上,不懸在臂端外");
+});
+
 test("第 236 種:槓桿 a 擺動,兩根棘爪 b、c 輪流推,棘輪近乎連續地朝同一方向轉(由接觸算)", () => {
   const S = m236.swing;
   const ws = sweep(4 * S, 400).map(m236.wheelAngle);
@@ -390,6 +454,19 @@ test("第 236 種:槓桿 a 擺動,兩根棘爪 b、c 輪流推,棘輪近乎連�
   for (const v of sweep(4 * S, 160)) {
     const { tips, teeth } = m236.contactAt(v);
     for (const tip of tips) for (const t of teeth) assert.ok(penetrationDepth(tip, t) < 1e-3, `主動量 ${v.toFixed(3)}:爪尖不穿進齒`);
+  }
+});
+
+test("第 236 種:「近乎連續」——兩根棘爪在齒上錯開半齒,兩程各推約半齒,空行程很短", () => {
+  const S = m236.swing;
+  const P = m236.pitch;
+  // 原文:將近乎連續的圓周運動傳遞給棘輪
+  for (const [name, from] of [["b 推的那一程", 0], ["c 推的那一程", S]]) {
+    const ws = sweep(from + S, 200, from).map((v) => m236.wheelAngle(v + 2 * S));
+    const advance = ws[ws.length - 1] - ws[0];
+    assert.ok(Math.abs(advance - P / 2) < P / 12, `${name}推約半齒(${((advance * 180) / Math.PI).toFixed(2)}°)`);
+    const still = ws.slice(1).filter((w, i) => Math.abs(w - ws[i]) < 1e-9).length / (ws.length - 1);
+    assert.ok(still < 0.15, `${name}輪不動的時間少於 15%(${(still * 100).toFixed(0)}%)`);
   }
 });
 
@@ -483,6 +560,11 @@ test("第 238 種:叉瓦架往復擺動,叉瓦 B、C 輪流擋住、放走擒縱
     const { teeth, pallets } = m238.contactAt(v);
     for (const t of teeth) for (const p of pallets) assert.ok(penetrationDepth(t, p) < 2e-3, `主動量 ${v.toFixed(3)}:叉瓦不穿進輪齒`);
   }
+});
+
+test("第 238 種:推斷的重錘驅動——擒縱輪 D 軸上的鼓放出繩、吊著重錘,重錘隨輪下降", () => {
+  const { DRUM, SWING, REWIND } = m238.geometry;
+  assertWeightDrive(m238.default, { drum: DRUM, wheel: m238.wheelAngle, period: 4 * SWING, every: REWIND, dir: 1 });
 });
 
 test("第 239 種:兩支擋爪是單向的止回爪,齒輪往放行的方向轉時爪被斜面頂起、越過齒尖再彈回下一個齒間(由接觸算)", () => {
