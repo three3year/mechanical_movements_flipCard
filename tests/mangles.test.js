@@ -382,10 +382,12 @@ test("第 196 種:輪 A 裝在搖臂的末端——A 的軸穿過 A、伸到 A �
   assert.ok(back < -wheel.thickness / 2, "軸伸到 A 的背面");
   for (const v of sweep(40, 160)) {
     const pose = def.pose(v).parts;
-    close(pose.arm.from[0], pose.wheelA.position[0], `主動量 ${v.toFixed(2)}:搖臂端在 A 的軸線上(x)`, 1e-9);
-    close(pose.arm.from[1], pose.wheelA.position[1], `主動量 ${v.toFixed(2)}:搖臂端在 A 的軸線上(y)`, 1e-9);
+    // 平面上:A 的軸的截面整個落在搖臂末端的圓頭(半徑 = 搖臂寬的一半)裡;深度上:軸蓋過搖臂的整個厚度
+    const c = rot2(axle.at, pose.wheelA.angle).map((x, i) => x + pose.wheelA.position[i]);
+    const off = Math.hypot(c[0] - pose.arm.from[0], c[1] - pose.arm.from[1]);
+    assert.ok(off + axle.radius <= arm.width / 2, `主動量 ${v.toFixed(2)}:A 的軸離搖臂端 ${off.toFixed(3)},沒穿過軸眼`);
     const z = pose.arm.from[2];
-    assert.ok(back <= z - arm.thickness / 2 && front >= z + arm.thickness / 2, `主動量 ${v.toFixed(2)}:A 的軸穿過搖臂端的軸眼`);
+    assert.ok(back <= z - arm.thickness / 2 && front >= z + arm.thickness / 2, `主動量 ${v.toFixed(2)}:A 的軸(z ${back}–${front})穿過搖臂端的軸眼`);
   }
 });
 
@@ -647,6 +649,20 @@ function assertFeedRolls(def, wheelIds, materialId) {
 
 test("第 195 種:一對進料滾軸在同一層,相對的表面朝同一方向運動,夾著被送的材料前進(#195-1)", () => {
   assertFeedRolls(m195.default, ["upper", "lower"], "material");
+});
+
+test("第 195 種:兩根輪軸都整段穿過後面同軸的進料滾軸(滾軸套在軸上,不是只碰到軸端)", () => {
+  const def = m195.default;
+  for (const id of ["upper", "lower"]) {
+    const p = part(def, id);
+    const cyl = p.pieces.filter((q) => q.kind === "cylinder" && !q.inner);
+    const span = (q) => [p.center[2] + q.at[2] - q.length / 2, p.center[2] + q.at[2] + q.length / 2];
+    const feed = cyl.reduce((a, b) => (b.radius > a.radius ? b : a));
+    const axle = cyl.find((q) => q !== feed && q.radius < 0.2);
+    const [f0, f1] = span(feed);
+    const [a0, a1] = span(axle);
+    assert.ok(a0 < f0 - 0.01 && a1 > f1 + 0.01, `${id}:軸 z ${a0.toFixed(3)}–${a1.toFixed(3)} 沒有穿過進料滾軸 ${f0.toFixed(3)}–${f1.toFixed(3)}`);
+  }
 });
 
 test("第 207 種:為第 195 種的變形:兩個蝸輪同軸的一對進料滾軸夾著被送的材料前進(#207-1)", () => {
@@ -988,7 +1004,7 @@ test("第 212 種:「輪 B 上的凸曲部分 a、b 起到擋止的作用」:A �
   }
 });
 
-test("第 212 種:換格時 B 的槽角落在 A 齒旁的缺口裡:可轉範圍內 A 與 B 全程不穿入", () => {
+test("第 212 種:換格時 B 的槽角掃過 A 朝齒那一側的切口:可轉範圍內 A 與 B 全程不穿入", () => {
   const [lo, hi] = m212.range;
   for (const v of sweep(hi, 1200, lo)) {
     const { depth } = genevaContact(m212, "wheelB", v);
@@ -996,12 +1012,25 @@ test("第 212 種:換格時 B 的槽角落在 A 齒旁的缺口裡:可轉範圍�
   }
 });
 
-test("第 212 種:B 走三整格;兩端被擋住時 A 的齒還在槽裡推著 B(507movements 動畫:最後一格走了一部分才停)", () => {
+test("第 212 種:B 走三整格加不到一格的一段;兩端被擋住時 A 的齒還在槽裡推著 B(原圖五道槽:四段鎖定弧夾三格,凸弧頂住才停)", () => {
   const [lo, hi] = m212.range;
   const step = (2 * Math.PI) / 5;
   const travel = (m212.stop(lo).b - m212.stop(hi).b) / step;
-  assert.ok(travel > 3.2 && travel < 4.8, `B 從一端到另一端走 ${travel.toFixed(2)} 格`);
-  for (const end of [lo, hi]) assert.ok(m212.stop(end).engaged, "範圍端 A 的齒在槽裡");
+  assert.ok(travel > 3 && travel < 4, `B 從一端到另一端走 ${travel.toFixed(2)} 格:三整格加不到一格`);
+  // 整格:B 從一段鎖定弧被推到下一段鎖定弧(A 一次進槽到出槽都在範圍內)
+  const v = sweep(hi, 6000, lo);
+  const windows = [];
+  v.forEach((t, i) => {
+    const e = m212.stop(t).engaged;
+    if (e && (i === 0 || !m212.stop(v[i - 1]).engaged)) windows.push({ from: i, to: i });
+    if (e) windows[windows.length - 1].to = i;
+  });
+  const full = windows.filter((w) => w.from > 0 && w.to < v.length - 1);
+  assert.equal(full.length, 3, "範圍內完整的換格有三次");
+  for (const w of full) close((m212.stop(v[w.from - 1]).b - m212.stop(v[w.to + 1]).b) / step, 1, "每次完整換格 B 走一整格", 1e-9);
+  assert.ok(windows.length === 5 && m212.stop(lo).engaged && m212.stop(hi).engaged, "兩端各還有一次走到一半就被擋住的換格");
+  const partial = travel - 3;
+  assert.ok(partial > 0.05 && partial < 1, `兩端的半格合起來 ${partial.toFixed(2)} 格,不到一格`);
 });
 
 test("第 213 種:擋輪只有一段齒,下輪轉到那段齒的盡頭、齒頂到齒頂高度的輪緣就被擋住", () => {
@@ -1087,6 +1116,31 @@ test("第 215 種:「該擋止裝置的其他變形」:星形輪那一格凸弧�
     const { depth } = genevaContact(m215, "star", v);
     assert.ok(depth < 0.002, `v=${v.toFixed(3)} 穿入 ${depth.toFixed(4)}`);
   }
+});
+
+test("第 215 種:環與月牙板那一件中心開孔套在固定軸上:固定軸穿過的深度內,沒有一塊實體佔到軸的截面(#215-2)", () => {
+  const def = m215.default;
+  const A = part(def, "wheelA");
+  const shaft = part(def, "bearings").pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - A.center[0], p.at[1] - A.center[1]) < 1e-9);
+  const [s0, s1] = [shaft.at[2] - shaft.length / 2, shaft.at[2] + shaft.length / 2];
+  // 軸截面上的取樣點(A 的局部座標,中心在原點):圓心與半徑 0.95 倍的一圈
+  const samples = [[0, 0], ...Array.from({ length: 16 }, (_, i) => [0.95 * shaft.radius * Math.cos((i * TAU) / 16), 0.95 * shaft.radius * Math.sin((i * TAU) / 16)])];
+  let sleeve = false;
+  for (const p of A.pieces) {
+    const [x, y, z] = p.at ?? [0, 0, 0];
+    const t = p.kind === "plate" ? (p.thickness ?? 0.2) : p.kind === "box" ? p.size[2] : p.kind === "cylinder" && !p.axis ? p.length : null;
+    assert.ok(t !== null, `${p.kind} 是沿 z 的板、方塊或圓柱`);
+    if (z + t / 2 <= s0 + 1e-9 || z - t / 2 >= s1 - 1e-9) continue;
+    const solid = (q) => {
+      const [u, w] = [q[0] - x, q[1] - y];
+      if (p.kind === "box") return Math.abs(u) < p.size[0] / 2 && Math.abs(w) < p.size[1] / 2;
+      if (p.kind === "cylinder") return Math.hypot(u, w) < p.radius && Math.hypot(u, w) > (p.inner ?? 0);
+      return pointInPolygon([u, w], p.shape.outline) && !(p.shape.holes ?? []).some((h) => pointInPolygon([u, w], h));
+    };
+    assert.ok(!samples.some(solid), `${p.kind}(z ${(z - t / 2).toFixed(3)}–${(z + t / 2).toFixed(3)})佔到固定軸的截面`);
+    if (p.kind === "cylinder" && Math.hypot(x, y) < 1e-9 && p.inner >= shaft.radius) sleeve = true;
+  }
+  assert.ok(sleeve, "有套在軸外的軸轂");
 });
 
 test("第 202 種:沙漏形蝸桿每轉一圈,蝸輪轉過一齒", () => {
@@ -1206,33 +1260,87 @@ const depth216 = (s) => {
   return { inner: penetrationDepth(s.inner, s.pinion), outer: Math.max(penetrationDepth(s.ring, s.pinion), ...tips) };
 };
 
+/** 第 216 種:小齒輪不動的各段(主動量的區間),由小齒輪的轉角量出,不看模型標的是哪一圈在帶 */
+function stillRuns216(n = 1440) {
+  const vs = sweep(2 * Math.PI, n);
+  const runs = [];
+  vs.slice(1).forEach((v, i) => {
+    if (Math.abs(m216.pinion(v).angle - m216.pinion(vs[i]).angle) > 1e-12) return;
+    if (runs.length && runs[runs.length - 1][1] === vs[i]) runs[runs.length - 1][1] = v;
+    else runs.push([vs[i], v]);
+  });
+  return runs.filter(([a, b]) => b - a > 0.05);
+}
+/** 外形上的齒頂(外齒輪取最大半徑、內齒圈取最小半徑)各段中點的角度(局部座標) */
+function toothTips(outline, internal) {
+  const r = outline.map(([x, y]) => Math.hypot(x, y));
+  const ext = internal ? Math.min(...r) : Math.max(...r);
+  const on = r.map((v) => Math.abs(v - ext) < 1e-6);
+  const first = on.findIndex((v) => !v);
+  const tips = [];
+  let sum = null;
+  for (let k = 1; k <= outline.length; k++) {
+    const i = (first + k) % outline.length;
+    if (on[i]) sum = [(sum?.[0] ?? 0) + outline[i][0], (sum?.[1] ?? 0) + outline[i][1]];
+    else if (sum) [tips[tips.length], sum] = [Math.atan2(sum[1], sum[0]), null];
+  }
+  return tips;
+}
+/**
+ * 第 216 種:輪轉 w、小齒輪轉 q(世界轉角)時,內側小輪(which = "inner")或外圈("ring")的齒對小齒輪齒槽的相位差,
+ * 以齒距為單位(0 = 齒正對齒槽,±0.5 = 齒頂對齒頂)。從外形量齒頂的角度,沿各自節圓量到節點的弧長再比:
+ * 內側小輪與小齒輪外咬合(節點在小齒輪正上方,兩輪反向),外圈與小齒輪內咬合(節點在小齒輪正下方,兩輪同向)。
+ */
+function phase216(which, w, q) {
+  const { RS, RP, RI } = m216.radii;
+  const NP = toothTips(m216.outlines.pinion, false).length;
+  const pitch = (2 * Math.PI * RP) / NP;
+  const tooth = toothTips(which === "inner" ? m216.outlines.inner : m216.outlines.ring, which === "ring")[0] + w;
+  const slot = toothTips(m216.outlines.pinion, false)[0] + q + Math.PI / NP;
+  const s = which === "inner" ? RS * signedAngle(tooth + Math.PI / 2) + RP * signedAngle(slot - Math.PI / 2) : RI * signedAngle(tooth + Math.PI / 2) - RP * signedAngle(slot + Math.PI / 2);
+  return s / pitch - Math.round(s / pitch);
+}
+
 test("第 216 種:兩圈「交替地」與小齒輪咬合:換手時留一段兩圈都不咬、小齒輪停住的空檔,整圈不會兩圈同時咬著", () => {
   // 整圈不穿入(簡化齒形穩定咬合時齒頂擦到約 0.01)
   for (const v of sweep(2 * Math.PI, 720)) {
     const d = depth216(shapes216(v));
     assert.ok(d.inner < 0.015 && d.outer < 0.015, `v=${v.toFixed(3)} 內 ${d.inner.toFixed(4)}、外 ${d.outer.toFixed(4)}`);
   }
-  // 一圈裡有兩段空檔:小齒輪不動、兩圈都沒在帶它
-  const vs = sweep(2 * Math.PI, 1440);
-  const still = vs.slice(1).map((v, i) => Math.abs(m216.pinion(v).angle - m216.pinion(vs[i]).angle) < 1e-12 && m216.pinion(v).by === "none");
-  const runs = [];
-  still.forEach((s, i) => {
-    if (!s) return;
-    if (runs.length && runs[runs.length - 1][1] === i - 1) runs[runs.length - 1][1] = i;
-    else runs.push([i, i]);
-  });
-  const dwell = runs.map(([a, b]) => vs[b + 1] - vs[a]);
-  assert.equal(dwell.filter((d) => d > 0.05).length, 2, `兩次換手各有空檔(${dwell.map((d) => d.toFixed(3)).join("、")})`);
+  // 一圈裡有兩段小齒輪不動的空檔;空檔裡兩圈都和停著的小齒輪保持間隙:交出的那一圈只會離開(停住那一刻齒頂還擦著,
+  // 之後不會壓得更深,轉過 3° 就離開),接手的那一圈還沒碰到
+  const runs = stillRuns216();
+  assert.equal(runs.length, 2, `兩次換手各有空檔(${runs.map(([a, b]) => (b - a).toFixed(3)).join("、")})`);
+  for (const [a, b] of runs) {
+    const d0 = depth216(shapes216(a));
+    for (const v of sweep(b, 400, a).slice(1, -1)) {
+      const d = depth216(shapes216(v));
+      const at = `空檔 v=${v.toFixed(3)} 內 ${d.inner.toFixed(4)}、外 ${d.outer.toFixed(4)}`;
+      assert.ok(d.inner <= d0.inner + 1e-4 && d.outer <= d0.outer + 1e-4, `${at}:比停住那一刻壓得更深,有一圈推著停住的小齒輪`);
+      if (v > a + 0.05) assert.ok(d.inner < 0.001 && d.outer < 0.001, `${at}:有一圈碰著停住的小齒輪`);
+    }
+  }
 });
 
-test("第 216 種:接手那一圈的第一齒碰到停著的小齒輪時對著齒槽:剛好碰到、不穿入,小齒輪再不轉就會被它頂進去", () => {
-  for (const [, end] of m216.dwells) {
-    const s = shapes216(end);
-    const d = depth216(s);
-    const by = m216.pinion(end + 0.01).by;
-    assert.ok(d[by] < 0.015, `換手 ${end.toFixed(3)} 時接手的 ${by} 不穿入(${d[by].toFixed(4)})`);
-    const held = shapes216(end + 0.08, s.angle);
-    assert.ok(depth216(held)[by] > 0.02, `小齒輪若停著不轉,${by} 的齒會頂進去(${depth216(held)[by].toFixed(4)})`);
+test("第 216 種:接手那一圈的第一齒轉來碰到停著的小齒輪時對著齒槽:齒的相位差在一成齒距以內,小齒輪再不轉就會被它頂進去", () => {
+  // 量法本身:穩定咬合時(內側小輪帶、外圈帶)齒正對齒槽
+  for (const [v, which] of [[0.3, "inner"], [Math.PI + 0.3, "ring"]]) {
+    const p = m216.default.pose(v).parts;
+    assert.ok(Math.abs(phase216(which, p.wheel.angle, p.pinion.angle)) < 0.01, `穩定咬合 v=${v} 相位差 ${phase216(which, p.wheel.angle, p.pinion.angle).toFixed(3)}`);
+  }
+  for (const [a, b] of stillRuns216()) {
+    const held = m216.default.pose((a + b) / 2).parts.pinion.angle;
+    // 接手的是空檔後帶著小齒輪的那一圈:空檔前後各看一點,誰穿進停著的小齒輪
+    const after = depth216(shapes216(b + 0.08, held));
+    const which = after.inner > after.outer ? "inner" : "ring";
+    const key = which === "inner" ? "inner" : "outer";
+    assert.ok(after[key] > 0.02, `小齒輪若停著不轉,${which} 的齒會頂進去(${after[key].toFixed(4)})`);
+    // 接手的那一刻:從空檔開始轉輪、小齒輪停著,接手的那一圈第一次碰到小齒輪
+    let touch = a;
+    while (depth216(shapes216(touch, held))[key] <= 0) touch += 0.0005;
+    assert.ok(touch > a + 0.05 && touch < b + 0.05, `接手的時刻 ${touch.toFixed(3)} 在空檔 ${a.toFixed(3)}–${b.toFixed(3)} 的末尾`);
+    const e = phase216(which, m216.default.pose(touch).parts.wheel.angle, held);
+    assert.ok(Math.abs(e) < 0.1, `${which} 接手時齒與齒槽的相位差 ${e.toFixed(3)} 齒距,超過一成`);
   }
 });
 
@@ -1276,17 +1384,18 @@ test("第 217 種:開槽的凸輪盤是一件——溝槽只開到盤的前半�
   assert.ok(stub.at[2] + stub.length / 2 > hub.z[0] + 0.05, "軸頭伸進輪轂");
 });
 
-test("第 217 種:凸柱 A 到 e 時,凸輪盤背面的凸出部分轉到撞擊處,撐到卡榫越過凹槽邊緣(第 218 種)才離開", () => {
+/**
+ * 第 217 種凸輪盤背面的凸出部分(最後面那一塊),與「凸輪轉了 u 圈時它蓋不蓋住撞擊處」:撞擊處是 A 到 e 時
+ * A 所在的徑向線上、凸出部分的半徑處(原文:A 到 e 時凸出部分撞擊 G 的凸出片;G 不在這張圖裡)
+ */
+function bump217() {
   const cam = part(fig217, "cam");
-  const layers = camLayers();
-  const plate = layers.filter((l) => l.solid);
+  const plate = camLayers().filter((l) => l.solid);
   const backmost = Math.min(...plate.map((l) => l.z[0]));
   const bump = plate.find((l) => l.z[0] === backmost && plate.every((o) => o === l || o.z[0] >= l.z[1] - 1e-9));
-  assert.ok(bump, "凸輪盤背面有凸出部分");
-  const { forward, release } = WOOL_PHASE;
+  if (!bump) return { bump };
   const K = woolGeometry.K;
-  // 撞擊處:A 到 e 時 A 所在的徑向線上、凸出部分的半徑處(第 218 種 G 的凸出片在這裡被撞)
-  const A = fig217.pose(TAU * forward).parts.stud.position;
+  const A = fig217.pose(TAU * WOOL_PHASE.forward).parts.stud.position;
   const radii = bump.solid.outline.map((p) => Math.hypot(p[0] - K[0], p[1] - K[1]));
   const r = (Math.max(...radii) + Math.min(...radii)) / 2;
   const dir = Math.atan2(A[1] - K[1], A[0] - K[0]);
@@ -1295,6 +1404,13 @@ test("第 217 種:凸柱 A 到 e 時,凸輪盤背面的凸出部分轉到撞擊�
     const angle = fig217.pose(TAU * u).parts.cam.angle;
     return pointInPolygon(S, bump.piece.shape.outline.map((p) => partPoint(cam.center, cam.axis, angle, [p[0], p[1], 0]).slice(0, 2)));
   };
+  return { bump, covers };
+}
+
+test("第 217 種:凸柱 A 到 e 時,凸輪盤背面的凸出部分轉到撞擊處,撐到卡榫越過凹槽邊緣(第 218 種)才離開", () => {
+  const { bump, covers } = bump217();
+  assert.ok(bump, "凸輪盤背面有凸出部分");
+  const { forward, release } = WOOL_PHASE;
   assert.ok(!covers(forward - 0.01), "A 到 e 之前還沒轉到");
   for (const u of sweep(release - 0.005, 20, forward + 0.005)) assert.ok(covers(u), `凸輪轉了 ${u.toFixed(3)} 圈:凸出部分在撞擊處`);
   assert.ok(!covers(release + 0.01), "卡榫越過凹槽邊緣後離開");
@@ -1340,10 +1456,18 @@ test("第 218 種:A 從 C 到 e 時卡榫的銷落在 F 的凹槽底,把槓桿�
   }
 });
 
-test("第 218 種:A 到 e 時凸出部分撞擊 G 上的凸出片,把卡榫抬出凹槽;e 到 C 期間卡榫靠自重壓在 F 的光面上滑過,F 不動", () => {
+// 凸輪(第 217 種)不在這張圖裡,凸出部分和 G 的凸出片的接觸量不到;這裡量的是 G 被抬出凹槽的期間,
+// 和第 217 種凸出部分停在撞擊處的期間對得上
+test("第 218 種:A 到 e 時卡榫被抬出凹槽,抬著的期間對得上第 217 種凸出部分停在撞擊處的期間;e 到 C 期間卡榫靠自重壓在 F 的光面上滑過,F 不動", () => {
   const { lift, release, ret } = WOOL_PHASE;
   const lifted = catchOnF(lift);
   assert.ok(lifted.radius - lifted.r > lifted.RF, "抬出凹槽");
+  const { covers } = bump217();
+  for (const u of sweep(release - 0.005, 20, lift)) {
+    const s = catchOnF(u);
+    assert.ok(s.radius - s.r > s.RF + 0.01, `凸輪轉了 ${u.toFixed(3)} 圈:卡榫還被撐在 F 的外緣上方`);
+    assert.ok(covers(u), `凸輪轉了 ${u.toFixed(3)} 圈:第 217 種的凸出部分也還在撞擊處`);
+  }
   const after = sweep(ret - 0.06, 120, release);
   let resting = 0;
   for (const u of after) {
@@ -1420,6 +1544,25 @@ const rate223 = (t) => (m223.sectors(t + 1e-4).lower - m223.sectors(t - 1e-4).lo
 const sectorAt223 = (list, angle, contact) =>
   list.find((s) => ((((contact - angle - s.span[0]) % TAU) + TAU) % TAU) < s.span[1] - s.span[0]);
 
+/** 第 223 種:扇形外形上相鄰兩齒的角距(齒距角):節圓以外各段頂點的中點角度,相鄰相減取中位數 */
+function toothPitch223(sector) {
+  const pts = sector.shape.outline.filter(([x, y]) => Math.hypot(x, y) > 0.5 * sector.radius);
+  const r = pts.map(([x, y]) => Math.hypot(x, y));
+  const cut = (Math.max(...r) + Math.min(...r)) / 2;
+  const centers = [];
+  let run = [];
+  pts.forEach(([x, y], i) => {
+    if (r[i] > cut) run.push([x, y]);
+    if ((r[i] <= cut || i === pts.length - 1) && run.length) {
+      const [sx, sy] = run.reduce((a, q) => [a[0] + q[0], a[1] + q[1]], [0, 0]);
+      centers.push(Math.atan2(sy, sx));
+      run = [];
+    }
+  });
+  const gaps = centers.slice(1).map((a, i) => Math.abs(signedAngle(a - centers[i]))).sort((a, b) => a - b);
+  return gaps[Math.floor(gaps.length / 2)];
+}
+
 test("第 223 種:相對速度依扇形段各自的直徑而變化——照原圖每軸四個扇形,上軸一圈內下軸四種速度輪流,也轉一圈", () => {
   // 507movements 動畫:上軸四個 90° 扇形,下軸的速度在上軸的 1/3、2/3、7/3、2/3 倍之間輪流(從原圖的姿勢起算)
   [1 / 3, 2 / 3, 7 / 3, 2 / 3].forEach((k, i) => close(rate223((Math.PI / 2) * (i + 0.5)), -k, `第 ${i + 1} 段`, 1e-6));
@@ -1438,7 +1581,10 @@ test("第 223 種:扇形段配置於不同平面——每根軸相鄰的扇形�
     const up = sectorAt223(upper, t, -Math.PI / 2);
     const low = sectorAt223(lower, m223.sectors(t).lower, Math.PI / 2);
     assert.equal(up.z, low.z, `第 ${i + 1} 段咬合的一對在同一平面`);
-    close(-rate223(t), up.radius / low.radius, `第 ${i + 1} 段速度比 = 扇形直徑比`, 1e-6);
+    // 速度比由姿勢的有限差分量,直徑比由齒形量:同齒距的一對,直徑比 = 下扇形的齒距角 ÷ 上扇形的齒距角
+    const w = (dt) => m223.default.pose(t + dt).parts.lower.angle;
+    const speed = -(w(1e-3) - w(-1e-3)) / 2e-3;
+    close(speed, toothPitch223(low) / toothPitch223(up), `第 ${i + 1} 段速度比 = 扇形直徑比`, 1e-3);
   }
 });
 
@@ -1464,19 +1610,25 @@ test("第 223 種:全程沒有扇形的齒互相穿入,咬合的一對真的咬�
   for (const t of sweep(TAU, 720)) assert.ok(worst(t, (3 * Math.PI) / 180) > 0.003, `上軸 ${t.toFixed(4)}:沒有齒推著下軸`);
 });
 
-test("第 223 種:換對時接手那對的第一齒對著齒槽", () => {
+test("第 223 種:換對那一刻與前後各一小段:扇形的齒不穿入,一直有齒推著下軸;從換對起是接手的那一對推著", () => {
   const { upper, lower, UPPER, LOWER } = m223.SECTORS;
+  const pairDepth = (u, l, t, shift = 0) =>
+    penetrationDepth(placeOutline(u.shape.outline, UPPER, t), placeOutline(l.shape.outline, LOWER, m223.sectors(t).lower + shift));
+  const pairs = upper.flatMap((u) => lower.filter((l) => l.z === u.z).map((l) => [u, l]));
+  const lag = (3 * Math.PI) / 180; // 下軸落後 3°(換對處的驅動間隙最大約 2.5°)
   for (let k = 0; k < 4; k++) {
-    // 第 k 段開頭再多轉一個齒距:接手的上扇形第一齒的中心在兩軸連線上,同平面的下扇形在那裡是齒槽
-    // (取節圓內 0.3 模數的一點:第一齒的齒頂可能削到節圓)
     const t0 = (Math.PI / 2) * k;
-    const up = sectorAt223(upper, t0 + 1e-6, -Math.PI / 2);
-    const t = t0 + TAU / up.teeth;
-    const P = [UPPER[0], UPPER[1] - up.radius * (1 - 0.6 / up.teeth)];
-    assert.ok(pointInPolygon(P, placeOutline(up.shape.outline, UPPER, t)), `第 ${k + 1} 段:上扇形第一齒在兩軸連線上`);
-    const lw = m223.sectors(t).lower;
-    for (const l of lower.filter((s) => s.z === up.z))
-      assert.ok(!pointInPolygon(P, placeOutline(l.shape.outline, LOWER, lw)), `第 ${k + 1} 段:下扇形在節點上是齒槽`);
+    // 交出與接手的一對:兩軸連線上的上扇形與下扇形,換對前後各量一次
+    const pairAt = (t) => [sectorAt223(upper, t, -Math.PI / 2), sectorAt223(lower, m223.sectors(t).lower, Math.PI / 2)];
+    const before = pairAt(t0 - 0.01);
+    const after = pairAt(t0 + 0.01);
+    assert.ok(before[0] !== after[0] && before[1] !== after[1], `第 ${k + 1} 次換對:兩軸都換了扇形`);
+    for (const t of sweep(t0 + 0.04, 160, t0 - 0.04)) {
+      const at = `第 ${k + 1} 次換對 上軸 ${t.toFixed(4)}`;
+      for (const [u, l] of pairs) assert.ok(pairDepth(u, l, t) < 0.003, `${at}:扇形的齒穿入 ${pairDepth(u, l, t).toFixed(4)}`);
+      assert.ok(pairs.some(([u, l]) => pairDepth(u, l, t, lag) > 0.003), `${at}:沒有齒推著下軸`);
+      if (t >= t0) assert.ok(pairDepth(...after, t, lag) > 0.003, `${at}:接手的一對還沒推到下軸`);
+    }
   }
 });
 

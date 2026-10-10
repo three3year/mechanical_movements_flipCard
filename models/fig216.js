@@ -105,16 +105,18 @@ function depth(theta, q, which, limit = Infinity) {
   return d;
 }
 const TOUCH = 0.012; // 簡化齒形咬合時齒頂互相擦到約 0.01,超過這個才算頂到
+// 停住的判斷比較嚴:之後交出的那一圈只要壓進停著的小齒輪一點點就不算停(否則空檔裡它的齒頂會擦著小齒輪掃過約 0.01)
+const CLEAR = 0;
 
 /**
- * 一次換手:交出的那一圈(from)沿咬合線 line 帶著小齒輪。小齒輪在它的齒推不到、往外走時也掃不到小齒輪的那一刻停住
+ * 一次換手:交出的那一圈(from)沿咬合線 line 帶著小齒輪。小齒輪在它的齒推不到、往外走時也碰不到(不穿入)小齒輪的那一刻停住
  * (從 near 之前往後找第一個「停在這裡,之後都不會再被它頂到」的輪轉角);再往後找接手的那一圈(to)第一次碰到
  * 停著的小齒輪的時刻,接手的咬合線平移整數個齒距在那一刻接上(碰到時對著齒槽,平移量取最接近的整數)。
  */
 function handover({ from, to, line, next, near }) {
   const step = Math.PI / 180;
   const holds = (x) => {
-    for (let k = 1; k <= 25; k++) if (depth(x + k * step, line(x), from, TOUCH) > TOUCH) return false;
+    for (let k = 1; k <= 25; k++) if (depth(x + k * step, line(x), from, CLEAR) > CLEAR) return false;
     return true;
   };
   let t = near - 0.45;

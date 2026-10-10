@@ -5,7 +5,7 @@
 // 推斷:半徑照 507movements 動畫的速度比(上軸節圓 2.8、1.6、1.0、1.6 比中心距 4);每對齒數合計 80,齒距相同。
 // 換對處:507movements 註記說實物要改幾個齒才嚙合得上(動畫裡不改就撞齒卡死)。這裡讓下軸各扇形的齒從邊緣讓開半個齒距、
 // 上軸各扇形的邊緣不放齒,接手那對的第一齒剛好對著對方的齒槽;換對前後兩對的轉速比不同,靠近邊緣的幾個齒會在
-// 對方齒間滑過而相撞,所以把這些齒的齒頂削低(推斷:削多少由逐姿勢量穿入、削到不穿入為止定出,見 tips)。
+// 對方齒間滑過而相撞,所以把這些齒的齒頂削低(推斷:削多少由逐姿勢量穿入、削到不穿入為止定出,見 TIPS)。
 import { TAU, deg } from "./kit.js";
 import { pedestal } from "./supports.js";
 import { sectorShape, circle } from "./shapes.js";
@@ -18,7 +18,7 @@ const Z = { front: 0.14, back: -0.14 };
 
 /**
  * 扇形段:span 是局部角(原圖姿勢時就是世界角);齒數 = 半徑 / 模數 × 2,模數 0.1 × S。
- * tips:削低齒頂的齒 { 從 span[0] 起第幾齒: 剩下的齒冠高(模數為 1)}
+ * tips:削低齒頂的齒 { 從 span[0] 起第幾齒: 剩下的齒冠高(模數為 1)};shift 是齒從邊緣讓開的角度
  */
 const sector = (radius, span, z, { offset = false, tips = {} } = {}) => {
   const teeth = Math.round((2 * radius) / 0.1);
@@ -26,22 +26,29 @@ const sector = (radius, span, z, { offset = false, tips = {} } = {}) => {
   const h = offset ? Math.PI / teeth : 0; // 齒從邊緣讓開半個齒距
   const shape = sectorShape({ teeth, radius: r, span: [deg(span[0]) - h, deg(span[1]) - h], tips });
   const turn = (p) => [p[0] * Math.cos(h) - p[1] * Math.sin(h), p[0] * Math.sin(h) + p[1] * Math.cos(h)];
-  return { teeth, radius: r, span: [deg(span[0]), deg(span[1])], z, shape: { outline: shape.outline.map(turn), holes: [] } };
+  return { teeth, radius: r, span: [deg(span[0]), deg(span[1])], shift: h, z, shape: { outline: shape.outline.map(turn), holes: [] } };
 };
 
-// 依角度順序排;前後平面輪流。每個 tips 的兩端分別是換對時最後離開與最先接手的齒
-const UP = {
-  big: sector(2.8, [0, 90], Z.front, { tips: { 0: 0.38, 12: 0.63 } }),
-  left: sector(1.6, [90, 180], Z.back, { tips: { 0: 0.39, 6: 0.87 } }),
-  small: sector(1.0, [180, 270], Z.front, { tips: { 0: 0.93, 3: 0 } }),
-  right: sector(1.6, [270, 360], Z.back, { tips: { 0: 0.45, 6: 0.07 } }),
+/**
+ * 換對處削低的齒頂:{ up | lo: { 扇形: { 從 span[0] 起第幾齒: 剩下的齒冠高 } } }。每個表的兩端分別是換對時最後離開與
+ * 最先接手的齒。由 `node tools/fig223-tips.mjs` 逐姿勢量穿入、削到不穿入為止算出;扇形的半徑、角度、平面或齒形改了
+ * 就重跑它,把印出的表貼回這裡。
+ */
+export const TIPS = {
+  up: { big: { 0: 0.66, 12: 0.66 }, left: { 0: 0.19, 6: 0.63 }, small: { 0: 0.36, 3: 0.36 }, right: { 0: 0.63, 6: 0.19 } },
+  lo: { right: { 0: 0.21, 6: 0.65 }, wedge: { 0: 0.33, 4: 0.33 }, left: { 1: 0.65, 7: 0.21 }, small: { 1: 0.62, 12: 0.62 } },
 };
-const LO = {
-  right: sector(2.4, [30, 90], Z.back, { offset: true, tips: { 0: 0.3 } }),
-  wedge: sector(3.0, [90, 120], Z.front, { offset: true, tips: { 0: 0.53, 4: 0 } }),
-  left: sector(2.4, [120, 180], Z.back, { offset: true, tips: { 1: 0.16, 7: 0 } }),
-  small: sector(1.2, [180, 390], Z.front, { offset: true, tips: { 1: 0.64 } }),
-};
+
+/** 照 tips(預設 TIPS)做出兩軸的扇形,依角度順序排;前後平面輪流 */
+export function buildSectors(tips = TIPS) {
+  const up = (name, radius, span, z) => sector(radius, span, z, { tips: tips.up?.[name] ?? {} });
+  const lo = (name, radius, span, z) => sector(radius, span, z, { offset: true, tips: tips.lo?.[name] ?? {} });
+  return {
+    UP: { big: up("big", 2.8, [0, 90], Z.front), left: up("left", 1.6, [90, 180], Z.back), small: up("small", 1.0, [180, 270], Z.front), right: up("right", 1.6, [270, 360], Z.back) },
+    LO: { right: lo("right", 2.4, [30, 90], Z.back), wedge: lo("wedge", 3.0, [90, 120], Z.front), left: lo("left", 2.4, [120, 180], Z.back), small: lo("small", 1.2, [180, 390], Z.front) },
+  };
+}
+const { UP, LO } = buildSectors();
 export const SECTORS = { upper: Object.values(UP), lower: Object.values(LO), UPPER, LOWER };
 
 // 上軸逆時針轉:兩軸連線上的上扇形依序是 小、左中、大、右中,各 90°

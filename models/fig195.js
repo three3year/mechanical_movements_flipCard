@@ -30,8 +30,8 @@ export function rolls(theta) {
 }
 export const geometry = { N, R };
 
-// 輪的軸:上輪往後伸進後面的軸承,下輪往前伸進前面的軸承(兩根軸都穿過後面的進料滾軸)
-const AXLE = { upper: [-1.13, 0.47], lower: [-0.47, 1.13] };
+// 輪的軸:上輪往後伸進後面的軸承,下輪往前伸進前面的軸承;兩根軸都往後整段穿過後面的進料滾軸(z −0.805–−0.445)
+const AXLE = { upper: [-1.13, 0.47], lower: [-0.83, 1.13] };
 const wheel = (id, y, z) => ({
   id,
   kind: "gear",

@@ -78,7 +78,7 @@ const slot = toothed.map((q, i) => {
   return onCap ? [p[0] + 0.7 * (q[0] - p[0]), p[1] + 0.7 * (q[1] - p[1])] : q;
 });
 
-const GUIDE_PIN = 0.035; // 小齒輪軸伸進溝的導銷半徑
+const GUIDE_PIN = 0.035; // 小齒輪軸伸進溝的導銷半徑(推斷:原圖沒畫,比軸細才放得進窄溝)
 // 引導小齒輪軸的溝:軸心的路徑(外緣弧內側、內緣弧外側、端頭繞半圓)
 const guide = [
   ...arcPoints(RO - RP, A_LO, A_HI),
@@ -102,7 +102,7 @@ export default {
       // 輪做成兩層:前層是有齒的通槽(小齒輪在槽裡),後層沿齒槽開溝(只開半個厚度,溝底是實心板;推斷:溝的深度)
       pieces: [{ kind: "cylinder", radius: 0.3, length: 0.56, at: [0, 0, -0.1] }, ...grooveLayers({ centers: guide, shaft: GUIDE_PIN, outline: circle(2.75), holes: [circle(0.14).reverse()], front: -0.11, depth: 0.12, back: 0.1 })],
     },
-    // 小齒輪的軸往前穿過靜止桿的直線溝槽;往後伸出一段較細的導銷進到輪上的溝(外緣與內緣兩段軸心路徑只差 2·SWAY,
+    // 小齒輪的軸往前穿過靜止桿的直線溝槽;往後伸出一段較細的導銷(推斷)進到輪上的溝(外緣與內緣兩段軸心路徑只差 2·SWAY,
     // 溝要窄才留得下兩段之間的隔條)
     {
       id: "pinion",

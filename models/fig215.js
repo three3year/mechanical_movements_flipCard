@@ -55,7 +55,8 @@ export default {
         // 套筒:套在固定軸上(內孔 0.12),往前接到月牙板、往後接到輻條
         { kind: "cylinder", radius: 0.3, inner: 0.12, length: 0.3, at: [0, 0, -0.2] },
         { kind: "cylinder", radius: PIN, length: 0.5, at: [0, G.a, -0.1], accent: true },
-        { kind: "box", size: [0.2, 0.2, 0.25], at: [0, 0, 0.05] },
+        // 前面的方形軸轂(原圖中心的小方塊):中心開孔(內孔 0.12)套在固定軸上,固定軸的前端停在軸轂裡
+        { kind: "plate", shape: shape([[0.26, 0], [0, 0.26], [-0.26, 0], [0, -0.26]], [circle(0.12).reverse()]), thickness: 0.25, at: [0, 0, 0.05] },
       ],
     },
     { id: "star", kind: "group", spin: RB, pieces: [{ kind: "plate", shape: shape(star, [circle(0.1).reverse()]), thickness: 0.2, mark: [0.55, 0.5], markSize: 0.07 }] },
