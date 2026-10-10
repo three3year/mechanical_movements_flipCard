@@ -64,7 +64,8 @@ const along = (n) => (n ? `,沿〔${[n.x, n.y, n.z].map((x) => (Math.abs(x) < 0.
 
 const differs = (a, b) => a.length !== b.length || a.some((x, i) => Math.abs(x - b[i]) > 1e-9);
 
-function partMoving(a = {}, b = {}) {
+/** 零件在兩個姿勢之間位置或轉角有沒有變(只換顯示狀態、縮放的不算) */
+export function partMoving(a = {}, b = {}) {
   if (Math.abs((a.angle ?? 0) - (b.angle ?? 0)) > 1e-9) return true;
   for (const key of ["position", "rotation", "from", "to"]) {
     if (!a[key] !== !b[key]) return true;

@@ -7,7 +7,8 @@ import { fork } from "node:child_process";
 import { cpus } from "node:os";
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { sources, loadModel } from "../models/registry.js";
+import { loadModel } from "../models/registry.js";
+import { figuresFrom } from "./figure-args.mjs";
 import { verifyModel, unwaived, CHECK_NAMES, DEFAULTS } from "../verify/index.js";
 
 const args = process.argv.slice(2);
@@ -35,17 +36,7 @@ if (process.send) {
   process.on("message", async (figure) => process.send({ figure, findings: await verifyFigure(figure) }));
   process.send({ ready: true });
 } else {
-  const unknown = args.filter((a) => !a.startsWith("--") && !/^\d+(-\d+)?$/.test(a));
-  if (unknown.length) {
-    console.error(`看不懂的圖號:${unknown.join(" ")}(要寫成 63 或 70-71)`);
-    process.exit(2);
-  }
-  const wanted = args.flatMap((a) => {
-    if (/^\d+$/.test(a)) return [Number(a)];
-    const range = /^(\d+)-(\d+)$/.exec(a);
-    return range ? Array.from({ length: range[2] - range[1] + 1 }, (_, i) => Number(range[1]) + i) : [];
-  });
-  const figures = (wanted.length ? wanted : Object.keys(sources).map(Number)).sort((a, b) => a - b);
+  const figures = figuresFrom(args);
   const started = Date.now();
   const results = new Map();
   const jobs = Math.max(1, Math.min(Number(flag("jobs") ?? Math.max(1, cpus().length - 2)), Math.ceil(figures.length / 3)));
