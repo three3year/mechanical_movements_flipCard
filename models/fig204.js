@@ -1,7 +1,8 @@
 // 第 204 種:以滾動接觸把旋轉運動從一根軸傳到另一根與它斜交(不相交也不平行)的軸。兩個滾子是相同的
 // 雙曲面(中間細、兩端粗的沙漏形),沿一條直線互相接觸;一個轉動時另一個反向轉。主動件是上方的滾子。
-// 推斷:兩軸各偏離接觸線 ±BETA,中間最細處的半徑相同,所以轉速相同。
-import { deg, X, quatRotate, quatAxisAngle } from "./kit.js";
+// 推斷:兩軸各偏離接觸線 ±BETA,中間最細處的半徑相同,所以轉速相同;四個軸頭各一個軸承、立柱與共用的
+// 底板(原圖是示意圖,只畫兩端伸出的短軸頭)。
+import { deg, X, add, scale, quatRotate, quatAxisAngle } from "./kit.js";
 
 const BETA = deg(22);
 const THROAT = 0.75; // 喉部半徑 = 兩軸到接觸線(x 軸)的距離
@@ -14,6 +15,21 @@ const profile = Array.from({ length: 27 }, (_, i) => {
 export const geometry = { BETA, THROAT, radius };
 // 上滾子的軸繞 y 轉 +BETA,下滾子轉 −BETA;兩軸的公垂線是 y 軸
 const axisOf = (sign) => quatRotate(quatAxisAngle([0, 1, 0], -sign * BETA), X);
+
+const JOURNAL = { radius: 0.12, length: 6.4 }; // 貫穿滾子的軸,兩端各伸出 0.6 成軸頭
+const BEARING = { at: HALF + 0.35, ring: 0.26, length: 0.24 }; // 軸承在軸頭上的位置(離滾子中心)
+const FLOOR = -THROAT - radius(HALF) - 0.3; // 下滾子最粗處的下緣再往下留空
+
+// 一個軸頭的軸承(環的軸沿滾子的軸)與底下的立柱:立柱從環的下緣直落到底板
+function bearing(sign, end) {
+  const axis = axisOf(sign);
+  const at = add([0, sign * THROAT, 0], scale(axis, end * BEARING.at));
+  const top = at[1] - BEARING.ring * 0.8;
+  return [
+    { kind: "cylinder", axis, radius: BEARING.ring, inner: JOURNAL.radius, length: BEARING.length, at },
+    { kind: "box", size: [0.26, top - FLOOR, 0.26], at: [at[0], (top + FLOOR) / 2, at[2]] },
+  ];
+}
 
 /** 接觸線上 x 處,兩滾子表面的速度(上滾子轉 1):兩者在垂直接觸線的方向相同(滾動),沿接觸線方向不同(滑動) */
 export function surfaceSpeeds(x) {
@@ -37,13 +53,22 @@ const roller = (id, sign) => ({
     { kind: "lathe", profile: [[0, -HALF], ...profile, [0, HALF]] }, // 剖面從軸線畫起,是實心的雙曲面體
     // 一端的凸緣與兩端的軸頭
     { kind: "cylinder", radius: radius(HALF) - 0.12, length: 0.12, at: [0, 0, sign * (HALF - 0.1)], mark: true },
-    { kind: "cylinder", radius: 0.12, length: 6.4 },
+    { kind: "cylinder", radius: JOURNAL.radius, length: JOURNAL.length },
   ],
 });
 
 export default {
   figure: 204,
-  parts: [roller("upper", 1), roller("lower", -1)],
+  parts: [
+    roller("upper", 1),
+    roller("lower", -1),
+    {
+      id: "frame",
+      kind: "group",
+      // 推斷:四個軸頭各一個軸承與立柱,立在同一塊底板上
+      pieces: [...[1, -1].flatMap((sign) => [1, -1].flatMap((end) => bearing(sign, end))), { kind: "box", size: [6.6, 0.14, 3.2], at: [0, FLOOR - 0.07, 0] }],
+    },
+  ],
   driver: { part: "upper", type: "rotation" },
   target: "lower",
   view: { direction: [-0.35, 0.25, 1] },

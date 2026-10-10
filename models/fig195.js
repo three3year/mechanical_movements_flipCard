@@ -1,9 +1,11 @@
 // 第 195 種:驅動一對進料滾軸的方式,兩者相對的表面要朝同一方向運動。兩個輪完全相同,都與放在它們之間的
 // 無端螺桿(蝸桿)咬合:上輪的齒在前面看得到,下輪在後面(兩輪前後錯開,所以在圖中重疊),齒被遮住。
 // 蝸桿從上方帶上輪、從下方帶下輪,兩輪反向轉,相對的一側(靠蝸桿的一側)朝同一方向走。主動件是蝸桿。
-// 推斷:兩輪前後錯開的距離;齒數;蝸桿為右旋單線;各輪另一側同軸的光面滾軸(下輪的在前,原圖可見);
-// 三根軸的軸承與立柱(原圖沒畫)。
-import { TAU, X } from "./kit.js";
+// 推斷:兩輪前後錯開的距離;齒數;蝸桿為右旋單線;各輪同軸的光面進料滾軸;被送的材料(畫成一條線材,
+// 夾在兩滾軸之間,隨滾軸的表面前進);三根軸的軸承與立柱(原圖沒畫)。
+// 偏離插圖:原圖下輪前面是一個光面圓盤(遮住蝸桿),上輪的齒在前面。兩個進料滾軸要在同一層才夾得住材料
+// (原文「相對的表面」),所以都放在兩個齒輪後面;這樣正面看得到蝸桿與兩輪的齒和轉向箭頭,下輪的齒也露出來。
+import { TAU, X, beltTravel } from "./kit.js";
 
 const N = 24;
 const R = 1.4;
@@ -12,6 +14,9 @@ const WORM = { radius: 0.22, length: 1.7 };
 const Y = R + WORM.radius - 0.04;
 const Z = 0.22;
 const FLOOR = -Y - R - 0.35;
+// 兩個進料滾軸:同一層(兩個齒輪的後面)、半徑相同,相對的表面之間留一條縫夾住材料
+const FEED = { radius: Y - 0.06, z: -0.625, length: 0.36 };
+const STOCK = (Y - FEED.radius) * 2; // 材料的粗細 = 兩滾軸表面之間的縫
 const post = (x, y, z, ring) => [ring, { kind: "box", size: [0.2, y - 0.2 - FLOOR, 0.2], at: [x, (y - 0.2 + FLOOR) / 2, z] }];
 
 // 蝸桿轉 theta 時,局部角 at 處螺紋的軸向位置(右旋:z = −L/2 + a·節距/2π)
@@ -25,6 +30,8 @@ export function rolls(theta) {
 }
 export const geometry = { N, R };
 
+// 輪的軸:上輪往後伸進後面的軸承,下輪往前伸進前面的軸承(兩根軸都穿過後面的進料滾軸)
+const AXLE = { upper: [-1.13, 0.47], lower: [-0.47, 1.13] };
 const wheel = (id, y, z) => ({
   id,
   kind: "gear",
@@ -35,9 +42,9 @@ const wheel = (id, y, z) => ({
   bore: 0.14,
   pieces: [
     { kind: "cylinder", radius: 0.32, inner: 0.15, length: 0.45 },
-    { kind: "cylinder", radius: 0.14, length: 1.6, at: [0, 0, -Math.sign(z) * 0.55] },
-    // 同軸的進料滾軸(光面),在齒輪的另一側;下輪的滾軸在前,遮住蝸桿(原圖的虛線)
-    { kind: "cylinder", radius: Y - 0.06, length: 0.35, at: [0, 0, -Math.sign(z) * 0.62] },
+    { kind: "cylinder", radius: 0.14, length: AXLE[id][1] - AXLE[id][0], at: [0, 0, (AXLE[id][0] + AXLE[id][1]) / 2 - z] },
+    // 同軸的進料滾軸(光面),兩輪的都在後面同一層
+    { kind: "cylinder", radius: FEED.radius, length: FEED.length, at: [0, 0, FEED.z - z] },
   ],
 });
 
@@ -47,6 +54,8 @@ export default {
     { id: "worm", kind: "worm", axis: X, center: [0, 0, 0], radius: WORM.radius, length: WORM.length, pitch: PITCH, thread: 0.08, pieces: [{ kind: "cylinder", radius: 0.12, length: 6.0 }] },
     wheel("upper", Y, Z),
     wheel("lower", -Y, -Z),
+    // 被送的材料:夾在兩滾軸之間,沿 x 穿過(推斷)
+    { id: "material", kind: "rope", radius: STOCK / 2 },
     {
       id: "frame",
       kind: "group",
@@ -60,10 +69,16 @@ export default {
   ],
   driver: { part: "worm", type: "rotation", speed: 3 },
   targets: ["upper", "lower"], // 一對進料滾軸
-  view: { direction: [0.12, 0.08, 1] },
+  view: { direction: [0.3, 0.35, 1] }, // 稍微從右上方看:材料在齒輪後面,斜看才看得出它從蝸桿軸兩端伸出
   pose(theta) {
     const { upper, lower } = rolls(theta);
-    return { parts: { worm: { angle: theta }, upper: { angle: upper }, lower: { angle: lower } }, readouts: [] };
+    // 材料隨滾軸的表面前進:上滾軸最下緣往 +x 的位移 = 半徑 × 轉角
+    const fed = beltTravel(upper, FEED.radius, 1);
+    return {
+      parts: { worm: { angle: theta }, upper: { angle: upper }, lower: { angle: lower } },
+      paths: { material: { points: [[-3.9, 0, FEED.z], [3.9, 0, FEED.z]], closed: false, phase: fed } },
+      readouts: [],
+    };
   },
   waivers: [
     { check: "interference", parts: ["worm", "lower"], reason: "簡化齒形:蝸桿畫成圓柱加螺紋、兩個蝸輪是直齒,齒頂伸進蝸桿的芯 0.05" },

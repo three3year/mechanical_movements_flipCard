@@ -1,7 +1,7 @@
 // 第十章「變速與曼格機構」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
+import { close, sweep, part } from "./helpers.js";
 import * as m192 from "../models/fig192.js";
 import * as m193 from "../models/fig193.js";
 import * as m194 from "../models/fig194.js";
@@ -217,6 +217,63 @@ test("第 207 種:兩個旋向相反的蝸桿帶兩個蝸輪反向轉,相對的�
   assert.ok((l1 - l0) * -(r1 - r0) > 0, "相對的兩側同向");
 });
 
+/**
+ * 一對進料滾軸(兩個輪零件上半徑最大的圓柱塊,輪軸沿 z)夾著被送的材料(直線的路徑零件):
+ * 兩滾軸在同一層、材料在兩者的深度範圍內;材料貼著兩滾軸的表面(間隙接近 0、不穿入);
+ * 主動量走一小步時,材料前進的距離等於兩個滾軸在接觸點的表面位移(兩者相同:相對的表面同向)。
+ */
+function assertFeedRolls(def, wheelIds, materialId) {
+  const mat = part(def, materialId);
+  const rollers = wheelIds.map((id) => {
+    const p = part(def, id);
+    const roll = p.pieces.filter((q) => q.kind === "cylinder").reduce((a, b) => (b.radius > a.radius ? b : a));
+    const z = p.center[2] + (roll.at?.[2] ?? 0);
+    return { id, center: p.center, radius: roll.radius, z: [z - roll.length / 2, z + roll.length / 2] };
+  });
+  const v0 = 0.3;
+  const pose0 = def.pose(v0);
+  const pose1 = def.pose(v0 + 0.01);
+  const [a, b] = [pose0.paths[materialId].points[0], pose0.paths[materialId].points.at(-1)];
+  const along = [b[0] - a[0], b[1] - a[1]].map((c) => c / Math.hypot(b[0] - a[0], b[1] - a[1]));
+  const mz = a[2];
+  close(b[2], mz, "材料是一條同一深度的直線");
+  const fed = pose1.paths[materialId].phase - pose0.paths[materialId].phase;
+  for (const r of rollers) {
+    assert.ok(mz - mat.radius >= r.z[0] && mz + mat.radius <= r.z[1], `材料在 ${r.id} 滾軸的深度範圍(${r.z.map((x) => x.toFixed(2))})內`);
+    // 滾軸中心到材料中心線的距離(平面上)
+    const rel = [r.center[0] - a[0], r.center[1] - a[1]];
+    const t = rel[0] * along[0] + rel[1] * along[1];
+    const contact = [a[0] + along[0] * t, a[1] + along[1] * t];
+    const d = Math.hypot(r.center[0] - contact[0], r.center[1] - contact[1]);
+    close(d - r.radius - mat.radius, 0, `${r.id} 滾軸貼著材料(間隙)`, 0.005);
+    // 接觸點(滾軸表面上朝材料的那一點)隨滾軸轉動的位移,投影到材料前進的方向
+    const dTheta = pose1.parts[r.id].angle - pose0.parts[r.id].angle;
+    const p = [(contact[0] - r.center[0]) * (r.radius / d), (contact[1] - r.center[1]) * (r.radius / d)];
+    const surface = dTheta * (-p[1] * along[0] + p[0] * along[1]);
+    assert.ok(Math.abs(surface) > 1e-6, `${r.id} 滾軸在轉`);
+    close(fed, surface, `材料隨 ${r.id} 滾軸的表面前進`, 1e-9);
+  }
+}
+
+test("第 195 種:一對進料滾軸在同一層,相對的表面朝同一方向運動,夾著被送的材料前進(#195-1)", () => {
+  assertFeedRolls(m195.default, ["upper", "lower"], "material");
+});
+
+test("第 207 種:為第 195 種的變形:兩個蝸輪同軸的一對進料滾軸夾著被送的材料前進(#207-1)", () => {
+  assertFeedRolls(m207.default, ["left", "right"], "material");
+});
+
+test("第 207 種:照插圖的箭頭,播放時軸的前面往上、左輪逆時針、右輪順時針(#207-2)", () => {
+  const def = m207.default;
+  const dir = Math.sign(def.driver.speed ?? 1);
+  const p0 = def.pose(0).parts;
+  const p1 = def.pose(dir * 0.1).parts;
+  // 軸沿 +x:轉角增加時,前面(+z)那一點往 −y 走
+  assert.ok(p1.shaft.angle - p0.shaft.angle < 0, "軸的前面往上");
+  assert.ok(p1.left.angle - p0.left.angle > 0, "左輪逆時針(從正面看)");
+  assert.ok(p1.right.angle - p0.right.angle < 0, "右輪順時針");
+});
+
 test("第 200 種:單一驅動輪在同一軸上得到兩種速度:上下兩輪反向轉、轉速與半徑成反比", () => {
   const p0 = fig200.pose(0).parts;
   const p1 = fig200.pose(0.3).parts;
@@ -238,6 +295,32 @@ test("第 204 種:斜交的兩軸以雙曲面滾子滾動接觸,沿接觸線垂�
   const { radius, THROAT } = m204.geometry;
   close(radius(0), THROAT, "最細處在中間", 1e-12);
   assert.ok(radius(2) > radius(0), "兩端較粗");
+});
+
+test("第 204 種:兩個滾子的四個軸頭各裝在機架的一個軸承裡,滾子本體兩側各一個(#204-1,推斷)", () => {
+  const def = m204.default;
+  const frame = part(def, "frame");
+  assert.ok(frame, "有機架");
+  for (const id of ["upper", "lower"]) {
+    const roller = part(def, id);
+    const axis = roller.axis;
+    const journal = roller.pieces.find((q) => q.kind === "cylinder" && !q.at); // 貫穿的軸(兩端伸出成軸頭)
+    const body = Math.max(...roller.pieces.find((q) => q.kind === "lathe").profile.map(([, s]) => Math.abs(s)));
+    const sides = new Set();
+    for (const q of frame.pieces) {
+      if (q.kind !== "cylinder" || !q.inner || !q.axis) continue;
+      const rel = [q.at[0] - roller.center[0], q.at[1] - roller.center[1], q.at[2] - roller.center[2]];
+      const s = rel[0] * axis[0] + rel[1] * axis[1] + rel[2] * axis[2];
+      const off = Math.hypot(rel[0] - s * axis[0], rel[1] - s * axis[1], rel[2] - s * axis[2]);
+      const parallel = Math.abs(q.axis[0] * axis[0] + q.axis[1] * axis[1] + q.axis[2] * axis[2]);
+      if (off > 1e-6 || parallel < 1 - 1e-9) continue; // 不在這根軸上
+      assert.ok(Math.abs(s) - q.length / 2 > body, `${id} 的軸承在滾子本體外(s = ${s.toFixed(2)})`);
+      assert.ok(Math.abs(s) + q.length / 2 <= journal.length / 2, `${id} 的軸頭伸過整個軸承`);
+      close(q.inner, journal.radius, `${id} 的軸承孔套著軸頭`, 0.01);
+      sides.add(Math.sign(s));
+    }
+    assert.deepEqual([...sides].sort(), [-1, 1], `${id} 兩端的軸頭都有軸承`);
+  }
 });
 
 test("第 209 種:兩個橢圓輪滾動接觸;一圈中有光面滾動、也有齒咬合的部分", () => {
