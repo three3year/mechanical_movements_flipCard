@@ -283,15 +283,69 @@ test("第 201 種:桿 A 整個行程都穿過兩個導套,升到最高時下端�
   }
 });
 
-test("第 203 種:曲面開槽臂規則地擺動,直臂得到變速的擺動", () => {
-  const [from, to] = m203.range;
-  const straight = sweep(to, 200, from).map((a) => m203.arms(a).straight);
-  const unwrap = straight.map((v) => (v < 0 ? v + 2 * Math.PI : v));
-  assert.ok(spread(unwrap) > 2, "等速擺動的開槽臂,直臂時快時慢");
-  for (const a of sweep(to, 50, from)) {
-    const { s, length } = m203.arms(a);
-    assert.ok(s > 0.2 && s < length - 0.2, "銷一直在槽內");
+/** 第 203 種:主動量 v 時直臂上的銷,換到開槽臂的局部座標(銷是直臂上離軸心最遠的圓柱) */
+function pin203(v) {
+  const def = m203.default;
+  const arm = part(def, "straight");
+  const pin = arm.pieces.filter((p) => p.kind === "cylinder" && p.at).reduce((a, b) => (Math.hypot(b.at[0], b.at[1]) > Math.hypot(a.at[0], a.at[1]) ? b : a));
+  const { slotted, straight } = def.pose(v).parts;
+  const [x, y] = rot2([pin.at[0], pin.at[1]], straight.angle);
+  const c = rot2([arm.center[0] + x, arm.center[1] + y], -slotted.angle);
+  return { c, r: pin.radius, z: [arm.center[2] + pin.at[2] - pin.length / 2, arm.center[2] + pin.at[2] + pin.length / 2], straight: straight.angle };
+}
+const period203 = () => 2 * Math.abs(m203.range[1] - m203.range[0]);
+
+test("第 203 種:曲面開槽臂規則地擺動,直臂得到變速的擺動(兩端慢、中間快,擺約 34°)", () => {
+  const def = m203.default;
+  const span = period203() / 2;
+  const angles = sweep(span, 400).map((v) => pin203(v).straight);
+  const unwrapped = angles.map((a) => a + 2 * Math.PI * Math.round((angles[0] - a) / (2 * Math.PI)));
+  const swingDeg = ((Math.max(...unwrapped) - Math.min(...unwrapped)) * 180) / Math.PI;
+  assert.ok(swingDeg > 30 && swingDeg < 40, `直臂擺約 34°(${swingDeg.toFixed(1)}°)`);
+  const rates = unwrapped.slice(1).map((a, i) => Math.abs(a - unwrapped[i]));
+  const peak = Math.max(...rates);
+  const ends = [...rates.slice(0, 20), ...rates.slice(-20)];
+  assert.ok(Math.max(...ends) < peak / 3, "開槽臂等速擺動,直臂在兩端慢、中間快");
+  assert.equal(def.driver.part, "slotted");
+});
+
+test("第 203 種:開槽臂往復一程,直臂的銷走滿整條槽,全程在槽裡、兩側貼著槽壁、不穿入", () => {
+  const layers = plateLayers(part(m203.default, "slotted"));
+  const visited = [];
+  for (const v of sweep(period203(), 600)) {
+    const { c, r, z } = pin203(v);
+    const solids = layers.filter((l) => l.z0 < z[1] && z[0] < l.z1).map((l) => l.solid);
+    assert.ok(solids.length, "銷往前伸進開槽臂那一層");
+    const g = guidedBetween(c, r, solids);
+    assert.ok(g.open && g.depth < 0.005, `主動量 ${v.toFixed(2)}:銷在槽裡、不穿進槽壁(穿入 ${g.depth.toFixed(3)})`);
+    assert.ok(g.sides, `主動量 ${v.toFixed(2)}:槽的兩側都貼著銷`);
+    visited.push({ c, r });
   }
+  // 槽(開槽臂板上的孔)的每一點都被銷掃過:銷從槽的一端走到另一端
+  const slot = layers.flatMap((l) => l.solid.holes).reduce((a, b) => (b.length > a.length ? b : a));
+  for (const q of slot) {
+    const near = Math.min(...visited.map(({ c, r }) => Math.hypot(q[0] - c[0], q[1] - c[1]) - r));
+    assert.ok(near < 0.05, `槽上的點 (${q[0].toFixed(2)}, ${q[1].toFixed(2)}) 銷沒有走到(差 ${near.toFixed(2)})`);
+  }
+});
+
+test("第 203 種:直臂在開槽臂後面,銷往前伸進槽(原圖直臂伸進開槽臂輪廓的那段是虛線)", () => {
+  const def = m203.default;
+  const slotted = plateLayers(part(def, "slotted"));
+  const arm = part(def, "straight");
+  const front = Math.max(...plateLayers(arm).map((l) => arm.center[2] + l.z1));
+  assert.ok(front < Math.min(...slotted.map((l) => l.z0)), "直臂的板整個在開槽臂的板後面");
+  const { z } = pin203(0);
+  assert.ok(z[0] < Math.min(...slotted.map((l) => l.z0)) && z[1] > Math.max(...slotted.map((l) => l.z1)), "銷從直臂往前穿過開槽臂的槽");
+});
+
+test("第 203 種:開槽臂擺動時掃不到直臂的軸轂與軸承座", () => {
+  const def = m203.default;
+  const outline = plateLayers(part(def, "slotted")).flatMap((l) => l.solid.outline);
+  const reach = Math.max(...outline.map((p) => Math.hypot(...p)));
+  const arm = part(def, "straight");
+  const hub = Math.max(...arm.pieces.filter((p) => p.kind === "cylinder" && !p.at).map((p) => p.radius));
+  assert.ok(reach + 0.2 < Math.hypot(arm.center[0], arm.center[1]) - hub, `開槽臂最遠到 ${reach.toFixed(2)},碰不到直臂的軸轂`);
 });
 
 test("第 221 種:橢圓輪 C 帶動小齒輪,框架上下起伏讓小齒輪保持咬合;輪 A 得到不規則的轉動", () => {
