@@ -118,6 +118,34 @@ test("第 233 種:兩個擋止的樞軸銷穿進托架的橫臂,托架的立柱�
   assert.deepEqual(loose, [], `和機架主體不相連的塊:pieces[${loose.join(", ")}]`);
 });
 
+// 固定件各塊(box / 沿 z 的 cylinder)的外接盒按相接分群;offset 把零件局部座標移到世界座標(盒子不相交就一定不相連)
+const pieceBox = (p, offset = [0, 0, 0]) => {
+  const half = p.kind === "box" ? p.size.map((s) => s / 2) : [p.radius, p.radius, p.length / 2];
+  const c = p.at.map((v, i) => v + offset[i]);
+  return [c.map((v, i) => v - half[i]), c.map((v, i) => v + half[i])];
+};
+const boxesTouch = ([a0, a1], [b0, b1]) => [0, 1, 2].every((i) => a0[i] <= b1[i] + 1e-6 && b0[i] <= a1[i] + 1e-6);
+function boxGroups(boxes) {
+  const groups = [];
+  const left = new Set(boxes.keys());
+  while (left.size) {
+    const group = [left.values().next().value];
+    left.delete(group[0]);
+    for (let k = 0; k < group.length; k++)
+      for (const i of [...left]) if (boxesTouch(boxes[i], boxes[group[k]])) [left.delete(i), group.push(i)];
+    groups.push(group.sort((x, y) => x - y));
+  }
+  return groups;
+}
+
+test("第 240 種:三根樞軸銷穿進托架,平桿爪的立柱與彈簧座都接到底座(機架與彈簧座是一件)", () => {
+  const frame = fig240.parts.find((p) => p.id === "frame").pieces;
+  const seat = fig240.parts.find((p) => p.id === "springSeat");
+  const boxes = [...frame.map((p) => pieceBox(p)), pieceBox({ ...seat, at: [0, 0, 0] }, seat.center), ...seat.pieces.map((p) => pieceBox(p, seat.center))];
+  const groups = boxGroups(boxes);
+  assert.equal(groups.length, 1, `不相連的群:${groups.map((g) => g.join("、")).join(" / ")}(${frame.length} 起是彈簧座)`);
+});
+
 test("第 240 種:棘輪逆時針轉時,三種擋止爪都靠在輪上、不穿進齒裡", () => {
   for (const w of sweep(2 * ((2 * Math.PI) / WHEEL.teeth), 40)) {
     const wheel = ratchetObstacles(WHEEL, w);
@@ -427,6 +455,25 @@ test("第 241 種:單齒小輪每轉一圈,輪 A 轉一格,其餘時間不動(�
       assert.ok(penetrationDepth(click, t) < 2e-3, `主動量 ${v.toFixed(3)}:止回爪不穿進 A 的齒`);
     }
   }
+});
+
+test("第 241 種:止回爪的樞軸銷穿進短臂,托架的立柱和兩個軸承座站在同一個地面上", () => {
+  const frame = m241.default.parts.find((p) => p.id === "frame").pieces;
+  const boxes = frame.map((p) => pieceBox(p));
+  const ground = Math.min(...boxes.map(([lo]) => lo[1]));
+  const groups = boxGroups(boxes);
+  for (const g of groups) assert.ok(Math.min(...g.map((i) => boxes[i][0][1])) <= ground + 1e-6, `pieces[${g.join("、")}] 沒有落地`);
+  const pin = frame.findIndex((p) => p.kind === "cylinder" && p.radius === 0.065);
+  assert.ok(groups.find((g) => g.includes(pin)).length > 1, "樞軸銷接到托架");
+});
+
+test("第 241 種:單齒的根部從輪轂伸出(原圖單齒的圓頭就在小輪中心),和輪轂在同一深度範圍內相連", () => {
+  const [, tooth, hub] = m241.default.parts.find((p) => p.id === "small").pieces;
+  const root = Math.min(...tooth.shape.outline.map(([x, y]) => Math.hypot(x, y)));
+  assert.ok(root < hub.radius, `單齒最靠近中心處在半徑 ${root.toFixed(3)},輪轂半徑 ${hub.radius}`);
+  const [t0, t1] = plateDepth(tooth);
+  const [h0, h1] = [hub.at[2] - hub.length / 2, hub.at[2] + hub.length / 2];
+  assert.ok(depthsOverlap([t0, t1], [h0, h1]), "單齒和輪轂在深度上重疊");
 });
 
 test("第 242 種:拉下槓桿,煞車帶的兩端被拉向彼此,帶收緊在煞車輪上", () => {

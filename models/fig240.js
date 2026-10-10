@@ -17,6 +17,9 @@ export const WHEEL = { teeth: 22, outer: 1.7, inner: 1.45, dir: 1 };
 const PERIOD = TAU / WHEEL.teeth;
 const Z = 0.2; // 各爪與輪的齒在同一平面,略往前
 
+// 樞軸銷的深度範圍:從托架短臂的背面(z −0.41)到爪板前面(爪板 z 0.14..0.26)
+const PIN = { length: 0.73, z: -0.045 };
+
 const rel = (pivot, pts) => pts.map(([x, y]) => [x - pivot[0], y - pivot[1]]);
 
 // 右上:平桿爪,樞軸在右端
@@ -161,8 +164,9 @@ export default {
       pieces: [
         { kind: "cylinder", radius: 0.14, length: 0.6, at: [0, 0, -0.1] }, // 輪軸
         ...pedestal({ at: [0, 0], z: -0.35, bore: 0.14, floor: -3.2 }),
-        ...[BAR.pivot, HOOK.pivot, C.pivot].map((p) => ({ kind: "cylinder", radius: 0.065, length: 0.6, at: [p[0], p[1], Z - 0.05] })), // 三個爪的樞軸銷
-        { kind: "box", size: [0.3, 4.3, 0.12], at: [BAR.pivot[0] + 0.3, BAR.pivot[1] - 2.05, -0.35] },
+        // 三個爪的樞軸銷(推斷):前端略伸出爪板,往後穿進托架的短臂(爪 C 的銷插進輪軸承座的立柱)
+        ...[BAR.pivot, HOOK.pivot, C.pivot].map((p) => ({ kind: "cylinder", radius: 0.065, length: PIN.length, at: [p[0], p[1], PIN.z] })),
+        { kind: "box", size: [0.3, 4.5, 0.12], at: [BAR.pivot[0] + 0.3, BAR.pivot[1] - 2.15, -0.35] }, // 平桿爪的立柱,落在底座上
         { kind: "box", size: [0.5, 0.25, 0.12], at: [BAR.pivot[0] + 0.15, BAR.pivot[1], -0.35] },
         { kind: "box", size: [0.25, 3.1, 0.12], at: [HOOK.pivot[0] - 0.3, HOOK.pivot[1] - 1.55, -0.35] },
         { kind: "box", size: [0.45, 0.25, 0.12], at: [HOOK.pivot[0] - 0.15, HOOK.pivot[1], -0.35] },
@@ -174,7 +178,17 @@ export default {
     plateOf("hook", HOOK),
     plateOf("pawlC", C, { label: "C", labelOffset: [-0.75, 0.2, 0] }),
     { id: "spring", kind: "rod", radius: 0.045 },
-    { id: "springSeat", kind: "cylinder", center: [...SPRING.anchor, Z], radius: 0.09, length: 0.24, pieces: [{ kind: "box", size: [0.3, 0.14, 0.24], at: [0, -0.14, 0] }] },
+    {
+      id: "springSeat",
+      kind: "cylinder",
+      center: [...SPRING.anchor, Z],
+      radius: 0.09,
+      length: 0.24,
+      pieces: [
+        { kind: "box", size: [0.3, 0.14, 0.24], at: [0, -0.14, 0] },
+        { kind: "box", size: [0.4, 0.12, 0.32], at: [0, -0.24, -0.06] }, // 腳(推斷):往後伸,坐在底座頂面上
+      ],
+    },
   ],
   // 動力重演:只轉輪;平桿爪、長爪鉸在銷上靠自重搭在齒上,爪 C 由彈簧片往上頂;由齒背頂起、越過後落下
   replay: {

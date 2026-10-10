@@ -8,7 +8,7 @@
 // 推斷:A 有 24 齒;兩輪的中心距與單齒的長度依原圖量得(單齒只伸到 A 的齒間,不碰 A 的齒根);
 // 止回爪的樞軸銷、兩輪的軸與後面的軸承座(原圖只畫輪轂)。
 import { TAU, deg, polar } from "./kit.js";
-import { ratchetShape, shape, circle, thickLine } from "./shapes.js";
+import { ratchetShape, shape, circle, thickLine, arcPoints } from "./shapes.js";
 import { ratchetObstacles } from "./ratchets.js";
 import { pawlDrive } from "./pawl-drive.js";
 import { pedestal } from "./supports.js";
@@ -18,13 +18,13 @@ const STEP = TAU / A.teeth;
 const DIST = 2.6; // 兩輪的中心距
 const SMALL = { center: [A.center[0] + DIST * Math.cos(deg(207)), A.center[1] + DIST * Math.sin(deg(207))], radius: 0.72 };
 const REACH = DIST - A.inner - 0.2; // 單齒尖離小輪中心:伸進 A 的齒間約齒高的四成(伸得更深會一次撥兩齒)
-// 單齒(局部座標:原點在小輪中心,齒沿 +x):從輪緣伸出、尖端略往後彎(逆時針轉時,前緣頂著 A 的齒)
+// 單齒(局部座標:原點在小輪中心,齒沿 +x):原圖是一片水滴形,圓頭套在軸上(和輪轂同心、同半徑),
+// 從圓頭伸過輪緣、尖端略往後彎(逆時針轉時,前緣頂著 A 的齒)
 const HOOK = [
-  [0.45, 0.15],
   [REACH - 0.4, 0.09],
   [REACH, 0.0],
   [REACH - 0.4, -0.05],
-  [0.45, -0.15],
+  ...arcPoints(0.2, deg(-50), deg(-310)),
 ];
 const HOOK0 = deg(-20); // 主動量 0 時單齒的方位
 // 止回爪(局部座標:原點在樞軸):從樞軸往右沿 A 的左上緣彎過去,尖端往下伸進齒間
@@ -61,7 +61,7 @@ export const contactAt = (theta) => {
   return { hook: s.pawls.hook, click: s.pawls.click, teeth: s.wheel };
 };
 
-const hookShape = shape(HOOK);
+const hookShape = shape(HOOK, [circle(0.1).reverse()]); // 圓頭的孔套在小輪的軸上
 const clickShape = shape(thickLine(CLICK_LINE, 0.2), [circle(0.07).reverse()]);
 
 export default {
@@ -98,8 +98,10 @@ export default {
         ...pedestal({ at: A.center, z: -0.45, bore: 0.12, floor: -2.6 }),
         { kind: "cylinder", radius: 0.1, length: 0.55, at: [...SMALL.center, -0.35] }, // 小輪的軸
         ...pedestal({ at: SMALL.center, z: -0.6, bore: 0.1, floor: -2.6 }),
-        { kind: "cylinder", radius: 0.065, length: 0.6, at: [...CLICK.pivot, 0.0] }, // 止回爪的樞軸銷
-        { kind: "box", size: [0.3, 4.2, 0.12], at: [CLICK.pivot[0] - 0.4, CLICK.pivot[1] - 2.2, -0.45] },
+        // 止回爪的樞軸銷:從短臂背面(z −0.51)穿過短臂,前端略伸出爪的轂(z 0.10..0.22)
+        { kind: "cylinder", radius: 0.065, length: 0.76, at: [...CLICK.pivot, -0.13] },
+        // 托架的立柱:落到小輪軸承座的底板頂面(y −2.6)
+        { kind: "box", size: [0.3, 4.25, 0.12], at: [CLICK.pivot[0] - 0.4, CLICK.pivot[1] - 2.225, -0.45] },
         { kind: "box", size: [0.6, 0.25, 0.12], at: [CLICK.pivot[0] - 0.2, CLICK.pivot[1], -0.45] },
       ],
     },
