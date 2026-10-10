@@ -1,7 +1,7 @@
 // 第十章「變速與曼格機構」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part } from "./helpers.js";
+import { close, sweep, part, plateLayers, guidedBetween, shaftSegments, assertGrooveGuides } from "./helpers.js";
 import * as m192 from "../models/fig192.js";
 import * as m193 from "../models/fig193.js";
 import * as m194 from "../models/fig194.js";
@@ -14,7 +14,7 @@ import * as m201 from "../models/fig201.js";
 import * as m203 from "../models/fig203.js";
 import * as m221 from "../models/fig221.js";
 import * as m222 from "../models/fig222.js";
-import { dist } from "../models/kit.js";
+import { dist, quatRotate } from "../models/kit.js";
 import * as m195 from "../models/fig195.js";
 import * as m200 from "../models/fig200.js";
 import * as m204 from "../models/fig204.js";
@@ -107,6 +107,91 @@ test("第 197 種:小齒輪連續旋轉給框架往復運動;小齒輪軸升降�
   close(Math.max(...ys), m197.pinionRadius, "在銷排上方", 1e-6);
   close(Math.min(...ys), -m197.pinionRadius, "繞到下方", 1e-6);
   close(xs[0], xs[xs.length - 1], "一個週期回到原處", 1e-3);
+});
+
+// ── 曼格輪小齒輪的導路與驅動軸(第 192–194、197 種;共用 pinion-drive.js)──
+
+/** 原文第 36 種:小齒輪的軸「在直立的靜止桿上所切出的直線溝槽內運作」:不動的零件上有一塊板,板上的槽全程夾住小齒輪軸 */
+function assertPostGuides(def, period, n = 200) {
+  const segments = shaftSegments(def);
+  const moving = new Set(Object.keys(def.pose(def.driver.initial).parts));
+  const statics = def.parts.filter((p) => !moving.has(p.id)).flatMap((p) => plateLayers(p).map((l) => ({ ...l, at: p.center ?? [0, 0, 0] })));
+  let guided = 0;
+  for (const v of sweep(def.driver.initial + period, n, def.driver.initial)) {
+    const { pinion } = def.pose(v).parts;
+    const [x, y, z] = pinion.position;
+    const ok = statics.some((l) => {
+      const seg = segments.find((s) => z + s.z0 <= l.at[2] + l.z0 && l.at[2] + l.z1 <= z + s.z1);
+      if (!seg) return false;
+      const g = guidedBetween([x - l.at[0], y - l.at[1]], seg.r, [l.solid]);
+      return g.open && g.depth < 0.005 && g.sides;
+    });
+    if (ok) guided++;
+  }
+  assert.equal(guided, n + 1, `全程由靜止桿的槽夾住(${guided}/${n + 1} 個姿勢)`);
+}
+
+/** #192-2:驅動軸是套管與花鍵軸兩件,各自固定長度,沿兩個萬向接頭的連線互相套住(兩端的距離會變) */
+function assertTelescoping(def, period, n = 200) {
+  const sleeve = part(def, "driveSleeve");
+  const spline = part(def, "driveSpline");
+  const front = part(def, "joint");
+  const fixed = part(def, "jointFixed");
+  assert.ok(sleeve.inner && spline.radius < sleeve.inner, "花鍵軸放得進套管的內孔");
+  const lengths = [];
+  for (const v of sweep(def.driver.initial + period, n, def.driver.initial)) {
+    const parts = def.pose(v).parts;
+    const a = parts.joint.position;
+    const b = parts.jointFixed?.position ?? fixed.center;
+    const l = dist(a, b);
+    lengths.push(l);
+    const u = [(b[0] - a[0]) / l, (b[1] - a[1]) / l, (b[2] - a[2]) / l];
+    // 每一件兩端在連線上的位置(0 = 小齒輪端的萬向接頭,l = 固定端)
+    const span = (id, len) => {
+      const { position: c, rotation: q } = parts[id];
+      const axis = quatRotate(q, [0, 0, 1]);
+      const ends = [-1, 1].map((s) => c.map((x, k) => x + (s * len * axis[k]) / 2));
+      const s = ends.map((e) => (e[0] - a[0]) * u[0] + (e[1] - a[1]) * u[1] + (e[2] - a[2]) * u[2]);
+      for (const [i, e] of ends.entries()) close(dist(e, a.map((x, k) => x + s[i] * u[k])), 0, `${id} 在兩個萬向接頭的連線上`, 1e-6);
+      return s.sort((p, q2) => p - q2);
+    };
+    const [p0, p1] = span("driveSpline", spline.length);
+    const [s0, s1] = span("driveSleeve", sleeve.length);
+    assert.ok(p0 < front.radius && p0 > 0, `主動量 ${v.toFixed(2)}:花鍵軸接在小齒輪端的萬向接頭上`);
+    assert.ok(s1 > l - fixed.radius && s1 < l, `主動量 ${v.toFixed(2)}:套管接在固定端的萬向接頭上`);
+    assert.ok(p1 - s0 >= 0.3, `主動量 ${v.toFixed(2)}:花鍵軸插在套管裡(重疊 ${(p1 - s0).toFixed(2)})`);
+    assert.ok(p1 < l - fixed.radius, `主動量 ${v.toFixed(2)}:花鍵軸不頂到固定端`);
+    assert.ok(s0 > front.radius, `主動量 ${v.toFixed(2)}:套管不頂到小齒輪端`);
+  }
+  assert.ok(Math.max(...lengths) - Math.min(...lengths) > 0.1, "兩個萬向接頭的距離會變(要靠套管伸縮)");
+}
+
+for (const [n, m] of [[192, m192], [193, m193], [194, m194]]) {
+  test(`第 ${n} 種:小齒輪軸往後伸進輪上的溝,溝引導它(原文第 194 種:小齒輪軸皆由輪上的一條溝槽所引導)`, () => {
+    assertGrooveGuides(m.default, m.period);
+  });
+}
+for (const [n, m] of [[192, m192], [193, m193], [194, m194], [197, m197]]) {
+  test(`第 ${n} 種:小齒輪軸在直立靜止桿的直線溝槽裡升降(同第 36 種)`, () => {
+    assertPostGuides(m.default, m.period);
+  });
+  test(`第 ${n} 種:驅動軸是套管與花鍵軸兩件、固定長度互相套住,萬向接頭讓軸擺動(原文第 194 種)`, () => {
+    assertTelescoping(m.default, m.period);
+  });
+}
+
+test("第 194 種:小齒輪幾乎整個寬度都咬在銷上,不碰輪面(原文:使小齒輪保持嚙合)", () => {
+  const def = m194.default;
+  const pinion = part(def, "pinion");
+  const wheel = part(def, "wheel");
+  const pins = wheel.pieces.filter((p) => p.kind === "box").map((p) => [p.at[2] - p.size[2] / 2, p.at[2] + p.size[2] / 2]);
+  const face = Math.max(...plateLayers(wheel).map((l) => l.z1));
+  for (const v of sweep(def.driver.initial + m194.period, 50, def.driver.initial)) {
+    const z = def.pose(v).parts.pinion.position[2];
+    const [a, b] = [z - pinion.width / 2, z + pinion.width / 2];
+    for (const [p0, p1] of pins) assert.ok(Math.min(b, p1) - Math.max(a, p0) >= 0.8 * pinion.width, `咬合寬度 ${(Math.min(b, p1) - Math.max(a, p0)).toFixed(3)}`);
+    assert.ok(a >= face, "小齒輪不壓進輪面");
+  }
 });
 
 test("第 198 種:小齒輪不升降;走到齒條末端時把承載齒條的部分抬起,沿另一側繼續走", () => {

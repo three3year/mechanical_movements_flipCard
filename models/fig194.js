@@ -6,7 +6,7 @@ import { deg, TAU } from "./kit.js";
 import { manglePath, belowHub } from "./mangle-path.js";
 import { circle } from "./shapes.js";
 import { pedestal } from "./supports.js";
-import { pinionDrive } from "./pinion-drive.js";
+import { pinionDrive, grooveLayers } from "./pinion-drive.js";
 
 const RT = 1.7; // 銷圈半徑
 const PINS = 22;
@@ -35,8 +35,14 @@ const pins = Array.from({ length: PINS }, (_, i) => {
   return { kind: "box", size: [0.3, 0.09, 0.24], at: [RT * Math.cos(a), RT * Math.sin(a), 0.2], angle: a };
 });
 
-// 小齒輪的驅動軸往前下方伸到固定的萬向接頭(見 pinion-drive.js);輪裝在固定的軸上,軸往後進到軸承座(推斷)
-const DRIVE = pinionDrive({ fixed: [0, -3.7, 2.2], floor: -4.2 });
+// 小齒輪軸往後伸進輪面上的溝(雙線,在 RT ± RP,離銷 0.3 以上),往前穿過靜止桿的直線溝槽,
+// 再經萬向接頭與驅動軸接到固定端(見 pinion-drive.js);輪裝在固定的軸上,軸往後進到軸承座(推斷)
+const SHAFT = 0.08;
+const PZ = 0.23; // 小齒輪中心的 z:背面離輪面 0.005,整個寬度幾乎都咬在銷上
+const heights = path.centers.map(([x, y]) => -Math.hypot(x, y));
+const DRIVE = pinionDrive({ x: 0, travel: [Math.min(...heights), Math.max(...heights)], shaft: SHAFT, post: 0.45, floor: -4.2, base: -0.48 });
+// 輪板前半個厚度開溝,後半是溝底的實心板(推斷:溝的深度)
+const [outer, island, bottom] = grooveLayers({ centers: path.centers.slice(0, -1), shaft: SHAFT, outline: circle(2.95), holes: [circle(0.14).reverse()], front: 0.1, depth: 0.1, back: 0.1 });
 
 export default {
   figure: 194,
@@ -46,14 +52,16 @@ export default {
       kind: "group",
       spin: 3.0,
       pieces: [
-        { kind: "plate", shape: { outline: circle(2.95), holes: [circle(0.14).reverse()] }, thickness: 0.2, engrave: [path.centers.slice(0, -1)], circles: [2.82, 0.55], mark: [0, -2.6], markSize: 0.1 },
+        { ...outer, circles: [2.82, 0.55], mark: [0, -2.6], markSize: 0.1 },
+        island, // 兩道溝之間、排著銷的那一圈
+        bottom,
         { kind: "cylinder", radius: 0.3, length: 0.35, accent: true },
         ...pins,
       ],
     },
-    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.25, web: false, center: [0, 0, 0.36], pieces: [{ kind: "cylinder", radius: 0.08, length: 0.5, at: [0, 0, 0.3] }] }, // 小齒輪的軸只往前伸(它沿輪面內外移動,不穿過輪板)
-    DRIVE.part,
-    DRIVE.joint,
+    // 小齒輪的軸往後伸進溝(離溝底 0.02),往前接萬向接頭
+    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.25, web: false, hub: false, center: [0, 0, PZ], pieces: [{ kind: "cylinder", radius: SHAFT, length: DRIVE.shaftEnd - 0.02, at: [0, 0, (DRIVE.shaftEnd + 0.02) / 2 - PZ] }] },
+    ...DRIVE.parts,
     {
       id: "frame",
       kind: "group",
@@ -64,16 +72,17 @@ export default {
       ],
     },
   ],
-  driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
+  driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5, grips: DRIVE.grips },
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(alpha) {
     const { wheel, y, pinion } = mangle(alpha * path.sense);
+    const angle = path.phase(NP) + pinion;
     return {
       parts: {
         wheel: { angle: wheel },
-        pinion: { position: [0, y, 0.36], angle: path.phase(NP) + pinion },
-        ...DRIVE.pose([0, y, 0.9]),
+        pinion: { position: [0, y, PZ], angle },
+        ...DRIVE.pose(y, angle),
       },
       readouts: [],
     };

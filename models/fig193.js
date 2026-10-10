@@ -7,7 +7,7 @@ import { deg, TAU } from "./kit.js";
 import { manglePath, arcLength, belowHub } from "./mangle-path.js";
 import { circle } from "./shapes.js";
 import { pedestal } from "./supports.js";
-import { pinionDrive } from "./pinion-drive.js";
+import { pinionDrive, grooveLayers } from "./pinion-drive.js";
 import { toothedLoop, resample } from "./noncircular.js";
 
 const RO = 2.15;
@@ -41,8 +41,13 @@ const pitchLoop = resample(path.pitch.slice(0, -1), 0.02);
 const M = PITCH / Math.PI;
 const slot = toothedLoop(pitchLoop, { pitch: PITCH, addendum: M, dedendum: 1.2 * M, start: 0, into: -1 });
 
-// 小齒輪的驅動軸往前下方伸到固定的萬向接頭(見 pinion-drive.js);輪裝在固定的軸上,軸往後進到軸承座(推斷)
-const DRIVE = pinionDrive({ fixed: [0, -3.7, 2.2], floor: -4.2 });
+// 小齒輪軸往後伸進輪上的溝,往前穿過靜止桿的直線溝槽,再經萬向接頭與驅動軸接到固定端(見 pinion-drive.js);
+// 輪裝在固定的軸上,軸往後進到軸承座(推斷)
+const SHAFT = 0.08;
+const heights = path.centers.map(([x, y]) => -Math.hypot(x, y));
+const DRIVE = pinionDrive({ x: 0, travel: [Math.min(...heights), Math.max(...heights)], shaft: SHAFT, post: 0.23, floor: -4.2, base: -0.48 });
+// 輪做成兩層:前層是有齒的通槽(小齒輪在槽裡),後層的溝(中間的雙線)只開半個厚度,溝底是實心板(推斷:溝的深度)
+const GROOVE = grooveLayers({ centers: path.centers.slice(0, -1), shaft: SHAFT, outline: circle(2.85), holes: [circle(0.14).reverse()], front: -0.11, depth: 0.12, back: 0.1 });
 
 export default {
   figure: 193,
@@ -52,16 +57,15 @@ export default {
       kind: "plate",
       shape: { outline: circle(2.85), holes: [[...slot].reverse(), circle(0.14).reverse()] },
       thickness: 0.22,
-      engrave: [path.centers.slice(0, -1)],
       circles: [2.72, 0.62],
-      hub: 0.3,
+      pieces: [{ kind: "cylinder", radius: 0.3, length: 0.56, at: [0, 0, -0.1] }, ...GROOVE], // 輪轂穿過兩層
       mark: [0, 2.45],
       markSize: 0.1,
       spin: 2.85,
     },
-    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.3, web: false, pieces: [{ kind: "cylinder", radius: 0.08, length: 0.9 }] },
-    DRIVE.part,
-    DRIVE.joint,
+    // 小齒輪軸:後端伸進溝(離溝底 0.03),前端接萬向接頭
+    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.2, web: false, hub: false, pieces: [{ kind: "cylinder", radius: SHAFT, length: DRIVE.shaftEnd + 0.2, at: [0, 0, (DRIVE.shaftEnd - 0.2) / 2] }] },
+    ...DRIVE.parts,
     {
       id: "frame",
       kind: "group",
@@ -72,16 +76,17 @@ export default {
       ],
     },
   ],
-  driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5 },
+  driver: { part: "pinion", type: "rotation", initial: START * path.sense, speed: 2.5, grips: DRIVE.grips },
   target: "wheel",
   view: { direction: [0.06, 0.05, 1] },
   pose(alpha) {
     const { wheel, y, pinion } = mangle(alpha * path.sense);
+    const angle = path.phase(NP) + pinion;
     return {
       parts: {
         wheel: { angle: wheel },
-        pinion: { position: [0, y, 0], angle: path.phase(NP) + pinion },
-        ...DRIVE.pose([0, y, 0.5]),
+        pinion: { position: [0, y, 0], angle },
+        ...DRIVE.pose(y, angle),
       },
       readouts: [],
     };

@@ -1,12 +1,13 @@
 // 第 36 種:曼格輪與小齒輪。小齒輪連續旋轉,使曼格輪往復旋轉。曼格輪面上有一道 C 形的齒槽,
 // 槽外緣是朝內的齒、內緣是朝外的齒;小齒輪的軸在直立靜止桿的直線溝槽內升降:
 // 在下方時與外緣的齒(內咬合)嚙合,輪與小齒輪同向轉;走到槽的盡頭,小齒輪繞過端頭升到上方,
-// 改與內緣的齒(外咬合)嚙合,輪就反向轉回來。輪面上沿齒槽的溝(此處以刻線表示)引導小齒輪的軸。
+// 改與內緣的齒(外咬合)嚙合,輪就反向轉回來。輪面上沿齒槽的溝(在齒槽後面一層,從槽裡看得到)容納並引導小齒輪的軸。
 // 繞過端頭時輪停住,小齒輪沿端頭的半圓齒滾過去(推斷:原文未描述端頭的細節);軸心因此略偏離溝槽中線,
 // 溝槽留了這點寬度(原文:小齒輪的軸有擺動運動)。
 import { TAU, deg } from "./kit.js";
 import { arcPoints, circle } from "./shapes.js";
 import { toothedLoop, resample } from "./noncircular.js";
+import { grooveLayers } from "./pinion-drive.js";
 
 const RP = 0.38; // 小齒輪節圓半徑
 const NP = 10;
@@ -49,6 +50,7 @@ export function mangle(alpha) {
   return { wheel: -Math.PI / 2 - A_HI, x: SWAY * Math.cos(beta), y: -RC + SWAY * Math.sin(beta), track: "turn" };
 }
 export const radii = { RO, RI, RP };
+export const period = PERIOD;
 // 小齒輪在外緣中段(輪正好轉到原圖位置)時的主動量
 const START = ((A_HI + Math.PI / 2) * RO) / RP;
 
@@ -76,6 +78,7 @@ const slot = toothed.map((q, i) => {
   return onCap ? [p[0] + 0.7 * (q[0] - p[0]), p[1] + 0.7 * (q[1] - p[1])] : q;
 });
 
+const GUIDE_PIN = 0.035; // 小齒輪軸伸進溝的導銷半徑
 // 引導小齒輪軸的溝:軸心的路徑(外緣弧內側、內緣弧外側、端頭繞半圓)
 const guide = [
   ...arcPoints(RO - RP, A_LO, A_HI),
@@ -92,14 +95,28 @@ export default {
       kind: "plate",
       shape: { outline: circle(2.75), holes: [slot.reverse(), circle(0.14).reverse()] },
       thickness: 0.22,
-      engrave: [guide],
       circles: [2.62, 0.45],
-      hub: 0.3,
       mark: [-2.35, 0],
       markSize: 0.1,
       spin: 2.75,
+      // 輪做成兩層:前層是有齒的通槽(小齒輪在槽裡),後層沿齒槽開溝(只開半個厚度,溝底是實心板;推斷:溝的深度)
+      pieces: [{ kind: "cylinder", radius: 0.3, length: 0.56, at: [0, 0, -0.1] }, ...grooveLayers({ centers: guide, shaft: GUIDE_PIN, outline: circle(2.75), holes: [circle(0.14).reverse()], front: -0.11, depth: 0.12, back: 0.1 })],
     },
-    { id: "pinion", kind: "gear", teeth: NP, radius: RP, width: 0.3, web: false, pieces: [{ kind: "cylinder", radius: 0.06, length: 0.9 }] },
+    // 小齒輪的軸往前穿過靜止桿的直線溝槽;往後伸出一段較細的導銷進到輪上的溝(外緣與內緣兩段軸心路徑只差 2·SWAY,
+    // 溝要窄才留得下兩段之間的隔條)
+    {
+      id: "pinion",
+      kind: "gear",
+      teeth: NP,
+      radius: RP,
+      width: 0.2,
+      web: false,
+      hub: false,
+      pieces: [
+        { kind: "cylinder", radius: 0.06, length: 0.55, at: [0, 0, 0.175] },
+        { kind: "cylinder", radius: GUIDE_PIN, length: 0.1, at: [0, 0, -0.15] },
+      ],
+    },
     {
       id: "post",
       kind: "plate",

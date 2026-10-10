@@ -1,7 +1,7 @@
 // 第二章「齒輪傳動」:斷言對應原文(齒數比、轉向),並檢查咬合的齒不重疊
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, part, turned, assertMeshFree, sweep } from "./helpers.js";
+import { close, part, turned, assertMeshFree, sweep, assertGrooveGuides } from "./helpers.js";
 import fig24 from "../models/fig024.js";
 import fig34 from "../models/fig034.js";
 
@@ -174,7 +174,7 @@ test("第 38 種:照原圖,兩輪同形——齒圈加上一段大半徑、一�
   close(fig38.pose(0).parts.driven.angle, Math.PI, "右輪是左輪轉半圈");
 });
 
-import fig36, { mangle, radii as radii36 } from "../models/fig036.js";
+import fig36, { mangle, radii as radii36, period as period36 } from "../models/fig036.js";
 import fig39 from "../models/fig039.js";
 import fig46, { fusee, centers as centers46 } from "../models/fig046.js";
 import { rotateAbout } from "../models/kit.js";
@@ -202,6 +202,10 @@ test("第 36 種:小齒輪在外緣(內咬合)時與輪同向,在內緣(外咬�
     if (m.track === "outer") close(dw, radii36.RP / radii36.RO, "同向", 1e-6);
     if (m.track === "inner") close(dw, -radii36.RP / radii36.RI, "反向", 1e-6);
   }
+});
+
+test("第 36 種:輪面上沿齒槽的溝容納並引導小齒輪軸(原文:曼格輪表面所切出的溝槽,用來容納並引導小齒輪軸)", () => {
+  assertGrooveGuides(fig36, period36);
 });
 
 test("第 39 種:行星齒輪(剛性連在連桿上)繞一圈,太陽齒輪轉兩圈", () => {

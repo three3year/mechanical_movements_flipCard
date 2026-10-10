@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { gearProfile } from "../models/shapes.js";
 import { planeBasis, add, scale, rot2 } from "../models/kit.js";
+import { pointInPolygon, penetrationDepth, circlePolygon } from "../models/contact.js";
 
 export const close = (actual, expected, msg, eps = 1e-9) =>
   assert.ok(Math.abs(actual - expected) < eps, `${msg ?? ""} 期望 ${expected},實際 ${actual}`);
@@ -56,6 +57,73 @@ export function assertMeshFree(def, idA, idB, values, state) {
 
 /** 0 到 to 之間均勻取 n 個主動量 */
 export const sweep = (to, n = 24, from = 0) => Array.from({ length: n + 1 }, (_, i) => from + ((to - from) * i) / n);
+
+/**
+ * 零件(含 pieces 與附件的附件)裡的板件,各自的 z 範圍與外形,都換到零件的局部座標。
+ * 只處理附件 at 的平移:板件要沿 z、不轉(不是的會讓斷言失敗)。
+ */
+export function plateLayers(p) {
+  const layers = [];
+  const visit = (piece, [ox, oy, oz]) => {
+    if (piece.kind === "plate") {
+      const t = piece.thickness ?? 0.2;
+      const move = (loop) => loop.map(([x, y]) => [x + ox, y + oy]);
+      layers.push({ z0: oz - t / 2, z1: oz + t / 2, solid: { outline: move(piece.shape.outline), holes: (piece.shape.holes ?? []).map(move) } });
+    }
+    for (const c of piece.pieces ?? []) {
+      if (c.kind === "plate") assert.ok(!c.angle && !c.axis && !c.rotation, "板件沿 z、不轉");
+      const [x, y, z] = c.at ?? [0, 0, 0];
+      visit(c, [ox + x, oy + y, oz + z]);
+    }
+  };
+  visit(p, [0, 0, 0]);
+  return layers;
+}
+
+const inSolid = (q, s) => pointInPolygon(q, s.outline) && !s.holes.some((h) => pointInPolygon(q, h));
+
+/**
+ * 圓(軸的截面:圓心 c、半徑 r)在 solids 的溝或槽裡:depth 是穿進實體的深度;
+ * sides 是兩個相對的方向(夾角 150° 以上)上離軸面不到 0.03 就有壁——軸被兩側的壁夾著,不是旁邊空著。
+ */
+export function guidedBetween(c, r, solids) {
+  const depth = Math.max(0, ...solids.map((s) => penetrationDepth(circlePolygon(c, r, 24), s)));
+  const n = 32;
+  const hits = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 2 * Math.PI;
+    const q = [c[0] + (r + 0.03) * Math.cos(a), c[1] + (r + 0.03) * Math.sin(a)];
+    if (solids.some((s) => inSolid(q, s))) hits.push(a);
+  }
+  const sides = hits.some((a) => hits.some((b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) >= (150 * Math.PI) / 180));
+  return { depth, sides, open: !solids.some((s) => inSolid(c, s)) };
+}
+
+/** 曼格輪的小齒輪軸(零件 pinion 上沿 z 的圓柱)各段:局部 z 範圍與半徑 */
+export const shaftSegments = (def) =>
+  part(def, "pinion")
+    .pieces.filter((p) => p.kind === "cylinder" && !p.axis)
+    .map((p) => ({ z0: (p.at?.[2] ?? 0) - p.length / 2, z1: (p.at?.[2] ?? 0) + p.length / 2, r: p.radius }));
+
+/**
+ * 曼格輪(第 36、192–194 種)「小齒輪軸由輪上的溝槽所引導」:小齒輪軸往後伸進輪(零件 wheel)上的溝,
+ * 主動量走一個週期,軸端全程在溝裡、兩側都有溝壁、不穿入。
+ */
+export function assertGrooveGuides(def, period, n = 300) {
+  const tip = shaftSegments(def).reduce((a, b) => (a.z0 <= b.z0 ? a : b));
+  const layers = plateLayers(part(def, "wheel"));
+  const from = def.driver.initial ?? 0;
+  for (const v of sweep(from + period, n, from)) {
+    const { wheel, pinion } = def.pose(v).parts;
+    const z = pinion.position[2] + tip.z0 + 0.005;
+    const solids = layers.filter((l) => l.z0 <= z && z <= l.z1).map((l) => l.solid);
+    assert.ok(solids.length, `主動量 ${v.toFixed(2)}:軸端伸到輪上有溝的那一層`);
+    const c = rot2([pinion.position[0], pinion.position[1]], -wheel.angle);
+    const g = guidedBetween(c, tip.r, solids);
+    assert.ok(g.open && g.depth < 0.005, `主動量 ${v.toFixed(2)}:軸端在溝裡、不穿進溝壁(穿入 ${g.depth.toFixed(3)})`);
+    assert.ok(g.sides, `主動量 ${v.toFixed(2)}:溝的兩側都貼著軸端`);
+  }
+}
 
 /** 封閉折線的周長 */
 export const perimeter = (outline) => outline.reduce((sum, p, i) => sum + Math.hypot(outline[(i + 1) % outline.length][0] - p[0], outline[(i + 1) % outline.length][1] - p[1]), 0);
