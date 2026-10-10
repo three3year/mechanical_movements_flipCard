@@ -35,7 +35,7 @@ test("第 49 種:水平軸往復擺動,直立軸連續朝同一方向轉", () =>
   for (let i = 1; i < top.length; i++) assert.ok((top[i] - top[i - 1]) * dir >= -1e-9, "直立軸不倒轉");
 });
 
-test("第 49 種:兩個斜齒輪反向轉,推程時左輪隨軸、回程時右輪隨軸", () => {
+test("第 49 種:兩個傘齒輪反向轉,推程時左輪隨軸、回程時右輪隨軸", () => {
   const span = fig49.driver.cycle[1] - fig49.driver.cycle[0];
   const a = motion49(0.2 * span);
   const b = motion49(0.4 * span);

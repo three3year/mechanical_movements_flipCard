@@ -169,7 +169,7 @@ test("第 247 種:頂桿撞到海底時被相對地推上去,把卡榫從錘下�
   assert.ok(w[1] - w[2] > w[0] - w[1], "錘加速落下");
 });
 
-test("第 251 種:重物被抬到夠高時,鉤 A 的上端被框架 B 的槽兩側往內壓,重物突然被釋放", () => {
+test("第 251 種:重物被抬到夠高時,鉤 A 的上端被框架頂部的槽 B 兩側往內壓,重物突然被釋放", () => {
   const H = m251.HEIGHT;
   const low = m251.hook(0.5);
   assert.equal(low.open, 0, "抬升途中鉤爪抓緊");
@@ -183,6 +183,14 @@ test("第 251 種:重物被抬到夠高時,鉤 A 的上端被框架 B 的槽兩�
   assert.ok(heights[0] - heights[10] < heights[10] - heights[20], "後半段落得比前半段多(加速)");
   close(m251.hook(m251.RELEASE + m251.DROP).weight, 0, "重物落到樁頭", 1e-9);
   close(m251.hook(1.5 * H).weight, 0, "鉤往下放時重物留在樁頭上");
+});
+
+test("第 251 種:B 是框架頂部的槽(標籤 B 標在槽上,不標在整個框架上)", () => {
+  const parts = m251.default.parts;
+  assert.equal(parts.find((p) => p.id === "frame").label, undefined, "框架本身不標 B");
+  const b = parts.find((p) => p.label === "B");
+  const [x, y] = b.center.map((c, i) => c + (b.labelOffset ?? [0, 0, 0])[i]);
+  assert.ok(Math.abs(x) < 0.16 && y > 3.05 && y < 4.15, `B 的標籤在框架頂部兩側槽壁之間(${x.toFixed(2)}, ${y.toFixed(2)})`);
 });
 
 test("第 251 種:放下吊繩時,合攏的鉤爪碰到凸頭被撐開、越過寬頭後合攏勾在底下(由接觸算)", () => {
@@ -316,7 +324,7 @@ test("第 261 種:圓盤 B 轉動時重物 W 上下往復,下行程比上行程�
   assert.ok(m261.weight(m261.RANGE[1]).yW > m261.weight(0).yW, "每轉一圈淨上升");
 });
 
-test("第 262–263 種:同一機構的前視圖與側視圖;錐體偏心地轉,滾子 C 往復,朝某一方向的運動比另一方向短", () => {
+test("第 262–263 種:同一機構的端視圖與側視圖;錐體偏心地轉,滾子 C 往復,朝某一方向的運動比另一方向短", () => {
   for (const v of [0, 3, 9]) assert.deepEqual(fig262.pose(v).parts, fig263.pose(v).parts, "兩圖的零件姿勢一致");
   assert.notDeepEqual(fig262.view.direction, fig263.view.direction, "初始視角不同");
   const tops = sweep(cone.RANGE[1], 800).map((t) => cone.cone(t).top);
@@ -397,7 +405,7 @@ test("第 276 種:凸輪橫跨中心所測的每個方向直徑皆相等,兩滾�
   assert.ok(Math.max(...xs) - Math.min(...xs) > 0.4, "桿往復");
 });
 
-test("第 279 種:曲柄轉動,套在曲柄手腕上的軸承盒在十字頭的槽裡滑動,十字頭往復直線運動", () => {
+test("第 279 種:曲柄轉動,套在曲柄銷上的軸承盒在十字頭的槽裡滑動,十字頭往復直線運動", () => {
   const xs = sweep(2 * Math.PI, 72).map((t) => m279.crosshead(t).x);
   assert.ok(Math.max(...xs) - Math.min(...xs) > 1.4, "十字頭往復,行程 = 曲柄直徑");
   for (const t of sweep(2 * Math.PI, 12)) {
@@ -425,9 +433,9 @@ test("第 280 種:短槓桿外端往上時夾住輪緣、帶動輪轉;往下推�
   }
 });
 
-test("第 281 種:圓盤旋轉,槽內的銷使右側的槓桿振動(銷始終在槽裡)", () => {
+test("第 281 種:圓盤旋轉,槽內的銷使右側的槓桿擺動(銷始終在槽裡)", () => {
   const angles = sweep(2 * Math.PI, 72).map(m281.lever);
-  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.3, "槓桿振動");
+  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.3, "槓桿擺動");
   close(m281.lever(2 * Math.PI), m281.lever(0), "圓盤一圈一個來回", 1e-12);
 });
 
@@ -439,7 +447,7 @@ test("第 282 種:圓盤轉動,直立桿擺動:底部的齒條交替直線運動
   close(m282.motion(2 * Math.PI).rack, m282.motion(0).rack, "一圈回到原處", 1e-9);
 });
 
-test("第 283 種:手柄振動,經小齒輪使齒條上下移動;齒條移動量 = 小齒輪節圓上轉過的弧長", () => {
+test("第 283 種:手柄擺動,經小齒輪使齒條上下移動;齒條移動量 = 小齒輪節圓上轉過的弧長", () => {
   const a = 0.5;
   close(m283.rack(a) - m283.rack(0), 0.55 * a * Math.sign(m283.rack(a) - m283.rack(0)), "位移 = 節圓半徑 × 轉角", 1e-9);
   assert.ok(m283.rack(-0.5) < m283.rack(0) === m283.rack(0.5) > m283.rack(0), "手柄來回,齒條上下");
@@ -472,11 +480,11 @@ test("第 284 種:曲柄每轉一圈,卡榫推棘輪前進一段,小齒輪帶平
   assert.ok(Math.max(...clicks) - Math.min(...clicks) > 0.05, "棘輪轉動時止回爪被齒背頂起、再落回齒間");
 });
 
-test("第 271 種:裝有兩根棘爪的槓桿振動時,棘齒桿得到近乎連續的直線運動(由接觸算)", () => {
+test("第 271 種:裝有兩根棘爪的槓桿擺動時,棘齒桿得到近乎連續的直線運動(由接觸算)", () => {
   const S = m271.SWING;
   const xs = sweep(8 * S, 400).map((v) => m271.motion(v).x);
   assert.ok(xs.every((x, i) => i === 0 || x >= xs[i - 1] - 1e-12), "只朝一個方向(往右)");
-  // 原文:當使裝有兩根棘爪的槓桿振動時,會將近乎連續的直線運動賦予棘齒桿
+  // 原文:當使裝有兩根棘爪的槓桿擺動時,會將近乎連續的直線運動賦予棘齒桿
   const one = m271.motion(2 * S).x - m271.motion(0).x;
   const two = m271.motion(4 * S).x - m271.motion(2 * S).x;
   assert.ok(one > 0.1 && two > 0.1, "槓桿往兩個方向擺時都在拉");

@@ -113,7 +113,7 @@ for (const [def, pins] of [[fig227, 1.82], [fig228, 2.02], [fig229, 2.3]]) {
   });
 }
 
-test("第 225 種:搖臂振動,棘爪推棘輪間歇地轉(原文:由承載棘爪的搖臂之振動運動所產生的棘輪之間歇圓周運動)", () => {
+test("第 225 種:搖臂擺動,棘爪推棘輪間歇地轉(原文:由承載棘爪的搖臂之擺動運動所產生的棘輪之間歇圓周運動)", () => {
   const S = m225.swing;
   const ws = sweep(4 * S, 400).map((v) => m225.ratchet(v).wheel);
   for (let i = 1; i < ws.length; i++) assert.ok(ws[i] >= ws[i - 1] - 1e-12, "只朝一個方向(逆時針)");
@@ -221,11 +221,11 @@ test("第 235 種:撥爪臂往上擺時推星形輪轉一格,回程撥爪讓開�
   }
 });
 
-test("第 236 種:槓桿 a 振動,兩根棘爪 b、c 輪流推,棘輪近乎連續地朝同一方向轉(由接觸算)", () => {
+test("第 236 種:槓桿 a 擺動,兩根棘爪 b、c 輪流推,棘輪近乎連續地朝同一方向轉(由接觸算)", () => {
   const S = m236.swing;
   const ws = sweep(4 * S, 400).map(m236.wheelAngle);
   assert.ok(monotone(ws, 1), "只朝一個方向(逆時針,原圖箭頭)");
-  // 原文:藉由振動槓桿 a(其上裝有兩根棘爪 b 和 c),將近乎連續的圓周運動傳遞給棘輪
+  // 原文:藉由擺動槓桿 a(其上裝有兩根棘爪 b 和 c),將近乎連續的圓周運動傳遞給棘輪
   assert.ok(m236.wheelAngle(S) > 0.05 && m236.wheelAngle(2 * S) - m236.wheelAngle(S) > 0.05, "兩個方向的擺動都在推");
   close(m236.wheelAngle(2 * S), m236.pitch, "每個來回前進一齒", 1e-9);
   for (const v of sweep(4 * S, 160)) {

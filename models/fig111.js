@@ -1,7 +1,7 @@
 // 第 111 種:千分螺桿(差動螺桿),能得到極大的施力放大。外側的空心螺桿(粗螺距)旋在固定的螺帽裡,
-// 內側較小的螺桿(細螺距)旋在空心螺桿裡,下端連著不能轉動的模具。轉動外側螺桿一圈,
-// 它在固定螺帽中前進一個粗螺距,內側螺桿卻相對它後退一個細螺距,模具淨移動兩者螺距的差。
-// 模具的橫檔夾在機架兩根立柱之間,只能上下移動(機架與橫檔是推斷,原圖只畫出兩根螺桿)。
+// 內側較小的螺桿(細螺距)旋在空心螺桿裡,下端連著不能轉動的螺紋塊。轉動外側螺桿一圈,
+// 它在固定螺帽中前進一個粗螺距,內側螺桿卻相對它後退一個細螺距,螺紋塊淨移動兩者螺距的差。
+// 螺紋塊的橫檔夾在機架兩根立柱之間,只能上下移動(機架與橫檔是推斷,原圖只畫出兩根螺桿)。
 // (原文說兩段螺紋旋向相反、淨移動為螺距差;這裡依淨移動為螺距差的描述計算。)主動件是外側螺桿。
 import { Y, TAU, screwAdvance } from "./kit.js";
 import { shape } from "./shapes.js";
@@ -10,7 +10,7 @@ const COARSE = 0.42;
 const FINE = 0.3;
 const TURNS = 1.5; // 旋到手柄快碰到螺帽為止
 
-/** 外側螺桿轉 angle(往下旋,繞 −y):外側螺桿與模具的下降量 */
+/** 外側螺桿轉 angle(往下旋,繞 −y):外側螺桿與螺紋塊的下降量 */
 export function differential(angle) {
   const outer = screwAdvance(angle, COARSE);
   const inner = outer - screwAdvance(angle, FINE);
@@ -40,7 +40,7 @@ export default {
       pieces: [
         { kind: "worm", axis: Y, radius: 0.24, length: 1.7, pitch: FINE, thread: 0.06, at: [0, 0.2, 0] },
         { kind: "box", size: [1.1, 0.35, 0.8], at: [0, -0.85, 0] },
-        { kind: "box", size: [2.12, 0.14, 0.22], at: [0, -0.85, 0] }, // 橫檔:兩端夾在機架的兩根立柱之間滑動,模具因此不會轉
+        { kind: "box", size: [2.12, 0.14, 0.22], at: [0, -0.85, 0] }, // 橫檔:兩端夾在機架的兩根立柱之間滑動,螺紋塊因此不會轉
       ],
     },
     {
@@ -55,7 +55,7 @@ export default {
     },
   ],
   driver: { part: "outer", type: "rotation", range: [0, TURNS * TAU] },
-  target: "inner", // 內側螺桿(連著模具,淨移動為螺距差)
+  target: "inner", // 內側螺桿(連著螺紋塊,淨移動為螺距差)
   view: { direction: [0.15, 0.22, 1] },
   pose(angle) {
     const { outer, inner } = differential(angle);
@@ -64,7 +64,7 @@ export default {
       parts: { outer: { position: [0, 1.0 - outer, 0], angle }, inner: { position: [0, -1.3 - inner, 0] } },
       readouts: [
         { label: "外螺桿前進", value: cm(outer) },
-        { label: "模具前進", value: cm(inner) },
+        { label: "螺紋塊前進", value: cm(inner) },
       ],
     };
   },

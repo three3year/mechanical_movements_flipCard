@@ -1,5 +1,5 @@
-// 第 14 種:滑輪組(blocks and tackle)。上下滑輪組各三個並排的皮帶輪;
-// 繩從上方滑輪組固定端出發,在上下之間往返六段,所以施力 = 重量 ÷(下方皮帶輪數 × 2)。
+// 第 14 種:滑輪組(blocks and tackle)。上下滑輪組各三個並排的滑輪;
+// 繩從上方滑輪組固定端出發,在上下之間往返六段,所以施力 = 重量 ÷(下方滑輪數 × 2)。
 import { Z, Y, clamp, routeRope, sheaveAngle, hoistReadouts, rod } from "./kit.js";
 
 const RANGE = [0, 3];
@@ -29,7 +29,7 @@ function layout(pull) {
 
 const rest = layout(RANGE[0]);
 
-// 同一組並排的皮帶輪轉向相同,只在最前面那個畫轉向箭頭
+// 同一組並排的滑輪轉向相同,只在最前面那個畫轉向箭頭
 const sheave = (id, center, movable, arrow) => ({ id, kind: "pulley", style: "disc", center, axis: Z, radius: R, width: 0.18, movable, arrow });
 
 export default {

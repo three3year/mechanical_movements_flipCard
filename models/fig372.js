@@ -1,7 +1,7 @@
-// 第 372 種:懷特氏測功計。環形框架可以繞水平軸的中點自由轉動,框架裡上下各裝一個水平的斜齒輪;軸上兩個垂直的斜齒輪
-// 與它們咬合,一個固定在軸上(左)、一個在軸上鬆轉(右)。若把框架保持靜止,傳給一個垂直斜齒輪的運動會經水平齒輪
+// 第 372 種:懷特氏測功計。環形框架可以繞水平軸的中點自由轉動,框架裡上下各裝一個水平的傘齒輪;軸上兩個垂直的傘齒輪
+// 與它們咬合,一個固定在軸上(左)、一個在軸上鬆轉(右)。若把框架保持靜止,傳給一個垂直傘齒輪的運動會經水平齒輪
 // 傳給另一個(反向轉);若讓框架自由,另一個垂直齒輪受到負載而不動時,框架就跟著轉——讓框架保持靜止所需的力
-// (繞在框架周圍的皮帶上吊的重量)對應傳過去的動力。主動件是左邊固定在軸上的斜齒輪(軸)。
+// (繞在框架周圍的皮帶上吊的重量)對應傳過去的動力。主動件是左邊固定在軸上的傘齒輪(軸)。
 // 狀態按鈕:框架保持靜止 / 框架放開(右邊的齒輪被負載擋住)。
 // 推斷:兩種狀態的設定;齒數。
 import { X, Z, deg, quatMul, quatAxisAngle, quatFromZ, rotateAbout } from "./kit.js";
@@ -54,7 +54,7 @@ export default {
     { id: "planetBottom", kind: "group", arrow: false, pieces: [gear(P0), { kind: "cylinder", radius: 0.06, length: 0.6, at: [0, 0, -0.3] }] },
   ],
   driver: { part: "shaft", type: "rotation" },
-  target: "sun2", // 動力傳過去的那一個斜齒輪
+  target: "sun2", // 動力傳過去的那一個傘齒輪
   states: {
     initial: "held",
     options: [
@@ -82,9 +82,9 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["sun2", "planetBottom"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.08" },
-    { check: "interference", parts: ["sun2", "planetTop"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.08" },
-    { check: "interference", parts: ["shaft", "planetBottom"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.08" },
-    { check: "interference", parts: ["shaft", "planetTop"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.08" },
+    { check: "interference", parts: ["sun2", "planetBottom"], reason: "簡化齒形:差動機構的傘齒輪齒側互相擦到 0.08" },
+    { check: "interference", parts: ["sun2", "planetTop"], reason: "簡化齒形:差動機構的傘齒輪齒側互相擦到 0.08" },
+    { check: "interference", parts: ["shaft", "planetBottom"], reason: "簡化齒形:差動機構的傘齒輪齒側互相擦到 0.08" },
+    { check: "interference", parts: ["shaft", "planetTop"], reason: "簡化齒形:差動機構的傘齒輪齒側互相擦到 0.08" },
   ],
 };

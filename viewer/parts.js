@@ -125,7 +125,7 @@ function cone(part, material, mark) {
 }
 
 function bevel(part, material, mark) {
-  // 斜齒輪:錐台,尖端朝 +Z,錐面上排列齒
+  // 傘齒輪:錐台,尖端朝 +Z,錐面上排列齒
   const g = new THREE.Group();
   const r = part.radius;
   const h = part.height ?? r * 0.6;

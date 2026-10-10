@@ -127,7 +127,7 @@ test("第 418 種:閥 A 在閥座上水平滑動,桿 B 上端的銷在垂直溝�
   assert.ok(Math.max(...xs) - Math.min(...xs) > 0.8, "閥來回滑動");
 });
 
-test("第 419 種:輪 A 轉動,輪 B 來回擺動;皮帶 C、D 拉著立柱,搖籃在搖桿 E 上來回搖", () => {
+test("第 419 種:輪 A 轉動,輪 B 來回擺動;皮帶 C、D 拉著立柱,搖籃在弧形搖腳 E 上來回搖", () => {
   const rs = sweep(2 * Math.PI, 72).map((a) => m419.rock(a));
   const betas = rs.map((r) => r.beta);
   assert.ok(Math.max(...betas) - Math.min(...betas) < Math.PI, "B 不轉整圈,只是擺動");

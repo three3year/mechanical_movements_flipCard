@@ -1,5 +1,5 @@
 // 第 281 種:圓盤正面刻有一道心形的凹槽,右側槓桿(經一個銷架)上的銷伸進槽裡;圓盤轉動時,槽推著銷,
-// 槓桿繞上端的樞軸來回振動。主動件是圓盤。
+// 槓桿繞上端的樞軸來回擺動。主動件是圓盤。
 // 推斷:槽的形狀照心形凸輪的作法:槓桿以等角速度擺過去、再擺回來(圓盤每轉一圈一個來回);
 // 槽是銷在圓盤上走過的軌跡(由槓桿的運動反推),所以銷始終在槽裡。
 import { TAU, deg, rot2, sub } from "./kit.js";
@@ -75,7 +75,7 @@ export default {
     },
   ],
   driver: { part: "disc", type: "rotation" },
-  target: "lever", // 來回振動的槓桿
+  target: "lever", // 來回擺動的槓桿
   view: { direction: [0.04, 0.05, 1] },
   pose(theta) {
     return { parts: { disc: { angle: theta }, lever: { angle: lever(theta) } }, readouts: [] };

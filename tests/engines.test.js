@@ -32,7 +32,7 @@ import fig182 from "../models/fig182.js";
 
 const TAU = 2 * Math.PI;
 
-test("第 155 種:往復的桿經肘節槓桿上的棘爪使齒輪間歇轉動;棘爪換邊時齒輪反向", () => {
+test("第 155 種:往復的桿經肘形槓桿上的棘爪使齒輪間歇轉動;棘爪換邊時齒輪反向", () => {
   const cw = sweep(stroke155 * 6, 600).map((v) => feed155(v, 1).gear);
   for (let i = 1; i < cw.length; i++) assert.ok(cw[i] <= cw[i - 1] + 1e-9, "單向");
   close(feed155(stroke155 * 2, 1).gear - feed155(0, 1).gear, advance155(1), "每次往復推進的量固定");
@@ -152,7 +152,7 @@ test("第 162、163 種:閘門隨速度起伏升降,一輪之後回到原處;心
   }
 });
 
-test("第 162 種:速度正常時兩個斜齒輪靜止;過快時銷帶動上齒輪、過慢時帶動下齒輪,下方水平軸朝相反方向轉", () => {
+test("第 162 種:速度正常時兩個傘齒輪靜止;過快時銷帶動上齒輪、過慢時帶動下齒輪,下方水平軸朝相反方向轉", () => {
   assert.equal(fig162.states, undefined, "速度的起伏在播放時自己呈現,不靠狀態按鈕");
   const P = fig162.driver.range[1];
   const states = sweep(P, 480).map((p) => reg162(p).state);
@@ -203,7 +203,7 @@ test("第 163 種:皮帶在鬆動輪上時不傳動;過快時撥到下輪、過�
   }
 });
 
-test("第 170 種:交叉的搖臂隨轉速張開,經短連桿移動閥桿", () => {
+test("第 170 種:交叉的兩臂隨轉速張開,經短連桿移動閥桿", () => {
   const rods = sweep(10, 20, 7).map((v) => gov170(v).rod);
   assert.ok(Math.abs(rods[rods.length - 1] - rods[0]) > 0.05, "閥桿隨轉速移動");
   for (let i = 1; i < rods.length; i++) assert.ok(rods[i] <= rods[i - 1] + 1e-12, "單調");
@@ -396,7 +396,7 @@ test("第 173 種:圓盤每轉一圈,撥爪輪被撥一次、螺帽移動,導桿
   // 一圈之中撥爪輪只在經過固定銷時轉動,其餘時間行程不變
   const stroke = sweep(TAU, 360, 0.01).map((t) => traverse173(t).stroke);
   assert.ok(stroke.filter((v) => Math.abs(v - stroke[0]) > 1e-9).length < 360 * 0.06);
-  // 導桿(T 形桿)的位移就是手腕銷的 x:一圈內往返一次,幅度等於行程
+  // 導桿(T 形桿)的位移就是腕銷的 x:一圈內往返一次,幅度等於行程
   const xs = sweep(TAU, 720, 0.3).map((t) => traverse173(t).x);
   close(Math.max(...xs) - Math.min(...xs), traverse173(0.3).stroke, "幅度 = 行程", 0.01);
   // 撥爪輪的齒與固定銷不互相穿入;撥爪輪只在銷碰到齒時才轉
@@ -454,18 +454,18 @@ test("第 190 種:轉動手柄,螺桿往上頂住槓桿,支點另一側的壓腳
   assert.ok(tight.foot[0] < 0, "壓腳在支點另一側(左),螺桿在右");
 });
 
-test("第 176、177 種:溝槽在第 176 種位置時手腕帶動曲柄;轉到第 177 種位置時手腕穿過溝槽、曲柄不動", () => {
+test("第 176、177 種:溝槽在第 176 種位置時腕銷帶動曲柄;轉到第 177 種位置時腕銷穿過溝槽、曲柄不動", () => {
   for (const t of sweep(TAU, 36)) {
     const c = coupling(t, "coupled");
-    close(c.arm, t, "接上:曲柄隨手腕轉");
-    close(dist(c.wrist, c.eye), 0, "手腕卡在環中心的溝槽裡", 1e-9);
+    close(c.arm, t, "接上:曲柄隨腕銷轉");
+    close(dist(c.wrist, c.eye), 0, "腕銷卡在環中心的溝槽裡", 1e-9);
     assert.equal(coupling(t, "uncoupled").arm, 0, "脫開:曲柄不動");
   }
-  // 脫開時,手腕經過環的那段路都在溝槽裡(圓弧溝槽與手腕的圓形路徑重合);接上時手腕在溝槽中線上
+  // 脫開時,腕銷經過環的那段路都在溝槽裡(圓弧溝槽與腕銷的圓形路徑重合);接上時腕銷在溝槽中線上
   const inside = sweep(TAU, 3600).filter((t) => dist(coupling(t, "uncoupled").wrist, coupling(t, "uncoupled").eye) < FLANGE176 + WRIST176);
   assert.ok(inside.length > 0);
-  for (const t of inside) assert.ok(Math.abs(dist(coupling(t, "uncoupled").wrist, grooveCenter(t, "uncoupled")) - ARM176) + WRIST176 <= GROOVE176, "手腕在溝槽內");
-  for (const t of sweep(TAU, 36)) close(dist(coupling(t, "coupled").wrist, grooveCenter(t, "coupled")), ARM176, "接上:手腕在溝槽中線上", 1e-9);
+  for (const t of inside) assert.ok(Math.abs(dist(coupling(t, "uncoupled").wrist, grooveCenter(t, "uncoupled")) - ARM176) + WRIST176 <= GROOVE176, "腕銷在溝槽內");
+  for (const t of sweep(TAU, 36)) close(dist(coupling(t, "coupled").wrist, grooveCenter(t, "coupled")), ARM176, "接上:腕銷在溝槽中線上", 1e-9);
 });
 
 const cornishSamples = sweep(2 * SPAN181, 1200);

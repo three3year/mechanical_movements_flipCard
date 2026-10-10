@@ -1,8 +1,9 @@
 // 第 471 種:Hotchkiss 的大氣錘,打擊的力量來自壓縮空氣。錘頭 C 接在汽缸 B 裡的活塞上,汽缸經桿 D 接到旋轉驅動軸上的
-// 曲柄 A。汽缸上升時,從進氣孔 c 進來的空氣在活塞下方被壓縮,把錘抬起;汽缸下降時,從進氣孔 e 進來的空氣在上方被壓縮
+// 曲柄 A。汽缸上升時,從進氣孔 e 進來的空氣在活塞下方被壓縮,把錘抬起;汽缸下降時,從進氣孔 e 進來的空氣在上方被壓縮
 // 並儲存起來,等曲柄與連桿越過下死點後,靠它的瞬間膨脹打擊。
 // 主動件是曲柄 A。
-// 推斷:錘的運動落後汽缸,當作汽缸運動延遲一段相位再放大(空氣墊的彈性),碰到砧時停住;進氣孔在行程端點露出時進氣。
+// 推斷:錘的運動落後汽缸,當作汽缸運動延遲一段相位再放大(空氣墊的彈性),碰到砧時停住。
+// 進氣孔只有 e 一個,照原圖開在汽缸壁的中段:活塞在孔的上方時空氣從它進到活塞下方,在孔的下方時進到上方。
 import { Y, deg, clamp } from "./kit.js";
 import { crankSlider } from "./vertical-engine.js";
 import { backHalf } from "./section.js";
@@ -11,7 +12,7 @@ import { shape } from "./shapes.js";
 const CRANK = [0, 2.6, 0];
 const R = 0.35;
 const ROD = 1.3;
-const CYL_LEN = 1.3;
+export const CYL_LEN = 1.3;
 const CYL_R = 0.32;
 export const ANVIL_TOP = -1.6;
 const PISTON_ROD = 1.5;
@@ -66,7 +67,6 @@ export default {
       ...backHalf(Y),
       arrow: false,
     },
-    { id: "holeC", kind: "group", pieces: [], label: "c", labelOffset: [-0.5, 0, 0.4] },
     { id: "holeE", kind: "group", pieces: [], label: "e", labelOffset: [-0.5, 0, 0.4] },
     {
       id: "hammer",
@@ -96,8 +96,7 @@ export default {
         crank: { angle: theta },
         rodD: { from: pin, to: [0, h.cyl, 0.3] },
         cylinder: { position: [0, h.cyl - CYL_LEN, 0] },
-        holeC: { position: [0, h.cyl - CYL_LEN + 0.2, 0] },
-        holeE: { position: [0, h.cyl - 0.2, 0] },
+        holeE: { position: [0, h.cyl - CYL_LEN / 2, 0] },
         hammer: { position: [0, h.piston, 0] },
       },
       readouts: [

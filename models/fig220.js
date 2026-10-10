@@ -1,6 +1,6 @@
-// 第 220 種:兩根曲柄軸方向平行但不共線。一支曲柄端的手腕銷在另一支開槽曲柄的槽內作動;
-// 手腕離開槽曲柄軸心的距離一直在變,所以任一支等速轉動,另一支都是變速轉動。主動件是左邊的(手腕)曲柄。
-// 推斷:兩軸的距離;開槽曲柄在後、手腕曲柄在前。
+// 第 220 種:兩根曲柄軸方向平行但不共線。一支曲柄端的腕銷在另一支開槽曲柄的槽內作動;
+// 腕銷離開槽曲柄軸心的距離一直在變,所以任一支等速轉動,另一支都是變速轉動。主動件是左邊的(帶腕銷的)曲柄。
+// 推斷:兩軸的距離;開槽曲柄在後、腕銷曲柄在前。
 import { deg, polar } from "./kit.js";
 import { shape, circle, stadium } from "./shapes.js";
 
@@ -10,7 +10,7 @@ const R1 = 1.15;
 const START = deg(60);
 const SLOT = { from: 0.3, to: 2.1 };
 
-/** 手腕曲柄轉 theta:手腕的位置、開槽曲柄的轉角與手腕在槽中的位置 */
+/** 腕銷曲柄轉 theta:腕銷的位置、開槽曲柄的轉角與腕銷在槽中的位置 */
 export function cranks(theta) {
   const wrist = polar(R1, START + theta);
   const angle = Math.atan2(wrist[1] - O2[1], wrist[0] - O2[0]);

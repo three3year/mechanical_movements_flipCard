@@ -133,7 +133,7 @@ test("第 493 種:路易斯吊楔:吊起中央的楔子把兩邊的填塊擠緊�
   close(m493.lewis(1).lift, m493.LIFT, "之後石塊被吊起");
 });
 
-test("第 494 種:吊鉗:拉起鉤環,環節使上臂收攏,尖端夾緊石塊;夾住後一起吊起", () => {
+test("第 494 種:吊鉗:拉起鉤環,連桿使上臂收攏,尖端夾緊石塊;夾住後一起吊起", () => {
   const open = m494.tongs(0);
   assert.ok(open.tip[0] > m494.GRIP_X && !open.gripped, "一開始尖端在石塊外");
   const grip = m494.tongs(0.5);

@@ -1,11 +1,12 @@
 // 第 63 種:跳躍式的旋轉運動,用於計量器與轉數計數器。右側圓盤(主動件,順時針)背面的三根插銷,
 // 依序從下方頂起左側落板右端彎下來的鉤腳,以及鉸在落板鉤上的棘爪的耳;落板以左上的大螺絲為樞軸,尾端壓在板彈簧上。
 // 照原文的順序:插銷先頂起棘爪(爪尖離開齒間)和落板,接著先從棘爪的耳滑脫,棘爪憑自重落進星形輪的下一格;
-// 插銷再從鉤腳滑脫,彈簧把落板猛然甩下,落板的擋片壓著棘爪的柱子把棘爪一起帶下去,爪尖把星形輪推轉一格(逆時針)。
-// 每通過一根插銷重複一次。(原文說落板「撞擊」棘爪的柱子;模型裡棘爪落進下一格時柱子已經靠在擋片上,擋片是推著它走)
+// 插銷再從鉤腳滑脫,彈簧把落板猛然甩下,落板上的銷隨即撞擊棘爪(壓著棘爪樞軸右邊的踵)把棘爪一起帶下去,
+// 爪尖把星形輪推轉一格(逆時針)。每通過一根插銷重複一次。
+// (原文說落板上的銷「撞擊」棘爪;模型裡棘爪落進下一格時踵已經靠在銷上,銷是推著它走)
 // 前後的層次(由前往後):星形輪、圓盤、棘爪、落板。插銷從圓盤往後伸,頂得到棘爪與落板,碰不到星形輪;
 // 棘爪的爪尖是一根往前伸到星形輪那一層的短銷。原圖的鉤與棘爪是虛線(在圓盤後面),和這個層次一致。
-// 各零件的轉角都由接觸算:落板靠在插銷或固定柱上;棘爪憑自重往下擺,停在插銷、星形輪或落板的擋片上;
+// 各零件的轉角都由接觸算:落板靠在插銷或固定柱上;棘爪憑自重往下擺,停在插銷、星形輪或落板上的銷上;
 // 星形輪只在被爪尖推著時轉,轉到剛好讓開爪尖為止。落板落下的過程演出來(jumps.falling);
 // 棘爪落進下一格的快慢由耳從插銷上滑下來決定。
 import { TAU, deg, polar, rot2 } from "./kit.js";
@@ -20,7 +21,7 @@ const Z = { star: 0.35, disc: 0, pawl: -0.35, drop: -0.6 };
 const STOP = { center: [-2.03, 1.68], r: 0.08 }; // 落板落定時尾端上緣頂著的固定柱(落板往下甩時尾端往上)
 const SPRING = { root: [-3.0, 0.75], tip: [1.1, 0.1] };
 const PEG = 0.07; // 爪尖短銷的半徑
-const POST = 0.06; // 棘爪柱子的半徑
+const DROP_PIN = { r: 0.06 }; // 落板上撞擊棘爪的銷(r:半徑;at:落板局部的位置,在下面算)
 
 export const starPitch = TAU / STAR.points;
 export const pinPeriod = TAU / DISC.pins;
@@ -37,14 +38,15 @@ const PAWL_LENGTH = Math.hypot(TIP_AT[0] - PAWL_AT[0], TIP_AT[1] - PAWL_AT[1]);
 const toPawl = (pts) => pts.map(([x, y]) => rot2([x - PAWL_AT[0], y - PAWL_AT[1]], -PAWL_ANGLE));
 const toDrop = (pts) => pts.map(([x, y]) => [x - PIVOT[0], y - PIVOT[1]]);
 const PAWL_PIVOT = toDrop([PAWL_AT])[0]; // 棘爪的樞軸(落板局部)
-const POST_AT = [PAWL_AT[0] + 0.32, PAWL_AT[1] + 0.02]; // 棘爪的柱子(世界座標,設計姿勢):在樞軸右邊,棘爪往下擺時它往上頂到落板的擋片
+// 棘爪的踵(世界座標,設計姿勢):樞軸右邊往右伸的一段,上緣水平;棘爪往下擺時踵往上頂到落板上的銷
+const HEEL = { x: [1.45, 1.98], top: PAWL_AT[1] + 0.08, bottom: PAWL_AT[1] - 0.06 };
+const DROP_PIN_AT = [1.75, HEEL.top + DROP_PIN.r + 0.002]; // 落板上的銷(世界座標,設計姿勢):剛好貼著踵的上緣
 
 const FOOT = -0.1; // 鉤腳的下緣(世界座標,設計姿勢)
 // 棘爪的耳(世界座標,設計姿勢):從爪身垂到鉤腳旁邊,下緣和鉤腳齊平,右緣比鉤腳短,插銷先從耳滑脫
 const LUG = { x: [0.98, 1.28], y: -0.1 };
-const LEDGE = POST_AT[1] + POST + 0.002; // 擋片的下緣(世界座標,設計姿勢):剛好貼著棘爪的柱子
 // 落板(局部,樞軸為原點):左邊往下斜的尾端、中央的螺絲座、右邊伸到圓盤上方再彎下來的鉤,
-// 鉤的下端有一隻往左伸的腳(插銷從下面頂它),鉤的右邊有一片擋片(棘爪的柱子撞它)
+// 鉤的下端有一隻往左伸的腳(插銷從下面頂它),鉤的右邊有一片座板,撞擊棘爪的銷裝在上面
 const dropOutline = [
   [-0.3, 0.3],
   [-1.0, -0.3],
@@ -60,18 +62,18 @@ const dropOutline = [
     [0.95, FOOT + 0.2],
     [0.95, FOOT],
     [1.42, FOOT],
-    [1.42, LEDGE],
-    [1.95, LEDGE],
-    [1.95, LEDGE + 0.16],
-    [1.55, 1.98],
+    [1.42, DROP_PIN_AT[1] - 0.12],
+    [1.95, DROP_PIN_AT[1] - 0.12],
+    [1.95, DROP_PIN_AT[1] + 0.1],
+    [1.55, DROP_PIN_AT[1] + 0.08],
   ]),
   [2.25, 0.22],
   [0.4, 0.44],
 ];
 // 棘爪(局部,局部 +y 在世界裡朝下):從樞軸往左下伸到星形輪頂上的長爪,樞軸左下垂一片耳(插銷頂它),
-// 樞軸右邊一小段帶柱子
+// 樞軸右邊往右伸出踵(落板上的銷壓在它的上緣)
 const pawlOutline = [
-  [-0.45, -0.12],
+  [-0.1, -0.12],
   [PAWL_LENGTH - 0.15, -0.08],
   [PAWL_LENGTH + 0.06, 0],
   [PAWL_LENGTH - 0.15, 0.08],
@@ -82,10 +84,14 @@ const pawlOutline = [
     [LUG.x[1], PAWL_AT[1] - (PAWL_AT[0] - LUG.x[1]) * Math.tan(deg(40)) - 0.05],
   ]),
   [0, 0.14],
-  [-0.1, 0.3],
-  [-0.45, 0.3],
+  ...toPawl([
+    [1.6, HEEL.bottom],
+    [HEEL.x[1], HEEL.bottom],
+    [HEEL.x[1], HEEL.top],
+    [HEEL.x[0], HEEL.top],
+  ]),
 ];
-const PAWL_POST = toPawl([POST_AT])[0];
+DROP_PIN.at = toDrop([DROP_PIN_AT])[0];
 
 const starOutline = polarOutline((a) => {
   const f = (((a / starPitch) % 1) + 1) % 1;
@@ -115,22 +121,17 @@ const pegAt = (drop, pawl) => {
   const [px, py] = pawlPivotWorld(drop);
   return circlePolygon([px + PAWL_LENGTH * Math.cos(pawl), py + PAWL_LENGTH * Math.sin(pawl)], PEG);
 };
-const postAt = (drop, pawl) => {
-  const [px, py] = pawlPivotWorld(drop);
-  const [x, y] = rot2(PAWL_POST, pawl);
-  return circlePolygon([px + x, py + y], POST);
+const dropPinAt = (drop) => {
+  const [x, y] = rot2(DROP_PIN.at, drop);
+  return circlePolygon([PIVOT[0] + x, PIVOT[1] + y], DROP_PIN.r);
 };
 
-// 棘爪相對落板最多往下擺到柱子頂住擋片(設計姿勢就是頂住的位置)
-const REL = (() => {
-  const drop = placeOutline(dropOutline, PIVOT, 0);
-  const pivot = pawlPivotWorld(0);
-  return swingUntilContact({ pivot, outline: circlePolygon(PAWL_POST, POST), from: PAWL_ANGLE - 0.3, into: 1, sweep: 0.6, steps: 120 }, [drop]);
-})();
+// 棘爪相對落板最多往下擺到踵頂住落板上的銷(設計姿勢就是頂住的位置)
+const REL = swingUntilContact({ pivot: pawlPivotWorld(0), outline: pawlOutline, from: PAWL_ANGLE - 0.3, into: 1, sweep: 0.6, steps: 120 }, [dropPinAt(0)]);
 
 /**
- * 棘爪憑自重往下擺(逆時針),最多擺到柱子頂住擋片;插銷頂著耳、或爪尖靠在齒上時,停在剛好不重疊的地方。
- * 從擋片的位置往上(順時針)找第一個不重疊的轉角——爪尖沿齒面滑出、被插銷頂起,都是往這個方向讓開
+ * 棘爪憑自重往下擺(逆時針),最多擺到踵頂住落板上的銷;插銷頂著耳、或爪尖靠在齒上時,停在剛好不重疊的地方。
+ * 從頂住銷的位置往上(順時針)找第一個不重疊的轉角——爪尖沿齒面滑出、被插銷頂起,都是往這個方向讓開
  */
 function pawlRest(drop, star, v) {
   const pivot = pawlPivotWorld(drop);
@@ -161,7 +162,7 @@ function pawlRest(drop, star, v) {
 }
 
 /**
- * 爪尖(棘爪頂住擋片時)要把那一齒推離多少,才不和爪尖重疊:那一齒被推到爪尖的下游,
+ * 爪尖(棘爪頂住銷時)要把那一齒推離多少,才不和爪尖重疊:那一齒被推到爪尖的下游,
  * 所以找的是「推多少仍重疊」的最後一點之後(爪尖已經越過那一齒原來的位置時,原位不重疊不代表沒被推)
  */
 function pushOf(drop, base) {
@@ -219,7 +220,7 @@ export function counter(w) {
   return { drop, star, pawl, height: (drop - DOWN) / (HELD - DOWN) };
 }
 
-/** 測試用:進程 w 時爪尖、星形輪、插銷、棘爪與落板的世界座標外形 */
+/** 測試用:進程 w 時爪尖、星形輪、插銷、棘爪、落板與落板上的銷的世界座標外形 */
 export function contactAt(w) {
   const { drop, star, pawl } = counter(w);
   const u = w - Math.floor(w / pinPeriod) * pinPeriod;
@@ -228,7 +229,7 @@ export function contactAt(w) {
     star: placeStar(starOutline, star),
     pins: pins(-u),
     pawl: placeOutline(pawlOutline, pawlPivotWorld(drop), pawl),
-    post: postAt(drop, pawl),
+    dropPin: dropPinAt(drop),
     drop: placeOutline(dropOutline, PIVOT, drop),
   };
 }
@@ -245,7 +246,7 @@ const PIN_FRONT = Z.disc + 0.15; // 插銷前端(盤面前一點,離星形輪那
 // 初始姿勢與動力重演的起點:插銷正頂著棘爪的耳、落板還在上升
 const START = -(RELEASE - 0.45 * pinPeriod);
 const replayStart = counter(-START);
-const startLift = replayStart.pawl - replayStart.drop - REL; // 起點時棘爪被頂離擋片多少(負的)
+const startLift = replayStart.pawl - replayStart.drop - REL; // 起點時棘爪被頂離落板上的銷多少(負的)
 export default {
   figure: 63,
   parts: [
@@ -289,6 +290,8 @@ export default {
         { kind: "box", size: [0.5, 0.06, 0.08], at: [0, 0, 0.12], angle: deg(60) },
         // 棘爪的樞軸銷:從落板往前伸到棘爪那一層
         { kind: "cylinder", radius: 0.06, length: dropToPawl + 0.1, at: [...PAWL_PIVOT, dropToPawl / 2] },
+        // 撞擊棘爪的銷:從座板往前伸到棘爪那一層,壓在踵的上緣
+        { kind: "cylinder", radius: DROP_PIN.r, length: dropToPawl + 0.1, at: [...DROP_PIN.at, dropToPawl / 2], accent: true },
       ],
     },
     {
@@ -299,9 +302,8 @@ export default {
       thickness: 0.12,
       arrow: false,
       pieces: [
-        // 爪尖的短銷往前伸到星形輪那一層;柱子往後伸到落板那一層,落板的擋片撞它
+        // 爪尖的短銷往前伸到星形輪那一層
         { kind: "cylinder", radius: PEG, length: Z.star - Z.pawl + 0.08, at: [PAWL_LENGTH, 0, (Z.star - Z.pawl) / 2] },
-        { kind: "cylinder", radius: POST, length: dropToPawl + 0.08, at: [...PAWL_POST, -dropToPawl / 2] },
       ],
     },
     { id: "spring", kind: "plate", center: [...SPRING.root, Z.drop], shape: shape(springOutline), thickness: 0.12, arrow: false },
@@ -330,7 +332,7 @@ export default {
     to: START - pinPeriod,
     free: {
       drop: { pivot: [...PIVOT, Z.drop], spring: -1 },
-      // 柱子頂住擋片:重演時棘爪和它鉸接的落板之間不算碰撞,改用樞軸的轉角範圍代表
+      // 踵頂住落板上的銷:重演時棘爪和它鉸接的落板之間不算碰撞,改用樞軸的轉角範圍代表
       pawl: { on: "drop", limits: [-1, -startLift] },
       star: { hold: true },
     },

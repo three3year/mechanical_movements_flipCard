@@ -1,6 +1,6 @@
 # 03 — 第 145 種:原文說小支架本身做水平往復,模型的支架固定
 
-**Status:** open(要先問維護者)
+**Status:** resolved
 
 **Blocked by:** None
 
@@ -10,5 +10,9 @@
 - **同類要一起查**:沒有。
 - **和定案衝突**:第 145 種的主動件、目標件在複查時換過(樑 → 飛輪),見 `.scratch/recheck-86-507/tables/README.md`,改之前一起看。
 
-- [ ] 維護者在 (a)、(b) 之間決定
-- [ ] 照決定改模型或註解
+- [x] 維護者在 (a)、(b) 之間決定
+- [x] 照決定改模型或註解
+
+## Comments
+
+維護者 2026-10-10 決定:(b) 維持固定。已在 `models/fig145.js` 檔頭寫明和原文不同之處與理由,並補記在 `.scratch/physical-verification/pending.md` 第 5 族。

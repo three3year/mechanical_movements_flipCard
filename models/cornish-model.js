@@ -1,4 +1,4 @@
-// 第 181–184 種的模型定義:同一套手動齒輪(見 cornish-gear.js),鎖住手柄的零件有兩種——
+// 第 181–184 種的模型定義:同一套手動操縱機構(見 cornish-gear.js),鎖住手柄的零件有兩種——
 // "catch":中間樞軸上的斜向卡榫與兩軸上的凸輪(第 181、182 種;接觸見 diagonal-catch.js);
 // "quadrants":兩根軸上各一個互相擋住的象限器(第 183、184 種)。
 // 象限器:各是一個以自己軸心為圓心的扇形。A 位置時下方象限器的圓弧擋住上方象限器的一角(上方手柄被鎖住,下方可轉);
@@ -135,7 +135,7 @@ const lockReplay = (initial, lock) => {
       { at: initial + (3 * SPAN) / 2, part: atB ? "lower" : "upper", label: `活塞${second}到一半,撥爪推著${atB ? "下方" : "上方"}手柄轉` },
       { at: initial + (3 * SPAN) / 2, part: atB ? "upper" : "lower", label: `同時${atB ? "上方" : "下方"}手柄仍${atB ? holder[1] : holder[0]}、不動` },
       { at: initial + SPAN, part: "lower", label: `活塞${first}到底,下方手柄${atB ? "被放開、落回原處" : `被抬起、${holder[0]}`}`, quote: "下方的手柄會被凸出的撥爪撞擊,並在被抬起後與卡榫嚙合" },
-      { at: initial + SPAN, part: "upper", label: `同時上方手柄${atB ? `被壓回、${holder[1]}` : "脫離、被配重拉起"}`, quote: "上方的手柄由於脫離了卡榫,其後方的配重會將手柄向上拉" },
+      { at: initial + SPAN, part: "upper", label: `同時上方手柄${atB ? `被壓回、${holder[1]}` : "脫離、被配重拉起"}`, quote: "上方的手柄由於脫離了卡榫,其配重會將手柄向上拉" },
       { at: initial + 2 * SPAN, part: "lower", label: `活塞${second}到底,下方手柄回到起點` },
       { at: initial + 2 * SPAN, part: "upper", label: `上方手柄回到起點` },
       ...(lock === "catch"

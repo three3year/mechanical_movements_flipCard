@@ -24,7 +24,7 @@ test("第 315 種:錐形擺:擺球作圓周運動,擺線描出一個圓錐面", 
   assert.equal(ys.size, 1, "擺球高度不變(圓錐)");
 });
 
-test("第 315 種:錐形擺:心軸上的搖臂從後面推著擺錘底下的尖銷走", () => {
+test("第 315 種:錐形擺:心軸上的臂從後面推著擺錘底下的尖銷走", () => {
   const { TOP, PIN_R, LAG, ARM_Y } = m315.geometry;
   for (const p of sweep(1, 12)) {
     const { spindle, bob, dir } = m315.conical(p);
@@ -75,10 +75,31 @@ test("第 320 種:無端鏈:上發條(拉 b)的期間,動力輪 P 照樣被帶�
   close(m320.chain(1).W, m320.chain(0).W, "一輪後 W 回到原位", 1e-9);
 });
 
-test("第 320 種:無端鏈:棘輪皮帶輪 p 在制動爪下方運行,爪被齒背抬起又落下,停著時落在齒根", () => {
+test("第 320 種:p 是軸(類似的滑輪騎在另一根軸 p 上);大重物 W 由繩段 c 拉起,d 仍掛在動力輪的滑輪 P 上", () => {
+  const def = m320.default;
+  const { Pp } = m320.geometry;
+  const p = def.parts.find((q) => q.label === "p");
+  assert.equal(p.kind, "cylinder", "p 標在軸上");
+  close(Math.hypot(p.center[0] - Pp[0], p.center[1] - Pp[1]), 0, "軸 p 穿過棘輪滑輪的中心", 1e-9);
+  assert.equal(def.parts.find((q) => q.id === "pulleyp").label, undefined, "棘輪滑輪本身不標 p");
+  // 繩段 c 從棘輪滑輪下到 W 的滑輪,a 從 P 下到 w 的滑輪(兩段在中間交叉)
+  const pose = def.pose(0.9).parts;
+  const W = pose.sheaveW.position;
+  const w = pose.sheavew.position;
+  const PP = def.parts.find((q) => q.id === "pulleyP").center;
+  const at = (label) => {
+    const q = def.parts.find((r) => r.label === label);
+    return q.center.map((c, i) => c + q.labelOffset[i]);
+  };
+  const toLine = ([x, y], [x0, y0], [x1, y1]) => Math.abs((x1 - x0) * (y - y0) - (y1 - y0) * (x - x0)) / Math.hypot(x1 - x0, y1 - y0);
+  assert.ok(toLine(at("c"), Pp, W) < toLine(at("c"), PP, w) / 3, "c 標在棘輪滑輪到 W 的繩段旁");
+  assert.ok(toLine(at("a"), PP, w) < toLine(at("a"), Pp, W) / 3, "a 標在 P 到 w 的繩段旁");
+});
+
+test("第 320 種:無端鏈:棘輪滑輪在制動爪下方運行,爪被齒背抬起又落下,停著時落在齒根", () => {
   const click = (p) => m320.clickAngle(p);
   const rest = click(0);
-  close(click(0.5), rest, "時鐘照走、沒上發條時 p 不動,爪也不動", 1e-12);
+  close(click(0.5), rest, "時鐘照走、沒上發條時棘輪滑輪不動,爪也不動", 1e-12);
   close(click(1), rest, "上完發條,爪回到齒根", 1e-9);
   const lifts = sweep(1, 400, 0.75).map(click);
   assert.ok(lifts.every((a) => a <= rest + 0.002), "爪只會被齒背抬起,不會比齒根更低");
@@ -97,8 +118,8 @@ test("第 320 種:無端鏈:棘輪皮帶輪 p 在制動爪下方運行,爪被齒
   // 查表內插會讓爪在兩個取樣之間略深一點;以爪尖的位移算,容許 0.003(爪長 0.57)
   for (const p of sweep(1, 800)) assert.ok(click(p) <= m320.clickLimit(p) + 0.003 / 0.57, `進程 ${p.toFixed(4)}:爪尖穿進棘輪`);
   const turn = m320.ratchetAngle(m320.chain(1).wound) - m320.ratchetAngle(m320.chain(0).wound);
-  close(turn % ((2 * Math.PI) / m320.RATCHET.teeth), 0, "每次上發條 p 轉過整數個齒", 1e-9);
-  assert.ok(turn > 0, "p 只往逆時針(棘輪放行的方向)轉");
+  close(turn % ((2 * Math.PI) / m320.RATCHET.teeth), 0, "每次上發條棘輪滑輪轉過整數個齒", 1e-9);
+  assert.ok(turn > 0, "棘輪滑輪只往逆時針(棘輪放行的方向)轉");
 });
 
 test("第 321 種:哈里森的動力盒:上發條時制動爪 T 擋住大棘輪,彈簧 S、S' 繼續推動主輪 G", () => {

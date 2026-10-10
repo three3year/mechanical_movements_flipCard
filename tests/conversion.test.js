@@ -238,7 +238,7 @@ test("第 149 種:凸輪作用於槓桿,附著的桿做交替直線運動", () =
   near(lever149(0), lever149(TAU), "一圈回到原處", 1e-9);
 });
 
-test("第 150 種:凸輪的擺動幅度越大,閥門的動作越大", () => {
+test("第 150 種:凸輪的升程越大,閥門的動作越大", () => {
   const stroke = (state) => {
     const ys = sweep(TAU, 360).map((t) => valve(t, state).rod);
     return Math.max(...ys) - Math.min(...ys);

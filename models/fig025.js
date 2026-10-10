@@ -1,5 +1,5 @@
-// 第 25 種:斜齒輪(傘齒輪)。上方水平的輪(軸直立)與左方直立的輪(軸水平)節錐頂相交,
-// 兩軸成直角;直徑相等時稱為等徑斜齒輪。齒數照原圖兩輪相近(30、28)。
+// 第 25 種:傘齒輪。上方水平的輪(軸直立)與左方直立的輪(軸水平)節錐頂相交,
+// 兩軸成直角;直徑相等時稱為等徑傘齒輪。齒數照原圖兩輪相近(30、28)。
 import { X, Y } from "./kit.js";
 import { meshAngle, bevelGear, pitchCones, bevelContact } from "./gears.js";
 
@@ -26,7 +26,7 @@ export default {
   figure: 25,
   parts: [bevel("top", TOP, 1.6), bevel("left", LEFT, 1.4)],
   driver: { part: "top", type: "rotation" },
-  target: "left", // 被帶動的斜齒輪
+  target: "left", // 被帶動的傘齒輪
   view: { direction: [0.25, 0.12, 1], fov: 14 },
   pose(angle) {
     return { parts: { top: { angle }, left: { angle: meshAngle(TOP, LEFT, angle, CONTACT) } }, readouts: [] };

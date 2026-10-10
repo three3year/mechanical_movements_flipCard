@@ -42,7 +42,7 @@ test("第 109 種:導螺桿使刀具均勻直線移動;更換末端的輪,切出
   close(lead109 / turns, cutting(0, "double").cutPitch, "由運動算出的螺距", 1e-9);
 });
 
-test("第 111 種:千分螺桿——外側空心螺桿每轉一圈,模具只移動兩者螺距的差", () => {
+test("第 111 種:千分螺桿——外側空心螺桿每轉一圈,螺紋塊只移動兩者螺距的差", () => {
   close(differential(TAU).inner - differential(0).inner, p111.coarse - p111.fine);
   close(differential(TAU).outer, p111.coarse, "外側螺桿前進一個粗螺距");
 });

@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep } from "./helpers.js";
-import { penetrationDepth, polygonsOverlap } from "../models/contact.js";
+import { penetrationDepth, polygonsOverlap, edgeDistance } from "../models/contact.js";
 import { placePoly } from "../models/escapement.js";
 
 import * as m288 from "../models/fig288.js";
@@ -135,18 +135,18 @@ test("第 291 種:天文台計時器擒縱:擺輪往箭頭方向擺時凸柱壓�
   apart(m291.escapement, "detent", "pin");
 });
 
-test("第 293 種:雙合式擒縱:叉瓦 B 每次往一個方向擺時接收一個衝擊,輪每次放走一齒", () => {
+test("第 293 種:雙合式擒縱:叉瓦 B 每次往一個方向擺時接收一個衝量,輪每次放走一齒", () => {
   const e = m293.escapement;
   const S = m293.SWING;
   close(e.step, -m293.PITCH, "擺輪來回一次,輪轉過一齒", 1e-9);
   noPenetration(e);
   const base = 2 * e.period;
-  // 往衝擊的方向擺(先擺的那一程)放走一齒;擺回來只有齒尖落進凹槽一點又被推回
+  // 往受衝量的方向擺(先擺的那一程)放走一齒;擺回來只有齒尖落進凹槽一點又被推回
   close(m293.duplex(base + 2 * S).wheel - m293.duplex(base).wheel, -m293.PITCH, "往一個方向擺時放走一齒", 1e-6);
   close(m293.duplex(base + 4 * S).wheel, m293.duplex(base + 2 * S).wheel, "擺回來時不放行", 1e-6);
   const back = sweep(base + 4 * S, 200, base + 2 * S).map((v) => m293.duplex(v).wheel);
   assert.ok(Math.max(...back) - Math.min(...back) < m293.PITCH * 0.25, "擺回來時齒尖只落進凹槽一點");
-  // 叉瓦 B 從冠狀齒接收衝擊:衝擊那一程有一段輪和 B 相碰
+  // 叉瓦 B 從冠狀齒接收衝量:受衝量那一程有一段輪和 B 相碰
   const touches = sweep(base + 2 * S, 400, base).filter((v) => {
     const { teeth, stops, layers, stopLayers } = e.at(v);
     const rot = teeth.map((t) => t.map(([x, y]) => [x * Math.cos(-1e-3) - (y + 2.2) * Math.sin(-1e-3), x * Math.sin(-1e-3) + (y + 2.2) * Math.cos(-1e-3) - 2.2]));
@@ -210,7 +210,7 @@ test("第 302 種:擺輪式擒縱:擺輪 C 來回擺,叉瓦 A、B 輪流放走�
   noPenetration(m302.escapement);
 });
 
-test("第 303 種:靜擊式擺鐘擒縱:叉瓦面與擺動軸同心,不會產生回退", () => {
+test("第 303 種:靜擊式擺式擒縱:叉瓦面與擺動軸同心,不會產生回退", () => {
   const e = m303.escapement;
   escapes(e, m303.PITCH, -1);
   noPenetration(e);
@@ -232,7 +232,7 @@ test("第 305 種:單銷式擒縱:擺每擺動一次,擒縱輪(帶一根偏心�
   noPenetration(e);
 });
 
-test("第 306 種:三腳式擺鐘擒縱:三腳輪的齒交替作用於上、下叉瓦,擺每擺一次轉六分之一圈", () => {
+test("第 306 種:三腳式擺式擒縱:三腳輪的齒交替作用於上、下叉瓦,擺每擺一次轉六分之一圈", () => {
   escapes(m306.escapement, 2 * m306.STEP, 1);
   noPenetration(m306.escapement);
 });
@@ -300,9 +300,21 @@ test("第 312 種:布洛克桑重力擒縱:擺推開一個叉瓦、放開擋止,
   noPenetration(m312.escapement);
 });
 
+test("第 313 種:E 是槓桿(止動器)返回後靠住的擋止,不是鎖石", () => {
+  const def = m313.default;
+  const stop = def.parts.find((p) => p.id === "foot").pieces.find((p) => p.kind === "cylinder");
+  const e = def.parts.find((p) => p.label === "E");
+  close(Math.hypot(e.center[0] - stop.at[0], e.center[1] - stop.at[1]), 0, "E 標在擋止上", 1e-9);
+  // 止動器停著時靠在擋止上:擋止和止動器的本體之間沒有空隙
+  const detent = def.parts.find((p) => p.id === "detent");
+  const body = detent.pieces[0].shape.outline.map(([x, y]) => [x + detent.center[0], y + detent.center[1]]);
+  const r = stop.radius;
+  assert.ok(edgeDistance([stop.at[0], stop.at[1]], body) < r + 0.01, "止動器靠在擋止 E 上");
+});
+
 test("第 313 種:天文台計時器擒縱:擺輪朝箭頭方向轉時推開止動器、放走一齒,輪齒推衝量叉瓦;返回時不動止動器", () => {
   // 方向照插圖(維護者 2026-10-08 決定):擒縱輪在左、止動器在右、滾子在右上;擺輪先往返回的方向(順時針)擺,
-  // 再朝箭頭方向(逆時針)擺。原文說齒 V 把通過彈簧「向左」按,插圖的配置要往右(離開擒縱輪)才放得開齒
+  // 再朝箭頭方向(逆時針)擺。原文說齒 V 把通過彈簧壓向槓桿(沒有方向),插圖的配置要往右(離開擒縱輪)才放得開齒
   const def = m313.default;
   const center = (id) => def.parts.find((p) => p.id === id).center;
   assert.ok(center("wheel")[0] < center("detent")[0], "擒縱輪在止動器左邊(照插圖,不鏡像)");

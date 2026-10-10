@@ -196,7 +196,7 @@ export default {
     free: { wheel: { pivot: [...W, 0], spring: -1, gravity: false }, armR: { pivot: [...C, 0] }, armL: { pivot: [...C, 0] } },
     ignore: [["wheel", "frame"], ["armR", "frame"], ["armL", "frame"]],
     expect: [
-      { at: 2 * SWING, part: "wheel", label: "擺往右擺:推開右臂、放開擋止 B,輪轉半個齒距、被擋止 A 擋住", quote: "止動則由較大的輪上的擋止 A 和 B 的作用來完成" },
+      { at: 2 * SWING, part: "wheel", label: "擺往右擺:推開右臂、放開擋止 B,輪轉半個齒距、被擋止 A 擋住", quote: "止動則由擋止 A 和 B 對較大的輪的作用來完成" },
       { at: 2 * SWING, part: "armR", label: "擺往右擺:右臂被擺推開" },
       { at: 4 * SWING, part: "wheel", label: "擺往左擺:推開左臂、放開擋止 A,輪再轉半個齒距" },
       { at: 4 * SWING, part: "armL", label: "擺往左擺:左臂被擺推開" },

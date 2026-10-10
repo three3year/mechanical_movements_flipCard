@@ -104,7 +104,7 @@ test("第 91 種:三角形偏心輪使方框做間歇性的往復,有一段時�
   for (const t of sweep(2 * Math.PI, 72)) close(frame91(t).top - frame91(t).bottom, width91, "上下邊永遠同時碰到輪", 1e-3);
 });
 
-test("第 93 種:曲柄手腕在開槽軛內作動,軛直線往復,行程是曲柄半徑的兩倍", () => {
+test("第 93 種:曲柄銷在開槽軛內作動,軛直線往復,行程是曲柄半徑的兩倍", () => {
   close(strokeOf(sweep(2 * Math.PI, 720).map((t) => yoke93(t).y)), 2 * r93, "行程", 1e-4);
 });
 
@@ -114,7 +114,7 @@ test("第 94 種:轉動螺旋板時,螺栓沿放射槽朝中心移動或遠離�
   assert.ok(crankLength(lo) > crankLength(hi), "範圍兩端曲柄長不同");
 });
 
-test("第 98 種:圓盤上的曲柄銷始終在振動臂的環形溝槽內,臂做不規則的擺動", () => {
+test("第 98 種:圓盤上的曲柄銷始終在擺動臂的環形溝槽內,臂做不規則的擺動", () => {
   const psis = sweep(2 * Math.PI, 360).map((t) => arm98(t).psi);
   for (const t of sweep(2 * Math.PI, 36)) assert.ok(arm98(t).err < 1e-6, "銷在溝槽中心線上");
   assert.ok(strokeOf(psis) > 0.1, "臂會擺動");

@@ -1,5 +1,5 @@
 // 第 428 種:印度橡膠旋轉式引擎。汽缸有一層印度橡膠做的撓性內襯 E,以滾子 A、A 代替活塞,滾子裝在從主軸 B 放射出去的
-// 搖臂上。蒸汽在橡膠與外圍剛性汽缸之間作用,把橡膠壓向滾子,使滾子繞著汽缸轉、帶動主軸。
+// 臂上。蒸汽在橡膠與外圍剛性汽缸之間作用,把橡膠壓向滾子,使滾子繞著汽缸轉、帶動主軸。
 // 主動件是主軸 B(原圖箭頭:順時針)。
 // 推斷:三個滾子把橡膠壓貼在汽缸壁上;進汽口在左、排汽口在右。從進汽口順時針到前面那個滾子之間,蒸汽把橡膠往內壓、
 // 包住滾子的後側,推它前進;其餘部分的橡膠貼著汽缸壁。
@@ -62,7 +62,7 @@ export default {
     ...[0, 1, 2].map((k) => ({ id: `roller${k + 1}`, kind: "pulley", style: "disc", radius: ROLLER - 0.04, width: 0.5, label: "A", labelOffset: [0, 0, 0.45], arrow: false })),
   ],
   driver: { part: "arms", type: "rotation", speed: -0.5, initial: deg(80) },
-  targets: ["roller1", "roller2", "roller3"], // 主軸 B 就是主動件(搖臂);標代替活塞、被橡膠內襯推著走的滾子 A
+  targets: ["roller1", "roller2", "roller3"], // 主軸 B 就是主動件(臂);標代替活塞、被橡膠內襯推著走的滾子 A
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const pts = Array.from({ length: 241 }, (_, i) => {

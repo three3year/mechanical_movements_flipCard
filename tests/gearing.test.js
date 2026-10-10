@@ -87,7 +87,7 @@ const ratioTest = (def, a, b) => {
   close(Math.abs(turned(def, b, 0, 0.6)), (0.6 * na) / nb, "轉角比為齒數反比");
 };
 
-test("第 25 種:斜齒輪把旋轉傳到成直角的軸,轉角比為齒數反比", () => {
+test("第 25 種:傘齒輪把旋轉傳到成直角的軸,轉角比為齒數反比", () => {
   ratioTest(fig25, "top", "left");
   const axes = [part(fig25, "top").axis, part(fig25, "left").axis];
   close(axes[0][0] * axes[1][0] + axes[0][1] * axes[1][1] + axes[0][2] * axes[1][2], 0, "兩軸成直角");

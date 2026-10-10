@@ -35,6 +35,18 @@ test("第 471 種:大氣錘:汽缸隨曲柄上下;錘的打擊發生在曲柄越
   }
 });
 
+test("第 471 種:只有一個進氣孔 e(在汽缸壁的中段),汽缸上升與下降時空氣都從它進入", () => {
+  const def = m471.default;
+  const holes = def.parts.filter((p) => /^hole/.test(p.id));
+  assert.deepEqual(holes.map((p) => p.label), ["e"], "只有孔 e");
+  for (const t of sweep(2 * Math.PI, 24)) {
+    const pose = def.pose(t).parts;
+    const bottom = pose.cylinder.position[1];
+    const e = pose[holes[0].id].position[1];
+    close(e - bottom, m471.CYL_LEN / 2, "孔 e 在汽缸壁的中段(照原圖)", 1e-9);
+  }
+});
+
 test("第 472 種:壓縮空氣錘:滑閥輪流把空氣送到活塞上方與下方;空氣由驅動軸帶動的空氣泵供應", () => {
   const ys = sweep(4 * Math.PI, 200).map((t) => m472.hammer(t));
   assert.ok(ys.some((h) => h.below) && ys.some((h) => !h.below), "空氣輪流進活塞下方與上方");
@@ -113,7 +125,7 @@ test("第 478 種:Ray 疏水器:管裡是水時管子短、閥門開;是蒸汽�
     const s = m478.trap(t);
     assert.ok(s.plunger >= m478.STOP - 1e-12, "柱塞被槓桿推到擋止為止");
     assert.ok(s.plunger >= s.end - 1e-12, "管端不會穿過柱塞");
-    // 由接觸算:加重的肘節槓桿 D 鉸在固定的支點上,下臂的左側面貼著柱塞右端的下緣
+    // 由接觸算:加重的肘形槓桿 D 鉸在固定的支點上,下臂的左側面貼著柱塞右端的下緣
     const a = s.lever;
     const corner = [s.plunger + m478.PLUNGER - m478.PIVOT[0], -m478.PLUNGER_R - m478.PIVOT[1]];
     close(-corner[0] * Math.cos(a) - corner[1] * Math.sin(a), m478.ARM_W / 2, "下臂的側面貼著柱塞端", 1e-6);
@@ -145,7 +157,7 @@ test("第 482 種:氣體調節器:主管壓力增加時杯子 H 升起、閥 D �
   const hi = m482.regulate(1.4);
   assert.ok(hi.lift > lo.lift, "壓力大,杯子升高");
   assert.ok(hi.drop > lo.drop, "閥被槓桿壓低");
-  assert.ok(hi.opening < lo.opening, "缺口 h 縮小");
+  assert.ok(hi.opening < lo.opening, "缺口 b 縮小");
   assert.ok(Math.abs(hi.flow - lo.flow) < 0.5 * (1.4 - 0.8), "送出的氣量變化遠小於壓力變化");
 });
 

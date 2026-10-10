@@ -391,7 +391,7 @@ test("第 454 種:隔膜泵:隔膜拉起時吸水閥開,壓下時水經出水閥
   }
 });
 
-test("第 455 種:舊式旋轉泵:閥門貼著圓筒內面轉,到擋板處被闔上", () => {
+test("第 455 種:舊式旋轉泵:閥門貼著泵缸內面轉,到擋板處被闔上", () => {
   const deg = Math.PI / 180;
   // 轉鼓順時針轉(phi 遞減):鉸點進到擋板的長斜面底下,閥門被一路壓下;到擋板的平面段時已闔上
   let prev = 1;
@@ -407,16 +407,16 @@ test("第 455 種:舊式旋轉泵:閥門貼著圓筒內面轉,到擋板處被闔
     const open = m455.opening(phi);
     const a = Math.atan2(Math.sin(phi), Math.cos(phi));
     if (a > m455.ABUT[0] && a < m455.ABUT[1] - m455.RAMP_IN) assert.ok(open < 0.8, "鉸點在擋板的平面段時閥門被壓下");
-    // 由接觸算:閥門上沒有一點超出擋板的內面或圓筒的內壁
+    // 由接觸算:閥門上沒有一點超出擋板的內面或泵缸的內壁
     const ang = m455.valveAngle(phi);
     for (const t of sweep(m455.VALVE, 8, 0.05)) {
       const q = [m455.DRUM * Math.cos(phi) + t * Math.cos(ang), m455.DRUM * Math.sin(phi) + t * Math.sin(ang)];
-      assert.ok(Math.hypot(...q) <= m455.reachAt(Math.atan2(q[1], q[0])) + 0.01, "閥門不穿入擋板或圓筒");
+      assert.ok(Math.hypot(...q) <= m455.reachAt(Math.atan2(q[1], q[0])) + 0.01, "閥門不穿入擋板或泵缸");
     }
     if (open > 0.995) {
       const ang = m455.valveAngle(phi);
       const tip = [m455.DRUM * Math.cos(phi) + m455.VALVE * Math.cos(ang), m455.DRUM * Math.sin(phi) + m455.VALVE * Math.sin(ang)];
-      close(Math.hypot(...tip), m455.BORE, "張開的閥門外緣貼著圓筒內面", 0.05);
+      close(Math.hypot(...tip), m455.BORE, "張開的閥門外緣貼著泵缸內面", 0.05);
     }
   }
   assert.ok(m455.opening(90 * deg) > 0.95, "其他地方閥門張開");
@@ -427,7 +427,7 @@ test("第 456 種:Cary 旋轉泵:活塞依心形凸輪進出;對準 E 時被推�
     const parts = m456.default.pose(t).parts;
     for (const k of [0, 1]) {
       const p = parts[`piston${k}`];
-      close(Math.hypot(p.position[0], p.position[1]), m456.reach(p.angle), "活塞外端貼著圓筒");
+      close(Math.hypot(p.position[0], p.position[1]), m456.reach(p.angle), "活塞外端貼著泵缸");
       // 由接觸算:內端圓頭的圓心離凸輪外形恰好一個圓頭半徑(貼著、不穿入)
       const c = [p.position[0] - (m456.PISTON - m456.NOSE) * Math.cos(p.angle), p.position[1] - (m456.PISTON - m456.NOSE) * Math.sin(p.angle)];
       const gap = Math.min(...m456.CAM.map(([x, y]) => Math.hypot(x - c[0], y - c[1])));
@@ -438,7 +438,7 @@ test("第 456 種:Cary 旋轉泵:活塞依心形凸輪進出;對準 E 時被推�
   close(m456.reach(Math.PI / 2), m456.DRUM + 2 * m456.ECC, "同時對面的活塞完全伸出");
 });
 
-test("第 462 種:鏈式泵:上輪轉動,碟片沿不漏水的圓筒往上走,把碟片之間的水抬上去", () => {
+test("第 462 種:鏈式泵:上輪轉動,碟片沿不漏水的泵缸往上走,把碟片之間的水抬上去", () => {
   const def = m462.default;
   const a = def.pose(0).parts;
   const b = def.pose(-0.3).parts; // 上輪順時針轉
@@ -451,7 +451,7 @@ test("第 462 種:鏈式泵:上輪轉動,碟片沿不漏水的圓筒往上走,�
     }
   }
   assert.ok(checked > 3, "筒裡有好幾片碟片");
-  assert.ok(m462.TUBE.y0 < m462.WATER, "圓筒下端浸在水裡");
+  assert.ok(m462.TUBE.y0 < m462.WATER, "泵缸下端浸在水裡");
   const s = 1.234;
   const p = m462.chainAt(s).p;
   const q = m462.chainAt(s + m462.LOOP).p;
@@ -591,7 +591,7 @@ test("第 466 種:液壓機:力的倍數等於兩柱塞的直徑平方比;1 吋�
   assert.equal(m466.press(span * 0.5).rise, 0, "提起泵柱塞(吸水)時柱塞不動");
 });
 
-test("第 467 種:液壓千斤頂:壓手柄把圓筒沿固定的柱塞抬起;開閥時水流回、慢慢放下", () => {
+test("第 467 種:液壓千斤頂:壓手柄把液壓缸沿固定的柱塞抬起;開閥時水流回、慢慢放下", () => {
   const span = Math.abs(m467.SWING[1] - m467.SWING[0]);
   const lifts = [0, 2, 4].map((k) => m467.jack(k * span + span * 0.9, "lift").rise);
   assert.ok(lifts[2] > lifts[1] && lifts[1] > lifts[0], "壓越多下,升得越高");

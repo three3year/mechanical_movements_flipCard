@@ -1,4 +1,4 @@
-// 第 466 種:液壓機。水由泵經小管壓進柱塞圓筒,進到實心柱塞下方,把柱塞往上推。得到的力與泵柱塞、柱塞兩者的面積比
+// 第 466 種:液壓機。水由泵經小管壓進柱塞缸,進到實心柱塞下方,把柱塞往上推。得到的力與泵柱塞、柱塞兩者的面積比
 // (直徑平方比)成正比;例如泵柱塞直徑 1 吋、柱塞 30 吋,柱塞受的向上壓力就是加在泵柱塞上向下壓力的 900 倍。
 // 主動件是泵的手柄(每壓一下,柱塞上升一點)。
 // 推斷:泵在右邊的水箱裡,有吸水閥與出水閥;模型裡柱塞與泵柱塞的直徑比依原圖(約 7 : 1),每一下柱塞上升
@@ -11,7 +11,7 @@ import { shape, rect } from "./shapes.js";
 
 export const RAM_D = 1.3; // 柱塞直徑
 export const PLUNGER_D = 0.18; // 泵柱塞直徑
-const RAM = { x: -1.2, y0: -1.6, y1: 0.0 }; // 柱塞圓筒
+const RAM = { x: -1.2, y0: -1.6, y1: 0.0 }; // 柱塞缸
 const RAM_LEN = 1.5;
 export const RAM_TRAVEL = 0.8;
 const PUMP_X = 1.6;
@@ -32,7 +32,7 @@ export function press(v) {
   const { at, forward } = phase;
   const { E, top } = arm(at);
   const y = top[1] - ROD;
-  // 每一次下壓把泵行程的水送進圓筒:柱塞上升 = 泵行程 × 面積比(畫面上再放大 8 倍才看得出來,見檔頭)
+  // 每一次下壓把泵行程的水送進柱塞缸:柱塞上升 = 泵行程 × 面積比(畫面上再放大 8 倍才看得出來,見檔頭)
   const strokes = Math.floor(v / span / 2) + (forward ? 0 : (v / span) % 1);
   const ratio = (PLUNGER_D / RAM_D) ** 2;
   const rise = Math.min(RAM_TRAVEL, strokes * PUMP_STROKE * ratio * 8);
@@ -53,7 +53,7 @@ export default {
         { kind: "box", size: [0.16, 3.6, 0.16], at: [RAM.x - 1.0, 0.1, 0] },
         { kind: "box", size: [0.16, 3.6, 0.16], at: [RAM.x + 1.0, 0.1, 0] },
         { kind: "box", size: [2.3, 0.35, 0.8], at: [RAM.x, 2.05, 0] },
-        // 泵的水箱、從泵到圓筒的小管、手柄支柱
+        // 泵的水箱、從泵到柱塞缸的小管、手柄支柱
         { kind: "plate", shape: shape(rect(1.3, 1.1, PUMP_X, -1.0), [rect(1.2, 1.05, PUMP_X, -0.98).reverse()]), thickness: 0.8 },
         ...pipeWalls([[PUMP_X - 0.12, PUMP.y0 + 0.15], [0.4, PUMP.y0 + 0.15], [0.4, RAM.y0 + 0.1], [RAM.x + RAM_D / 2 + 0.1, RAM.y0 + 0.1]], 0.08, 0.04, 0.2),
         { kind: "box", size: [0.1, 1.5, 0.1], at: [HANDLE.pivot[0], HANDLE.pivot[1] - 0.75, -0.15] },

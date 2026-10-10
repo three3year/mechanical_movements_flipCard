@@ -140,15 +140,15 @@ test("第 118 種:下齒條固定,小齒輪一邊前進一邊滾動,上齒條移
   close(doubler(-0.5).upper - doubler(0).upper, -1.0);
 });
 
-test("第 121 種:桿的交替直線運動使碟形輪往復擺動,制動爪使棘輪間歇地單向轉動;翻轉制動爪則反向", () => {
-  // 原文:「連接於碟形輪上之桿的交替直線運動,透過連接於碟形輪上的制動爪,會產生棘輪的間歇旋轉運動」
+test("第 121 種:桿的交替直線運動使碟形輪往復擺動,制動爪使齒輪間歇地單向轉動;翻轉制動爪則反向", () => {
+  // 原文:「連接於碟形輪上之桿的交替直線運動,透過連接於碟形輪上的制動爪,會產生齒輪的間歇旋轉運動」
   const discs = sweep(stroke121 * 2, 200).map((v) => feed(v, 1).disc);
   close(Math.max(...discs) - Math.min(...discs), swingAngle, "桿走一個行程,碟形輪擺 30°", 1e-6);
   const cw = sweep(stroke121 * 6, 600).map((v) => feed(v, 1).cog);
   for (let i = 1; i < cw.length; i++) assert.ok(cw[i] <= cw[i - 1] + 1e-9, "只往一個方向轉");
   close(feed(stroke121 * 2, 1).cog - feed(0, 1).cog, -2 * tooth121, "每個來回推進兩齒(碟形輪擺 30° = 兩個齒距)", 1e-6);
   close(feed(stroke121 * 2, -1).cog - feed(0, -1).cog, 2 * tooth121, "「此運動可藉由翻轉制動爪來反向」", 1e-6);
-  // 推程(桿往下拉、碟形輪順時針擺)棘輪跟著走,回程(桿推回)不動
+  // 推程(桿往下拉、碟形輪順時針擺)齒輪跟著走,回程(桿推回)不動
   const back = sweep(stroke121 * 2, 20, stroke121).map((v) => feed(v, 1).cog);
   for (const c of back) close(c, back[0], "回程不動", 1e-9);
   // 爪與齒只貼著、不穿入(由接觸算)
@@ -171,7 +171,7 @@ test("第 122 種:兩個轉速不同的齒輪經連桿使水平桿做變速的�
     close(Math.hypot(a[0] - w1[0], a[1] - w1[1]), rods122.l1, "上連桿長度", 1e-6);
     close(Math.hypot(b[0] - w2[0], b[1] - w2[1]), rods122.l2, "下連桿長度", 1e-6);
   }
-  // 齒數比 26 : 22,同一個輪的轉角下兩手腕相位一直在變:每一趟的行程不盡相同
+  // 齒數比 26 : 22,同一個輪的轉角下兩曲柄銷相位一直在變:每一趟的行程不盡相同
   const span = (from) => {
     const seg = sweep(from + TAU, 200, from).map((t) => linkage(t).x);
     return Math.max(...seg) - Math.min(...seg);
@@ -212,7 +212,7 @@ test("第 126 種:曲柄搖臂改變力的方向——往下拉繩,直臂下端�
   close(Math.hypot(b.down[0] - 1.45, b.down[1] + 0.95), arms126.down, "直臂長度不變");
 });
 
-test("第 127 種:槓桿振動,齒輪兩側的齒條一根上升時另一根下降", () => {
+test("第 127 種:槓桿擺動,齒輪兩側的齒條一根上升時另一根下降", () => {
   const a = racks127(0);
   const b = racks127(0.4);
   assert.ok((b.left - a.left) * (b.right - a.right) < 0, "兩根齒條反向");

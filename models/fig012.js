@@ -1,4 +1,4 @@
-// 第 12 種:吊重物的簡單皮帶輪。施力必須等於重量才能平衡(1:1)。
+// 第 12 種:吊重物的簡單滑輪。施力必須等於重量才能平衡(1:1)。
 import { Z, Y, clamp, routeRope, sheaveAngle, hoistReadouts, rod } from "./kit.js";
 
 const RANGE = [0, 1.6];

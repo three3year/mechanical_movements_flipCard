@@ -1,8 +1,8 @@
 // 第 419 種:連續圓周運動轉換為搖動運動,用於自搖式搖籃。輪 A 轉動,以連桿接到半徑較大的輪 B 上,B 因而來回擺動;
-// 輪 B 上裝著兩條撓性皮帶 C、D,各接到搖籃搖桿 E 上的立柱。
+// 輪 B 上裝著兩條撓性皮帶 C、D,各接到搖籃弧形搖腳 E 上的立柱。
 // 主動件是輪 A(原圖的箭頭為逆時針)。
 // 推斷:A、B 裝在固定在地上的背板上;兩條皮帶從 B 的頂端分別往左、往右接到兩根立柱的頂端,各自繞在 B 上、
-// 一條在 B 往一邊擺時捲緊、另一條放鬆,於是搖籃在弧形搖桿上來回滾動(皮帶不伸縮)。
+// 一條在 B 往一邊擺時捲緊、另一條放鬆,於是搖籃在弧形搖腳上來回滾動(皮帶不伸縮)。
 import { TAU, deg } from "./kit.js";
 import { circleCircle, solve } from "./linkage.js";
 import { shape, thickLine, arcPoints, rect } from "./shapes.js";
@@ -10,7 +10,7 @@ import { shape, thickLine, arcPoints, rect } from "./shapes.js";
 export const A = { center: [0, 1.2, 0], crank: 0.25 };
 export const B = { center: [0, 2.15, 0], radius: 1.25, pin: 0.75 };
 const COUPLER = 1.15;
-export const ROCKER = 3.4; // 搖桿 E 弧面的半徑;曲率中心與皮帶同高
+export const ROCKER = 3.4; // 弧形搖腳 E 弧面的半徑;曲率中心與皮帶同高
 const POST_X = 1.9;
 const WRAP = deg(60); // 皮帶在 B 上繞的長度(以角度計,B 在中間位置時)
 

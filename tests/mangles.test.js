@@ -280,7 +280,7 @@ test("第 205 種:兩個凸輪組成的「兩齒小齒輪」,交替推動輪兩�
   close(m205.wheelAngle(Math.PI) - m205.wheelAngle(0), -STEP, "半圈一格(另一個凸輪接手)", 1e-12);
 });
 
-test("第 206 種:承載兩個棘爪的槓桿振動,一個上升時推、一個下降時推,棘輪連續朝同一方向轉", () => {
+test("第 206 種:承載兩個棘爪的槓桿擺動,一個上升時推、一個下降時推,棘輪連續朝同一方向轉", () => {
   const S = m206.swing;
   const angles = sweep(4 * S, 400).map((v) => m206.wheelAngle(v));
   for (let i = 1; i < angles.length; i++) assert.ok(angles[i] <= angles[i - 1] + 1e-12, "只朝一個方向");
@@ -358,7 +358,7 @@ test("第 208 種:開槽小齒輪移到三圈銷中的任一圈,得到三種速�
   close(speeds[0] / speeds[2], m208.rings.outer / m208.rings.inner, "比例 = 銷數比", 1e-12);
 });
 
-test("第 216 種:外側與內側缺齒輪交替與小齒輪咬合:一個方向慢、另一個方向快", () => {
+test("第 216 種:外側與內側缺齒式齒輪交替與小齒輪咬合:一個方向慢、另一個方向快", () => {
   const { RS, RP, RI } = m216.radii;
   const rate = (t) => (m216.pinion(t + 1e-4).angle - m216.pinion(t - 1e-4).angle) / 2e-4;
   // 原圖位置:內側小輪的齒在下方咬合 → 小齒輪與輪反向、較慢
@@ -397,10 +397,10 @@ test("第 219 種:冠狀輪偏心,與小齒輪接觸處的相對半徑一直在�
   assert.ok(RP > 0);
 });
 
-test("第 220 種:手腕在開槽曲柄的槽內作動,離後者軸心的距離一直在變,所以等速轉動傳成變速轉動", () => {
+test("第 220 種:腕銷在開槽曲柄的槽內作動,離後者軸心的距離一直在變,所以等速轉動傳成變速轉動", () => {
   const { SLOT } = m220.geometry;
   const states = sweep(2 * Math.PI, 720).map((t) => m220.cranks(t));
-  for (const s of states) assert.ok(s.along > SLOT.from && s.along < SLOT.to, "手腕一直在槽內");
+  for (const s of states) assert.ok(s.along > SLOT.from && s.along < SLOT.to, "腕銷一直在槽內");
   const angles = states.map((s) => s.angle);
   const steps = angles.slice(1).map((a, i) => Math.abs(Math.atan2(Math.sin(a - angles[i]), Math.cos(a - angles[i]))));
   assert.ok(Math.max(...steps) / Math.min(...steps) > 2, "變速");

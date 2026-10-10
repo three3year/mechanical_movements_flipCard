@@ -1,7 +1,7 @@
-// 第 411 種:測量員用的自動記錄水平儀。托架的形狀由一個以水平為底邊的等腰三角形決定,每個輪子的圓周等於三角形的底邊
+// 第 411 種:測量員用的自動記錄水平儀。台車的形狀由一個以水平為底邊的等腰三角形決定,每個輪子的圓周等於三角形的底邊
 // (前後輪軸的距離)。儀器在水平地面上時,擺把底邊二等分;在斜面上時,擺相應地朝右或朝左偏離中心。
-// 一個由托架輪帶動旋轉的鼓輪捲著畫好分格的紙,擺上的鉛筆在紙上畫出一條對應所走過地面輪廓的剖面線。
-// 主動件是托架(手推著沿地面前進);鼓輪上的記錄線由 pose 回傳。
+// 一個由台車輪子帶動旋轉的鼓輪捲著畫好分格的紙,擺上的鉛筆在紙上畫出一條對應所走過地面輪廓的剖面線。
+// 主動件是台車(手推著沿地面前進);鼓輪上的記錄線由 pose 回傳。
 // 推斷:前後各一對輪子,鼓輪軸沿前進方向,由後輪軸上的小傘齒輪以 1 : 4 帶動(原文沒寫齒數);擺掛在三角形頂點的橫軸上,
 // 鉛筆在擺上、正對鼓輪前面;鼓輪可上下、左右移動的調整(配合比例、免換紙)沒有畫出。
 import { X, Z, TAU, clamp, quatMul, quatAxisAngle, quatFromZ } from "./kit.js";
@@ -9,7 +9,7 @@ import { shape, arcPoints, thickLine } from "./shapes.js";
 
 export const BASE = 3.6; // 三角形的底邊 = 前後輪軸的距離
 export const WHEEL = BASE / TAU; // 輪子半徑:圓周等於底邊
-const APEX = 1.9; // 擺的懸點(托架頂)離底邊的高度
+const APEX = 1.9; // 擺的懸點(台車頂)離底邊的高度
 const DRUM = { radius: 0.38, width: 2.2 };
 export const RATIO = 1 / 4; // 鼓輪轉速 / 輪子轉速
 const PENCIL_Z = 0.5;
@@ -55,7 +55,7 @@ function frontContact(u) {
 }
 const V0 = frontContact(RANGE[0]);
 
-/** 後輪著地點 u → 托架的姿態、擺的偏離、輪與鼓輪的轉角 */
+/** 後輪著地點 u → 台車的姿態、擺的偏離、輪與鼓輪的轉角 */
 export function carriage(u0) {
   const u = clamp(u0, ...RANGE);
   const v = frontContact(u);
@@ -69,7 +69,7 @@ export function carriage(u0) {
     front,
     tilt,
     mid: [(rear[0] + front[0]) / 2, (rear[1] + front[1]) / 2, 0],
-    // 擺始終鉛直;在托架上看,鉛筆偏離底邊中點的量(沿底邊,向前為正)
+    // 擺始終鉛直;在台車上看,鉛筆偏離底邊中點的量(沿底邊,向前為正)
     offset: -APEX * Math.sin(tilt),
     wheel,
     frontWheel: -(arcAt(v) - arcAt(V0)) / WHEEL,
@@ -78,7 +78,7 @@ export function carriage(u0) {
 }
 
 const ARCH = (() => {
-  // 托架的拱:通過兩輪軸與頂點的圓弧
+  // 台車的拱:通過兩輪軸與頂點的圓弧
   const yc = (APEX * APEX - (BASE / 2) ** 2) / (2 * APEX);
   const rr = APEX - yc;
   const a0 = Math.atan2(-yc, BASE / 2);
@@ -156,15 +156,15 @@ export default {
     },
     { id: "record", kind: "trace" },
   ],
-  // 動力重演:只推托架(輪子、鼓輪照模型走);擺掛在頂點的橫軸上、只受重力,托架走上坡、下坡時它要一直保持鉛直
+  // 動力重演:只推台車(輪子、鼓輪照模型走);擺掛在頂點的橫軸上、只受重力,台車走上坡、下坡時它要一直保持鉛直
   replay: {
     from: RANGE[0],
     to: RANGE[1],
     seconds: 16,
     free: { pendulum: { pivot: [carriage(RANGE[0]).mid[0], carriage(RANGE[0]).mid[1] + APEX, 0], on: "frame" } },
     expect: [
-      { at: 0.4, part: "pendulum", label: "托架在上坡上,擺仍鉛直(偏離底邊中點)", quote: "當它位於傾斜面上時,擺則會相對應地朝右或朝左偏離中心" },
-      { at: 2.2, part: "pendulum", label: "托架在下坡上,擺仍鉛直" },
+      { at: 0.4, part: "pendulum", label: "台車在上坡上,擺仍鉛直(偏離底邊中點)", quote: "當它位於傾斜面上時,擺則會相對應地朝右或朝左偏離中心" },
+      { at: 2.2, part: "pendulum", label: "台車在下坡上,擺仍鉛直" },
       { part: "pendulum", label: "回到平地,擺回到正中" },
     ],
   },

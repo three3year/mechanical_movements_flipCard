@@ -41,14 +41,14 @@ test("滑輪組的主動件是繩端:位移型、有範圍、往下拉", () => {
   }
 });
 
-test("第 12 種:簡單皮帶輪,施力端位移等於重物位移(1:1)", () => {
+test("第 12 種:簡單滑輪,施力端位移等於重物位移(1:1)", () => {
   const { rise, ropeEnd, readouts } = lift(fig12, 0.8);
   close(rise, 0.8);
   close(ropeEnd, 0.8);
   assert.equal(readouts["省力比"], "1 : 1");
 });
 
-test("第 13 種:下方皮帶輪可動,繩端移動是重物的兩倍", () => {
+test("第 13 種:下方滑輪可動,繩端移動是重物的兩倍", () => {
   const { rise, ropeEnd, readouts } = lift(fig13, 1.2);
   close(ropeEnd, 1.2);
   close(rise, 0.6);
@@ -97,7 +97,7 @@ test("第 16、17 種:中間的動滑輪在重物上升時下降", () => {
 
 const pulleys = (def, prefix) => def.parts.filter((p) => p.kind === "pulley" && p.id.startsWith(prefix));
 
-test("第 14 種:滑輪組,省力比為下方滑輪組皮帶輪數量的兩倍", () => {
+test("第 14 種:滑輪組,省力比為下方滑輪組滑輪數量的兩倍", () => {
   assert.equal(pulleys(fig14, "lower").length, 3);
   const { rise, ropeEnd, readouts } = lift(fig14, 1.8);
   close(ropeEnd, 1.8);
@@ -129,7 +129,7 @@ test("第 15 種:各溝槽一起轉,所以各段繩的移動速度不同", () =>
   close(Math.abs(b) * unit, rise, "上下兩塊相對轉速相同");
 });
 
-test("第 18 種:兩個固定皮帶輪與一個可動皮帶輪,繩端移動是重物的三倍", () => {
+test("第 18 種:兩個固定滑輪與一個可動滑輪,繩端移動是重物的三倍", () => {
   assert.equal(fig18.parts.filter((p) => p.kind === "pulley" && p.movable).length, 1);
   assert.equal(fig18.parts.filter((p) => p.kind === "pulley" && !p.movable).length, 2);
   const { rise, ropeEnd, readouts } = lift(fig18, 1.5);
@@ -147,8 +147,8 @@ test("第 22 種:每條繩一端固定、一端接下一個可動輪中心,省�
   assert.equal(readouts["省力比"], "1 : 8");
 });
 
-test("第 19–21 種:繩端接在重物上而非定點,原文規則不適用,省力比為 2 的皮帶輪數量次方減 1", () => {
-  // 第 19、20 種三個皮帶輪:2³ − 1 = 7;第 21 種兩個:2² − 1 = 3
+test("第 19–21 種:繩端接在重物上而非定點,原文規則不適用,省力比為 2 的滑輪數量次方減 1", () => {
+  // 第 19、20 種三個滑輪:2³ − 1 = 7;第 21 種兩個:2² − 1 = 3
   for (const [def, pull, ratio] of [[fig19, 1.4, 7], [fig20, 1.4, 7], [fig21, 0.9, 3]]) {
     const { rise, ropeEnd, readouts } = lift(def, pull);
     close(ropeEnd, pull);

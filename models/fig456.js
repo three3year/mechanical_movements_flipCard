@@ -1,10 +1,10 @@
-// 第 456 種:Cary 的旋轉泵。固定的圓筒裡有一個裝在軸 A 上的旋轉鼓 B;繞著軸的心形凸輪 a 也是固定的。鼓轉動時,
+// 第 456 種:Cary 的旋轉泵。固定的泵缸裡有一個裝在軸 A 上的旋轉鼓 B;繞著軸的心形凸輪 a 也是固定的。鼓轉動時,
 // 滑動活塞 c、c 依凸輪的形狀進出。水經孔口 L 與 M 進出腔室(箭頭所示)。凸輪的位置使每個活塞對準 E 時依序被推回座裡,
 // 同時另一個活塞被完全推到腔室的內側,把已在腔室裡的水推進出水管 H,並在它後面經吸水管 F 吸進水來。
 // 主動件是軸 A(鼓 B 順時針轉)。
-// 推斷:圓筒的圓心在軸的正上方,鼓在底部 E 處碰到圓筒,腔室成月牙形;L 在 E 的左邊、M 在右邊。
-// 活塞由接觸算:兩根短活塞插在鼓緣的兩道槽裡,內端的圓頭靠在固定的心形凸輪 a 上,凸輪把它往外推、外端貼著圓筒;
-// 轉到 E 時凸輪最低,活塞被圓筒推回座裡。凸輪是活塞圓頭圓心的軌跡往內偏一個圓頭半徑(與活塞同一層)。
+// 推斷:泵缸的圓心在軸的正上方,鼓在底部 E 處碰到泵缸,腔室成月牙形;L 在 E 的左邊、M 在右邊。
+// 活塞由接觸算:兩根短活塞插在鼓緣的兩道槽裡,內端的圓頭靠在固定的心形凸輪 a 上,凸輪把它往外推、外端貼著泵缸;
+// 轉到 E 時凸輪最低,活塞被泵缸推回座裡。凸輪是活塞圓頭圓心的軌跡往內偏一個圓頭半徑(與活塞同一層)。
 // 鼓 B 是一片背板(裝在軸 A 上)加一圈開了兩道槽的鼓緣,中間空出放凸輪的空腔;凸輪套在軸上,由前面一根橫條固定在外殼上
 // (推斷;原圖是剖面,前蓋沒畫)。
 import { TAU, deg, polar } from "./kit.js";
@@ -13,7 +13,7 @@ import { shape, circle, thickLine, arcPoints, offsetLoop } from "./shapes.js";
 
 export const DRUM = 1.0; // 鼓 B 的外半徑
 export const BORE = 1.3;
-export const ECC = BORE - DRUM; // 圓筒中心在軸上方 ECC
+export const ECC = BORE - DRUM; // 泵缸中心在軸上方 ECC
 const CAVITY = 0.9; // 鼓中間放凸輪的空腔
 export const PISTON = 0.75; // 活塞長(外端到內端圓頭的尖)
 const WIDTH = 0.2;
@@ -21,9 +21,9 @@ export const NOSE = WIDTH / 2; // 內端圓頭的半徑
 const L_AT = deg(-112);
 const M_AT = deg(-68);
 
-/** 從軸心沿角度 phi 到圓筒內壁的距離 */
+/** 從軸心沿角度 phi 到泵缸內壁的距離 */
 export const reach = (phi) => ECC * Math.sin(phi) + Math.sqrt(BORE * BORE - (ECC * Math.cos(phi)) ** 2);
-/** 活塞內端圓頭的圓心離軸心(活塞外端貼著圓筒時) */
+/** 活塞內端圓頭的圓心離軸心(活塞外端貼著泵缸時) */
 export const pitch = (phi) => reach(phi) - PISTON + NOSE;
 
 // 心形凸輪 a:圓頭圓心的軌跡往內偏一個圓頭半徑
@@ -86,7 +86,7 @@ export default {
     { id: "labelH", kind: "group", pieces: [], label: "H", labelOffset: [1.85, 0.2, 0.5] },
     ...[0, 1].map((k) => ({ id: `piston${k}`, kind: "plate", shape: pistonShape, thickness: 0.22, label: "c", labelOffset: [-0.2, 0, 0.4], arrow: false })),
   ],
-  // 動力重演:兩根活塞在鼓的槽裡沿半徑滑動(起始時 piston0 在 30°、piston1 在 210°),被固定的凸輪往外推、被圓筒往內推,不靠彈簧
+  // 動力重演:兩根活塞在鼓的槽裡沿半徑滑動(起始時 piston0 在 30°、piston1 在 210°),被固定的凸輪往外推、被泵缸往內推,不靠彈簧
   replay: {
     free: { piston0: { on: "drum", slide: polar(1, deg(30)), gravity: false }, piston1: { on: "drum", slide: polar(1, deg(210)), gravity: false } },
     expect: [

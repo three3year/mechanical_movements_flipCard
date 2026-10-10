@@ -1,6 +1,7 @@
 // 第 64、66、67 種共用:底部的蝸桿帶動蝸輪 B,蝸輪軸上套著空心軸(帶凸輪、重物或擺錘)。
-// 空心軸切掉一段,蝸輪軸上的銷 C 從缺口伸出,推著空心軸走;到臨界點後空心軸(靠彈簧或重力)
-// 突然往前落過缺口的寬度、停住,等銷追上來再推(見 jumps.pushAndFall)。主動件是蝸桿,目標件是空心軸。
+// 空心軸有一小段被切去一半(原文 half cut away:管壁切掉半圈),蝸輪軸上的銷 C 從切口伸出,推著空心軸走;
+// 到臨界點後空心軸(靠彈簧或重力)突然往前落下、停住,等銷追上來再推(見 jumps.pushAndFall)。
+// 落多少由凸輪的形狀或重物決定,不靠切口的另一面擋住(第 64 種落 55°,切口仍是半圈)。主動件是蝸桿,目標件是空心軸。
 // 落下的過程演出來(drop):蝸輪再轉幾度的時間裡,空心軸加速落到底。
 import { X, TAU, deg } from "./kit.js";
 import { pushAndFall } from "./jumps.js";
@@ -23,7 +24,7 @@ export function wormWheel(theta) {
 }
 
 /**
- * fall:往前落的角度(= 缺口寬度);push:被推的角度;rest0:蝸輪轉角為 0 時空心軸剛落定的轉角。
+ * fall:往前落的角度(不大於切口的半圈);push:被推的角度;rest0:蝸輪轉角為 0 時空心軸剛落定的轉角。
  * hollowPieces:固定在空心軸上的零件(凸輪、重物);startFraction:初始時推到臨界點的幾成。
  */
 export function wormJump({ figure, fall, push, rest0, drop = deg(14), hollowPieces, hollowLabel, wheelLabel = "B", pinLabel, view, extraParts = [], extraPose }) {
@@ -33,7 +34,8 @@ export function wormJump({ figure, fall, push, rest0, drop = deg(14), hollowPiec
   const B0 = wormWheel(0);
   const PIN = rest0 - fall - B0 - PIN_R / PIN_AT;
   const start = N * (fall + 0.93 * push) + 0.0;
-  const gap = [...arcPoints(HOLLOW.outer, 0, TAU - fall), ...arcPoints(HOLLOW.inner, TAU - fall, 0)];
+  // 管壁留下的半圈:切口在局部角 −π 到 0,銷推著局部角 0 的那一面,落下後退到切口裡 −fall 的地方
+  const gap = [...arcPoints(HOLLOW.outer, 0, Math.PI), ...arcPoints(HOLLOW.inner, Math.PI, 0)];
   return {
     hollowAt,
     period,
@@ -104,5 +106,5 @@ export function wormJump({ figure, fall, push, rest0, drop = deg(14), hollowPiec
 
 export const WHEEL_TEETH = N;
 
-/** 固定在空心軸上、蓋住缺口的板件(凸輪)要開的弧槽:讓銷穿過,寬度與缺口相同 */
-export const notchSlot = (fall) => [...arcPoints(HOLLOW.outer + 0.02, -fall, 0), ...arcPoints(HOLLOW.inner - 0.02, 0, -fall)].reverse();
+/** 固定在空心軸上、蓋住切口的板件(凸輪)要開的弧槽:讓銷穿過;寬度 width 至少是銷相對空心軸走的範圍(落下角) */
+export const notchSlot = (width) => [...arcPoints(HOLLOW.outer + 0.02, -width, 0), ...arcPoints(HOLLOW.inner - 0.02, 0, -width)].reverse();

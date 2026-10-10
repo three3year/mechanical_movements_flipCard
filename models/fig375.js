@@ -1,5 +1,5 @@
-// 第 375 種:壓碎或研磨用的一對滾壓輪(追輪)。兩個大輪的輪軸接在直立軸上,直立軸由頂上的一對斜齒輪帶動;
-// 直立軸轉動時,兩個輪在環形的鍋盆(料槽)裡繞著走,同時在盆底滾動。主動件是頂上豎直的斜齒輪(由右邊的軸帶動)。
+// 第 375 種:壓碎或研磨用的一對滾壓輪(追輪)。兩個大輪的輪軸接在直立軸上,直立軸由頂上的一對傘齒輪帶動;
+// 直立軸轉動時,兩個輪在環形的鍋盆(料槽)裡繞著走,同時在盆底滾動。主動件是頂上豎直的傘齒輪(由右邊的軸帶動)。
 // 推斷:齒數比 1 : 1;輪在盆底純滾動。
 import { X, Y, Z, deg, quatMul, quatAxisAngle, quatFromZ } from "./kit.js";
 import { bevelGear, meshAngle, bevelContact } from "./gears.js";
@@ -13,7 +13,7 @@ const G1 = bevelGear({ apex: APEX, axis: [0, 1, 0], teeth: 24, radius: 0.85, con
 const G2 = bevelGear({ apex: APEX, axis: [-1, 0, 0], teeth: 24, radius: 0.85, cone: deg(45), width: 0.25 });
 const CONTACT = bevelContact(G2, G1);
 
-/** 主動斜齒輪轉 a → 直立軸的轉角、輪的自轉角 */
+/** 主動傘齒輪轉 a → 直立軸的轉角、輪的自轉角 */
 export function runners(a) {
   const shaft = meshAngle(G2, G1, a, CONTACT);
   return { shaft, roll: (-shaft * RUN) / WHEEL };
@@ -31,7 +31,7 @@ export default {
       pieces: [
         { kind: "box", size: [0.2, 4.4, 0.4], at: [-2.2, 0.1, -0.2] },
         { kind: "box", size: [0.2, 4.4, 0.4], at: [2.2, 0.1, -0.2] },
-        { kind: "box", size: [4.6, 0.2, 0.5], at: [0, 1.45, -1.15] }, // 橫樑在主動斜齒輪的後面
+        { kind: "box", size: [4.6, 0.2, 0.5], at: [0, 1.45, -1.15] }, // 橫樑在主動傘齒輪的後面
         // 環形鍋盆
         { kind: "lathe", axis: Y, profile: [[0.35, FLOOR - 0.3], [2.1, FLOOR - 0.3], [2.25, FLOOR + 0.25], [2.05, FLOOR + 0.25], [1.95, FLOOR], [0.55, FLOOR], [0.45, FLOOR + 0.25], [0.35, FLOOR + 0.25]] },
       ],

@@ -1,4 +1,4 @@
-// 第 236 種:振動槓桿 a(上面裝著兩根棘爪 b 和 c),把近乎連續的圓周運動傳給棘輪。槓桿的樞軸在輪的右上方;
+// 第 236 種:擺動槓桿 a(上面裝著兩根棘爪 b 和 c),把近乎連續的圓周運動傳給棘輪。槓桿的樞軸在輪的右上方;
 // b 掛在槓桿左臂、往下搭在輪的左上側,c 掛在右端、往左下搭在輪頂。左臂往下時 b 把左上側的齒往下推,
 // 右臂往下時 c 把頂上的齒往左推,兩者都讓輪逆時針轉(原圖箭頭),所以每一程都在推。主動量是槓桿的累計擺動量。
 //
@@ -101,7 +101,7 @@ export default {
     seconds: 24,
     free: { wheel: { hold: true, gravity: false }, pawlB: { on: "lever" }, pawlC: { on: "lever" } },
     expect: [
-      { at: SWING, part: "wheel", label: "左臂往下:b 推輪半齒", quote: "藉由振動槓桿 a(其上裝有兩根棘爪 b 和 c),將近乎連續的圓周運動傳遞給棘輪" },
+      { at: SWING, part: "wheel", label: "左臂往下:b 推輪半齒", quote: "藉由擺動槓桿 a(其上裝有兩根棘爪 b 和 c),將近乎連續的圓周運動傳遞給棘輪" },
       { at: 2 * SWING, part: "wheel", label: "右臂往下:c 再推半齒" },
       { at: 4 * SWING, part: "wheel", label: "兩個來回後的位置" },
     ],

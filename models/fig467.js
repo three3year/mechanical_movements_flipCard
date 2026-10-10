@@ -1,9 +1,9 @@
-// 第 467 種:Robertson 的液壓千斤頂。柱塞立在中空的底座上不動,附有爪鉤的圓筒在柱塞上滑動。泵從中空底座取水,
-// 經柱塞裡的一根管子把水壓進圓筒,把圓筒抬起。管子底部有一個翼形螺絲操作的閥門,需要時讓水流回,把負載慢慢放下。
+// 第 467 種:Robertson 的液壓千斤頂。柱塞立在中空的底座上不動,附有爪鉤的液壓缸在柱塞上滑動。泵從中空底座取水,
+// 經柱塞裡的一根管子把水壓進液壓缸,把液壓缸抬起。管子底部有一個翼形螺絲操作的閥門,需要時讓水流回,把負載慢慢放下。
 // 主動件是泵的手柄(右上);狀態按鈕切換「抬升」與「開閥放下」。
-// 推斷:每壓一下手柄,圓筒升起一小段;開閥時水從圓筒流回底座,圓筒隨主動量慢慢降下。剖面圖。
+// 推斷:每壓一下手柄,液壓缸升起一小段;開閥時水從液壓缸流回底座,液壓缸隨主動量慢慢降下。剖面圖。
 // 泵(原圖只畫出手柄;推斷):底座右邊立著小泵筒,下端浸在底座的水裡,泵柱塞經一根短連桿接在手柄上離支點不遠處;
-// 手柄的支點在泵筒左邊的支柱頂上。壓下手柄,柱塞往下把水經管子壓進柱塞裡的管、送進圓筒。
+// 手柄的支點在泵筒左邊的支柱頂上。壓下手柄,柱塞往下把水經管子壓進柱塞裡的管、送進液壓缸。
 import { Y, deg, clamp } from "./kit.js";
 import { stream } from "./flow.js";
 import { stroke } from "./pump.js";
@@ -12,9 +12,9 @@ import { shape, rect, thickLine, circle } from "./shapes.js";
 
 const BASE = { y0: -1.7, y1: -1.0 };
 const RAM = { r: 0.32, top: 0.55 }; // 固定的柱塞
-const CYL = { r: 0.42, len: 1.6 }; // 滑動的圓筒(內半徑、長)
-export const LIFT = 0.9; // 圓筒最多升起
-const PUMP_X = 1.34; // 泵筒的軸線(在圓筒側面的爪鉤升降的範圍之外)
+const CYL = { r: 0.42, len: 1.6 }; // 滑動的液壓缸(內半徑、長)
+export const LIFT = 0.9; // 液壓缸最多升起
+const PUMP_X = 1.34; // 泵筒的軸線(在液壓缸側面的爪鉤升降的範圍之外)
 const PUMP_TOP = -0.45; // 泵筒頂
 const PIVOT = [1.15, -0.3, 0]; // 手柄的支點
 const ARM = 0.3; // 支點到接連桿處
@@ -23,7 +23,7 @@ const PLUNGER = 0.5;
 export const SWING = [deg(70), deg(30)]; // 手柄:上 → 下(壓)
 const PER = 0.05; // 每壓一下升起
 
-/** 累計主動量 v、狀態 → 圓筒升起多少、手柄角、是否在壓 */
+/** 累計主動量 v、狀態 → 液壓缸升起多少、手柄角、是否在壓 */
 export function jack(v, state = "lift") {
   const span = Math.abs(SWING[0] - SWING[1]);
   const { at, forward } = stroke(v, ...SWING);
@@ -84,14 +84,14 @@ export default {
       { id: "release", label: "開閥放下" },
     ],
   },
-  powered: ["cylinder"], // 外力來源:圓筒是被泵進來的水頂起的(液壓傳動,沒有實體相連)
+  powered: ["cylinder"], // 外力來源:液壓缸是被泵進來的水頂起的(液壓傳動,沒有實體相連)
   driver: { part: "handle", grips: ["plunger"], type: "rotation", cycle: SWING },
   target: "cylinder",
   view: { direction: [0.15, 0.1, 1] },
   pose(v, state = "lift") {
     const j = jack(v, state);
     const pump = plunger(j.handle);
-    const bottom = RAM.top - (CYL.len - 0.12) + 0.02 + j.rise; // 圓筒底;圓筒內頂碰到柱塞頂時 rise = 0
+    const bottom = RAM.top - (CYL.len - 0.12) + 0.02 + j.rise; // 液壓缸底;液壓缸內頂碰到柱塞頂時 rise = 0
     const travel = v * 5;
     const flows = [];
     if (state === "lift" && j.pressing && j.rise < LIFT) flows.push({ fluid: "water", points: stream([[PUMP_X, BASE.y1 - 0.3, 0.15], [PUMP_X, BASE.y1 + 0.2, 0.15], [0.12, BASE.y1 + 0.2, 0.15], [0.12, RAM.top + j.rise * 0.5, 0.15]], travel, { spacing: 0.15 }) });
@@ -105,7 +105,7 @@ export default {
         link: { from: [pump.E[0], pump.E[1], 0.14], to: [PUMP_X, pump.top, 0.1] },
       },
       flows,
-      readouts: [{ label: "圓筒升起", value: j.rise.toFixed(2) }],
+      readouts: [{ label: "液壓缸升起", value: j.rise.toFixed(2) }],
     };
   },
 };

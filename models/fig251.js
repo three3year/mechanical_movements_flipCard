@@ -1,5 +1,5 @@
 // 第 251 種:打樁機的釋放鉤。重物 W 由鉤 A(兩支交叉、以銷相連的鉗臂)吊著往上拉;拉到夠高時,
-// 鉗臂的上端進入框架 B 的楔形槽,被槽的兩側往內壓,下端的鉤爪隨之張開,重物突然被放開,落到樁頭上。
+// 鉗臂的上端進入框架頂部的槽 B(下段是楔形),被槽的兩側往內壓,下端的鉤爪隨之張開,重物突然被放開,落到樁頭上。
 // 主動件是吊繩:拉上去(釋放)、再放下去讓鉤爪重新抓住重物(累計行程,見 kit.swing)。
 // 推斷:放下時鉤爪抓回重物的動作(原文只寫釋放:鉤爪碰到凸頭被撐開、越過後合攏);鉗臂的形狀。
 // 重物靠重力落下,落下的過程演出來(jumps.falling:起步慢、越來越快、到底停住),佔吊繩再走 DROP 的行程。
@@ -60,8 +60,6 @@ export default {
     {
       id: "frame",
       kind: "group",
-      label: "B",
-      labelOffset: [0.45, HEIGHT + 1.15, 0.3],
       pieces: [
         { kind: "box", size: [0.22, 7.6, 0.4], at: [-1.45, 0.5, 0] },
         { kind: "box", size: [0.22, 7.6, 0.4], at: [1.45, 0.5, 0] },
@@ -72,6 +70,8 @@ export default {
         { kind: "box", size: [3.3, 0.2, 1.0], at: [0, -3.4, 0] },
       ],
     },
+    // 槽 B 的標籤:在框架頂部、兩側槽壁之間(B 是槽,不是整個框架)
+    { id: "slotB", kind: "group", label: "B", center: [0, 3.75, 0], labelOffset: [0.05, 0, 0.3] },
     { id: "armL", kind: "plate", shape: arm(1), thickness: 0.1, arrow: false, label: "A", labelOffset: [0.5, 0.2, 0.3] },
     { id: "armR", kind: "plate", shape: arm(-1), thickness: 0.1, arrow: false },
     { id: "pin", kind: "cylinder", radius: 0.09, length: 0.4 },
@@ -95,7 +95,7 @@ export default {
     free: { weight: { slide: [0, 1, 0] } },
     expect: [
       { at: RELEASE - 0.3, part: "weight", label: "鉤爪勾住凸頭,把重物提起" },
-      { at: RELEASE + DROP + 0.2, part: "weight", label: "鉤 A 的上端被槽壓攏,重物被放開、落到樁頭", quote: "鉤 A 的上端會被框架 B 的槽兩側向內壓,重物就會被突然釋放,並以累積的力量落到樁頭上" },
+      { at: RELEASE + DROP + 0.2, part: "weight", label: "鉤 A 的上端被槽壓攏,重物被放開、落到樁頭", quote: "鉤 A 的上端會被框架頂部的槽 B 兩側向內壓,重物就會被突然釋放,並以累積的力量落到樁頭上" },
       { at: 2 * HEIGHT, part: "weight", label: "放下吊繩,鉤爪重新抓住重物" },
     ],
   },

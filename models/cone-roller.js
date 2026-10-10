@@ -1,4 +1,4 @@
-// 第 262–263 種共用(前視圖與側視圖):螺桿 D 上偏心地裝著錐體 B,摩擦滾子 C 由重物(或彈簧)壓在錐體頂上。
+// 第 262–263 種共用(端視圖與側視圖):螺桿 D 上偏心地裝著錐體 B,摩擦滾子 C 由重物(或彈簧)壓在錐體頂上。
 // 螺桿在固定的螺帽 E 中轉動,每轉一圈連同錐體沿軸前進一個螺距。錐體偏心地轉,滾子被頂起又落下(往復);
 // 錐體同時往前走,滾子壓在錐面越來越細的部位,所以每一圈往上的行程與往下的行程不等,
 // 而滾子在錐面上畫出一條與螺桿同螺距的螺旋線。滾子被錐面摩擦帶著轉,轉速隨接觸處離螺桿軸的遠近一直變。
@@ -25,7 +25,7 @@ const coneRadius = (cx, xp) => {
 export function cone(theta0) {
   const theta = clamp(theta0, ...RANGE);
   const cx = X0 + screwAdvance(theta, PITCH);
-  // 錐軸繞螺桿軸轉:偏心向量在 yz 平面,theta = 0 時朝上(原圖前視圖螺桿 D 在錐體中心 B 的下方)
+  // 錐軸繞螺桿軸轉:偏心向量在 yz 平面,theta = 0 時朝上(原圖端視圖螺桿 D 在錐體中心 B 的下方)
   const ey = ECC * Math.cos(theta);
   const ez = ECC * Math.sin(theta);
   const r = coneRadius(cx, XC);

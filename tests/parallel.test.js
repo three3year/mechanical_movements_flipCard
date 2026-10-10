@@ -56,7 +56,7 @@ test("第 323 種:滾輪平行尺:輪抓住紙張,尺滾動時始終與畫過的
   close(m323.wheelAngle(0.9) * 0.45, -0.9, "輪不打滑");
 });
 
-test("第 324 種:複合平行尺:兩臂交叉、中點相連,一端樞接、一端在溝槽 B 中滑動,尺的邊緣保持平行", () => {
+test("第 324 種:複合平行尺:兩臂交叉、中點相連,一端樞接、一端在溝槽 B 中滑動,尺的兩端與邊緣都保持平行", () => {
   parallelLines(m324.default, sweep(2.3, 8, 0.7));
   for (const h of sweep(2.3, 8, 0.7)) {
     const { xl, mid } = m324.cross(h);
@@ -116,8 +116,8 @@ test("第 328 種:卡特萊特平行運動:兩個相等的齒輪 C、C 反向轉
   close(b.pinion.angle, b.flywheel.angle, "小齒輪與飛輪同軸", 1e-12);
 });
 
-test("第 329 種:B 在直徑兩倍的靜止內齒輪 D 裡滾動,B 上的手腕走直線,活塞桿保持直立", () => {
-  for (const p of sweep(1, 48)) close(m329.hypo(p).wrist[0], 0, "手腕始終在鉛直線上", 1e-9);
+test("第 329 種:B 在直徑兩倍的靜止內齒輪 D 裡滾動,B 上的腕銷走直線,活塞桿保持直立", () => {
+  for (const p of sweep(1, 48)) close(m329.hypo(p).wrist[0], 0, "腕銷始終在鉛直線上", 1e-9);
   const ys = sweep(1, 48).map((p) => m329.hypo(p).wrist[1]);
   close(Math.max(...ys) - Math.min(...ys), 4 * 0.62, "行程等於 D 的直徑", 1e-3);
 });
@@ -130,10 +130,10 @@ test("第 330 種:延長的活塞桿在與汽缸同中心線的導引件 A 中�
   steamPushes(m330.default, sweep(1, 12));
 });
 
-test("第 331 種:曲柄手腕 B 在開槽十字頭 A 內作動,十字頭在導件 D、D 之間直線往復", () => {
+test("第 331 種:曲柄銷軸頸 B 在開槽十字頭 A 內作動,十字頭在導件 D、D 之間直線往復", () => {
   for (const p of sweep(1, 24)) {
     const y = m331.yoke(p);
-    close(y.head, y.wrist[1], "十字頭高度等於手腕高度(開槽十字頭)", 1e-12);
+    close(y.head, y.wrist[1], "十字頭高度等於曲柄銷高度(開槽十字頭)", 1e-12);
   }
   steamPushes(m331.default, sweep(1, 12));
 });
@@ -191,7 +191,7 @@ test("第 335 種:固定式樑式引擎的平行運動:活塞桿頭的軌跡近�
   assert.ok(verticalDeviation(ps) / (Math.max(...ys) - Math.min(...ys)) < 0.01, "偏離鉛直線不到行程的 1%");
 });
 
-test("第 337 種:半徑桿接在短振動桿的下端,振動桿中點(活塞桿)的軌跡近似直線", () => {
+test("第 337 種:半徑桿接在短擺動桿的下端,擺動桿中點(活塞桿)的軌跡近似直線", () => {
   const ps = sweep(m337.RANGE[1], 30, m337.RANGE[0]).map((v) => m337.watt(v).P);
   const ys = ps.map((p) => p[1]);
   assert.ok(verticalDeviation(ps) / (Math.max(...ys) - Math.min(...ys)) < 0.03, "偏離鉛直線不到行程的 3%");
@@ -219,7 +219,7 @@ test("第 339 種:B 端在固定溝槽 D 中滑動、C 端接活塞桿,半徑桿
   steamPushes(m339.default, sweep(1, 8));
 });
 
-test("第 340 種:樑繞搖動立柱 B–F 的中心 F 擺動,半徑桿 E–A 產生平行運動:C 近似直線", () => {
+test("第 340 種:樑架在搖動立柱支座 B–F 上,支座繞中心 F 擺動,半徑桿 E–A 產生平行運動:C 近似直線", () => {
   straightish(sweep(m340.RANGE[1], 30, m340.RANGE[0]).map((v) => m340.beam(v).C), 0.01);
 });
 
@@ -243,7 +243,7 @@ test("第 342 種:大氣壓力引擎:蒸汽進入時配重抬起活塞;冷凝後
   assert.ok(def.pose(0.6).flows.some((f) => f.fluid === "water"), "噴水冷凝");
 });
 
-test("第 343 種:直立式引擎:半徑桿 A、A 接在活塞桿頂的振動件上,活塞桿頂走近似直線", () => {
+test("第 343 種:直立式引擎:半徑桿 A、A 接在活塞桿頂的擺動件上,活塞桿頂走近似直線", () => {
   straightish(sweep(1, 40).map((p) => m343.upright(p).P), 0.03);
   steamPushes(m343.default, sweep(1, 8));
 });

@@ -1,7 +1,7 @@
-// 第 329 種:活塞桿導引裝置。活塞桿 A 接在齒輪 B 上的一個手腕(wrist)上;B 繞著曲柄銷轉,曲柄銷由牢固在軸上的板 C
-// 承載。B 在一個靜止的內齒輪 D 裡面滾動,D 的直徑是 B 的兩倍,所以 B 節圓上的手腕走的是一條直線(直徑),
+// 第 329 種:活塞桿導引裝置。活塞桿 A 接在齒輪 B 上的一個腕銷(wrist)上;B 繞著曲柄銷轉,曲柄銷由牢固在軸上的板 C
+// 承載。B 在一個靜止的內齒輪 D 裡面滾動,D 的直徑是 B 的兩倍,所以 B 節圓上的腕銷走的是一條直線(直徑),
 // 運動傳給曲柄銷,而活塞桿保持直立。主動件是虛擬的「進程」(下方汽缸的蒸汽推動);汽缸內的蒸汽以流體示意。
-// 推斷:手腕在 B 的節圓上;進汽的時機;外圈的大輪是飛輪(依原圖)。
+// 推斷:腕銷在 B 的節圓上;進汽的時機;外圈的大輪是飛輪(依原圖)。
 import { TAU, Z } from "./kit.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
 import { shape, circle, arcPoints } from "./shapes.js";
@@ -12,17 +12,17 @@ const RB = 0.62; // 齒輪 B 的節圓半徑
 const NB = 14;
 const ND = 2 * NB;
 const CYL = { x: 0, top: -1.3, length: 2.85, radius: 0.42 };
-const PISTON_ROD = 3.6; // 手腕到活塞
+const PISTON_ROD = 3.6; // 腕銷到活塞
 
 const PHI0 = Math.PI / 2; // 進程 0 時曲柄朝上
 const D = { center: C0, axis: Z, internal: true, teeth: ND, radius: 2 * RB };
 // B 的齒相位:進程 0 時由 meshAngle 對 D 排好(齒嵌進齒槽),之後絕對自轉 = −公轉(在兩倍大的內齒輪裡滾動)。
 // 不逐步呼叫 meshAngle,是因為它的「減整數個齒距」會隨公轉跳格。
 const SPIN0 = meshAngle(D, { center: [C0[0] + RB * Math.cos(PHI0), C0[1] + RB * Math.sin(PHI0), 0], axis: Z, teeth: NB, radius: RB }, 0);
-// 手腕在 B 上的局部角:節圓上的點走的直線方向是 (自轉相位 + 局部角)/2,要直立就得 自轉相位 + 局部角 = π
+// 腕銷在 B 上的局部角:節圓上的點走的直線方向是 (自轉相位 + 局部角)/2,要直立就得 自轉相位 + 局部角 = π
 export const WRIST = Math.PI - (SPIN0 + PHI0);
 
-/** 進程 p → 板 C(曲柄)的轉角、B 的中心與自轉角、手腕位置 */
+/** 進程 p → 板 C(曲柄)的轉角、B 的中心與自轉角、腕銷位置 */
 export function hypo(p) {
   const phi = TAU * p + PHI0;
   const center = [C0[0] + RB * Math.cos(phi), C0[1] + RB * Math.sin(phi), 0];

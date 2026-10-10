@@ -1,4 +1,4 @@
-// 第 13 種:下方皮帶輪可動。繩一端固定,另一端的移動速度是重物的兩倍(2:1)。
+// 第 13 種:下方滑輪可動。繩一端固定,另一端的移動速度是重物的兩倍(2:1)。
 import { Z, Y, clamp, routeRope, sheaveAngle, hoistReadouts, rod } from "./kit.js";
 
 const RANGE = [0, 2];

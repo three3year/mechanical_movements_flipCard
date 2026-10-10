@@ -1,6 +1,6 @@
-// 第 62 種:傳遞兩種速度,其中一種是差動的變速運動。與第 61 種類似,但第三個斜齒輪連在第四個皮帶輪上
-// (在其他皮帶輪的右側),由上方軸上的小皮帶輪以另一條皮帶帶動。左皮帶在承載行星斜齒輪的皮帶輪上時,
-// 若右邊的皮帶輪與軸同向轉(開口皮帶),軸的轉速 = 雙倍速度 − 第三個斜齒輪的轉速;
+// 第 62 種:傳遞兩種速度,其中一種是差動的變速運動。與第 61 種類似,但第三個傘齒輪連在第四個皮帶輪上
+// (在其他皮帶輪的右側),由上方軸上的小皮帶輪以另一條皮帶帶動。左皮帶在承載行星傘齒輪的皮帶輪上時,
+// 若右邊的皮帶輪也朝同一方向轉(開口皮帶),軸的轉速 = 雙倍速度 − 第三個傘齒輪的轉速;
 // 把右皮帶交叉、使該輪反向轉,就改為加上。
 import { X } from "./kit.js";
 import { pulleyOnX, belt, driven, travel } from "./belt-shift.js";
@@ -13,7 +13,7 @@ const R = 1.05;
 const PX = { carrier: -0.95, fourth: 1.0 };
 const DIFF = bevelDifferential({ x0: 0.05 });
 
-/** 右皮帶開口或交叉時:行星架、第三個斜齒輪(第四輪)與軸的轉角(都繞 +x) */
+/** 右皮帶開口或交叉時:行星架、第三個傘齒輪(第四輪)與軸的轉角(都繞 +x) */
 export function speeds(angle, state) {
   const carrier = driven(angle, DRUM.radius, R);
   const sun2 = driven(angle, SMALL.radius, R, state === "crossed");
@@ -44,8 +44,8 @@ export default {
     { id: "beltRight", kind: "belt" },
   ],
   waivers: [
-    { check: "interference", parts: ["sun2", "planet"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.06" },
-    { check: "interference", parts: ["sun1", "planet"], reason: "簡化齒形:差動機構的斜齒輪齒側互相擦到 0.06" },
+    { check: "interference", parts: ["sun2", "planet"], reason: "簡化齒形:差動機構的傘齒輪齒側互相擦到 0.06" },
+    { check: "interference", parts: ["sun1", "planet"], reason: "簡化齒形:差動機構的傘齒輪齒側互相擦到 0.06" },
   ],
   driver: { part: "top", type: "rotation" },
   target: "shaft", // 得到差動變速的軸

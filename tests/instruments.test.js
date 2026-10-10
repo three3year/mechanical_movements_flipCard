@@ -167,7 +167,7 @@ test("第 410 種:等分規無論兩夾頰相距多遠,尖頂始終在兩夾頰�
 test("第 411 種:自動記錄水平儀:輪子的圓周等於底邊;平地上擺把底邊二等分,斜面上擺朝一邊偏離", () => {
   close(2 * Math.PI * m411.WHEEL, m411.BASE, "輪子的圓周 = 三角形的底邊");
   const flat = m411.carriage(m411.RANGE[0]);
-  near(flat.tilt, 0, 1e-9, "平地上托架水平");
+  near(flat.tilt, 0, 1e-9, "平地上台車水平");
   near(flat.offset, 0, 1e-9, "平地上擺把底邊二等分");
   // 推上坡、再推下坡:擺分別朝後、朝前偏
   const offsets = sweep(m411.RANGE[1], 60, m411.RANGE[0]).map((u) => m411.carriage(u));
@@ -181,7 +181,7 @@ test("第 411 種:自動記錄水平儀:輪子的圓周等於底邊;平地上擺
   const a = m411.carriage(m411.RANGE[0]);
   const b = m411.carriage(m411.RANGE[0] + m411.BASE * 0.1);
   near(a.wheel - b.wheel, (2 * Math.PI) * 0.1, 1e-6, "走過底邊的十分之一,輪子轉十分之一圈");
-  near((a.drum - b.drum) / (a.wheel - b.wheel), m411.RATIO, 1e-12, "鼓輪由托架輪帶動");
+  near((a.drum - b.drum) / (a.wheel - b.wheel), m411.RATIO, 1e-12, "鼓輪由台車輪子帶動");
 });
 
 test("第 496 種:牽伸與加撚:前羅拉 B 比後羅拉 A 轉得快,把粗紗拉長;錠翼繞紗管轉,加撚並捲上", () => {

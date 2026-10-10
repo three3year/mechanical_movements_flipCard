@@ -116,7 +116,7 @@ export default {
     free: { yoke: { slide: [0, 1, 0] } },
     expect: [
       // 銷在 π/2 經過溝的折角(軛反向處),軛在那一瞬間會落後一點;中途的事件取折角之前
-      { at: Math.PI / 4, part: "yoke", label: "曲柄銷沿溝槽把軛往下推", quote: "透過圓盤上作動於軛狀件溝槽內的手腕或曲柄銷,會產生軛桿的往復直線運動" },
+      { at: Math.PI / 4, part: "yoke", label: "曲柄銷沿溝槽把軛往下推", quote: "透過圓盤上作動於軛狀件溝槽內的腕銷(wrist)或曲柄銷(crank-pin),會產生軛桿的往復直線運動" },
       { at: Math.PI, part: "yoke", label: "圓盤轉半圈,軛到另一端" },
       { part: "yoke", label: "轉完一圈,軛回到起點" },
     ],

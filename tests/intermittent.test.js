@@ -48,11 +48,11 @@ test("第 75 種:棘爪 B 與止回爪的爪尖始終靠在輪面上,不穿進�
   }
 });
 
-import { counter, starPitch, pinPeriod, RELEASE, dropSpan, contactAt as contactAt63 } from "../models/fig063.js";
+import fig63, { counter, starPitch, pinPeriod, RELEASE, dropSpan, contactAt as contactAt63 } from "../models/fig063.js";
 import { penetrationDepth as depth63 } from "../models/contact.js";
-import { hollowAt as hollow64, period as period64 } from "../models/fig064.js";
-import { hollowAt as hollow66 } from "../models/fig066.js";
-import { hollowAt as hollow67, centerOfMass } from "../models/fig067.js";
+import fig64, { hollowAt as hollow64, period as period64 } from "../models/fig064.js";
+import fig66, { hollowAt as hollow66 } from "../models/fig066.js";
+import fig67, { hollowAt as hollow67, centerOfMass } from "../models/fig067.js";
 import { register, pitch as pitch76, contactAt as contact76 } from "../models/fig076.js";
 import { wormWheel, WHEEL_TEETH } from "../models/worm-jump.js";
 import { falling } from "../models/jumps.js";
@@ -97,6 +97,22 @@ test("第 63 種:照原文的順序——插銷先從棘爪滑脫、棘爪落進
   }
 });
 
+test("第 63 種:銷在落板上——落板落下時,落板上的銷撞擊棘爪(銷跟著落板轉,落下的過程中貼著棘爪)", () => {
+  const centerOf = (poly) => poly.reduce((c, [x, y]) => [c[0] + x / poly.length, c[1] + y / poly.length], [0, 0]);
+  const pivot = fig63.parts.find((p) => p.id === "drop").center;
+  const radius = (w) => {
+    const [x, y] = centerOf(contactAt63(w).dropPin);
+    return Math.hypot(x - pivot[0], y - pivot[1]);
+  };
+  close(radius(RELEASE - 0.3), radius(RELEASE + dropSpan + 0.1), "銷繞落板的樞軸轉(固定在落板上)", 1e-6);
+  for (const w of sweep(RELEASE + dropSpan, 12, RELEASE + dropSpan * 0.3)) {
+    const { dropPin: pin, pawl: body } = contactAt63(w);
+    const gap = Math.min(...pin.map((p) => (pointInPolygon(p, body) ? 0 : edgeDistance(p, body))));
+    assert.ok(gap < 0.01, `w = ${w.toFixed(3)} 時落板上的銷貼著棘爪(${gap.toFixed(4)})`);
+    assert.ok(depth63(pin, body) < 0.01, `w = ${w.toFixed(3)} 時銷沒有穿入棘爪`);
+  }
+});
+
 test("第 64 種:蝸輪軸上的銷推著凸輪走,到臨界點凸輪往前掉落(有加速的過程,不是瞬移),再停住等銷追上", () => {
   const wheel = (v) => v;
   const angles = sweep(period64 * 3, 3000).map((v) => hollow64(wheel(v)));
@@ -130,7 +146,7 @@ test("第 64、66、67 種:蝸桿每轉一圈,蝸輪 B 轉一齒", () => {
 
 const B0 = wormWheel(0); // 蝸輪的起始轉角
 
-test("第 66 種:搖臂上的重物 D 被推到頂端後自己落到下方", () => {
+test("第 66 種:臂上的重物 D 被推到頂端後自己落到下方", () => {
   // 推的階段把重物從正下方送到正上方
   close(hollow66(B0 + Math.PI + 0.001) - hollow66(B0 + Math.PI), 0.001, "被推時跟著銷走", 1e-9);
   close(hollow66(B0 + Math.PI), -Math.PI / 2, "落定後在正下方");
@@ -140,6 +156,15 @@ test("第 66 種:搖臂上的重物 D 被推到頂端後自己落到下方", () 
 test("第 67 種:擺錘 E 的重心被推到頂端後翻落到下方", () => {
   close(Math.sin(centerOfMass(hollow67(B0 + Math.PI))), -1, "落定時重心在正下方");
   close(Math.sin(centerOfMass(hollow67(B0 + 2 * Math.PI - 1e-9))), 1, "推到頂端", 1e-6);
+});
+
+test("第 64、66、67 種:空心軸有一小段被切去一半(管壁切掉半圈),銷在切口裡", () => {
+  for (const [fig, def] of [[64, fig64], [66, fig66], [67, fig67]]) {
+    const tube = def.parts.find((p) => p.id === "hollow").pieces[0].shape.outline;
+    const angles = tube.map(([x, y]) => Math.atan2(y, x)).sort((a, b) => a - b);
+    const gaps = angles.map((a, i) => (i === 0 ? angles[0] + 2 * Math.PI - angles[angles.length - 1] : a - angles[i - 1]));
+    close(Math.max(...gaps), Math.PI, `第 ${fig} 種切掉半圈`, 0.05);
+  }
 });
 
 test("第 76 種:大輪每轉一圈,凸柱 D 撞擊撥爪一次,棘輪 A 轉動一齒;撥爪回落時 A 不動", () => {
@@ -209,7 +234,7 @@ test("第 70、71 種:撥爪每轉一圈,凸柱輪轉過一個凸柱的距離,�
   assertIndexing(c71, step71, "第 71 種");
 });
 
-test("第 74 種:缺齒式斜齒輪 C 使 A、B 間歇地、朝相反方向轉動", () => {
+test("第 74 種:缺齒式傘齒輪 C 使 A、B 間歇地、朝相反方向轉動", () => {
   const TAU = 2 * Math.PI;
   const a = sweep(TAU * 2, 720).map((t) => angles74(t).a);
   const b = sweep(TAU * 2, 720).map((t) => angles74(t).b);
@@ -275,12 +300,12 @@ test("第 78 種:第 77 種的變形,棘輪 A 幾乎連續地(順時針)旋轉",
   assert.ok(wheel78(swing78 * 4) < 0, "順時針");
 });
 
-test("第 79 種:桿 B 往復,兩支振動臂上的棘爪使輪 A 幾乎連續地(順時針)旋轉", () => {
+test("第 79 種:桿 B 往復,兩支擺動臂上的棘爪使輪 A 幾乎連續地(順時針)旋轉", () => {
   assertBothStrokes(wheel79, stroke79, "第 79 種");
   assert.ok(wheel79(stroke79 * 4) < 0, "順時針");
 });
 
-test("第 80 種:槓桿 C 振動,兩根鉤形棘爪交替把槽形齒條桿 A 往上提", () => {
+test("第 80 種:槓桿 C 擺動,兩根鉤形棘爪交替把槽形齒條桿 A 往上提", () => {
   assertBothStrokes(barHeight, swing80, "第 80 種");
   assert.ok(barHeight(swing80 * 4) > 0, "往上");
   close(barHeight(2 * swing80 * 3) - barHeight(0), 3 * 2 * pitch80, "槓桿每個來回提起兩個齒距(每程一齒)");
@@ -324,7 +349,7 @@ test("第 81 種:缺齒式正齒輪 A 的齒咬住齒條時把桿 B 推上去,�
   close(rackRise(2 * Math.PI + engagedSpan / 2), rackRise(engagedSpan / 2), "每圈重複");
 });
 
-test("第 82 種:兩個踏板交替踩下,振動臂上的棘爪使棘輪 A 近乎連續地(順時針)轉動", () => {
+test("第 82 種:兩個踏板交替踩下,擺動臂上的棘爪使棘輪 A 近乎連續地(順時針)轉動", () => {
   assertBothStrokes(wheel82, swing82, "第 82 種");
   assert.ok(wheel82(swing82 * 4) < 0);
 });
@@ -355,7 +380,7 @@ import { pump, lift as lift86, liftAngle as liftAngle86, contactAt as contact86 
 import { reverser, period as period87, firstStroke as stroke87, contactAt as contact87, tipping as tipping87 } from "../models/fig087.js";
 import { wheelB, contactAt as contact88 } from "../models/fig088.js";
 
-test("第 86 種:凸輪「抓住」制動裝置 B 之前輪不動;抓住後「連同輪一起帶動旋轉」(與凸輪同轉,順時針)", () => {
+test("第 86 種:凸輪「抓住」卡榫 B 之前輪不動;抓住後「連同輪一起帶動旋轉」(與凸輪同轉,順時針)", () => {
   const caught = sweep(lift86, 360).find((c) => pump(c).hooked);
   assert.ok(caught > 0.2, "主動量 0 時齒還沒碰到鉤");
   for (const c of sweep(caught - 0.02, 20)) close(pump(c).wheel, 0, "被抓住之前輪停在原位");
@@ -365,7 +390,7 @@ test("第 86 種:凸輪「抓住」制動裝置 B 之前輪不動;抓住後「�
   assert.ok(liftAngle86 < -Math.PI / 2, `輪被帶著轉了將近 100°(實際 ${((liftAngle86 * 180) / Math.PI).toFixed(0)}°)`);
 });
 
-test("第 86 種:「制動裝置的末端撞擊到上方的靜止擋止時」被釋放,「輪則憑藉泵桶的重量而被拉回原位」——加速落回", () => {
+test("第 86 種:「卡榫的末端撞擊到上方的靜止擋止時」被釋放,「輪則憑藉泵桶的重量而被拉回原位」——加速落回", () => {
   const fall = sweep(lift86 + 0.9, 90, lift86).map((c) => pump(c).wheel);
   const back = fall.findIndex((w) => Math.abs(w) < 1e-9);
   assert.ok(back > 10, "落回有過程,不是瞬間回到原位");

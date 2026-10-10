@@ -65,7 +65,7 @@ test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓�
   assert.ok(Math.max(...xs) - Math.min(...xs) > 1, "桿橫移");
 });
 
-test("第 351 種:衝壓機:缺齒小齒輪把桿抬起,直到齒脫離齒條,讓桿落下", () => {
+test("第 351 種:搗錘:缺齒小齒輪把桿抬起,直到齒脫離齒條,讓桿落下", () => {
   const thetas = sweep(-4 * Math.PI, 1440);
   const stamps = thetas.map((t) => m351.stamp(t));
   let drops = 0;
@@ -173,7 +173,7 @@ test("第 359 種:原始鑽孔裝置:按下橫桿時繩解開、心軸轉;放開
   assert.ok(m359.pump(2 * S).bar > m359.pump(S).bar, "飛輪的動量把繩捲回、橫桿被拉起");
 });
 
-test("第 360 種:樑振動時,鼓輪經棘爪與棘輪帶動飛輪軸只朝一個方向轉;飛輪連續旋轉", () => {
+test("第 360 種:樑擺動時,鼓輪經棘爪與棘輪帶動飛輪軸只朝一個方向轉;飛輪連續旋轉", () => {
   const S = m360.SWING;
   const fs = sweep(8 * S, 400).map((v) => m360.beam(v).fly);
   assert.ok(fs.every((f, i) => i === 0 || f < fs[i - 1]), "飛輪只朝一個方向轉,而且不停(由擺動運動所產生的連續旋轉運動)");
@@ -217,11 +217,11 @@ test("第 364 種:小輪連續旋轉,大輪間歇旋轉:每根凸柱的滾子推
   close((b.angle - a.angle) / (a.y - b.y), m364.STEP / 0.56, "轉角 / 滾子下降的距離 = 一格 / 斜棱的高度", 1e-9);
 });
 
-test("第 366 種:鑽床:大斜齒輪帶動鑽桿旋轉;踩下踏板時鑽桿被壓下,但照樣跟著小斜齒輪轉", () => {
+test("第 366 種:鑽床:大傘齒輪帶動鑽桿旋轉;踩下踏板時鑽桿被壓下,但照樣跟著小傘齒輪轉", () => {
   const def = m366.default;
   const up = def.pose(1.3, "up").parts.spindle;
   const down = def.pose(1.3, "down").parts.spindle;
-  close(up.angle, down.angle, "鑽桿在小斜齒輪中滑動,仍一起轉");
+  close(up.angle, down.angle, "鑽桿在小傘齒輪中滑動,仍一起轉");
   close(up.position[1] - down.position[1], m366.PRESS, "踩下踏板,鑽桿下降");
   close(Math.abs(m366.drill(1) - m366.drill(0)), 30 / 12, "轉速比 = 齒數比", 1e-9);
 });
@@ -325,7 +325,7 @@ test("第 375 種:滾壓輪:輪軸接在直立軸上,輪在環形鍋盆裡繞行
   const b = m375.runners(1);
   const { RUN, WHEEL } = m375.geometry;
   close(Math.abs(b.roll - a.roll) * WHEEL, Math.abs(b.shaft - a.shaft) * RUN, "輪滾過的長度 = 繞行的弧長");
-  close(Math.abs(b.shaft - a.shaft), 1, "斜齒輪 1:1");
+  close(Math.abs(b.shaft - a.shaft), 1, "傘齒輪 1:1");
 });
 
 test("第 376 種:踏輪馬力裝置:馬往上走,輪在牠腳下轉", () => {
@@ -468,9 +468,9 @@ test("第 391 種:一根齒條上升時、另一根下降時作用於齒輪,得�
   const down = m391.racks(1.5 * S);
   assert.ok(Math.abs(up.angleA) < 1e-6 && Math.abs(up.angleA1) > 0.05, "上升時 A 咬著、A¹ 離開");
   assert.ok(Math.abs(down.angleA1) < 1e-6 && Math.abs(down.angleA) > 0.05, "下降時 A¹ 咬著、A 離開");
-  // 肘節 C:A¹ 的銷到了上角才把它頂起,其餘時間落在擋上
+  // 肘形槓桿 C:A¹ 的銷到了上角才把它頂起,其餘時間落在擋上
   const rest = m391.toggleAngle(m391.pinOf(1, S / 2));
-  assert.ok(m391.toggleAngle(m391.pinOf(1, S)) > rest + 0.1, "銷到上角時頂起肘節 C");
+  assert.ok(m391.toggleAngle(m391.pinOf(1, S)) > rest + 0.1, "銷到上角時頂起肘形槓桿 C");
 });
 
 test("第 392 種:跳鋸:下端由曲柄帶動上下,上端的彈簧讓鋸子保持繃緊", () => {
@@ -501,7 +501,7 @@ test("第 394 種:Parsons 無端齒條:框往復,小齒輪連續朝同一方向�
   assert.ok(m394.parsons(span / 2).frame[1] * m394.parsons(1.5 * span).frame[1] < 0, "兩個方向咬不同排的齒");
 });
 
-test("第 395 種:四向活塞閥:閥塞轉 1/4 圈,進汽與排汽的端互換", () => {
+test("第 395 種:四通旋塞:閥塞轉 1/4 圈,進汽與排汽的端互換", () => {
   close(m395.plugAngle(0.2), 0, "位置 0");
   close(m395.plugAngle(0.7), Math.PI / 2, "轉 1/4 圈到位置 1");
   assert.equal(m395.position(m395.plugAngle(0.2)), 0);
@@ -571,30 +571,34 @@ test("第 399 種:修理鏈條:每一半的螺絲旋進另一半的螺帽,轉動
   close(b.nutU.angle, 2 * Math.PI, "螺帽轉一圈");
 });
 
-test("第 400 種:四向進料:進料齒依序上、前、下、後,把布往前送;A 由凸輪頂起與推前,彈簧拉回,落下時加速", () => {
+test("第 400 種:四向進料:桿 B 由凸輪 C 的徑向凸起抬起,兩根桿被一起往前帶,彈簧產生回程,B 憑自重落下", () => {
   const T = 2 * Math.PI;
   const q = (f) => m400.fourMotion(f * T);
-  assert.ok(q(0.25).lift > 0.17 && q(0.25).feed === 0, "先抬起(凸輪的徑向凸起把 A 抬起)");
-  assert.ok(q(0.5).feed > 0.19 && q(0.5).lift > 0.17, "再往前(兩根桿被一起往前帶)");
-  assert.ok(q(0.75).lift === 0 && q(0.75).feed > 0.19, "再落下(B 憑自重落下)");
+  assert.ok(q(0.25).lift > 0.2 && q(0.25).feed === 0, "先抬起(凸輪的徑向凸起把 B 抬起)");
+  assert.ok(q(0.5).feed > 0.19 && q(0.5).lift > 0.2, "再往前(兩根桿被一起往前帶)");
+  assert.ok(Math.abs(q(0.75).lift) < 0.01 && q(0.75).feed > 0.19, "再落下(B 憑自重落下)");
   close(q(1).feed, 0, "最後被彈簧拉回");
   // 落下是加速的:每一小段落下的量越來越大,到底撞停
   const drops = [0.55, 0.6, 0.65, 0.7, 0.75].map((f, i, a) => (i ? q(a[i - 1]).lift - q(f).lift : 0)).slice(1);
   assert.ok(drops.every((d, i) => i === 0 || d > drops[i - 1]), "越落越快");
-  // 凸輪輪廓由 A 該走的位移反推:A 的底面(平底從動件)剛好貼著輪廓的最高點
-  const outline = m400.camOutline(m400.liftHeight, Math.PI / 2);
-  for (const t of sweep(T, 24)) {
-    const top = Math.max(...outline.map(([x, y]) => x * Math.sin(t) + y * Math.cos(t)));
-    close(top, m400.liftHeight(t), `凸輪轉 ${t.toFixed(2)}:A 坐在凸輪上`, 5e-3);
+  for (const t of sweep(T, 48)) {
+    const pose = m400.default.pose(t).parts;
+    // 桿 A 只被帶著前後走,不升降;B 以樞軸接在 A 的叉口裡,和 A 一起往前、往回(樞軸在 A 上的位置不變)
+    assert.equal(pose.barA.position[1], 0, `凸輪轉 ${t.toFixed(2)}:A 不被抬起`);
+    close(pose.pinB.position[0] - pose.barA.position[0], m400.default.pose(0).parts.pinB.position[0], "B 的樞軸跟著 A 前後走", 1e-12);
+    // B 靠自重坐在凸輪上:不穿入,也沒有懸空
+    const { b, cam } = m400.contactAt(t);
+    assert.ok(penetrationDepth(b, cam) < 5e-3, `凸輪轉 ${t.toFixed(2)}:凸輪沒有穿入 B`);
+    assert.ok(polygonsOverlap(m400.contactAt(t, -0.004).b, cam), `凸輪轉 ${t.toFixed(2)}:B 坐在凸輪上`);
   }
 });
 
-test("第 401 種:Brownell 曲柄:手腕越過死點前,滑塊 A 沿槽往前移;越過後彈簧 B 把它推回擋止", () => {
+test("第 401 種:Brownell 曲柄:腕銷越過死點前,滑塊 A 沿槽往前移;越過後彈簧 B 把它推回擋止", () => {
   const deg = Math.PI / 180;
-  close(m401.wrist(Math.PI).s, 0, "手腕在底部:滑塊在擋止處");
+  close(m401.wrist(Math.PI).s, 0, "腕銷在底部:滑塊在擋止處");
   assert.ok(m401.wrist(-10 * deg).s > 0.25, "接近死點時滑塊往前移");
   close(m401.wrist(30 * deg).s, 0, "越過後彈回擋止處", 1e-9);
-  // 沿槽(切線)移:手腕離軸心的距離 ≥ 槽的半徑
+  // 沿槽(切線)移:腕銷離軸心的距離 ≥ 槽的半徑
   const w = m401.wrist(-10 * deg);
   assert.ok(Math.abs(w.local[1] - 0.6) < 1e-9 && w.local[0] < 0, "滑塊沿橫的槽往轉動的方向移");
   // 彈回是加速的:越回越快

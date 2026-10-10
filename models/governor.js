@@ -1,20 +1,20 @@
-// 離心式(飛球)調速器共用:搖臂在心軸頂部樞接,末端是球;連桿從搖臂中段接到在心軸上滑動的套筒。
+// 離心式(飛球)調速器共用:臂在心軸頂部樞接,末端是球;連桿從臂中段接到在心軸上滑動的套筒。
 // 心軸轉得越快,球飛得越開、套筒被拉得越高。純函式,平面在 xy。
 // 張角對轉速:離心力與轉速平方成正比,張角以 (s / max)² 在 range 之間變化——真實圓錐擺(cos α = g / (ω²L))
 // 只在很窄的一段轉速裡有反應,滑桿會大半段沒有動靜,所以不照它算。
 import { Y, deg, clamp } from "./kit.js";
 
 /**
- * top:搖臂樞軸的高度;arm:樞軸到球心;at:連桿接在搖臂上的位置(離樞軸);link:連桿長;
- * spread:左右兩支搖臂樞軸離心軸的距離;ball:球半徑;range:[最小, 最大] 張角;max:轉速範圍上限。
+ * top:臂樞軸的高度;arm:樞軸到球心;at:連桿接在臂上的位置(離樞軸);link:連桿長;
+ * spread:左右兩支臂樞軸離心軸的距離;ball:球半徑;range:[最小, 最大] 張角;max:轉速範圍上限。
  * below:連桿往下接套筒(true,套筒在下方)或往上(false)。
  */
-const PLANE = 0.26; // 搖臂與連桿所在的那一層(套筒半徑 0.22 的前面)
+const PLANE = 0.26; // 臂與連桿所在的那一層(套筒半徑 0.22 的前面)
 
 export function flyBall({ top = 2.4, arm = 2.2, at = 1.1, link = 1.25, spread = 0.18, ball = 0.42, range = [deg(14), deg(52)], max = 10, below = true }) {
   /** 轉速 s:張角 */
   const angleAt = (s) => range[0] + (range[1] - range[0]) * clamp(s / max, 0, 1) ** 2;
-  /** 張角 α:兩邊搖臂、球、連桿接點與套筒高度 */
+  /** 張角 α:兩邊臂、球、連桿接點與套筒高度 */
   function geometry(alpha) {
     const side = (k) => {
       const pivot = [k * spread, top, 0];
@@ -37,7 +37,7 @@ export function flyBall({ top = 2.4, arm = 2.2, at = 1.1, link = 1.25, spread = 
     { id: `${prefix}ballL`, kind: "sphere", radius: ball },
     { id: `${prefix}ballR`, kind: "sphere", radius: ball },
     { id: `${prefix}sleeve`, kind: "cylinder", axis: Y, radius: 0.22, length: 0.22 },
-    // 頂座:搖臂掛在它的前面(搖臂、連桿都在心軸前面一層,不穿過頂座與套筒)
+    // 頂座:臂掛在它的前面(臂、連桿都在心軸前面一層,不穿過頂座與套筒)
     { id: `${prefix}head`, kind: "box", center: [0, top, 0.145], size: [2 * spread + 0.3, 0.22, 0.15] },
   ];
   function pose(alpha, prefix = "") {

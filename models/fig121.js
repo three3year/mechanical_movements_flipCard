@@ -1,12 +1,12 @@
-// 第 121 種:連在碟形輪上的桿做交替直線運動,碟形輪來回擺動;碟形輪上裝的制動爪(click)推動中間的棘輪
+// 第 121 種:連在碟形輪上的桿做交替直線運動,碟形輪來回擺動;碟形輪上裝的制動爪(click)推動中間的齒輪
 // (cog-wheel)做間歇旋轉。把制動爪翻到另一邊,運動就反向。用於刨床等工具的進給運動。
 // 主動件是桿(原文的輸入:桿的交替直線運動):桿的上端接在直立導槽裡的滑塊上,主動量是滑塊的累計行程;
 // 下端接在碟形輪的銷上,帶碟形輪來回擺 30°。
 //
-// 接觸:制動爪鉸在碟形輪的銷上,靠自重(加一根小彈簧,推斷)搭在棘輪的齒上。碟形輪往爪尖那一邊擺時,爪尖頂住齒面把棘輪推著走;
-// 擺回來時爪背被齒背頂起、滑過齒尖,再靠自重加速落進下一格。棘輪被推多遠、爪擺到哪裡都由接觸算
-// (逐步模擬幾個來回,取已經穩定的那一個來回當作週期)。每一程碟形輪擺 30° = 兩個齒距,棘輪每程前進兩齒。
-// 碟形輪鬆套在棘輪的軸上,軸後面一個軸承座;桿上端的滑塊與導槽是推斷(原圖的桿伸出畫面外)。
+// 接觸:制動爪鉸在碟形輪的銷上,靠自重(加一根小彈簧,推斷)搭在齒輪的齒上。碟形輪往爪尖那一邊擺時,爪尖頂住齒面把齒輪推著走;
+// 擺回來時爪背被齒背頂起、滑過齒尖,再靠自重加速落進下一格。齒輪被推多遠、爪擺到哪裡都由接觸算
+// (逐步模擬幾個來回,取已經穩定的那一個來回當作週期)。每一程碟形輪擺 30° = 兩個齒距,齒輪每程前進兩齒。
+// 碟形輪鬆套在齒輪的軸上,軸後面一個軸承座;桿上端的滑塊與導槽是推斷(原圖的桿伸出畫面外)。
 import { deg, swing, polar, TAU } from "./kit.js";
 import { gearProfile, shape, circle } from "./shapes.js";
 import { placeOutline, polygonsOverlap, swingUntilContact, pushUntilClear } from "./contact.js";
@@ -22,7 +22,7 @@ const HEAD_X = 1.25; // 桿上端的滑塊沿 x = 1.25 的直立導槽上下
 const ROD = 3.2;
 const COG_PROFILE = gearProfile(COG);
 
-// 制動爪:一端繞樞軸,另一端是削尖、落得進齒溝的爪尖;side = +1 時爪朝順時針方向(推棘輪順時針)
+// 制動爪:一端繞樞軸,另一端是削尖、落得進齒溝的爪尖;side = +1 時爪朝順時針方向(推齒輪順時針)
 const clickOutline = (side) => [
   [0.0, 0.12],
   [side * 0.55, 0.08],
@@ -66,7 +66,7 @@ const RAISE = deg(25);
 const rest = (side, disc, cog, from) =>
   swingUntilContact({ pivot: clickPivot(disc), outline: clickOutline(side), from, into: -side, sweep: deg(60), steps: 60 }, [cogAt(cog)]);
 
-// 逐步模擬:碟形輪帶著爪走;往爪尖那一邊擺(推程)時爪壓進齒裡,就把棘輪往前推到剛好不重疊;
+// 逐步模擬:碟形輪帶著爪走;往爪尖那一邊擺(推程)時爪壓進齒裡,就把齒輪往前推到剛好不重疊;
 // 之後爪靠自重落到碰到齒的位置——離開齒尖後是加速落下(每一步速度增加 FALL,不是一下子跳過去)
 const SAMPLES = 600; // 一個來回(主動量 2·SPAN)的取樣數
 const FALL = 0.0016; // 落下時每一步增加的角速度(弧度 / 步)
@@ -105,7 +105,7 @@ function simulate(side) {
   const raw = table[SAMPLES].cog - table[0].cog;
   const advance = Math.round(raw / TOOTH) * TOOTH;
   const c0 = table[0].cog;
-  // 平移整數個齒距(齒形看起來不變),讓主動量 0 時棘輪的轉角接近 0
+  // 平移整數個齒距(齒形看起來不變),讓主動量 0 時齒輪的轉角接近 0
   return { table: table.map((s) => ({ ...s, cog: c0 + ((s.cog - c0) * advance) / raw })), advance, c0: Math.round(c0 / TOOTH) * TOOTH };
 }
 const TABLES = { 1: simulate(1), [-1]: simulate(-1) };
@@ -121,7 +121,7 @@ function lookup(v, side) {
   return { cog: k * advance + a.cog + (b.cog - a.cog) * t - c0, rel: a.rel + (b.rel - a.rel) * t };
 }
 
-/** 主動量 v、制動爪方向:碟形輪、棘輪的轉角與爪相對碟形輪的轉角 */
+/** 主動量 v、制動爪方向:碟形輪、齒輪的轉角與爪相對碟形輪的轉角 */
 export function feed(v, side) {
   const { h, disc } = rodDrive(v);
   const { cog, rel } = lookup(v, side);
@@ -130,7 +130,7 @@ export function feed(v, side) {
 export const swingAngle = SWING;
 export const stroke = SPAN;
 export const toothPitch = TOOTH;
-/** 姿勢下制動爪與棘輪的外形(世界座標 2D),測試檢查接觸不穿入用 */
+/** 姿勢下制動爪與齒輪的外形(世界座標 2D),測試檢查接觸不穿入用 */
 export function contactShapes(v, side) {
   const { disc, cog, rel } = feed(v, side);
   return { click: placed(side, disc, CLICK.at + disc - Math.PI / 2 + rel), cog: cogAt(cog) };
@@ -182,7 +182,7 @@ export default {
     },
   ],
   driver: { part: "rod", type: "translation", direction: [0, 1, 0], cycle: [TOP, BOTTOM], grips: ["head"] },
-  target: "cog", // 間歇旋轉的棘輪
+  target: "cog", // 間歇旋轉的齒輪
   states: {
     options: [
       { id: "cw", label: "制動爪朝右(順時針進給)" },
@@ -190,16 +190,16 @@ export default {
     ],
     initial: "cw",
   },
-  // 動力重演:只推桿;棘輪靠摩擦定位,制動爪鉸在碟形輪的銷上,自重加上一根小彈簧把它壓在齒上
+  // 動力重演:只推桿;齒輪靠摩擦定位,制動爪鉸在碟形輪的銷上,自重加上一根小彈簧把它壓在齒上
   replay: {
     free: { cog: { hold: true }, click: { pivot: [...clickPivot(rodDrive(0).disc), 0.12], on: "disc", spring: -1 } },
     to: 4 * SPAN,
     seconds: 20,
-    // 棘輪的軸穿過碟形輪的孔(碟形輪鬆套在軸上,兩者之間的摩擦不算);桿只在銷上接碟形輪,和棘輪、制動爪不同層
+    // 齒輪的軸穿過碟形輪的孔(碟形輪鬆套在軸上,兩者之間的摩擦不算);桿只在銷上接碟形輪,和齒輪、制動爪不同層
     ignore: [["cog", "disc"], ["rod", "cog"], ["rod", "click"]],
     expect: [
-      { at: SPAN, part: "cog", label: "桿往下拉,碟形輪順時針擺,爪頂住齒把棘輪推過兩齒", quote: "透過連接於碟形輪上的制動爪(click),會產生棘輪(cog-wheel)的間歇旋轉運動" },
-      { at: 2 * SPAN, part: "cog", label: "桿推回去,爪滑過齒背,棘輪不動" },
+      { at: SPAN, part: "cog", label: "桿往下拉,碟形輪順時針擺,爪頂住齒把齒輪推過兩齒", quote: "透過連接於碟形輪上的制動爪(click),會產生齒輪(cog-wheel)的間歇旋轉運動" },
+      { at: 2 * SPAN, part: "cog", label: "桿推回去,爪滑過齒背,齒輪不動" },
       { part: "cog", label: "下一程再推過兩齒" },
     ],
   },
@@ -209,8 +209,8 @@ export default {
       check: "replay",
       parts: ["cog"],
       reason:
-        "棘輪的齒必須是對稱的(原文:翻轉制動爪就反向,鋸齒只能朝一個方向推),制動爪靠自重與彈簧往齒溝裡壓時,斜的齒面把棘輪往回頂(楔形作用);重演的「摩擦定位」是黏滯阻尼(速度越快阻力越大),擋不住這個一直存在的小力矩," +
-        "棘輪一開始就被慢慢推回、爪推不到齒面(拿掉定位阻尼試過,推回得更快)。實物的棘輪接著刨床的進給螺桿,靠靜摩擦擋住;原書沒有摩擦的資料。" +
+        "齒輪的齒必須是對稱的(原文:翻轉制動爪就反向,鋸齒只能朝一個方向推),制動爪靠自重與彈簧往齒溝裡壓時,斜的齒面把齒輪往回頂(楔形作用);重演的「摩擦定位」是黏滯阻尼(速度越快阻力越大),擋不住這個一直存在的小力矩," +
+        "齒輪一開始就被慢慢推回、爪推不到齒面(拿掉定位阻尼試過,推回得更快)。實物的齒輪接著刨床的進給螺桿,靠靜摩擦擋住;原書沒有摩擦的資料。" +
         "爪推齒的接觸改由測試檢查:每個來回推兩齒、回程不動、爪不穿進齒",
     },
   ],

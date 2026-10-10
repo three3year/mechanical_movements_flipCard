@@ -1,5 +1,5 @@
 // 第 7 種:嚙合、脫離與反轉左側直立軸。下方軸上三個皮帶輪:
-// 左輪固定在空心軸 b 上帶動斜齒輪 B,右輪固定在 b 內的軸 a 上帶動斜齒輪 A,中輪鬆動。
+// 左輪固定在空心軸 b 上帶動傘齒輪 B,右輪固定在 b 內的軸 a 上帶動傘齒輪 A,中輪鬆動。
 // A、B 從兩側嚙合直立軸上的齒輪,所以皮帶在左輪或右輪時直立軸轉向相反,在中輪時不轉。
 // 結構推斷:原圖下方水平軸架在兩個拱形軸承座(A 外側與 B、皮帶輪之間)上,直立軸 C 往上伸出圖外;
 // 這裡補上三個軸承座(左端、B 與皮帶輪之間、右端)、連接它們的底板,以及直立軸上方的軸承
@@ -11,7 +11,7 @@ const SHAFT_Y = -1.4;
 const DRUM = { center: [2.0, 2.0, 0], radius: 0.5, width: 1.7 };
 const R = 0.5;
 const PULLEY_X = { left: 1.5, middle: 2.0, right: 2.5 };
-const GEAR = { radius: 0.42, height: 0.3, offset: 0.43 }; // offset:錐齒面剛好相貼的位置(0.52 時三個斜齒輪之間隔著空隙)
+const GEAR = { radius: 0.42, height: 0.3, offset: 0.43 }; // offset:錐齒面剛好相貼的位置(0.52 時三個傘齒輪之間隔著空隙)
 const C_X = -1.0;
 
 const paths = memo((state) => {
@@ -123,7 +123,7 @@ export default {
   pose(angle, state = "middle") {
     const travel = beltTravel(angle, DRUM.radius, 1);
     const belted = wheelAngle(travel, R, 1); // 皮帶所在那個輪的轉角(繞 +x)
-    // 以繞 +x 量 A、B,繞 +y 量直立軸 C;等大的斜齒輪:C = −B,A = −B
+    // 以繞 +x 量 A、B,繞 +y 量直立軸 C;等大的傘齒輪:C = −B,A = −B
     let b = 0;
     if (state === "left") b = belted;
     if (state === "right") b = -belted;

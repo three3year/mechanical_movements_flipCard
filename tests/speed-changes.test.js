@@ -32,14 +32,14 @@ test("第 60 種:左皮帶在鬆動輪、右皮帶在固定輪時較慢;兩者�
   assert.ok(fast > slow);
 });
 
-test("第 61 種:推動中間皮帶輪時是單純的運動;推動右側皮帶輪(第三個斜齒輪被制動)時軸得到雙倍速度", () => {
+test("第 61 種:皮帶移到中間皮帶輪上時是單純的運動;移到右側皮帶輪上(第三個傘齒輪被制動)時軸得到雙倍速度", () => {
   const drum = (state) => turned(fig61, state === "middle" ? "middle" : "right", 0, 1, state);
   close(turned(fig61, "shaft", 0, 1, "middle"), drum("middle"), "單純:軸與皮帶輪同轉");
   close(turned(fig61, "shaft", 0, 1, "right"), 2 * drum("right"), "雙倍");
   assert.equal(turned(fig61, "shaft", 0, 1, "loose"), 0);
 });
 
-test("第 62 種:右輪與軸同向時從雙倍速度中扣除第三個斜齒輪的轉動;右皮帶交叉時改為加上", () => {
+test("第 62 種:右輪也朝同一方向轉時從雙倍速度中扣除第三個傘齒輪的轉動;右皮帶交叉時改為加上", () => {
   const carrier = turned(fig62, "carrier", 0, 1, "open");
   const sun2Open = turned(fig62, "fourth", 0, 1, "open");
   const sun2Crossed = turned(fig62, "fourth", 0, 1, "crossed");

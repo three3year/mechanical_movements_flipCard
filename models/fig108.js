@@ -94,7 +94,7 @@ export default {
     seconds: 30,
     expect: [
       { at: POINT, part: "slide", label: "尖點走到下端" },
-      { at: POINT + TURNS * TAU, part: "slide", label: "在下端轉入反向的溝,穿過交會處,走到上端", quote: "將一個點放入該溝槽中,就會使其從圓筒的一端橫移至另一端" },
+      { at: POINT + TURNS * TAU, part: "slide", label: "在下端轉入反向的溝,穿過交會處,走到上端", quote: "將一個尖點(point)放入該溝槽中,就會使其從圓筒的一端橫移至另一端" },
       { part: "slide", label: "在上端轉入反向的溝,走回下端" },
     ],
   },

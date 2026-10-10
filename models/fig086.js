@@ -1,6 +1,6 @@
 // 第 86 種:以旋轉運動驅動往復式泵。承載泵桿的繩索繫在輪 A 上,輪 A 鬆套在軸上;軸帶動凸輪 C 連續旋轉。
-// 凸輪每轉一圈,就抓住裝在輪上的鉤形制動裝置 B,把它連同輪一起帶著轉、把繩索抬起;
-// 直到制動裝置的末端撞上上方的靜止擋止,制動裝置被釋放,輪便被泵桶的重量拉回原位。
+// 凸輪每轉一圈,就抓住裝在輪上的鉤形卡榫 B,把它連同輪一起帶著轉、把繩索抬起;
+// 直到卡榫的末端撞上上方的靜止擋止,卡榫被釋放,輪便被泵桶的重量拉回原位。
 // 主動件是軸(凸輪 C),照原圖的樣子順時針轉(原文沒寫轉向;原圖 B 在輪的左側、尾端朝左下伸出輪外,
 // 擋止在上方,輪得順時針轉,B 的尾端才會往上撞到擋止)。
 //
@@ -156,13 +156,13 @@ const CYCLE = (() => { // 一圈的查表:每步的輪角、B 的 tilt、是否�
   return run.slice(STEPS);
 })();
 const LIFT_STEP = CYCLE.findIndex((s, i) => i > 0 && !s.hooked && CYCLE[i - 1].hooked);
-if (LIFT_STEP < 0) throw new Error("第 86 種:擋止沒有撬開制動裝置,輪一直沒被釋放");
+if (LIFT_STEP < 0) throw new Error("第 86 種:擋止沒有撬開卡榫,輪一直沒被釋放");
 /** 釋放時的主動量(一圈之內) */
 export const lift = (LIFT_STEP / STEPS) * TAU;
 /** 釋放時輪轉過的角度(順時針為負) */
 export const liftAngle = CYCLE[LIFT_STEP - 1].w;
 
-/** 軸轉 c(順時針):輪 A 的轉角(順時針為負)、制動裝置是否被齒推著(hooked)、制動裝置相對於輪的轉角(tilt) */
+/** 軸轉 c(順時針):輪 A 的轉角(順時針為負)、卡榫是否被齒推著(hooked)、卡榫相對於輪的轉角(tilt) */
 export function pump(c) {
   const x = ((((c % TAU) + TAU) % TAU) / TAU) * STEPS;
   const i = Math.min(STEPS - 1, Math.floor(x));
@@ -202,7 +202,7 @@ export default {
         { kind: "cylinder", radius: 0.28, inner: 0.17, length: 0.3 },
         // B 張開的擋銷(推斷):輪被拉回時 B 被甩開,擋銷不讓它翻過頭;模型裡 B 最多張開約 15°,碰不到它
         { kind: "cylinder", radius: 0.05, length: 0.24, at: [...STOP_PIN, Z.catch - 0.06] },
-        // 制動裝置的樞軸銷,立在左邊的輪輻上、伸到 B 那一層
+        // 卡榫的樞軸銷,立在左邊的輪輻上、伸到 B 那一層
         { kind: "cylinder", radius: 0.06, length: 0.5, at: [...PIVOT, 0.2] },
       ],
       label: "A",
@@ -236,7 +236,7 @@ export default {
     { id: "rope", kind: "rope" },
   ],
   // 動力重演:只推軸(凸輪);輪鬆套在軸上、被泵桶的重量往回拉(以彈簧代表,原位以轉角的上限代表泵桶落到底),
-  // 制動裝置鉸在輪上,靠自重把鉤頭搭在凸輪上
+  // 卡榫鉸在輪上,靠自重把鉤頭搭在凸輪上
   replay: {
     from: 0,
     to: 2 * TAU,
@@ -244,9 +244,9 @@ export default {
     free: { wheel: { spring: 1, gravity: false, limits: [-3, 0] }, catch: { on: "wheel", limits: [-0.1, OPEN_MAX] } }, // B 與輪之間不算碰撞,擋銷以 limits 代表
     ignore: [["wheel", "frame"], ["wheel", "shaft"]],
     expect: [
-      { at: lift * 0.8, part: "wheel", label: "凸輪的齒抓住制動裝置,帶著輪轉", quote: "抓住連接於該輪上的鉤形制動裝置 B,並將其連同輪一起帶動旋轉" },
-      { at: lift + FALL + deg(20), part: "wheel", label: "制動裝置撞到擋止被釋放,輪被泵桶拉回原位", quote: "輪則憑藉泵桶的重量而被拉回原位" },
-      { at: TAU + lift * 0.8, part: "wheel", label: "下一圈再抓住制動裝置", quote: "凸輪每旋轉一圈" },
+      { at: lift * 0.8, part: "wheel", label: "凸輪的齒抓住卡榫,帶著輪轉", quote: "抓住連接於該輪上的鉤形卡榫(hooked catch)B,並將其連同輪一起帶動旋轉" },
+      { at: lift + FALL + deg(20), part: "wheel", label: "卡榫撞到擋止被釋放,輪被泵桶拉回原位", quote: "輪則憑藉泵桶的重量而被拉回原位" },
+      { at: TAU + lift * 0.8, part: "wheel", label: "下一圈再抓住卡榫", quote: "凸輪每旋轉一圈" },
     ],
   },
   driver: { part: "shaft", type: "rotation", speed: 0.8 },

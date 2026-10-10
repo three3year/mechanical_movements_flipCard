@@ -53,7 +53,7 @@ export default {
       spin: 0.9,
       pieces: [
         { kind: "cylinder", radius: 0.07, length: 2.0, at: [0, 0, -0.6] },
-        { kind: "bevel", radius: RB - 0.02, height: 0.22, axis: [0, 0, 1], at: [0, 0, 0.3] }, // 軸 A 的斜齒輪與上下兩個輪 b、g 的輪緣相貼
+        { kind: "bevel", radius: RB - 0.02, height: 0.22, axis: [0, 0, 1], at: [0, 0, 0.3] }, // 軸 A 的傘齒輪與上下兩個輪 b、g 的輪緣相貼
         { kind: "box", size: [0.08, 0.5, 0.08], at: [0, -0.25, -1.55] },
         { kind: "cylinder", radius: 0.06, length: 0.3, axis: [1, 0, 0], at: [0.12, -0.5, -1.55], accent: true },
       ],

@@ -1,6 +1,6 @@
-// 第 82 種:兩個踏板 D 交替踩下時,透過振動臂 B 與臂端的棘爪,把近乎連續的運動傳給棘輪 A。
+// 第 82 種:兩個踏板 D 交替踩下時,透過擺動臂 B 與臂端的棘爪,把近乎連續的運動傳給棘輪 A。
 // 兩個踏板的末端以鏈條(或皮帶)繞過上方的滑輪 C 相連,一個踩下時另一個便被抬起。
-// 每個踏板經一根連桿拉著一支振動臂;踩下時臂端往下,棘爪推動 A 的右側往下(A 順時針轉),
+// 每個踏板經一根連桿拉著一支擺動臂;踩下時臂端往下,棘爪推動 A 的右側往下(A 順時針轉),
 // 抬起時棘爪滑過齒背退回。主動量是前踏板的累計擺動量。
 import { deg, swing as swingAt } from "./kit.js";
 import { circleCircle, bodyPoint } from "./linkage.js";
@@ -11,7 +11,7 @@ const A = { center: [0, 0, 0], teeth: 28, outer: 1.6, inner: 1.38, dir: -1 };
 const PIVOT = [-1.8, -2.35]; // 踏板的支點
 const TREADLE = 4.6; // 踏板長
 const ROD_AT = 2.65; // 連桿接在踏板上離支點的距離
-const ARM = 1.55; // 振動臂長
+const ARM = 1.55; // 擺動臂長
 const ROD = { front: 2.15, back: 2.05 };
 const SWING = deg(9);
 const Z = { front: 0.45, back: -0.45 };
@@ -127,7 +127,7 @@ export default {
         wheel: { angle: wheelAngle(v) },
         armFront: { angle: armAngle("front")(t) },
         armBack: { angle: armAngle("back")(t) },
-        // 連桿的兩端掛在踏板與振動臂的內側面上(不與它們同層)
+        // 連桿的兩端掛在踏板與擺動臂的內側面上(不與它們同層)
         rodFront: { from: foot("front", Z.front - 0.12), to: top("front", Z.front * 0.45 + 0.07) },
         rodBack: { from: foot("back", Z.back + 0.12), to: top("back", Z.back * 0.45 - 0.07) },
         pulley: { angle: ef[1] / PULLEY.radius },
