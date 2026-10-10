@@ -1,8 +1,8 @@
 // 第十二章「接頭與器具」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { penetrationDepth } from "../models/contact.js";
-import { close, turned } from "./helpers.js";
+import { penetrationDepth, circlePolygon } from "../models/contact.js";
+import { close, turned, part } from "./helpers.js";
 
 import fig243, { turns as turns243 } from "../models/fig243.js";
 import * as m254 from "../models/fig254.js";
@@ -63,6 +63,26 @@ test("第 243 種:透過皮帶輪與皮帶,把動力從一根水平軸傳到兩�
   assert.ok(Math.abs(t.left) > 0 && Math.abs(t.right) > 0, "兩根垂直軸都被帶動");
   close(t.left, t.right, "兩根垂直軸的皮帶筒一樣大,轉速相同");
   close(turned(fig243, "left", 0, 1) * 0.36, 0.62, "皮帶筒周邊走過的長度 = 主動輪周邊走過的長度", 1e-9);
+});
+
+test("第 243 種:原圖上方那條直線和主動輪頂部相切,回程皮帶從主動軸上方留出間隙經過、不擦過轉動的軸", () => {
+  const main = fig243.parts.find((p) => p.id === "main");
+  const shaft = main.pieces[0]; // 水平軸(沿 z)
+  const [sx, sy, sz] = [main.center[0], main.center[1], main.center[2] + shaft.at[2]];
+  const points = fig243.pose(0).paths.belt.points;
+  assert.ok(main.center[1] + main.radius <= Math.max(...points.map((p) => p[1])) + 1e-9, "主動輪頂部不高過皮帶");
+  // 皮帶(管半徑 0.05)沿線取點,量到軸(半徑 0.08)表面的距離
+  let gap = Infinity;
+  points.forEach((a, i) => {
+    const b = points[(i + 1) % points.length];
+    for (let k = 0; k <= 20; k++) {
+      const p = a.map((v, j) => v + ((b[j] - v) * k) / 20);
+      const dz = Math.max(0, Math.abs(p[2] - sz) - shaft.length / 2);
+      const radial = Math.max(0, Math.hypot(p[0] - sx, p[1] - sy) - shaft.radius);
+      gap = Math.min(gap, Math.hypot(radial, dz) - 0.05);
+    }
+  });
+  assert.ok(gap > 0.1, `皮帶和主動軸之間留出明顯的間隙(${gap.toFixed(3)})`);
 });
 
 for (const [n, m, what] of [
@@ -263,6 +283,37 @@ test("第 244 種:測功計:軸轉動時輪 A 在木塊間轉,槓桿 D 由擋止
   close(turned(def, "leverD", 0, 2, "right"), 0, "槓桿不隨輪轉");
 });
 
+test("第 244 種:一塊木塊與一連串的條板繫於鏈上,透過槓桿 D 頂部的螺絲與螺帽壓迫皮帶輪", () => {
+  const { drum, block, straps, pins, lugs, bolts, lever } = m244.brake; // 槓桿的局部座標,原點是輪 A 的軸心
+  const wheel = circlePolygon([0, 0], drum, 360);
+  for (const [i, shoe] of [block, ...straps].entries()) {
+    const what = i === 0 ? "上方木塊" : `第 ${i} 根條板`;
+    assert.ok(penetrationDepth(shoe, wheel) < 1e-3, `${what}不壓進輪裡`);
+    const gap = Math.min(...shoe.map(([x, y]) => Math.hypot(x, y) - drum));
+    assert.ok(gap >= -1e-3 && gap < 0.02, `${what}貼在輪面上(間隙 ${gap.toFixed(3)})`);
+  }
+  assert.ok(straps.length >= 5, "下方是一連串的條板,不是一整圈的硬環");
+  const blockBottom = Math.min(...block.map((p) => p[1]));
+  assert.ok(Math.max(...pins.map((p) => p[1])) < blockBottom, "鏈只包住輪的下半,上端不繞過輪頂");
+  for (const [k, bolt] of bolts.entries()) {
+    const lug = lugs[k];
+    const side = k === 0 ? "左" : "右";
+    assert.ok(Math.abs(bolt.x) - bolt.r > drum && Math.abs(bolt.x) - bolt.r > Math.max(...block.map((p) => Math.abs(p[0]))), `${side}螺絲在輪與木塊的外側,不穿過輪`);
+    assert.ok(bolt.x - bolt.r > lug.x0 && bolt.x + bolt.r < lug.x1, `${side}螺絲穿過鏈端的耳`);
+    assert.ok(bolt.y0 < lug.y0 && bolt.y1 > lever.y1, `${side}螺絲從耳的下面一直伸到槓桿 D 頂部之上`);
+    close(bolt.nutBelow[1], lug.y0, `${side}耳下面的螺帽頂著耳`, 1e-9);
+    close(bolt.nutAbove[0], lever.y1, `${side}槓桿頂部的螺帽壓在槓桿上`, 1e-9);
+    assert.ok(Math.abs(bolt.x) < Math.abs(lever[k === 0 ? "x0" : "x1"]), `${side}螺絲穿過槓桿 D`);
+  }
+});
+
+test("第 244 種:狀態說明寫明「軸照箭頭方向轉」(原文說的是軸照圖示方向運轉時的調整)", () => {
+  for (const state of ["loose", "right", "tight"]) {
+    const text = m244.default.pose(0, state).readouts.map((r) => `${r.label}${r.value}`).join();
+    assert.match(text, /軸照箭頭方向轉/, `「${state}」的說明寫明轉向`);
+  }
+});
+
 test("第 246 種:縮放圖器:以描摹點 B 描畫平面圖,鉛筆 A 畫出兩倍大小的圖形", () => {
   const C = m246.fixedC;
   for (const s of sweep(1, 40)) {
@@ -274,6 +325,53 @@ test("第 246 種:縮放圖器:以描摹點 B 描畫平面圖,鉛筆 A 畫出兩
   const a = m246.pantograph(m246.planPoint(0.1)).A;
   const b = m246.pantograph(m246.planPoint(0.35)).A;
   close(dist(a, b), 2 * dist(m246.planPoint(0.1), m246.planPoint(0.35)), "圖上任兩點的距離放大兩倍", 1e-9);
+});
+
+test("第 246 種:連接於固定樞軸 C 的滑塊與承載鉛筆的滑塊都套在各自的臂上、跟著臂轉,臂伸過滑塊(滑塊可以在臂上移動)", () => {
+  const def = m246.default;
+  const bar = (id) => {
+    const b = part(def, id).pieces[0]; // 臂身:局部 +x 沿著臂
+    return [b.at[0] - b.size[0] / 2, b.at[0] + b.size[0] / 2];
+  };
+  const [lowFrom, lowTo] = bar("armLow");
+  const [highFrom, highTo] = bar("armHigh");
+  const sliderA = part(def, "pencilA").pieces.find((p) => p.kind === "box");
+  const sliderC = part(def, "sliderC");
+  for (const s of sweep(1, 12)) {
+    const P = def.pose(s).parts;
+    const { A, R } = m246.pantograph(m246.planPoint(s));
+    // C 的滑塊:裝在固定樞軸 C 上,跟著下臂轉;下臂穿過它往外伸
+    close(dist(P.sliderC.position, [m246.fixedC[0], m246.fixedC[1], P.sliderC.position[2]]), 0, "C 的滑塊在固定樞軸 C 上", 1e-9);
+    close(P.sliderC.angle, P.armLow.angle, "C 的滑塊跟著下臂轉", 1e-9);
+    close(dist(P.armLow.position, [m246.fixedC[0], m246.fixedC[1], P.armLow.position[2]]), 0, "下臂量起的原點在 C", 1e-9);
+    assert.ok(lowFrom < -sliderC.radius - 0.2, "下臂穿過 C 的滑塊再往外伸");
+    // 鉛筆的滑塊:套在上臂上,跟著上臂轉;上臂伸過它
+    close(P.pencilA.angle, P.armHigh.angle, "鉛筆的滑塊跟著上臂轉", 1e-9);
+    const along = dist([P.pencilA.position[0], P.pencilA.position[1], 0], [R[0], R[1], 0]);
+    close(along, dist(A, R), "鉛筆在上臂的軸線上 A 點", 1e-9);
+    assert.ok(highTo > along + sliderA.size[0] / 2 + 0.2, "上臂伸過鉛筆的滑塊");
+    assert.ok(lowTo >= dist(R, m246.fixedC) - 1e-9 && highFrom <= 0, "兩臂在 R 鉸接");
+  }
+});
+
+test("第 246 種:平行四邊形的 U 角真的接上:短桿 B–U 的銷伸到下臂的深度,而且不和上臂交疊", () => {
+  const def = m246.default;
+  const linkBU = part(def, "linkBU");
+  const low = part(def, "armLow").pieces[0];
+  for (const s of sweep(1, 12)) {
+    const P = def.pose(s).parts;
+    const pinZ = [P.linkBU.from[2] - linkBU.thickness * 1.1, P.linkBU.from[2] + linkBU.thickness * 1.1]; // 連桿兩端的銷長 2.2 × 厚度
+    const lowZ = [P.armLow.position[2] - low.size[2] / 2, P.armLow.position[2] + low.size[2] / 2];
+    assert.ok(pinZ[0] < lowZ[1] && pinZ[1] > lowZ[0], `U 點的銷伸進下臂(銷 ${pinZ.map((v) => v.toFixed(3))}、下臂 ${lowZ.map((v) => v.toFixed(3))})`);
+    const { B, U, R, A } = m246.pantograph(m246.planPoint(s));
+    // 短桿 B–U 和上臂 R–A 平行(平行四邊形的對邊),同一層也不會交疊
+    const gap = Math.min(...[0, 0.25, 0.5, 0.75, 1].map((t) => {
+      const p = [B[0] + (U[0] - B[0]) * t, B[1] + (U[1] - B[1]) * t];
+      const d = [A[0] - R[0], A[1] - R[1]];
+      return Math.abs((p[0] - R[0]) * d[1] - (p[1] - R[1]) * d[0]) / Math.hypot(...d);
+    }));
+    assert.ok(gap > 0.3, "短桿 B–U 離上臂夠遠");
+  }
 });
 
 test("第 252 種:把部件 D 上下移動,滾子 A 和 B 在溝槽 C 內以相同幅度、相反方向來回移動", () => {

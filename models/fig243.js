@@ -7,10 +7,13 @@ import { Y, Z, routeBelt, beltTravel, wheelAngle } from "./kit.js";
 const LEVEL = 0.25; // 前股皮帶的高度
 const DRUM_R = 0.36;
 const FRONT = DRUM_R; // 前股所在的平面 z
-const MAIN = { center: [0, LEVEL + 0.12, FRONT], axis: Z, radius: 0.62, sense: 1 };
+// 原圖上方那條直線(回程)和主動輪、兩導輪的頂部相切:主動輪頂部齊皮帶高度,
+// 回程從主動輪的軸上方留出間隙經過(主動輪較高時,回程會一直磨著轉動的軸)
+const MAIN = { center: [0, LEVEL - 0.62, FRONT], axis: Z, radius: 0.62, sense: 1 };
 const G = 0.27;
-const GUIDE_L = { center: [-1.45, LEVEL - G - 0.1, FRONT], axis: Z, radius: G, sense: -1 };
-const GUIDE_R = { center: [1.45, LEVEL - G - 0.1, FRONT], axis: Z, radius: G, sense: -1 };
+const BELT_LIFT = 0.05; // routeBelt 把皮帶放在輪緣外的距離:導輪頂上的皮帶和前股一樣高
+const GUIDE_L = { center: [-1.45, LEVEL - G - BELT_LIFT, FRONT], axis: Z, radius: G, sense: -1 };
+const GUIDE_R = { center: [1.45, LEVEL - G - BELT_LIFT, FRONT], axis: Z, radius: G, sense: -1 };
 const DRUM_L = { center: [-3.1, LEVEL, 0], axis: Y, radius: DRUM_R, sense: 1 };
 const DRUM_R_ = { center: [3.1, LEVEL, 0], axis: Y, radius: DRUM_R, sense: 1 };
 const belt = routeBelt([DRUM_L, GUIDE_L, MAIN, GUIDE_R, DRUM_R_]);
