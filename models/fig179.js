@@ -2,6 +2,10 @@
 // 這個設計讓偏心輪能在軸上相對轉動半圈。換向時:抬起偏心桿(釋放閥門心軸),用左邊的直立槓桿把閥門扳到另一邊,
 // 引擎反轉後,軸上的凸出部分在半圓凸出部分的另一端推動偏心輪——偏心輪相對軸轉了半圈,閥門的動作因此反向——
 // 再把偏心桿放下。主動件是軸;前進與後退是狀態(原機構由司機扳動槓桿切換;切換時偏心輪轉半圈)。
+// 前進時軸逆時針轉,凸出部分頂著半圓凸出部分的一端;後退時軸順時針轉,凸出部分空轉約半圈後頂到另一端。
+// 為什麼要轉半圈:偏心輪要比曲柄超前約四分之一圈,閥門才會在對的時候開關;反轉後「超前」的方向跟著反過來,
+// 偏心輪相對曲柄的位置就要換到另一邊,兩者相差約半圈。
+// 切換狀態時軸與偏心輪都以短動畫轉到新的姿勢(省略抬桿、扳槓桿與凸出部分空轉的過程)。
 // 推斷(原圖沒畫):軸往後伸進軸承座;閥門心軸穿過底座上立起的導套。
 import { deg, polar, add } from "./kit.js";
 import { shape, circle, arcPoints } from "./shapes.js";
@@ -14,12 +18,18 @@ const VALVE_Y = 0.05;
 const LEVER = { pivot: [-1.95, -0.95, 0.12], length: 3.2 }; // 手柄貼著閥門心軸的前面
 const OFFSET = { forward: 0, backward: Math.PI };
 const GUIDE_X = -2.45; // 閥門心軸導套的位置(心軸在行程中始終穿過它,手柄碰不到)
+export const ARC = { inner: 0.42, outer: 0.55, from: deg(100), to: deg(260) }; // 偏心輪側面的半圓凸出部分(偏心輪的局部座標;在偏心輪較厚的那一側)
+export const LUG = ARC.inner * Math.sin(ARC.from - Math.PI / 2); // 軸上凸出部分(沿軸的 +y 伸出)的半寬:兩邊剛好碰到半圓凸出部分兩端的內角
+const SIGN = { forward: 1, backward: -1 }; // 軸的轉向:前進逆時針、後退順時針
+const FACE = 0.15; // 偏心輪的正面
 
-/** 軸轉 theta、狀態:偏心輪中心與閥門心軸(偏心桿末端)的位置 */
+/** 主動量 theta、狀態:軸與偏心輪的轉角、偏心輪中心與閥門心軸(偏心桿末端)的位置 */
 export function reverser(theta, state) {
-  const ecc = add(SHAFT, polar(ECC, theta + OFFSET[state] + Math.PI));
+  const shaft = SIGN[state] * theta;
+  const eccentric = shaft + OFFSET[state];
+  const ecc = add(SHAFT, polar(ECC, eccentric + Math.PI));
   const valveX = ecc[0] - Math.sqrt(ROD * ROD - (ecc[1] - VALVE_Y) ** 2);
-  return { ecc, valveX };
+  return { shaft, eccentric, ecc, valveX };
 }
 
 export default {
@@ -30,10 +40,12 @@ export default {
       kind: "group",
       center: SHAFT,
       spin: 0.3,
+      posed: true, // 換向時軸改變轉向:與偏心輪一起以短動畫轉到新狀態的姿勢,維持兩者的相對位置
       pieces: [
-        { kind: "cylinder", radius: 0.3, length: 1.2, mark: true },
+        { kind: "cylinder", radius: 0.3, length: 0.9, at: [0, 0, -0.15], mark: true }, // 前端只伸到凸出部分的前面,看得到兩個凸出部分
         { kind: "cylinder", radius: 0.2, length: 0.9, at: [0, 0, -0.95] }, // 軸:往後伸進軸承座
-        { kind: "box", size: [0.12, 0.2, 0.25], at: [0.36, 0, 0.45], accent: true }, // 軸上的凸出部分
+        // 軸上的凸出部分:從軸面往外伸到半圓凸出部分的外緣,在偏心輪正面的前面、與半圓凸出部分同一層
+        { kind: "box", size: [2 * LUG, ARC.outer + 0.05 - 0.28, 0.11], at: [0, (ARC.outer + 0.05 + 0.28) / 2, FACE + 0.065], accent: true },
       ],
     },
     {
@@ -45,7 +57,7 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(circle(0.75, ...polar(ECC, Math.PI).slice(0, 2)), [circle(0.31).reverse()]), thickness: 0.3 },
         // 側面的近半圓形凸出部分
-        { kind: "plate", shape: shape([...arcPoints(0.55, deg(10), deg(170)), ...arcPoints(0.42, deg(170), deg(10))]), thickness: 0.12, at: [0, 0, 0.3] },
+        { kind: "plate", shape: shape([...arcPoints(ARC.outer, ARC.from, ARC.to), ...arcPoints(ARC.inner, ARC.to, ARC.from)]), thickness: 0.12, at: [0, 0, FACE + 0.06] }, // 貼在偏心輪的正面
       ],
     },
     {
@@ -98,14 +110,14 @@ export default {
   },
   view: { direction: [0.06, 0.05, 1] },
   pose(theta, state = "forward") {
-    const { ecc, valveX } = reverser(theta, state);
+    const { shaft, eccentric, ecc, valveX } = reverser(theta, state);
     const rodAngle = Math.atan2(VALVE_Y - ecc[1], valveX - ecc[0]);
     // 直立槓桿的中段經短銷接在閥門心軸上:槓桿隨心軸左右擺
     const lever = Math.atan2(valveX - 0.5 - LEVER.pivot[0], VALVE_Y - LEVER.pivot[1]);
     return {
       parts: {
-        shaft: { angle: theta },
-        eccentric: { angle: theta + OFFSET[state] },
+        shaft: { angle: shaft },
+        eccentric: { angle: eccentric },
         strap: { position: ecc },
         rod: { from: [ecc[0] + 1.02 * Math.cos(rodAngle), ecc[1] + 1.02 * Math.sin(rodAngle), 0], to: [valveX, VALVE_Y, 0] }, // 偏心桿從環的外緣伸出
         spindle: { position: [valveX, VALVE_Y, 0] },

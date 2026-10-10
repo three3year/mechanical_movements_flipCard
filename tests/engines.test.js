@@ -17,7 +17,7 @@ import { slotting as slotting178, crankLength as crankLength178 } from "../model
 import { clamp as clamp180, nose as nose180, grip as grip180 } from "../models/fig180.js";
 import { screwClamp as clamp190 } from "../models/fig190.js";
 import { rot2 } from "../models/kit.js";
-import { coupling, ARM as ARM176, INSERT as INSERT176, GROOVE as GROOVE176, WRIST as WRIST176 } from "../models/uncoupling.js";
+import { coupling, grooveCenter, ARM as ARM176, FLANGE as FLANGE176, GROOVE as GROOVE176, WRIST as WRIST176 } from "../models/uncoupling.js";
 import { cornish, crossing, valves, ANGLES as CORNISH, TAPPET, SPAN as SPAN181 } from "../models/cornish-gear.js";
 import { quadrantOutlines } from "../models/cornish-model.js";
 import { catchState, catchOutlines, TIP as CATCH_TIP } from "../models/diagonal-catch.js";
@@ -289,8 +289,8 @@ test("第 169 種:以短連桿取代溝槽,主曲柄半徑固定、轉一圈", (
 });
 
 import { valveGear as valve171 } from "../models/fig171.js";
-import fig175, { stroke as stroke175 } from "../models/fig175.js";
-import { reverser } from "../models/fig179.js";
+import fig175, { stroke as stroke175, ROD as ROD175, SLOT_X as SLOT_X175, HALF_STROKE as HALF175 } from "../models/fig175.js";
+import { reverser, ARC as ARC179, LUG as LUG179 } from "../models/fig179.js";
 import { gear as gear185 } from "../models/fig185.js";
 
 const travel = (fn, n = 360) => {
@@ -316,25 +316,55 @@ test("第 171 種:連桿運動帶動閥桿,經曲面滑塊與搖臂軸傳給閥�
   assert.ok(fwd > 0.05 && mid < fwd * 0.2);
 });
 
-test("第 175 種:原文是活塞帶動曲柄——主動件是長槽中的銷(活塞)、目標件是曲柄;活塞往返一次曲柄轉一圈", () => {
+test("第 175 種:原文是活塞帶動曲柄——主動件是長槽中的銷(活塞)、目標件是曲柄", () => {
   assert.equal(fig175.driver.part, "slider");
   assert.equal(fig175.target, "crank");
-  reciprocates(fig175, "slider", "crank", "第 175 種");
 });
 
-test("第 175 種:曲柄轉一圈,長槽中的銷往返一次", () => {
-  const ys = sweep(TAU, 720).map((t) => stroke175(t).y);
+test("第 175 種:連桿是剛性的;活塞往返一次曲柄轉兩圈(平均每一程一圈),活塞速度連續", () => {
+  const n = 4000;
+  const ts = sweep(2 * TAU, n);
+  const states = ts.map((t) => stroke175(t));
+  for (const s of states) {
+    close(dist(s.pin, s.end), ROD175, "連桿長度固定", 1e-9);
+    close(s.end[0], SLOT_X175, "活塞銷在長槽裡", 1e-9);
+  }
+  const ys = states.map((s) => s.y);
+  close(ys[0], -HALF175, "主動量 0:活塞在最低處", 1e-9);
+  close(ys[n], ys[0], "曲柄轉兩圈回到原處", 1e-9);
+  // 兩圈之內活塞只折返一次(在最高處);每一步的位移都小(沒有跳)
   let turns = 0;
   for (let i = 2; i < ys.length; i++) if ((ys[i] - ys[i - 1]) * (ys[i - 1] - ys[i - 2]) < 0) turns++;
-  assert.ok(turns <= 2, "一圈內只往返一次");
-  close(ys[0], ys[ys.length - 1], "回到原處", 1e-9);
+  assert.equal(turns, 1, "往返一次");
+  const step = Math.max(...ys.slice(1).map((y, i) => Math.abs(y - ys[i])));
+  assert.ok(step < 0.02, `活塞連續移動(最大一步 ${step})`);
+  const top = ys.indexOf(Math.max(...ys));
+  close(ys[top], HALF175, "最高處", 1e-4);
+  // 上升一程曲柄轉一圈多、下降一程轉不到一圈,加起來兩圈
+  const up = (top / n) * 2 * TAU;
+  assert.ok(up > TAU && up < 1.5 * TAU, `上升一程 ${up}`);
 });
 
-test("第 179 種:偏心輪相對軸轉半圈,閥門的動作反向(引擎因此反轉)", () => {
+test("第 179 種:偏心輪相對軸轉半圈,軸在同一個位置時閥門往相反的方向偏(引擎因此反轉)", () => {
   for (const t of sweep(TAU, 12)) {
+    // 後退時主動量 −t 是軸轉到 t 的位置
     const a = reverser(t, "forward").valveX - reverser(0, "forward").valveX;
-    const b = reverser(t, "backward").valveX - reverser(0, "backward").valveX;
+    const b = reverser(-t, "backward").valveX - reverser(0, "backward").valveX;
     close(a, -b, `轉角 ${t}`, 0.04); // 偏心桿的斜度造成少許不對稱
+  }
+});
+
+test("第 179 種:前進時軸逆時針轉、後退時順時針轉;軸上的凸出部分都頂著半圓凸出部分轉向前方的那一端", () => {
+  const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  const lugEdge = Math.atan2(ARC179.inner * Math.cos(ARC179.from - Math.PI / 2), LUG179); // 凸出部分(沿 +y)側邊碰到內角的角度
+  for (const t of sweep(TAU, 12)) {
+    const f = reverser(t, "forward");
+    const b = reverser(t, "backward");
+    close(f.shaft, t, "前進:逆時針");
+    close(b.shaft, -t, "後退:順時針");
+    // 偏心輪相對軸的角度:前進時被推的是逆時針前方(+y 左側)的一端,後退時是順時針前方的一端
+    close(wrap(ARC179.from + f.eccentric - f.shaft), Math.PI - lugEdge, "前進:頂著一端", 1e-9);
+    close(wrap(ARC179.to + b.eccentric - b.shaft), wrap(lugEdge), "後退:頂著另一端", 1e-9);
   }
 });
 
@@ -431,10 +461,11 @@ test("第 176、177 種:溝槽在第 176 種位置時手腕帶動曲柄;轉到�
     close(dist(c.wrist, c.eye), 0, "手腕卡在環中心的溝槽裡", 1e-9);
     assert.equal(coupling(t, "uncoupled").arm, 0, "脫開:曲柄不動");
   }
-  // 脫開時,手腕經過環的那段路都在溝槽裡(溝槽沿手腕的路徑方向)
-  const inside = sweep(TAU, 3600).map((t) => coupling(t, "uncoupled")).filter((c) => dist(c.wrist, c.eye) < INSERT176);
+  // 脫開時,手腕經過環的那段路都在溝槽裡(圓弧溝槽與手腕的圓形路徑重合);接上時手腕在溝槽中線上
+  const inside = sweep(TAU, 3600).filter((t) => dist(coupling(t, "uncoupled").wrist, coupling(t, "uncoupled").eye) < FLANGE176 + WRIST176);
   assert.ok(inside.length > 0);
-  for (const c of inside) assert.ok(Math.abs(c.wrist[1] - ARM176) + WRIST176 <= GROOVE176, "手腕在溝槽內");
+  for (const t of inside) assert.ok(Math.abs(dist(coupling(t, "uncoupled").wrist, grooveCenter(t, "uncoupled")) - ARM176) + WRIST176 <= GROOVE176, "手腕在溝槽內");
+  for (const t of sweep(TAU, 36)) close(dist(coupling(t, "coupled").wrist, grooveCenter(t, "coupled")), ARM176, "接上:手腕在溝槽中線上", 1e-9);
 });
 
 const cornishSamples = sweep(2 * SPAN181, 1200);

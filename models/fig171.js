@@ -6,7 +6,7 @@
 // 偏心桿的上端是套在偏心輪外面的偏心環(原圖:兩個偏心輪外各有一圈),不是接在偏心輪的中心,所以曲柄軸可以整根穿過兩個偏心輪。
 // 推斷(原圖沒畫):閥桿穿過的導套(橫樑架在兩根立柱之間)、搖臂軸的軸承(托在左邊的立柱上)。
 import { deg, polar } from "./kit.js";
-import { linkMotion } from "./link-motion.js";
+import { linkMotion, eccentricStrap } from "./link-motion.js";
 import { shape, circle, arcPoints } from "./shapes.js";
 
 const SHAFT = [0, 3.4, 0];
@@ -49,19 +49,6 @@ const arcPiece = shape(
 
 const z = (p, d) => [p[0], p[1], d];
 
-// 偏心環與偏心桿:環套在偏心輪外面(局部原點在偏心輪的圓心),桿沿局部 +X 伸到連桿的端頭,端頭的銷伸到連桿那一層
-const eccentricRod = (id, pinZ) => ({
-  id,
-  kind: "group",
-  arrow: false,
-  pieces: [
-    { kind: "plate", shape: shape(circle(DISC_R + 0.3), [circle(DISC_R + 0.03).reverse()]), thickness: 0.18 },
-    { kind: "box", size: [ROD - DISC_R - 0.2, 0.16, 0.08], at: [(ROD + DISC_R + 0.2) / 2, 0, 0] },
-    { kind: "cylinder", radius: 0.1, length: 0.1, at: [ROD, 0, 0] },
-    { kind: "cylinder", radius: 0.055, length: 0.2, at: [ROD, 0, pinZ] }, // 頂到連桿的板面
-  ],
-});
-
 export default {
   figure: 171,
   parts: [
@@ -76,8 +63,8 @@ export default {
         { kind: "plate", shape: shape(circle(DISC_R, ...polar(ECC, deg(-110) - Math.PI / 2).slice(0, 2)), [circle(0.23).reverse()]), thickness: 0.18, at: [0, 0, DISC_Z[1]] },
       ],
     },
-    eccentricRod("rodA", 0.45 - DISC_Z[0] - 0.1 - 0.01), // 銷從環的那一層往前頂到連桿的背面
-    eccentricRod("rodB", 0.57 - DISC_Z[1] + 0.1 + 0.01), // 銷往後頂到連桿的正面
+    eccentricStrap({ id: "rodA", disc: DISC_R, rod: ROD, pinZ: 0.45 - DISC_Z[0] - 0.1 - 0.01 }), // 銷從環的那一層往前頂到連桿的背面
+    eccentricStrap({ id: "rodB", disc: DISC_R, rod: ROD, pinZ: 0.57 - DISC_Z[1] + 0.1 + 0.01 }), // 銷往後頂到連桿的正面
     { id: "link", kind: "group", posed: true, arrow: false, pieces: [{ kind: "plate", shape: linkShape, thickness: 0.12 }] },
     { id: "valveRod", kind: "group", pieces: [{ kind: "box", size: [0.1, VALVE_ROD, 0.08], at: [0, -VALVE_ROD / 2, 0] }, { kind: "cylinder", radius: 0.055, length: 0.16, at: [0, 0, 0.23] }] }, // 滑塊畫成一根在連桿槽裡滑的銷(閥桿在連桿後面)
     { id: "arcPiece", kind: "plate", shape: arcPiece, thickness: 0.15 },

@@ -3,6 +3,7 @@
 // 滑塊在槽的哪個位置,就得到兩個偏心輪動作的哪種混合:在一端時得到那個偏心輪的全部行程,
 // 在中間時兩者互相抵消、閥門幾乎不動。純函式,在一個局部平面上計算:偏心桿從軸沿 dir 方向伸出。
 import { polar, add, scale } from "./kit.js";
+import { shape, circle } from "./shapes.js";
 
 /**
  * shaft:軸心;dir:偏心桿伸出的方向(單位向量);ecc:偏心距;rod:偏心桿長;
@@ -40,3 +41,20 @@ export function linkMotion({ shaft, dir, ecc, rod, half, leads }) {
     };
   };
 }
+
+/**
+ * 偏心環與偏心桿(一個零件,用 from / to 擺放):環套在偏心輪外面(局部原點在偏心輪的圓心),所以軸可以整根穿過
+ * 偏心輪;桿沿局部 +X 伸到連桿的端頭(長 rod),端頭的銷(長 pin,中心在 pinZ)往前或往後頂到連桿那一層。
+ * disc 是偏心輪半徑。
+ */
+export const eccentricStrap = ({ id, disc, rod, pinZ, pin = 0.2 }) => ({
+  id,
+  kind: "group",
+  arrow: false,
+  pieces: [
+    { kind: "plate", shape: shape(circle(disc + 0.3), [circle(disc + 0.03).reverse()]), thickness: 0.18 },
+    { kind: "box", size: [rod - disc - 0.2, 0.16, 0.08], at: [(rod + disc + 0.2) / 2, 0, 0] },
+    { kind: "cylinder", radius: 0.1, length: 0.1, at: [rod, 0, 0] },
+    { kind: "cylinder", radius: 0.055, length: pin, at: [rod, 0, pinZ] },
+  ],
+});

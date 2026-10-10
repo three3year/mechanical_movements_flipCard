@@ -3,13 +3,17 @@
 // 滑塊在一端時,那個偏心輪的全部行程都傳給閥門(全程進汽);在中間時連桿繞滑塊擺動,閥門靜止;
 // 在中間與一端之間(原圖)只得到部分行程,蒸氣口只部分開啟、提早關閉,蒸汽以膨脹方式作動。
 // 主動件是曲柄軸;手柄的位置是狀態。偏心桿與連桿的幾何以近似計算(見 link-motion.js)。
+// 偏心桿的右端是套在偏心輪外面的偏心環(原圖:兩個偏心輪外各有一圈,兩根桿從環上伸出),不是接在偏心輪的中心,
+// 所以曲柄軸可以整根穿過兩個偏心輪(同第 171 種)。
 import { deg, polar, add } from "./kit.js";
-import { linkMotion } from "./link-motion.js";
+import { linkMotion, eccentricStrap } from "./link-motion.js";
 import { circleCircle } from "./linkage.js";
 import { shape, circle, arcPoints } from "./shapes.js";
 
 const SHAFT = [3.0, -0.6, 0];
 const ECC = 0.32;
+const DISC_R = 0.52; // 偏心輪半徑
+const DISC_Z = [0.425, 0.69]; // 前進、後退偏心輪(與各自的偏心環、偏心桿)的深度;連桿(0.49–0.63)在兩者之間
 const HALF = 0.85; // 連桿兩端離中心
 const ROD = 3.3;
 const LEADS = [deg(110), deg(-110)]; // 前進與後退偏心輪(相對曲柄,局部座標)
@@ -46,13 +50,12 @@ export default {
       center: SHAFT,
       spin: ECC + 0.55,
       pieces: [
-        { kind: "cylinder", radius: 0.16, length: 0.7, at: [0, 0, -0.25], mark: true }, // 軸只到偏心輪的背面(偏心桿從偏心輪的中心伸出,不穿過軸)
-        { kind: "plate", shape: shape(circle(0.52, ...polar(ECC, LEADS[0] + Math.PI).slice(0, 2)), [circle(0.17).reverse()]), thickness: 0.2, at: [0, 0, 0.3] },
-        { kind: "plate", shape: shape(circle(0.52, ...polar(ECC, LEADS[1] + Math.PI).slice(0, 2)), [circle(0.17).reverse()]), thickness: 0.2, at: [0, 0, 0.55] },
+        { kind: "cylinder", radius: 0.16, length: 1.3, at: [0, 0, 0.2], mark: true }, // 曲柄軸整根穿過兩個偏心輪
+        ...LEADS.map((lead, i) => ({ kind: "plate", shape: shape(circle(DISC_R, ...polar(ECC, lead + Math.PI).slice(0, 2)), [circle(0.17).reverse()]), thickness: 0.18, at: [0, 0, DISC_Z[i]] })),
       ],
     },
-    { id: "rodForward", kind: "link", width: 0.16, thickness: 0.08 },
-    { id: "rodBackward", kind: "link", width: 0.16, thickness: 0.08 },
+    eccentricStrap({ id: "rodForward", disc: DISC_R, rod: ROD, pinZ: 0.42 - DISC_Z[0], pin: 0.12 }), // 銷往前頂到連桿的背面
+    eccentricStrap({ id: "rodBackward", disc: DISC_R, rod: ROD, pinZ: 0.7 - DISC_Z[1], pin: 0.12 }), // 銷往後頂到連桿的正面
     { id: "link", kind: "plate", shape: linkShape, thickness: 0.14, posed: true, arrow: false },
     { id: "block", kind: "cylinder", radius: 0.06, length: 0.5 }, // 滑塊畫成一根在連桿槽裡滑的銷,往後伸到滑塊桿那一層
     {
@@ -122,8 +125,8 @@ export default {
       parts: {
         shaft: { angle: theta },
         // 由後往前:搖臂、滑塊桿與閥桿、前進偏心桿、連桿、後退偏心桿
-        rodForward: { from: z(eF, 0.425), to: z(aF, 0.425) },
-        rodBackward: { from: z(eB, 0.69), to: z(aB, 0.69) },
+        rodForward: { from: z(eF, DISC_Z[0]), to: z(aF, DISC_Z[0]) },
+        rodBackward: { from: z(eB, DISC_Z[1]), to: z(aB, DISC_Z[1]) },
         link: { position: z(mid, 0.56), angle: g.linkAngle - Math.PI / 2 },
         block: { position: z(g.block, 0.42) },
         rocker: { angle: swing },
