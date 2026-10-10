@@ -13,6 +13,7 @@ import * as m196 from "../models/fig196.js";
 import * as m201 from "../models/fig201.js";
 import * as m203 from "../models/fig203.js";
 import * as m221 from "../models/fig221.js";
+import { circlePolygon, penetrationDepth, placeOutline, polygonsOverlap, pointInPolygon, edgeDistance } from "../models/contact.js";
 import * as m222 from "../models/fig222.js";
 import { dist, quatRotate, signedAngle, rot2, partPoint, TAU } from "../models/kit.js";
 import * as m195 from "../models/fig195.js";
@@ -24,7 +25,6 @@ import * as m210 from "../models/fig210.js";
 import fig200 from "../models/fig200.js";
 import * as m205 from "../models/fig205.js";
 import * as m206 from "../models/fig206.js";
-import { penetrationDepth, placeOutline, polygonsOverlap, pointInPolygon, edgeDistance } from "../models/contact.js";
 import * as m211 from "../models/fig211.js";
 import * as m212 from "../models/fig212.js";
 import * as m213 from "../models/fig213.js";
@@ -305,6 +305,73 @@ test("第 221 種:橢圓輪 C 帶動小齒輪,框架上下起伏讓小齒輪保�
   }
   assert.ok(spread(states.map((s) => s.a)) > 3, "A 的轉動不規則");
   assert.ok(r(0) !== r(Math.PI) && rb > 0);
+});
+
+// 零件在 z 上的範圍(以 at 為中心;板用 thickness、圓柱用 length、齒輪用 width、方塊用 size 的 z)
+const zSpan221 = (piece, base = 0) => {
+  const t = piece.thickness ?? piece.length ?? piece.width ?? piece.size?.[2];
+  const z = base + (piece.at?.[2] ?? piece.center?.[2] ?? 0);
+  return [z - t / 2, z + t / 2];
+};
+
+test("第 221 種:輪 C 上附有一片超出其邊緣的板——板一整片貼在 C 背面,溝 g、h 只開半個厚度", () => {
+  const { tooth, plateBack, plateInner, plateOuter } = m221.pieces;
+  const C = part(m221.default, "gearC");
+  for (const p of [tooth, plateBack, plateInner, plateOuter]) assert.ok(C.pieces.includes(p), "板是 C 的一部分,跟著 C 轉");
+  const [cBack] = zSpan221(tooth);
+  for (const p of [plateInner, plateOuter]) close(zSpan221(p)[1], cBack, "板的前面貼著 C 的背面", 1e-9);
+  close(zSpan221(plateBack)[1], zSpan221(plateInner)[0], "開溝那一層坐在沒開溝的底層上(板是一整片)", 1e-9);
+  const depth = plateInner.thickness;
+  close(depth, plateBack.thickness, "溝只開半個厚度");
+  for (const p of plateInner.shape.outline) assert.ok(pointInPolygon(p, plateBack.shape.outline), "底層蓋住溝內側那一塊");
+  assert.deepEqual(plateOuter.shape.outline, plateBack.shape.outline, "溝外側那一塊與底層外緣一樣大,底層蓋住它");
+  for (const p of tooth.shape.outline) assert.ok(pointInPolygon(p, plateInner.shape.outline), "板蓋住整個 C 的背面");
+  const reach = (poly) => Math.max(...poly.map(([x, y]) => Math.hypot(x, y)));
+  assert.ok(reach(plateOuter.shape.outline) > reach(tooth.shape.outline) + 0.4, "板超出 C 的邊緣");
+});
+
+test("第 221 種:搖臂上與 B 同心的銷伸進溝 g、h,C 轉一圈溝都夾著它(不穿入、兩側間隙都很小)", () => {
+  const { pin, plateBack, plateInner, plateOuter } = m221.pieces;
+  const frame = part(m221.default, "frame");
+  assert.ok(frame.pieces.includes(pin), "銷裝在搖臂上");
+  const [pz0, pz1] = zSpan221(pin, m221.default.pose(0).parts.frame.from[2]);
+  const [gz0, gz1] = zSpan221(plateInner);
+  assert.ok(pz0 < gz1 - 0.05 && pz0 > zSpan221(plateBack)[1], "銷往後伸進溝裡,不碰到溝底");
+  const armZ = m221.default.pose(0).parts.frame.from[2];
+  assert.ok(pz1 >= armZ - frame.thickness / 2, "銷從搖臂往後伸");
+  const walls = [plateInner.shape, plateOuter.shape];
+  for (const theta of sweep(-2 * Math.PI, 360)) {
+    const pose = m221.default.pose(theta).parts;
+    const { from, to } = pose.frame;
+    close(pin.at[0], Math.hypot(to[0] - from[0], to[1] - from[1]), "銷在搖臂的小齒輪那一端,與 B 同心", 1e-4);
+    close(Math.hypot(to[0] - pose.pinionB.position[0], to[1] - pose.pinionB.position[1]), 0, "搖臂的端點就是 B 的軸心", 1e-9);
+    const local = rot2(to, -pose.gearC.angle); // 銷在 C 上的位置(D 是原點)
+    const disk = circlePolygon(local, pin.radius, 24);
+    for (const w of walls) assert.ok(penetrationDepth(disk, w) < 1e-3, `C 轉 ${theta.toFixed(2)}:銷不穿入溝壁`);
+    const gapIn = edgeDistance(local, plateInner.shape.outline) - pin.radius;
+    const gapOut = edgeDistance(local, plateOuter.shape.holes[0]) - pin.radius;
+    assert.ok(gapIn > -1e-3 && gapIn < 0.03 && gapOut > -1e-3 && gapOut < 0.03, `C 轉 ${theta.toFixed(2)}:溝兩側都貼近銷(${gapIn.toFixed(3)}、${gapOut.toFixed(3)})`);
+  }
+});
+
+test("第 221 種:B、A 與搖臂在 C 前面一層;D 的軸往後伸到後方的軸承座", () => {
+  const def = m221.default;
+  const C = part(def, "gearC");
+  const front = Math.max(...C.pieces.map((p) => zSpan221(p)[1]));
+  const zOf = (id) => {
+    const p = part(def, id);
+    const base = p.center?.[2] ?? 0;
+    const own = p.kind === "group" ? [] : [zSpan221({ ...p, at: undefined, center: undefined }, base)];
+    return [...own, ...(p.pieces ?? []).map((q) => zSpan221(q, base))];
+  };
+  for (const id of ["gearB", "gearA"]) for (const [z0] of zOf(id)) assert.ok(z0 > front, `${id} 在 C 前面`);
+  const armZ = def.pose(0).parts.frame.from[2];
+  assert.ok(armZ - part(def, "frame").thickness / 2 > Math.max(...zOf("gearB").map((s) => s[1])), "搖臂在 B 前面");
+  const [d0, d1] = zSpan221(part(def, "pivotD").pieces[0]);
+  assert.ok(d1 <= front + 1e-9, "D 的軸不伸到 C 前面(前面有 B 掃過)");
+  const back = Math.min(...C.pieces.map((p) => zSpan221(p)[0]));
+  const rear = part(def, "bearingD").pieces.find((p) => p.kind === "cylinder" && p.inner && Math.hypot(p.at[0], p.at[1]) < 1e-9);
+  assert.ok(d0 < back && zSpan221(rear)[1] < back && d0 <= zSpan221(rear)[0] + 1e-9, "D 的軸往後穿過溝槽板,伸進後方的軸承座");
 });
 
 test("第 222 種:偏心轉動的普通正齒輪,以連桿維持節距;輪 A 同樣得到不規則的轉動", () => {
