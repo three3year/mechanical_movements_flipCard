@@ -597,6 +597,28 @@ test("第 205 種:兩個凸輪組成的「兩齒小齒輪」,交替推動輪兩�
   close(m205.wheelAngle(Math.PI) - m205.wheelAngle(0), -STEP, "半圈一格(另一個凸輪接手)", 1e-12);
 });
 
+test("第 205 種:兩個凸輪與兩組齒相互嚙合——各自貼著自己那組齒、不穿入,任何時刻至少一個凸輪推著齒,交接時兩個一起推", () => {
+  const gap = (a, b) => (polygonsOverlap(a, b) ? 0 : Math.min(...a.map((p) => edgeDistance(p, b)), ...b.map((p) => edgeDistance(p, a))));
+  // 輪若少轉一點(落後 0.02 弧度),推著它的凸輪就會穿進齒裡:那個凸輪是在推
+  const pushing = (alpha, set) => {
+    const { cams, teeth } = m205.contactAt(alpha, 0.02);
+    return teeth[set].some((t) => penetrationDepth(cams[set], t) > 0.003);
+  };
+  let both = 0;
+  for (const alpha of sweep(2 * Math.PI, 360)) {
+    const { cams, teeth } = m205.contactAt(alpha);
+    for (const set of ["front", "back"]) {
+      for (const t of teeth[set]) assert.ok(penetrationDepth(cams[set], t) < 0.003, `小齒輪轉 ${alpha.toFixed(3)} 時${set}凸輪穿入齒`);
+      const near = Math.min(...teeth[set].map((t) => gap(cams[set], t)));
+      if (pushing(alpha, set)) assert.ok(near < 0.005, `小齒輪轉 ${alpha.toFixed(3)} 時${set}凸輪推齒卻沒貼著(${near.toFixed(3)})`);
+    }
+    const [f, b] = [pushing(alpha, "front"), pushing(alpha, "back")];
+    assert.ok(f || b, `小齒輪轉 ${alpha.toFixed(3)} 時沒有凸輪推著齒`);
+    if (f && b) both++;
+  }
+  assert.ok(both > 20, "兩個凸輪交接時重疊一段");
+});
+
 test("第 206 種:承載兩個棘爪的槓桿擺動,一個上升時推、一個下降時推,棘輪連續朝同一方向轉", () => {
   const S = m206.swing;
   const angles = sweep(4 * S, 400).map((v) => m206.wheelAngle(v));
@@ -622,6 +644,19 @@ test("第 206 種:兩個爪由接觸推動棘輪——爪尖不穿入齒,爪落�
     for (const id of ["pawlLeft", "pawlRight"]) assert.ok(Math.abs(p[id].angle - prev[id].angle) < 0.15, `${id} 沒有瞬移`);
     prev = p;
   }
+});
+
+test("第 206 種:「一個在上升時嚙合」——上升那一程左爪拉著棘輪連續走(開頭空走一小段),不是幾下瞬間踢動;棘輪每格轉角不超過下降一程平均的 2 倍", () => {
+  const S = m206.swing;
+  const F = 36; // 播放時一程 1.2 秒、每秒 30 格
+  const frames = (from) => Array.from({ length: F }, (_, i) => m206.wheelAngle(from + (S * i) / F) - m206.wheelAngle(from + (S * (i + 1)) / F));
+  const down = frames(S).reduce((a, b) => a + b, 0) / F;
+  for (const from of [0, S, 2 * S, 3 * S]) {
+    const d = frames(from);
+    for (let i = 0; i < F; i++) assert.ok(d[i] <= 2 * down, `主動量 ${(from + (S * i) / F).toFixed(3)} 那一格棘輪轉了下降一程平均的 ${(d[i] / down).toFixed(1)} 倍`);
+  }
+  const up = frames(2 * S);
+  assert.ok(up.filter((x) => x > 0.2 * down).length >= (2 / 3) * F, "上升那一程三分之二以上的格棘輪都在走(開頭空走一小段,爪尖才從落點走到陡面)");
 });
 
 test("第 211 種:大輪連續旋轉,小齒輪間歇轉動:轉過有齒部分時轉一圈,其餘時間被鎖住", () => {
