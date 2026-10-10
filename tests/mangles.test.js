@@ -869,6 +869,72 @@ test("第 211 種:大輪連續旋轉,小齒輪間歇轉動:轉過有齒部分時
   assert.ok(still > 300, "大半時間鎖住不動");
 });
 
+/** 第 211 種:主動量 v 時大輪、小齒輪(齒輪與鎖定塊)、引導片與銷在平面上的外形(世界座標,照姿勢放好) */
+function shapes211(v, pinionAngle) {
+  const def = m211.default;
+  const p = def.pose(v).parts;
+  const c = part(def, "pinion").center;
+  const q = pinionAngle ?? p.pinion.angle;
+  return {
+    wheel: placeOutline(m211.outlines.wheel, [0, 0], p.wheel.angle),
+    pinion: m211.outlines.pinion.map((o) => placeOutline(o, c, q)),
+    guide: placeOutline(m211.outlines.guide, c, q),
+    pin: placeOutline(m211.outlines.pin, [0, 0], p.wheel.angle),
+    angle: p.pinion.angle,
+  };
+}
+/** 銷與引導片的間隙(負的是穿入) */
+const pinGap211 = (s) => {
+  const d = penetrationDepth(s.pin, s.guide);
+  if (d > 0) return -d;
+  return Math.min(...s.pin.map((q) => edgeDistance(q, s.guide)));
+};
+
+test("第 211 種:「直到輪上的銷撞擊到小齒輪上的引導片時,小齒輪的軸便會開始下一次的旋轉」:小齒輪開始轉時銷正碰到引導片,推了一段之後齒才接手", () => {
+  const rest = shapes211(-0.5).angle;
+  const vs = sweep(0.8, 1600, -0.5);
+  const v0 = vs.find((v) => Math.abs(shapes211(v).angle - rest) > 1e-6);
+  assert.ok(v0 != null, "小齒輪有開始轉");
+  assert.ok(pinGap211(shapes211(v0)) < 0.005, `開始轉的那一刻銷碰到引導片(間隙 ${pinGap211(shapes211(v0)).toFixed(4)})`);
+  assert.ok(pinGap211(shapes211(v0 - 0.03)) > 0.005, "之前銷還沒碰到引導片");
+  // 銷離開引導片(齒接手)之前,一路貼著引導片推、不穿入
+  const vh = vs.find((v) => v > v0 && pinGap211(shapes211(v)) > 0.005);
+  assert.ok(vh != null, "之後銷離開引導片");
+  for (const v of vs.filter((v) => v >= v0 && v < vh)) {
+    const gap = pinGap211(shapes211(v));
+    assert.ok(gap > -0.002 && gap < 0.005, `v=${v.toFixed(3)} 銷貼著引導片推(間隙 ${gap.toFixed(4)})`);
+  }
+  // 推的時候是銷在帶,不是齒:小齒輪若還停在鎖定的角度,銷會穿進引導片,大輪的齒卻碰不到小齒輪
+  const mid = (v0 + vh) / 2;
+  const held = shapes211(mid, rest);
+  assert.ok(penetrationDepth(held.pin, held.guide) > 0.01, "不轉的話銷會穿進引導片");
+  for (const o of held.pinion) assert.ok(penetrationDepth(held.wheel, o) < 0.002, "推的期間大輪碰不到小齒輪");
+  // 齒接手時小齒輪已經被撥出鎖定位置一段
+  assert.ok(rest - shapes211(vh).angle > 0.15, `銷撥轉了 ${(rest - shapes211(vh).angle).toFixed(3)} 弧度後齒才接手`);
+});
+
+test("第 211 種:有齒段咬合時齒對著齒槽,大輪與小齒輪(含鎖定塊)整圈不穿入;鎖定弧的端點收在齒頂圓內", () => {
+  for (const v of sweep(2 * Math.PI, 720)) {
+    const s = shapes211(v);
+    for (const o of s.pinion) {
+      const d = penetrationDepth(s.wheel, o);
+      assert.ok(d < 0.003, `v=${v.toFixed(3)} 穿入 ${d.toFixed(4)}`);
+    }
+  }
+  // 大輪的每個齒走到兩輪中心連線上時,小齒輪對著它的是齒槽(和小齒輪的齒差半個齒距)
+  const { NP, NW, wheelTeeth } = m211.geometry;
+  const pitch = (2 * Math.PI) / NP;
+  for (const i of wheelTeeth) {
+    const v = Math.PI - (i * 2 * Math.PI) / NW; // 齒 i 轉到接觸點(大輪的局部角 π − v)
+    const q = shapes211(v).angle;
+    const off = (((-q % pitch) + pitch) % pitch) / pitch;
+    assert.ok(Math.abs(off - 0.5) < 0.05, `大輪第 ${i} 齒在連線上時,小齒輪的相位 ${off.toFixed(2)} 個齒距(齒槽是 0.5)`);
+  }
+  const { RP } = m211.geometry;
+  const tip = RP + (2 * RP) / NP;
+  for (const [x, y] of m211.outlines.pinion[1]) assert.ok(Math.hypot(x, y) <= tip + 1e-9, "鎖定塊不凸出齒頂圓");
+});
+
 /**
  * 日內瓦式擋止(第 212、215 種):主動量 v 時 A(各塊)與 B 在平面上的外形(世界座標,照姿勢放好),
  * 以及兩者互相伸進對方的頂點以 B 的中心看的角度(弧度,世界座標)。
@@ -1106,6 +1172,55 @@ test("第 216 種:外側與內側缺齒式齒輪交替與小齒輪咬合:一個�
   assert.equal(m216.pinion(Math.PI + 0.3).by, "outer");
   close(rate(Math.PI + 0.3), RI / RP, "外側:同向、快", 1e-6);
   assert.ok(RI / RP > RS / RP);
+});
+
+/** 第 216 種:主動量 v 時內側小輪、外圈齒環(實體)與小齒輪在平面上的外形(世界座標,照姿勢放好) */
+function shapes216(v, pinionAngle) {
+  const def = m216.default;
+  const p = def.pose(v).parts;
+  const c = part(def, "pinion").center;
+  const box = [[-9, -9], [9, -9], [9, 9], [-9, 9]];
+  return {
+    inner: placeOutline(m216.outlines.inner, [0, 0], p.wheel.angle),
+    ring: { outline: box, holes: [placeOutline(m216.outlines.ring, [0, 0], p.wheel.angle)] },
+    pinion: placeOutline(m216.outlines.pinion, c, pinionAngle ?? p.pinion.angle),
+    angle: p.pinion.angle,
+  };
+}
+/** 內側小輪 / 外圈伸進小齒輪的深度(外圈:小齒輪的頂點跑出內孔,或內孔的齒頂點伸進小齒輪) */
+const depth216 = (s) => {
+  const tips = s.ring.holes[0].filter((q) => pointInPolygon(q, s.pinion)).map((q) => edgeDistance(q, s.pinion));
+  return { inner: penetrationDepth(s.inner, s.pinion), outer: Math.max(penetrationDepth(s.ring, s.pinion), ...tips) };
+};
+
+test("第 216 種:兩圈「交替地」與小齒輪咬合:換手時留一段兩圈都不咬、小齒輪停住的空檔,整圈不會兩圈同時咬著", () => {
+  // 整圈不穿入(簡化齒形穩定咬合時齒頂擦到約 0.01)
+  for (const v of sweep(2 * Math.PI, 720)) {
+    const d = depth216(shapes216(v));
+    assert.ok(d.inner < 0.015 && d.outer < 0.015, `v=${v.toFixed(3)} 內 ${d.inner.toFixed(4)}、外 ${d.outer.toFixed(4)}`);
+  }
+  // 一圈裡有兩段空檔:小齒輪不動、兩圈都沒在帶它
+  const vs = sweep(2 * Math.PI, 1440);
+  const still = vs.slice(1).map((v, i) => Math.abs(m216.pinion(v).angle - m216.pinion(vs[i]).angle) < 1e-12 && m216.pinion(v).by === "none");
+  const runs = [];
+  still.forEach((s, i) => {
+    if (!s) return;
+    if (runs.length && runs[runs.length - 1][1] === i - 1) runs[runs.length - 1][1] = i;
+    else runs.push([i, i]);
+  });
+  const dwell = runs.map(([a, b]) => vs[b + 1] - vs[a]);
+  assert.equal(dwell.filter((d) => d > 0.05).length, 2, `兩次換手各有空檔(${dwell.map((d) => d.toFixed(3)).join("、")})`);
+});
+
+test("第 216 種:接手那一圈的第一齒碰到停著的小齒輪時對著齒槽:剛好碰到、不穿入,小齒輪再不轉就會被它頂進去", () => {
+  for (const [, end] of m216.dwells) {
+    const s = shapes216(end);
+    const d = depth216(s);
+    const by = m216.pinion(end + 0.01).by;
+    assert.ok(d[by] < 0.015, `換手 ${end.toFixed(3)} 時接手的 ${by} 不穿入(${d[by].toFixed(4)})`);
+    const held = shapes216(end + 0.08, s.angle);
+    assert.ok(depth216(held)[by] > 0.02, `小齒輪若停著不轉,${by} 的齒會頂進去(${depth216(held)[by].toFixed(4)})`);
+  }
 });
 
 test("第 217、218 種:凸柱從 C 到 D 使滾軸後退,從 D 到 e 前進(後退一份、前進兩份);e 到 C 時滾軸不動", () => {

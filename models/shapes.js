@@ -71,19 +71,22 @@ function halfWidth(radius, m, rho, inward) {
 /**
  * 齒輪的齒廓(封閉折線)。internal 為內齒(齒朝圓心)。
  * has(i) 決定第 i 齒在不在(不完全齒輪);缺齒處依 blank 走齒根圓或齒頂圓。
+ * blank 也可以是函式 (i) => "tip" | "root",逐個缺齒處決定。
  */
 export function gearProfile({ teeth, radius, internal = false, has = () => true, blank = "root" }) {
   const { m, addendum, dedendum, pitch } = gearSize(radius, teeth);
   const tip = internal ? radius - addendum : radius + addendum;
   const root = internal ? radius + dedendum : radius - dedendum;
-  const blankR = blank === "tip" ? tip : root;
+  const blankR = (i) => ((typeof blank === "function" ? blank(i) : blank) === "tip" ? tip : root);
   const pts = [];
   const next = (i) => has((i + 1) % teeth);
   for (let i = 0; i < teeth; i++) {
     const a = i * pitch;
     if (!has(i)) {
       // 缺齒段的弧;下一個齒在的話,弧的末點留著,交界才是徑向的階(否則階會斜一個取樣步,實體多出一小片)
-      pts.push(...arcPoints(blankR, a - pitch / 2, a + pitch / 2).slice(0, next(i) ? undefined : -1));
+      // (下一個也是缺齒、但 blank 不同時,同樣留著末點,交界是徑向的階)
+      const step = !next(i) && blankR(i) !== blankR((i + 1) % teeth);
+      pts.push(...arcPoints(blankR(i), a - pitch / 2, a + pitch / 2).slice(0, next(i) || step ? undefined : -1));
       continue;
     }
     const wr = halfWidth(radius, m, root, internal);
