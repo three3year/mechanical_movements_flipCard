@@ -478,6 +478,11 @@ nav.tabs button.active {
   border-color: var(--ink);
 }
 
+.stage .stage-states-note {
+  color: var(--ink-soft);
+  margin-left: 0.4rem;
+}
+
 /* 虛擬主動件的滑桿:名稱、滑桿、目前值;滑桿加高,手機上好拖 */
 .stage .stage-driver {
   display: flex;

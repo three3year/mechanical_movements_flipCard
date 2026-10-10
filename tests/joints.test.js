@@ -47,7 +47,7 @@ import * as m244 from "../models/fig244.js";
 import * as m246 from "../models/fig246.js";
 import * as m252 from "../models/fig252.js";
 import * as m273 from "../models/fig273.js";
-import { dist, sub, len, partPoint } from "../models/kit.js";
+import { dist, sub, len, partPoint, rot2 } from "../models/kit.js";
 import * as m251 from "../models/fig251.js";
 import * as m253 from "../models/fig253.js";
 import * as m277 from "../models/fig277.js";
@@ -477,6 +477,8 @@ test("第 244 種:一塊木塊與一連串的條板繫於鏈上,透過槓桿 D �
 });
 
 test("第 244 種:狀態說明寫明「軸照箭頭方向轉」(原文說的是軸照圖示方向運轉時的調整)", () => {
+  // 狀態按鈕列旁的說明(三個狀態共用)與每個狀態的讀數都寫明
+  assert.match(m244.default.states.note ?? "", /軸照箭頭方向轉/, "狀態按鈕列的說明寫明轉向");
   for (const state of ["loose", "right", "tight"]) {
     const text = m244.default.pose(0, state).readouts.map((r) => `${r.label}${r.value}`).join();
     assert.match(text, /軸照箭頭方向轉/, `「${state}」的說明寫明轉向`);
@@ -498,28 +500,68 @@ test("第 246 種:縮放圖器:以描摹點 B 描畫平面圖,鉛筆 A 畫出兩
 
 test("第 246 種:連接於固定樞軸 C 的滑塊與承載鉛筆的滑塊都套在各自的臂上、跟著臂轉,臂伸過滑塊(滑塊可以在臂上移動)", () => {
   const def = m246.default;
-  const bar = (id) => {
-    const b = part(def, id).pieces[0]; // 臂身:局部 +x 沿著臂
-    return [b.at[0] - b.size[0] / 2, b.at[0] + b.size[0] / 2];
+  // 臂身(局部 +x 沿著臂)照姿勢放到世界座標:軸線起點、方向、沿軸的範圍、z 範圍
+  const armAt = (P, id) => {
+    const b = part(def, id).pieces[0];
+    const { position: o, angle } = P[id];
+    return { o, d: [Math.cos(angle), Math.sin(angle)], from: b.at[0] - b.size[0] / 2, to: b.at[0] + b.size[0] / 2, z: [o[2] - b.size[2] / 2, o[2] + b.size[2] / 2] };
   };
-  const [lowFrom, lowTo] = bar("armLow");
-  const [highFrom, highTo] = bar("armHigh");
-  const sliderA = part(def, "pencilA").pieces.find((p) => p.kind === "box");
+  // 臂的軸線落在滑塊外形裡的那一段(沿軸的參數範圍)
+  const inside = (arm, outline) => {
+    const ts = [];
+    for (let t = arm.from; t <= arm.to; t += 0.002) if (pointInPolygon([arm.o[0] + t * arm.d[0], arm.o[1] + t * arm.d[1]], outline)) ts.push(t);
+    return ts.length ? [ts[0], ts[ts.length - 1]] : null;
+  };
+  const overlapZ = (a, b) => a[0] < b[1] && b[0] < a[1];
   const sliderC = part(def, "sliderC");
+  const pivot = part(def, "pivotC");
+  const axle = pivot.pieces.reduce((a, b) => (a.radius <= b.radius ? a : b)); // 固定樞軸往上伸的軸
+  const box = part(def, "pencilA").pieces.find((p) => p.kind === "box");
   for (const s of sweep(1, 12)) {
     const P = def.pose(s).parts;
-    const { A, R } = m246.pantograph(m246.planPoint(s));
-    // C 的滑塊:裝在固定樞軸 C 上,跟著下臂轉;下臂穿過它往外伸
-    close(dist(P.sliderC.position, [m246.fixedC[0], m246.fixedC[1], P.sliderC.position[2]]), 0, "C 的滑塊在固定樞軸 C 上", 1e-9);
-    close(P.sliderC.angle, P.armLow.angle, "C 的滑塊跟著下臂轉", 1e-9);
-    close(dist(P.armLow.position, [m246.fixedC[0], m246.fixedC[1], P.armLow.position[2]]), 0, "下臂量起的原點在 C", 1e-9);
-    assert.ok(lowFrom < -sliderC.radius - 0.2, "下臂穿過 C 的滑塊再往外伸");
-    // 鉛筆的滑塊:套在上臂上,跟著上臂轉;上臂伸過它
-    close(P.pencilA.angle, P.armHigh.angle, "鉛筆的滑塊跟著上臂轉", 1e-9);
-    const along = dist([P.pencilA.position[0], P.pencilA.position[1], 0], [R[0], R[1], 0]);
-    close(along, dist(A, R), "鉛筆在上臂的軸線上 A 點", 1e-9);
-    assert.ok(highTo > along + sliderA.size[0] / 2 + 0.2, "上臂伸過鉛筆的滑塊");
-    assert.ok(lowTo >= dist(R, m246.fixedC) - 1e-9 && highFrom <= 0, "兩臂在 R 鉸接");
+    // C 的滑塊:圓形,轉在固定樞軸的軸上;下臂穿過它再往外伸
+    const c = P.sliderC.position;
+    const cz = [c[2] - sliderC.length / 2, c[2] + sliderC.length / 2];
+    const az = pivot.center[2] + axle.at[2];
+    assert.ok(Math.hypot(pivot.center[0] - c[0], pivot.center[1] - c[1]) + axle.radius < sliderC.radius, "固定樞軸的軸在 C 的滑塊的外形裡");
+    assert.ok(overlapZ([az - axle.length / 2, az + axle.length / 2], cz), "固定樞軸的軸伸進 C 的滑塊");
+    const low = armAt(P, "armLow");
+    const inC = inside(low, circlePolygon([c[0], c[1]], sliderC.radius, 64));
+    assert.ok(inC && inC[1] - inC[0] > 2 * sliderC.radius - 0.01, `下臂的軸線穿過 C 的滑塊中心(穿過的長度 ${inC && (inC[1] - inC[0]).toFixed(3)})`);
+    assert.ok(overlapZ(low.z, cz), "下臂和 C 的滑塊在同一個深度");
+    assert.ok(low.from < inC[0] - 0.2 && low.to > inC[1] + 0.2, "下臂兩頭都伸過 C 的滑塊");
+    // 鉛筆的滑塊:方形,套在上臂上;上臂沿滑塊的長邊穿過它,再往外伸
+    const high = armAt(P, "armHigh");
+    const q = P.pencilA;
+    const outline = [[-1, -1], [1, -1], [1, 1], [-1, 1]]
+      .map(([sx, sy]) => rot2([box.at[0] + (sx * box.size[0]) / 2, box.at[1] + (sy * box.size[1]) / 2], q.angle))
+      .map(([x, y]) => [q.position[0] + x, q.position[1] + y]);
+    const inA = inside(high, outline);
+    assert.ok(inA && Math.abs(inA[1] - inA[0] - box.size[0]) < 0.01, `上臂的軸線沿長邊穿過鉛筆的滑塊(穿過的長度 ${inA && (inA[1] - inA[0]).toFixed(3)})`);
+    const bz = q.position[2] + box.at[2];
+    assert.ok(overlapZ(high.z, [bz - box.size[2] / 2, bz + box.size[2] / 2]), "上臂和鉛筆的滑塊在同一個深度");
+    assert.ok(high.to > inA[1] + 0.2, "上臂伸過鉛筆的滑塊");
+    assert.ok(high.from <= 0 && low.to >= Math.hypot(P.armHigh.position[0] - c[0], P.armHigh.position[1] - c[1]) - 1e-9, "兩臂在 R 鉸接");
+  }
+});
+
+test("第 246 種:「鉛筆會複製出其兩倍大小的圖形」——鉛筆的筆尖與描摹點的針尖都碰到紙面,鉛筆畫的線在紙上", () => {
+  const def = m246.default;
+  const paper = part(def, "paper");
+  const top = paper.center[2] + paper.size[2] / 2;
+  const onPaper = ([x, y]) => Math.abs(x - paper.center[0]) < paper.size[0] / 2 && Math.abs(y - paper.center[1]) < paper.size[1] / 2;
+  const tipOf = (P, id) => {
+    const l = id === "tracerB" ? part(def, id) : part(def, id).pieces.find((p) => p.kind === "lathe");
+    return [P[id].position[0], P[id].position[1], P[id].position[2] + (l.at?.[2] ?? 0) + Math.min(...l.profile.map(([, z]) => z))];
+  };
+  for (const s of sweep(1, 12)) {
+    const pose = def.pose(s);
+    for (const [id, name] of [["pencilA", "鉛筆的筆尖"], ["tracerB", "描摹點的針尖"]]) {
+      const tip = tipOf(pose.parts, id);
+      assert.ok(onPaper(tip), `${name}在紙的範圍內`);
+      assert.ok(Math.abs(tip[2] - top) < 0.005, `${name}碰到紙面(離紙面 ${(tip[2] - top).toFixed(3)})`);
+    }
+    for (const p of pose.paths.drawing.points) assert.ok(Math.abs(p[2] - top) < 0.005, `鉛筆畫的線在紙面上(離紙面 ${(p[2] - top).toFixed(3)})`);
   }
 });
 

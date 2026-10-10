@@ -8,7 +8,10 @@
 // 那個爪從此頂著陡面推——推的那一角跟著棘輪轉、離掛銷的距離不變(爪是剛體),每一步由此解出棘輪轉到哪,
 // 直到掛銷往回走、爪離開陡面。沒在推的爪靠自重擺回、停在碰到齒的地方,沿齒背滑過、落進下一格,
 // 落下有加速過程。棘輪沒被推時靠軸上的摩擦停住。
-// 推斷:兩爪各自以掛銷為樞軸、靠自重搭在齒上(原圖看不出彈簧);擺幅;爪尖的鉤形。
+// 推斷:兩爪各自以掛銷為樞軸、靠自重搭在齒上(原圖看不出彈簧);擺幅;爪尖的鉤形;
+// 槓桿軸的位置 P(從原圖量的 (1.0, 3.3) 移到和掛銷差不多一樣高,高解析度原圖的槓桿也只略往下斜;
+// 掛銷上下走,左爪一程才走得滿一齒);左爪長(決定兩爪尖相對齒的相位,短一點左爪就整程搆不到陡面);
+// 右爪的拱高(拱得低一點,從移下來的槓桿軸下面過)。
 import { TAU, deg, rot2, swing as swingAt } from "./kit.js";
 import { circleCircle, bodyPoint } from "./linkage.js";
 import { shape, circle, ratchetShape, thickLine } from "./shapes.js";
@@ -144,7 +147,8 @@ const { ROWS, ADVANCE, START } = (() => {
 function lookup(v) {
   const period = 2 * SWING;
   const k = Math.floor(v / period);
-  const x = ((v - k * period) / period) * SAMPLES;
+  // v 剛好在週期的整數倍時,浮點誤差可能讓 x 略小於 0 或略大於 SAMPLES:夾在表的範圍內
+  const x = Math.min(SAMPLES, Math.max(0, ((v - k * period) / period) * SAMPLES));
   const i = Math.min(SAMPLES - 1, Math.floor(x));
   const t = x - i;
   const [a, b] = [ROWS[i], ROWS[i + 1]];

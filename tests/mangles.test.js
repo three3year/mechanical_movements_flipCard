@@ -832,6 +832,19 @@ test("第 206 種:承載兩個棘爪的槓桿擺動,一個上升時推、一個�
   assert.ok(Math.abs(Math.abs(m206.advance) / m206.pitch - Math.round(Math.abs(m206.advance) / m206.pitch)) < 1e-9, "每個來回推整數個齒");
 });
 
+test("第 206 種:主動量剛好在來回的整數倍(含浮點誤差)時姿勢照樣算得出來,前後連續", () => {
+  const def = m206.default;
+  const period = 2 * m206.swing;
+  for (let k = 1; k <= 12; k++) {
+    for (const v of [k * period, k * period * (1 - 1e-16), k * period * (1 + 1e-16), k * period - 1e-13, k * period + 1e-13]) {
+      const p = def.pose(v).parts;
+      for (const id of ["wheel", "pawlLeft", "pawlRight"]) assert.ok(Number.isFinite(p[id].angle), `主動量 ${v} 時 ${id} 的轉角算得出來`);
+      close(m206.wheelAngle(v), m206.wheelAngle(k * period - 1e-6), `主動量 ${v} 時棘輪轉角和稍前一點連續`, 1e-4);
+    }
+  }
+  assert.doesNotThrow(() => def.pose(3.5605), "code review 找到的例子(約 6 倍擺幅)");
+});
+
 test("第 206 種:兩個爪由接觸推動棘輪——爪尖不穿入齒,爪落進下一格時有加速過程", () => {
   const S = m206.swing;
   for (const v of sweep(4 * S, 400)) {

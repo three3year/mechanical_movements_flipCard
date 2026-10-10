@@ -236,6 +236,8 @@ class Session {
         row.appendChild(btn);
         return { option, btn };
       });
+      // 狀態共用的說明(例如這些狀態都假定軸照箭頭方向轉),接在按鈕後面
+      if (def.states.note) row.appendChild(el("span", "stage-states-note", def.states.note));
     }
     this.setPlaying(true);
     this.syncStateButtons();

@@ -14,7 +14,8 @@ const HALF = 2.0; // 長臂的一半 = 短桿長
 export const RATIO = 2;
 // 平面圖(以描摹點 B 描的線,逆時針):一棟小房子
 const PLAN = [[-0.45, -0.4], [0.45, -0.4], [0.45, 0.2], [0, 0.55], [-0.45, 0.2]].map(([x, y]) => [-2.6 + x, -0.3 + y, 0]);
-const Z = { paper: -0.12, bars: 0.12, trace: -0.05 };
+// 紙面在 z −0.15:鉛筆的筆尖、描摹點的針尖與兩條線都在紙面上
+const Z = { paper: -0.15, bars: 0.12, trace: -0.15 };
 const EXT = 0.55; // 兩支長臂伸過滑塊的長度
 const ARM = { width: 0.13, thickness: 0.06 };
 // 長臂:局部 +x 沿著臂,原點在臂量起的那一端(下臂在 C、上臂在 R);臂身從 from 到 to
@@ -54,7 +55,7 @@ const lift = (p, z) => [p[0], p[1], z];
 export default {
   figure: 246,
   parts: [
-    { id: "paper", kind: "box", center: [-1.5, 0.2, Z.paper - 0.05], size: [5.8, 6.0, 0.04] },
+    { id: "paper", kind: "box", center: [-1.5, 0.2, Z.paper - 0.02], size: [5.8, 6.0, 0.04] },
     { id: "plan", kind: "rod", radius: 0.02 },
     { id: "drawing", kind: "trace" },
     // 固定樞軸 C:釘在紙上的底座與往上伸進滑塊的軸
@@ -68,11 +69,12 @@ export default {
     { id: "armHigh", kind: "group", pieces: armPieces(0, 2 * HALF + EXT, [0, HALF]) },
     { id: "linkBT", kind: "link", width: 0.11, thickness: 0.05 },
     { id: "linkBU", kind: "link", width: 0.11, thickness: 0.05 },
-    { id: "tracerB", kind: "lathe", profile: [[0, -0.18], [0.06, -0.08], [0.07, 0.2], [0, 0.2]], label: "B", labelOffset: [-0.35, 0, 0.2] },
-    // 鉛筆 A 裝在套在上臂上的方形滑塊下,筆尖在臂的軸線上
+    // 描摹點:針尖碰著紙面,往上穿過兩根短桿的眼
+    { id: "tracerB", kind: "lathe", profile: [[0, -0.28], [0.06, -0.18], [0.07, 0.2], [0, 0.2]], label: "B", labelOffset: [-0.35, 0, 0.2] },
+    // 鉛筆 A 裝在套在上臂上的方形滑塊下,筆尖在臂的軸線上、碰著紙面
     { id: "pencilA", kind: "group", label: "A", labelOffset: [-0.2, 0.4, 0.3], pieces: [
-      { kind: "lathe", profile: [[0, -0.2], [0.05, -0.1], [0.07, 0.0], [0, 0.0]] },
-      { kind: "box", size: [0.32, 0.27, 0.16], at: [0, 0, Z.bars + 0.08 - (Z.trace + 0.2)] },
+      { kind: "lathe", profile: [[0, -0.3], [0.05, -0.2], [0.07, 0.0], [0, 0.0]] },
+      { kind: "box", size: [0.32, 0.27, 0.16], at: [0, 0, Z.bars + 0.08 - (Z.trace + 0.3)] },
     ] },
   ],
   // grips 留空:描跡針沿任意路徑走(數值微分拖動,不需要 direction);鉛筆 A 是目標件,不當抓取處
@@ -94,8 +96,8 @@ export default {
         armHigh: { position: lift(R, Z.bars + 0.08), angle: heading(R, A) },
         linkBT: { from: lift(B, Z.bars + 0.16), to: lift(T, Z.bars + 0.16) },
         linkBU: { from: lift(B, Z.bars + 0.08), to: lift(U, Z.bars + 0.08) },
-        tracerB: { position: lift(B, Z.trace + 0.18) },
-        pencilA: { position: lift(A, Z.trace + 0.2), angle: heading(R, A) },
+        tracerB: { position: lift(B, Z.trace + 0.28) },
+        pencilA: { position: lift(A, Z.trace + 0.3), angle: heading(R, A) },
       },
       paths: {
         plan: { points: [...PLAN, PLAN[0]].map((p) => lift(p, Z.trace)), closed: false },

@@ -1,7 +1,7 @@
 // 第八章「引擎與調速機構」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
+import { close, sweep, part } from "./helpers.js";
 import { dist } from "../models/kit.js";
 import { feed as feed155, step as step155, stroke as stroke155, advance as advance155, contactAt as contact155 } from "../models/fig155.js";
 import { bellCrank as crank156, guides as guides156, slideLength as slide156 } from "../models/fig156.js";
@@ -15,7 +15,7 @@ import fig173, { traverse as traverse173, tappetContact as tappet173, tappetTeet
 import { clamp as clamp174, nose as nose174, grip as grip174 } from "../models/fig174.js";
 import { slotting as slotting178, crankLength as crankLength178 } from "../models/fig178.js";
 import { clamp as clamp180, nose as nose180, grip as grip180 } from "../models/fig180.js";
-import { screwClamp as clamp190, FOOT_BLOCK as FOOT190, BENCH as BENCH190, HOOK as HOOK190, POST_LAYER as POST190, SCREW as SCREW190, TINES as TINES190 } from "../models/fig190.js";
+import fig190, { screwClamp as clamp190, SCREW as SCREW190, TINES as TINES190 } from "../models/fig190.js";
 import { rot2 } from "../models/kit.js";
 import { coupling, grooveCenter, ARM as ARM176, FLANGE as FLANGE176, GROOVE as GROOVE176, WRIST as WRIST176 } from "../models/uncoupling.js";
 import { cornish, crossing, valves, ANGLES as CORNISH, TAPPET, SPAN as SPAN181 } from "../models/cornish-gear.js";
@@ -476,20 +476,67 @@ test("第 190 種:旋緊、放鬆的全程叉齒都不穿入肩與軸環;放鬆�
   assert.ok(loose.lift > 0.1, `放到底:壓腳離開木塊(升起 ${loose.lift.toFixed(3)})`);
 });
 
+// 第 190 種:量定義裡實際的零件塊。bench 群組的各塊(台面、支柱板、鉤、腳座)的 x、y、z 範圍
+function benchPieces190() {
+  const pieces = part(fig190, "bench").pieces;
+  const range = (vals) => [Math.min(...vals), Math.max(...vals)];
+  const plates = pieces
+    .filter((p) => p.kind === "plate")
+    .map((p) => ({ x: range(p.shape.outline.map((q) => q[0])), y: range(p.shape.outline.map((q) => q[1])), z: [p.at[2] - p.thickness / 2, p.at[2] + p.thickness / 2], p }));
+  const slab = plates.reduce((a, b) => (a.x[1] - a.x[0] >= b.x[1] - b.x[0] ? a : b)); // 最寬的是台面
+  const post = plates.find((b) => b.p.shape.holes.length); // 柱頂的圓頭有支點銷的孔
+  const hook = plates.reduce((a, b) => (a.y[0] <= b.y[0] ? a : b)); // 伸得最低的是支柱下端的鉤
+  const box = pieces.find((p) => p.kind === "box");
+  const block = [0, 1, 2].map((k) => [box.at[k] - box.size[k] / 2, box.at[k] + box.size[k] / 2]);
+  return { slab, post, hook, block: { x: block[0], y: block[1], z: block[2] } };
+}
+const within190 = (inner, outer) => outer[0] <= inner[0] + 1e-9 && inner[1] <= outer[1] + 1e-9;
+const overlaps190 = (a, b) => a[0] < b[1] && b[0] < a[1];
+
+// 螺桿的某一塊(沿螺桿的局部 z)在姿勢下的世界 y 範圍
+const screwSpan190 = (piece, angle) => {
+  const y = fig190.pose(angle).parts.screw.position[1] + piece.at[2];
+  return [y - piece.length / 2, y + piece.length / 2];
+};
+
 test("第 190 種:螺桿旋在支柱的腳座裡——全程下端都在腳座裡,沒有伸進台面", () => {
-  assert.ok(FOOT190.x[0] < SCREW190.x - SCREW190.r && SCREW190.x + SCREW190.r < FOOT190.x[1], "螺桿在腳座的寬度內");
-  assert.ok(FOOT190.z[0] < -SCREW190.r && SCREW190.r < FOOT190.z[1], "腳座和螺桿在同一層");
+  const { slab, post, block } = benchPieces190();
+  const screw = part(fig190, "screw");
+  const worm = screw.pieces.find((p) => p.kind === "worm");
+  const x = fig190.pose(0).parts.screw.position[0];
+  assert.ok(within190([x - worm.radius, x + worm.radius], block.x), "螺桿在腳座的寬度內");
+  assert.ok(within190([-worm.radius, worm.radius], block.z), "腳座和螺桿在同一層");
   for (const a of sweep(-6 * Math.PI, 60)) {
-    const { screwEnd } = clamp190(a);
-    assert.ok(screwEnd >= BENCH190.top - 1e-9, `下端沒有伸進台面(${screwEnd.toFixed(3)})`);
-    assert.ok(screwEnd < FOOT190.y[1] - 0.1, `下端旋進腳座裡(${screwEnd.toFixed(3)})`);
+    const [end] = screwSpan190(worm, a);
+    assert.ok(end >= slab.y[1] - 1e-9, `下端沒有伸進台面(${end.toFixed(3)})`);
+    assert.ok(end < block.y[1] - 0.1, `下端旋進腳座裡(${end.toFixed(3)})`);
   }
-  close(FOOT190.y[0], BENCH190.top, "腳座坐在台面上", 1e-9);
+  close(block.y[0], slab.y[1], "腳座的底面坐在台面頂面上", 1e-9);
+  assert.ok(within190(block.x, slab.x) && overlaps190(block.z, slab.z), "腳座整塊在台面上");
+  assert.ok(block.x[0] < post.x[1] && overlaps190(block.z, post.z) && overlaps190(block.y, post.y), "腳座接在支柱板上(從支柱下方往右伸出)");
+});
+
+test("第 190 種:放鬆到底時肩仍在腳座之上——旋緊、放鬆的全程肩都不壓進腳座", () => {
+  const { block } = benchPieces190();
+  const shoulder = part(fig190, "screw").pieces.find((p) => p.accent); // 叉齒底下的肩
+  const x = fig190.pose(0).parts.screw.position[0];
+  assert.ok(within190([x - shoulder.radius, x + shoulder.radius], block.x) && within190([-shoulder.radius, shoulder.radius], block.z), "肩在腳座的正上方(落下來會碰到腳座)");
+  let least = Infinity;
+  for (const a of sweep(-6 * Math.PI, 240)) least = Math.min(least, screwSpan190(shoulder, a)[0] - block.y[1]);
+  assert.ok(least >= 0, `肩的底面全程不低於腳座頂面(最近 ${least.toFixed(3)})`);
 });
 
 test("第 190 種:支柱穿過台面,下端的鉤貼著台面底面;柄和支柱板在同一層", () => {
-  close(HOOK190.top, BENCH190.bottom, "鉤貼著台面底面", 1e-9);
-  assert.ok(POST190.z[0] <= HOOK190.z[0] && HOOK190.z[1] <= POST190.z[1], "柄在支柱板的深度範圍內");
+  const { slab, post, hook } = benchPieces190();
+  const outline = hook.p.shape.outline;
+  // 鉤的橫段:往右伸到最遠的那一端,它的頂面
+  const armTop = Math.max(...outline.filter((q) => Math.abs(q[0] - hook.x[1]) < 1e-9).map((q) => q[1]));
+  close(armTop, slab.y[0], "鉤的橫段頂面貼著台面底面", 0.005);
+  assert.ok(within190(hook.x, slab.x) && overlaps190(hook.z, slab.z), "鉤的橫段在台面底下、和台面在同一個深度(勾得住)");
+  assert.ok(hook.y[0] < slab.y[0] && hook.y[1] >= slab.y[1] - 1e-9, "柄從台面底下一直穿到台面頂面");
+  close(hook.y[1], post.y[0], "柄的上端接到支柱板的下端", 1e-9);
+  assert.ok(overlaps190(hook.x, post.x), "柄在支柱板的寬度內");
+  assert.ok(within190(hook.z, post.z), "柄在支柱板的深度範圍內");
 });
 
 test("第 176、177 種:溝槽在第 176 種位置時腕銷帶動曲柄;轉到第 177 種位置時腕銷穿過溝槽、曲柄不動", () => {

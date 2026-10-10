@@ -7,6 +7,7 @@
 // 所以凸輪整圈貼著齒的外形:尖端兩側是兩段漸開的弧(心形凸輪),朝前的一側頂著齒的側面推,
 // 背面是齒端掃過的同心圓弧(只擦過、不推)。推的那一段大半圈,兩個凸輪交接時一起推一段。
 // 推斷:凸輪外形(由齒反求,和原圖的蛋形相近);齒數依原圖。
+// 動力重演:只轉小齒輪,輪在軸上靠摩擦定位、由凸輪推齒帶動(拿掉凸輪與齒的碰撞,輪就不動,重演失敗)。
 import { TAU, polar, rot2 } from "./kit.js";
 import { placeOutline } from "./contact.js";
 import { pedestal } from "./supports.js";
@@ -137,6 +138,18 @@ export default {
       ],
     },
   ],
+  // 動力重演:只轉小齒輪;輪在軸上靠摩擦定位,由兩個凸輪推齒帶動
+  replay: {
+    free: { wheel: { hold: true, gravity: false } },
+    ignore: [["wheel", "frame"]], // 輪套在固定軸上(軸在輪轂的孔裡)
+    to: 4 * Math.PI,
+    seconds: 16,
+    expect: [
+      { at: Math.PI, part: "wheel", label: "小齒輪轉半圈,輪走一格", quote: "這兩個凸輪與位於輪相對兩側的兩組獨立的齒相互嚙合" },
+      { at: 2 * Math.PI, part: "wheel", label: "小齒輪轉一圈,另一個凸輪接手,輪走兩格" },
+      { part: "wheel", label: "第二圈照樣連續推進" },
+    ],
+  },
   driver: { part: "pinion", type: "rotation", speed: 2 },
   target: "wheel",
   view: { direction: [0.15, 0.1, 1] },
