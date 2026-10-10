@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8"><title>多相位並排</title>
+<!-- 維護用:插圖與模型的多個主動量並排,供截圖檢查動作中途的姿勢。用法:tools/model-strip.html?fig=N&vs=0,1.5,3[&state=狀態][&dir=x,y,z 視角][&fit=零件,… 只以這些零件取景][&w=寬&h=高];document.title 變成 ready 才截圖 -->
+<link rel="stylesheet" href="../style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<style>body{padding:4px;background:#fff}.row{display:flex;flex-wrap:wrap;gap:4px}.row img,.row canvas{border:1px solid #ccc}.stage .stage-view{height:420px}.card{width:520px;position:absolute;left:-2000px;top:0}#msg{font:12px monospace;white-space:pre-wrap;color:#a00}</style>
+</head><body>
+<div class="row" id="row"></div><div class="card"><div class="stage" id="stage"></div></div><div id="msg"></div>
+<script type="module">
+import { loadModel } from "../models/registry.js";
+import { prepare } from "../viewer/viewer.js";
+const q = new URLSearchParams(location.search);
+const fig = Number(q.get("fig"));
+const vs = (q.get("vs") ?? "0").split(",").map(Number);
+const W = Number(q.get("w") ?? 340), H = Number(q.get("h") ?? 300);
+const row = document.getElementById("row");
+const ill = new Image(); ill.src = `../images/${fig}.png`; ill.height = H; row.append(ill);
+try {
+  const def = await loadModel(fig);
+  if (q.has("dir")) def.view = { ...def.view, direction: q.get("dir").split(",").map(Number) };
+  if (q.has("fit")) def.view = { ...def.view, fit: q.get("fit").split(",") };
+  const session = prepare(def, document.getElementById("stage"));
+  if (q.has("state")) session.setState(q.get("state"));
+  session.setPlaying(false); session.transition = null; session.activate();
+  const gl = document.querySelector("#stage canvas");
+  const raf = () => new Promise((r) => requestAnimationFrame(r));
+  for (const v of vs) {
+    session.value = v; await raf(); await raf();
+    await new Promise((r) => requestAnimationFrame(() => { 
+      const c = document.createElement("canvas"); c.width = W; c.height = H;
+      const g = c.getContext("2d"); g.drawImage(gl, 0, 0, gl.width, gl.height, 0, 0, W, H);
+      g.fillStyle = "#000"; g.font = "12px monospace"; g.fillText(`v=${v}`, 4, 12); row.append(c); r(); }));
+  }
+  document.title = "ready";
+} catch (e) { document.getElementById("msg").textContent = String(e.stack ?? e); document.title = "error"; }
+</script></body></html>
