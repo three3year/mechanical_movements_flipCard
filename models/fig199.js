@@ -2,6 +2,8 @@
 // 把往復運動傳給方形框架;框架由上下的滾子引導。小齒輪只在不到一半的圓周上有銷,所以當它與一側的齒條
 // 嚙合時,沒有銷的那一半正朝向另一側。每根齒條起始處的大齒確保小齒輪的銷正確地嚙合。主動件是小齒輪。
 // 推斷:5 根銷、銷距 36°(上下各嚙合半圈,框架往返的速度相同、換向瞬間完成);小齒輪順時針轉。
+// 兩片半圓板一片在框架前面、一片在後面,夾住框架上的齒條,銷從前板穿過框架的開口到後板,橫跨齒條整個厚度
+// (507movements 的動畫裡圓盤在平面上一直蓋過齒條的齒,所以盤不在齒條那一層)。
 import { deg, TAU } from "./kit.js";
 import { shape, arcPoints } from "./shapes.js";
 
@@ -13,6 +15,7 @@ const WINDOW = STEP / 2; // 銷在正上(下)方 ±18° 內與齒條嚙合
 const X_MIN = -RL * WINDOW; // 框架的最左位置(原圖時框架在 X_MIN + RL·18° = 0)
 const TRAVEL = RL * Math.PI;
 const ROLLER = 0.35;
+const PLATE_Z = 0.15; // 燈籠小齒輪兩片板的中心離框架中面(框架厚 0.2,板厚 0.05,各留 0.025)
 
 /** 小齒輪順時針轉 v:框架的位移,以及正在與哪一根齒條嚙合 */
 export function frame(v) {
@@ -67,15 +70,16 @@ export default {
     {
       id: "pinion",
       kind: "group",
-      center: [0, 0, 0.3],
+      center: [0, 0, 0],
       spin: 0.8,
+      spinOffset: PLATE_Z + 0.05, // 箭頭在前板前面,不被框架擋住
       pieces: [
-        // 兩片半圓板夾著銷;沒有銷的一半只有軸轂
-        { kind: "plate", shape: shape([...arcPoints(0.75, deg(72), deg(252))], []), thickness: 0.05, at: [0, 0, -0.2] },
-        { kind: "plate", shape: shape([...arcPoints(0.75, deg(72), deg(252))], []), thickness: 0.05, at: [0, 0, 0.2] },
-        { kind: "cylinder", radius: 0.14, length: 0.6, mark: true },
-        { kind: "cylinder", radius: 0.07, length: 0.5, at: [0, 0, -0.55] }, // 軸往後穿過框架的開口,進到底板上的軸承(推斷)
-        ...Array.from({ length: PINS }, (_, i) => ({ kind: "cylinder", radius: 0.08, length: 0.52, at: [RL * Math.cos(pinAngle(i, 0)), RL * Math.sin(pinAngle(i, 0)), 0], accent: i === 0 })),
+        // 兩片半圓板夾著銷,一片在框架後、一片在框架前(銷頭略露出板外,同原圖看得到銷);沒有銷的一半只有軸轂
+        { kind: "plate", shape: shape([...arcPoints(0.75, deg(72), deg(252))], []), thickness: 0.05, at: [0, 0, -PLATE_Z] },
+        { kind: "plate", shape: shape([...arcPoints(0.75, deg(72), deg(252))], []), thickness: 0.05, at: [0, 0, PLATE_Z] },
+        { kind: "cylinder", radius: 0.14, length: 2 * PLATE_Z + 0.05, mark: true },
+        { kind: "cylinder", radius: 0.07, length: 0.35, at: [0, 0, -0.325] }, // 軸從後板往後,進到底板上的軸承(推斷)
+        ...Array.from({ length: PINS }, (_, i) => ({ kind: "cylinder", radius: 0.08, length: 2 * PLATE_Z + 0.075, at: [RL * Math.cos(pinAngle(i, 0)), RL * Math.sin(pinAngle(i, 0)), 0], accent: i === 0 })),
       ],
     },
     ...ROLLERS.map(([x, y], i) => ({ id: `roller${i}`, kind: "group", center: [x, y, 0], spin: ROLLER, arrow: i === 0 || i === 2, pieces: [{ kind: "cylinder", radius: ROLLER, inner: 0.07, length: 0.25, mark: true }] })),
@@ -100,7 +104,7 @@ export default {
     return { parts, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["frame", "pinion"], reason: "簡化齒形:燈籠小齒輪的銷繞過機架上齒條的端頭時擦到齒 0.06(96 個取樣中 12 個)" },
+    { check: "interference", parts: ["frame", "pinion"], reason: "簡化齒形與瞬間換向:框架換向的那一下,剛離開一側齒條的銷繞出齒間時擦到齒間的側壁 0.07(銷橫跨齒條整個厚度後量到的;96 個取樣中 12 個)" },
   ],
 };
 

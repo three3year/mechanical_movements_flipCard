@@ -102,6 +102,61 @@ test("第 197 種:小齒輪連續旋轉給框架往復運動;小齒輪軸升降�
   close(xs[0], xs[xs.length - 1], "一個週期回到原處", 1e-3);
 });
 
+test("第 197 種:繞過齒條兩端時,小齒輪軸上的軸環靠著 C 形導板的內緣走(原文:小齒輪軸…繞過齒條兩端的引導部);導板不在齒那一層", () => {
+  const def = m197.default;
+  const gear = part(def, "pinion");
+  const collar = shaftSegments(def).reduce((a, b) => (a.r >= b.r ? a : b));
+  const layers = plateLayers(part(def, "frame"));
+  const profile = gearProfile(gear);
+  const from = def.driver.initial;
+  let rounding = 0;
+  for (const v of sweep(from + m197.period, 400, from)) {
+    const { frame, pinion } = def.pose(v).parts;
+    const c = [pinion.position[0] - frame.position[0], pinion.position[1] - frame.position[1]]; // 框架座標
+    const z = pinion.position[2];
+    const teeth = profile.map((p) => rot2(p, pinion.angle)).map(([x, y]) => [c[0] + x, c[1] + y]);
+    for (const l of layers.filter((l) => l.z0 < z + gear.width / 2 && z - gear.width / 2 < l.z1)) {
+      const depth = penetrationDepth(teeth, l.solid);
+      assert.ok(depth < 0.005, `主動量 ${v.toFixed(2)}:小齒輪的齒壓進框架上同一層的板 ${depth.toFixed(3)}`);
+    }
+    const guides = layers.filter((l) => l.z0 < z + collar.z1 && z + collar.z0 < l.z1).map((l) => l.solid);
+    const ring = circlePolygon(c, collar.r, 48);
+    const depth = Math.max(0, ...guides.map((s) => penetrationDepth(ring, s)));
+    assert.ok(depth < 0.005, `主動量 ${v.toFixed(2)}:軸環壓進導板 ${depth.toFixed(3)}`);
+    if (Math.abs(c[1]) < 0.5 * m197.pinionRadius) {
+      // 小齒輪正繞著端頭的銷:軸環貼著導板的內緣,把小齒輪壓在銷上
+      rounding++;
+      const gap = Math.min(...guides.map((s) => edgeDistance(c, s.outline))) - collar.r;
+      assert.ok(gap < 0.02, `主動量 ${v.toFixed(2)}:繞端頭時軸環離導板 ${gap.toFixed(3)}`);
+    }
+  }
+  assert.ok(rounding > 10, "取樣裡有繞端頭的姿勢");
+});
+
+test("第 197 種:框架板坐在下導軌上,上下導軌的前後擋邊夾著框架板(框架只左右平移)", () => {
+  const def = m197.default;
+  const [plate] = plateLayers(part(def, "frame")); // 框架背板
+  const ys = plate.solid.outline.map((p) => p[1]);
+  const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
+  const xs = plate.solid.outline.map((p) => p[0]);
+  const shifts = sweep(def.driver.initial + m197.period, 200, def.driver.initial).map((v) => def.pose(v).parts.frame.position[0]);
+  const [x0, x1] = [Math.min(...xs) + Math.min(...shifts), Math.max(...xs) + Math.max(...shifts)];
+  const boxes = part(def, "guides")
+    .pieces.filter((p) => p.kind === "box")
+    .map(({ at, size }) => ({ x0: at[0] - size[0] / 2, x1: at[0] + size[0] / 2, y0: at[1] - size[1] / 2, y1: at[1] + size[1] / 2, z0: at[2] - size[2] / 2, z1: at[2] + size[2] / 2 }));
+  for (const b of boxes) {
+    const overlap = Math.min(b.x1, x1) - Math.max(b.x0, x0) > 1e-9 && Math.min(b.y1, y1) - Math.max(b.y0, y0) > 1e-9 && Math.min(b.z1, plate.z1) - Math.max(b.z0, plate.z0) > 1e-9;
+    assert.ok(!overlap, "導軌不穿進框架板");
+  }
+  assert.ok(boxes.some((b) => Math.abs(b.y1 - y0) < 1e-6 && b.z0 <= plate.z0 && b.z1 >= plate.z1), "框架板的下緣坐在下導軌上(間隙 0)");
+  assert.ok(boxes.some((b) => b.y0 > y1 && b.y0 - y1 < 0.02 && b.z0 <= plate.z0 && b.z1 >= plate.z1), "上導軌貼近框架板的上緣");
+  for (const [edge, name] of [[y0, "下"], [y1, "上"]]) {
+    const across = (b) => b.y0 < edge && edge < b.y1 && Math.min(b.y1, y1) - Math.max(b.y0, y0) > 0.03;
+    assert.ok(boxes.some((b) => across(b) && b.z0 >= plate.z1 && b.z0 - plate.z1 < 0.02), `${name}導軌有前擋邊蓋住框架板`);
+    assert.ok(boxes.some((b) => across(b) && b.z1 <= plate.z0 && plate.z0 - b.z1 < 0.02), `${name}導軌有後擋邊蓋住框架板`);
+  }
+});
+
 // ── 曼格輪小齒輪的導路與驅動軸(第 192–194、197 種;共用 pinion-drive.js)──
 
 /** 原文第 36 種:小齒輪的軸「在直立的靜止桿上所切出的直線溝槽內運作」:不動的零件上有一塊板,板上的槽全程夾住小齒輪軸 */
@@ -202,6 +257,63 @@ test("第 198 種:小齒輪不升降;走到齒條末端時把承載齒條的部�
   }
 });
 
+/** 第 198 種:零件 id 上的樞軸座(有孔的圓柱)在姿勢 pose 下的世界 xy */
+function seats198(def, pose, id) {
+  const p = pose[id];
+  return part(def, id)
+    .pieces.filter((s) => s.kind === "cylinder" && s.inner)
+    .map((s) => {
+      const [x, y] = rot2([s.at[0], s.at[1]], p.angle ?? 0);
+      return [p.position[0] + x, p.position[1] + y];
+    });
+}
+
+test("第 198 種:承載齒條的部分以兩根定長的桿與主框架鉸接(原文);原圖上桿從主框架左上接到承載板右上,下桿從承載板左下接到主框架右下", () => {
+  const def = m198.default;
+  const lengths = { rodTop: [], rodBottom: [] };
+  for (const v of sweep(def.driver.initial + m198.period, 300, def.driver.initial)) {
+    const pose = def.pose(v).parts;
+    const frameSeats = seats198(def, pose, "frame");
+    const carrierSeats = seats198(def, pose, "carrier");
+    const on = (p, seats) => seats.some((s) => Math.hypot(s[0] - p[0], s[1] - p[1]) < 1e-6);
+    for (const id of ["rodTop", "rodBottom"]) {
+      const { from, to } = pose[id];
+      lengths[id].push(dist(from, to));
+      const [f, c] = on(from, frameSeats) ? [from, to] : [to, from];
+      assert.ok(on(f, frameSeats) && on(c, carrierSeats), `主動量 ${v.toFixed(2)}:${id} 一端在主框架的樞軸座、一端在承載板的樞軸座`);
+      if (id === "rodTop") assert.ok(f[0] < c[0] && f[1] > c[1], "上桿:主框架端在左上");
+      else assert.ok(f[0] > c[0], "下桿:主框架端在右、承載板端在左");
+    }
+    // 小齒輪一直咬在齒環上:小齒輪軸心換到承載板座標,落在小齒輪沿齒環走的路徑上
+    const { carrier, pinion } = pose;
+    const center = part(def, "pinion").center;
+    const q = rot2([center[0] - carrier.position[0], center[1] - carrier.position[1]], -(carrier.angle ?? 0));
+    const off = Math.min(...m198.centers.map((p) => Math.hypot(p[0] - q[0], p[1] - q[1])));
+    assert.ok(off < 0.01, `主動量 ${v.toFixed(2)}:小齒輪軸心離路徑 ${off.toFixed(4)}`);
+    assert.ok(pinion.angle != null);
+  }
+  for (const [id, list] of Object.entries(lengths)) close(Math.max(...list) - Math.min(...list), 0, `${id} 的長度不變`, 1e-6);
+});
+
+test("第 198 種:四個樞軸座都立在各自的板上;承載板背板的孔完整落在外框內(板不被切斷)", () => {
+  const def = m198.default;
+  for (const id of ["frame", "carrier"]) {
+    const layers = plateLayers(part(def, id));
+    for (const s of part(def, id).pieces.filter((s) => s.kind === "cylinder" && s.inner)) {
+      const [z0, z1] = [s.at[2] - s.length / 2, s.at[2] + s.length / 2];
+      const base = layers.filter((l) => l.z0 < z1 && z0 < l.z1 && pointInPolygon([s.at[0], s.at[1]], l.solid.outline) && !l.solid.holes.some((h) => pointInPolygon([s.at[0], s.at[1]], h)));
+      assert.ok(base.length, `${id} 在 (${s.at[0]}, ${s.at[1]}) 的樞軸座伸到板裡`);
+    }
+  }
+  const [back] = plateLayers(part(def, "carrier"));
+  for (const hole of back.solid.holes) {
+    for (const p of hole) {
+      assert.ok(pointInPolygon(p, back.solid.outline), "孔在外框內");
+      assert.ok(edgeDistance(p, back.solid.outline) > 0.05, `孔離外框至少 0.05(${edgeDistance(p, back.solid.outline).toFixed(3)})`);
+    }
+  }
+});
+
 test("第 199 種:燈籠式小齒輪連續旋轉,框架往復;與一側齒條嚙合時,沒有銷的那一半朝向另一側", () => {
   const { RL, PINS, WINDOW, TRAVEL } = m199.geometry;
   const xs = sweep(2 * Math.PI, 720).map((v) => m199.frame(v).x);
@@ -217,6 +329,25 @@ test("第 199 種:燈籠式小齒輪連續旋轉,框架往復;與一側齒條嚙
     }
   }
   assert.ok(RL > 0);
+});
+
+test("第 199 種:燈籠式小齒輪的銷夾在兩片板之間(原文):兩片板一前一後夾住框架上的齒條,銷橫跨齒條整個厚度", () => {
+  const def = m199.default;
+  const frame = part(def, "frame");
+  const pinion = part(def, "pinion");
+  const [f0, f1] = [-(frame.thickness ?? 0.2) / 2, (frame.thickness ?? 0.2) / 2];
+  const z = pinion.center[2];
+  const plates = plateLayers(pinion).map((l) => [z + l.z0, z + l.z1]);
+  assert.equal(plates.length, 2, "兩片板");
+  assert.ok(plates.some(([, b]) => b <= f0), "一片板在框架後面");
+  assert.ok(plates.some(([a]) => a >= f1), "一片板在框架前面");
+  const pins = pinion.pieces.filter((p) => p.kind === "cylinder" && p.at && Math.hypot(p.at[0], p.at[1]) > 0.3);
+  assert.equal(pins.length, m199.geometry.PINS);
+  for (const p of pins) {
+    const [a, b] = [z + p.at[2] - p.length / 2, z + p.at[2] + p.length / 2];
+    assert.ok(a <= f0 && b >= f1, `銷 ${a.toFixed(3)}..${b.toFixed(3)} 橫跨齒條的厚度 ${f0}..${f1}`);
+    for (const [p0, p1] of plates) assert.ok(Math.min(b, p1) - Math.max(a, p0) > 0, "銷的兩端插在兩片板裡");
+  }
 });
 
 test("第 191 種:渦形齒輪,從動輪逐漸加速", () => {

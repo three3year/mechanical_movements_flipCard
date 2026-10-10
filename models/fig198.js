@@ -1,11 +1,15 @@
 // 第 198 種:第 197 種的變形。小齒輪雖然旋轉,但不像第 197 種那樣升降。齒條是一圈長圓形、齒朝內的齒環,
 // 裝在一塊承載板上;承載板以兩根桿與主框架鉸接,所以小齒輪走到齒條末端時,會憑自身的運動把齒條抬起(或壓下),
 // 接著沿另一側繼續走,主框架就往回走。主框架由上下四個滾子引導,只能左右移動。主動件是小齒輪。
-// 推斷:小齒輪軸固定;兩根鉸接桿近似平行,承載板相對主框架只上下移動(桿長的微小變化忽略,標為可伸縮);
-// 中間的直條連接兩根桿的中點。
-import { TAU } from "./kit.js";
+// 原圖:承載板外框是 S 形,右上與左下各有一個帶樞軸的凸耳;上桿從主框架左上角接到承載板右上凸耳,
+// 下桿從承載板左下凸耳接到主框架右下角,兩根桿方向相反。
+// 推斷:小齒輪軸固定;兩根桿定長,承載板照四連桿的解相對主框架升降(同時微微左右移、轉動),小齒輪一直咬在齒環上;
+// 中間的直條照原圖接在兩根桿與主框架中線(x = 0)的交點:上桿約在 0.55、下桿在中點,兩點都升降承載板升降量的
+// 一半左右。兩根桿已由四連桿定住,直條是多出來的一道約束,兩個銷之間的距離會變 0.005(銷孔的餘隙吸收,
+// 看不出來;標 stretch)。不能讓一端沿桿滑:直條幾乎和桿垂直,0.005 的差要滑 0.2 以上。
+import { TAU, deg, rot2 } from "./kit.js";
 import { manglePath, arcLength } from "./mangle-path.js";
-import { shape, rect, offsetLoop } from "./shapes.js";
+import { shape, rect, offsetLoop, arcPoints } from "./shapes.js";
 import { toothedLoop, resample } from "./noncircular.js";
 
 const HALF = 1.75; // 齒環直段的半長
@@ -23,24 +27,82 @@ const RP = (NP * PITCH) / TAU;
 const path = manglePath(SEGMENTS, RP, "slide");
 const PINION = [-1.1, H - RP]; // 小齒輪軸固定的位置(原圖:靠上排)
 
-/** 小齒輪轉 alpha:主框架的位移、承載板(齒條)相對主框架的升降 */
+// 鉸接桿:主框架上的樞軸與承載板上的樞軸(各自的局部座標;原圖時承載板沒有升降,兩個座標系重合)
+const RODS = [
+  { frame: [-2.65, 1.17], carrier: [2.2, 0.77] }, // 上桿:主框架左上 → 承載板右上凸耳
+  { frame: [2.2, -0.95], carrier: [-2.2, -1.02] }, // 下桿:主框架右下 → 承載板左下凸耳
+];
+const LENGTHS = RODS.map((r) => Math.hypot(r.carrier[0] - r.frame[0], r.carrier[1] - r.frame[1]));
+
+/** 3×3 線性方程 A·x = b(克拉瑪) */
+function solve3(A, b) {
+  const det = (m) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  const d = det(A);
+  return [0, 1, 2].map((j) => det(A.map((row, i) => row.map((v, k) => (k === j ? b[i] : v)))) / d);
+}
+
+/**
+ * 小齒輪軸心在承載板座標 q 時,承載板相對主框架的位置 [x, y, 轉角]:兩根桿長不變,
+ * 而且小齒輪軸心(世界座標固定)的高度 = PINION[1]。牛頓法。
+ */
+function carrierPose(q) {
+  const residual = ([x, y, t]) => [
+    ...RODS.map((r, i) => {
+      const [cx, cy] = rot2(r.carrier, t);
+      return Math.hypot(x + cx - r.frame[0], y + cy - r.frame[1]) - LENGTHS[i];
+    }),
+    y + rot2(q, t)[1] - PINION[1],
+  ];
+  let s = [0, PINION[1] - q[1], 0];
+  for (let k = 0; k < 30; k++) {
+    const f = residual(s);
+    if (Math.max(...f.map(Math.abs)) < 1e-13) break;
+    const J = f.map((_, i) => [0, 1, 2].map((j) => {
+      const d = s.slice();
+      d[j] += 1e-7;
+      return (residual(d)[i] - f[i]) / 1e-7;
+    }));
+    const step = solve3(J, f.map((v) => -v));
+    s = s.map((v, j) => v + step[j]);
+  }
+  return s;
+}
+
+/**
+ * 小齒輪轉 alpha:主框架的位移、承載板(齒條)在小齒輪處相對主框架的升降、
+ * 承載板相對主框架的位置 carrier [x, y, 轉角](四連桿)與小齒輪轉角(相對承載板)
+ */
 export function rack(alpha) {
   const { q, pinion } = path.at(alpha * path.sense);
-  return { frame: PINION[0] - q[0], lift: PINION[1] - q[1], pinion };
+  const carrier = carrierPose(q);
+  const frame = PINION[0] - carrier[0] - rot2(q, carrier[2])[0];
+  return { frame, lift: PINION[1] - q[1], carrier, pinion };
 }
 export const period = path.period;
 export const radii = { H, RP };
+export const centers = path.centers;
 const START = path.driveWhere(([x, y]) => y > 0 && x <= PINION[0]);
 
 const pitchLoop = resample(path.pitch.slice(0, -1), 0.02);
 const M = PITCH / Math.PI;
 const teeth = toothedLoop(pitchLoop, { pitch: PITCH, addendum: M, dedendum: 1.2 * M, start: 0, into: -1 });
 const ringOutline = offsetLoop(pitchLoop, 0.28);
-// 鉸接桿:主框架上的樞軸與承載板上的樞軸(各自的局部座標)
-const RODS = [
-  { frame: [-2.65, 1.17], carrier: [2.2, 0.77] },
-  { frame: [-2.6, -1.08], carrier: [2.2, -0.98] },
+// 承載板背板的外框(原圖的 S 形):齒環外緣再往外 0.12,右上、左下兩個凸耳圍著樞軸;
+// 左上、右下是圓角,讓開主框架的兩個樞軸座(承載板只往上升,右下那個在它下面)
+const RIM = H + 0.28 + 0.12;
+const LUG = 0.22;
+const carrierOutline = [
+  ...arcPoints(RIM, -Math.PI / 2, deg(20), HALF, 0), // 右下圓角
+  ...arcPoints(LUG, deg(-10), deg(160), ...RODS[0].carrier), // 右上凸耳
+  ...arcPoints(RIM, Math.PI / 2, deg(200), -HALF, 0), // 左上圓角
+  ...arcPoints(LUG, deg(170), deg(340), ...RODS[1].carrier), // 左下凸耳
+  [-1.5, -RIM],
 ];
+// 樞軸座的 z 範圍:主框架的從機架板伸到桿,承載板的從背板伸到桿
+const ROD_Z = 0.25;
+const BAR_AT = RODS.map((r) => (0 - r.frame[0]) / (r.carrier[0] - r.frame[0])); // 直條在各桿上的位置(從主框架端量起的比例)
+const SEAT_TOP = ROD_Z - 0.025;
+const seat = ([x, y], z0) => ({ kind: "cylinder", radius: 0.1, inner: 0.04, length: SEAT_TOP - z0, at: [x, y, (SEAT_TOP + z0) / 2] });
 const ROLLERS = [[-2.05, 1.72, 1], [0.95, 1.72, 1], [-2.05, -1.68, -1], [1.1, -1.68, -1]];
 const ROLLER = 0.35;
 
@@ -53,21 +115,21 @@ export default {
       pieces: [
         // 機架板中間開一道橫槽,小齒輪的軸從槽裡往後穿到底板上的軸承(機架只左右走,軸在槽裡相對走一條水平線)
         { kind: "plate", shape: shape(rect(6.1, 2.7, -0.05, 0.02), [rect(4.1, 0.2, 0, PINION[1]).reverse()]), thickness: 0.12, at: [0, 0, -0.35] },
-        ...RODS.map((r) => ({ kind: "cylinder", radius: 0.1, inner: 0.04, length: 0.35, at: [...r.frame, 0.05] })),
+        ...RODS.map((r) => seat(r.frame, -0.35)),
       ],
     },
     {
       id: "carrier",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape([[-2.5, -1.25], [2.45, -1.25], [2.5, 0.95], [-2.45, 0.95]], [[...ringOutline].reverse()]), thickness: 0.1, at: [0, 0, -0.22] },
+        { kind: "plate", shape: shape(carrierOutline, [[...ringOutline].reverse()]), thickness: 0.1, at: [0, 0, -0.22] },
         { kind: "plate", shape: shape(ringOutline, [[...teeth].reverse()]), thickness: 0.22, at: [0, 0, -0.1], engrave: [path.centers.slice(0, -1)] },
-        ...RODS.map((r) => ({ kind: "cylinder", radius: 0.1, inner: 0.04, length: 0.35, at: [...r.carrier, 0.05] })),
+        ...RODS.map((r) => seat(r.carrier, -0.22)),
       ],
     },
-    { id: "rodTop", kind: "link", width: 0.1, thickness: 0.06, stretch: true },
-    { id: "rodBottom", kind: "link", width: 0.1, thickness: 0.06, stretch: true },
-    { id: "bar", kind: "link", width: 0.22, thickness: 0.06, stretch: true },
+    { id: "rodTop", kind: "link", width: 0.1, thickness: 0.06 },
+    { id: "rodBottom", kind: "link", width: 0.1, thickness: 0.06 },
+    { id: "bar", kind: "link", width: 0.22, thickness: 0.06, stretch: true }, // 長度變 0.005,見檔頭
     { id: "pinion", kind: "gear", center: [...PINION, 0], teeth: NP, radius: RP, width: 0.22, web: false, hub: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 1.15, at: [0, 0, -0.325] }] }, // 軸只往後伸:從齒環中間的槽穿過托架與機架板,進到底板上的軸承(前面有掃過的桿)
     ...ROLLERS.map(([x, y], i) => ({ id: `roller${i}`, kind: "group", center: [x, y, -0.35], spin: ROLLER, pieces: [{ kind: "cylinder", radius: ROLLER, inner: 0.06, length: 0.2, mark: true }], arrow: i === 0 || i === 2 })),
     {
@@ -85,23 +147,27 @@ export default {
   target: "frame",
   view: { direction: [0.06, 0.05, 1] },
   pose(alpha) {
-    const { frame, lift, pinion } = rack(alpha);
+    const { frame, carrier, pinion } = rack(alpha);
+    const [cx, cy, turn] = carrier;
     const onFrame = ([x, y], z) => [x + frame, y, z];
-    const onCarrier = ([x, y], z) => [x + frame, y + lift, z];
-    const ends = RODS.map((r) => [onFrame(r.frame, 0.25), onCarrier(r.carrier, 0.25)]);
-    const mid = ([a, b]) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0.32];
+    const onCarrier = (p, z) => {
+      const [x, y] = rot2(p, turn);
+      return [frame + cx + x, cy + y, z];
+    };
+    const ends = RODS.map((r) => [onFrame(r.frame, ROD_Z), onCarrier(r.carrier, ROD_Z)]);
+    const pin = ([a, b], i) => [a[0] + (b[0] - a[0]) * BAR_AT[i], a[1] + (b[1] - a[1]) * BAR_AT[i], 0.32];
     const parts = {
       frame: { position: [frame, 0, 0] },
-      carrier: { position: [frame, lift, 0] },
+      carrier: { position: [frame + cx, cy, 0], angle: turn },
       rodTop: { from: ends[0][0], to: ends[0][1] },
-      rodBottom: { from: ends[1][0], to: ends[1][1] },
-      bar: { from: mid(ends[0]), to: mid(ends[1]) },
-      pinion: { angle: path.phase(NP) + pinion },
+      rodBottom: { from: ends[1][1], to: ends[1][0] }, // 從承載板左下凸耳到主框架右下
+      bar: { from: pin(ends[0], 0), to: pin(ends[1], 1) },
+      pinion: { angle: path.phase(NP) + pinion + turn }, // 相對承載板的轉角照齒環的路徑,加上承載板自己的微小轉動
     };
     ROLLERS.forEach(([, , side], i) => (parts[`roller${i}`] = { angle: (side * frame) / ROLLER }));
     return { parts, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["carrier", "pinion"], reason: "簡化齒形:小齒輪繞過齒條端頭時齒頂擦到托架上的齒 0.04(96 個取樣中 2 個)" },
+    { check: "interference", parts: ["carrier", "pinion"], reason: "簡化齒形:小齒輪繞過齒環端頭的半圓時,齒頂擦到齒環的齒 0.04(96 個取樣中 2 個)" },
   ],
 };
