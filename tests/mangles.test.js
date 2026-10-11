@@ -752,6 +752,18 @@ test("第 209 種:叉形卡榫引導角狀凸出:兩輪轉一整圈,角狀凸出
   assert.ok(near < 0.2, "角狀凸出確實經過叉口");
 });
 
+test("第 209 種:叉形卡榫是左輪的一部分:兩支叉齒都伸進輪身(貼在輪板正面、和輪板外形相疊)", () => {
+  const left = part(m209.default, "left");
+  const plate = left.pieces.find((q) => q.kind === "plate" && !q.at);
+  const face = plate.thickness / 2;
+  for (const [i, f] of m209.catches.fork.entries()) {
+    const prong = left.pieces.find((q) => q.shape === f);
+    assert.ok(prong, `叉齒 ${i} 裝在左輪上`);
+    close(prong.at[2] - prong.thickness / 2, face, `叉齒 ${i} 貼在輪板正面`, 1e-9);
+    assert.ok(polygonsOverlap(f.outline, plate.shape.outline), `叉齒 ${i} 和輪板外形相疊`);
+  }
+});
+
 test("第 210 種:轉動開槽臂的軸,垂直桿得到變速的直線運動", () => {
   const [from, to] = m210.range;
   const ys = sweep(to, 200, from).map((a) => m210.pin(a).y);

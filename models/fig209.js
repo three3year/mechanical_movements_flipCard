@@ -54,8 +54,9 @@ export const geometry = { A, C, D, r1, r2 };
 
 const START = Math.PI + 0.45; // 原圖:左輪近焦點的頂點朝左上,以遠端的光面接觸右輪,叉形卡榫在上方接近接觸點
 // 叉形卡榫在左輪齒開始處(遠端頂點,局部角 180°),角狀凸出在右輪相應的位置(右輪的近端頂點,離它的軸只有 0.45)。
-// 叉齒短、叉口在根部就張開:叉齒伸得長會掃到右輪的軸,角狀凸出繞軸快轉時也會從叉齒側面掃過
-const FORK = { length: 0.12, root: 0.22, tip: 0.3 };
+// 叉齒短、叉口在根部就張開:叉齒伸得長會掃到右輪的軸,角狀凸出繞軸快轉時也會從叉齒側面掃過。
+// 根部從節曲線往輪心伸進 inset,貼在輪板正面上(光面那一側的節曲線往輪心彎,根部不伸進去就懸在輪外)
+const FORK = { length: 0.12, root: 0.22, tip: 0.3, inset: 0.08 };
 const HORN = 0.25;
 const FORK_AT = Math.PI;
 const HORN_AT = Math.PI - driven(-FORK_AT);
@@ -63,8 +64,9 @@ const fork = (() => {
   const base = [r1(FORK_AT) * Math.cos(FORK_AT), r1(FORK_AT) * Math.sin(FORK_AT)];
   const out = [Math.cos(FORK_AT), Math.sin(FORK_AT)];
   const side = [-out[1], out[0]];
-  const tip = (k) => [base[0] + out[0] * FORK.length + side[0] * k * FORK.tip, base[1] + out[1] * FORK.length + side[1] * k * FORK.tip];
-  const root = (k) => [base[0] + side[0] * k * FORK.root, base[1] + side[1] * k * FORK.root];
+  const at = (along, across) => [base[0] + out[0] * along + side[0] * across, base[1] + out[1] * along + side[1] * across];
+  const tip = (k) => at(FORK.length, k * FORK.tip);
+  const root = (k) => at(-FORK.inset, k * FORK.root);
   return [shape(thickLine([root(1), tip(1)], 0.09)), shape(thickLine([root(-1), tip(-1)], 0.09))];
 })();
 const horn = (() => {
