@@ -1,63 +1,127 @@
-// 第 298 種:老式的錶用擒縱(立軸擒縱)。上方是水平的擺輪,裝在直立的立軸上;立軸下段有兩個叉瓦,
-// 分別與冠狀輪上、下兩邊的齒接觸。冠狀輪的齒推開一個叉瓦、從它的尖端滑過,立軸跟著轉,另一個叉瓦伸進對邊的齒間,
-// 擋住齒並把輪推回一點(回退);擺輪擺回來時再換過來。冠狀輪每擺一次轉過半個齒;
-// 冠狀輪軸末端的小齒輪與下方的冠狀齒輪(contrate wheel)咬合(模型把它們放在右邊,見下),整個走輪系由它帶動。
-// 主動件是擺輪(累計擺動);目標件是冠狀輪(擒縱讓它一齒一齒地放行)。
+// 第 298 種:老式的錶用擒縱。照 525 px 原圖讀成惠更斯 1675 年的「pirouette」(2026-10-12 決定,推翻舊的讀法):
+// 上方水平的擺輪 C 裝在直立的軸上,軸的上端(緊接在擺輪下方)是一個小齒輪;水平的立軸(verge)右端裝著冠狀齒輪,
+// 輪面上朝右的齒咬著這個小齒輪,所以擺輪擺的角度是立軸的 冠狀齒輪齒數 / 小齒輪齒數 倍——pirouette 用這組齒輪讓擺輪擺得比立軸大。
+// 立軸往左伸,左段的兩個叉瓦擋左下的擒縱輪(目標件,照原圖箭頭逆時針轉):輪的齒推開一個叉瓦、從它的尖端滑過,
+// 立軸(與擺輪)跟著轉,另一個叉瓦落進對邊的齒間擋住齒;擺輪擺回來時再換過來。擺輪每擺一次,擒縱輪轉過半個齒。
+// 主動件是擺輪(累計擺動)。
 //
-// 由接觸算(models/escapement.js 的 crownByContact):冠狀輪受發條的固定力矩轉動,叉瓦只在輪的上、下兩端碰到齒,
-// 在那兩個水平切面上算齒與叉瓦的接觸。立軸緊貼在齒尖外 0.08,叉瓦短(離軸 0.2)、彼此相隔 96°;
-// 這種擒縱的回退很大(輪來回晃),是立軸擒縱本來的樣子。
-// 推斷:齒數、擺幅、叉瓦的長短與夾角;左下的輪以面上的冠狀齒與小齒輪咬合(原圖從正面看到它的齒);
-// 冠狀輪軸的軸承座(原圖沒畫)。
-import { Y, TAU, deg, swing } from "./kit.js";
-import { crownByContact, sawCrown } from "./escapement.js";
-import { shape, circle } from "./shapes.js";
+// 偏離插圖(實物可行 > 插圖外形):原圖的擒縱輪是正對讀者的鋸齒輪,水平立軸從它的頂上掠過——那裡的齒沿立軸的方向走,
+// 叉瓦繞立軸轉推不動它,也擋不住它。這裡把擒縱輪做成齒朝上的冠狀輪(輪軸直立)、立軸跨過它的齒尖(同第 234、299 種),
+// 兩個叉瓦在輪的左、右兩端擋齒,所以兩個叉瓦相隔一個輪徑(原圖的兩個鉤形片靠在一起、都在輪頂)。
+//
+// 由接觸算(models/escapement.js 的 crownByContact):擒縱輪受重錘的固定力矩轉動,叉瓦只在輪的左、右兩端碰到齒,
+// 在那兩個切面上算齒與叉瓦的接觸——齒被擋住就停、被叉瓦推就退,放開後加速轉到另一個叉瓦上。
+// 推斷:擒縱輪的齒數(奇數,左右兩端的齒才錯開半個齒距)、立軸的擺幅、叉瓦的長短與夾角;兩個齒輪的齒數(原圖約 8 與 24);
+// 擒縱輪的輪輻開成四個透孔(照原圖);機架:底板、立軸兩處的軸承架、擺輪軸下端的軸承與上端的軸承橋、擒縱輪軸的軸承(原圖都沒畫)。
+// 推斷的驅動(原文只有一句,沒說輪為什麼往前轉;共用 weight-drive.js,同第 234、238 種):擒縱輪軸下段的鼓繞著繩,
+// 繩往左經滑輪垂下吊著重錘,重錘的重量就是讓輪往前轉的固定力矩;輪轉多少,重錘降多少,被叉瓦擋住時重錘也停。
+// 錶實際是用發條,這裡用重錘只是示意「輪受固定的力矩」。重錘每降一段(擺輪擺八個來回)捲回最高處一次(上鍊)。
+import { X, Y, Z, TAU, swing } from "./kit.js";
+import { crownByContact, placePoly, sawCrown } from "./escapement.js";
+import { meshAngle } from "./gears.js";
+import { weightDrive, rewound } from "./weight-drive.js";
+import { shape, circle, thickLine } from "./shapes.js";
 
-export const N = 13;
+// ── 擒縱輪(冠狀輪,齒朝上)與叉瓦 ─────────────────────────
+export const N = 15;
 export const PITCH = TAU / N;
-export const SWING = deg(28);
-const CROWN = { center: [0.72, -0.55, 0], radius: 0.62 };
-const TOOTH = { base: 0.075, height: 0.25 }; // 冠狀齒(沿輪軸,朝立軸)
-const STAFF_X = CROWN.center[0] - (TOOTH.base + TOOTH.height + 0.08); // 立軸:在齒尖外 0.08
-const PALLET = { length: 0.2, width: 0.06, at: deg(48) }; // 叉瓦:離軸的長度、厚度、偏離「朝冠狀輪」方向的角度(上叉瓦 −、下叉瓦 +)
-export const PINION = { teeth: 8, radius: 0.22 };
-export const CONTRATE = { teeth: 28, radius: 0.78 };
-// 小齒輪與冠狀齒輪在冠狀輪的背面那一側(右邊):冠狀輪的齒朝著立軸,軸往另一邊伸才不會穿過立軸。
-// 原圖把小齒輪畫在左邊,軸得穿過立軸,實物做不出來(實物可行優先於插圖)
-const CONTRATE_AT = [CROWN.center[0] + 1.7, CROWN.center[1] - CONTRATE.radius, -0.42];
+const TEETH_R = 1.0; // 齒所在的半徑
+const WHEEL_R = TEETH_R + 0.04; // 輪緣外半徑
+const TOOTH = 0.3; // 齒高
+const RIM = 0.2; // 輪緣高
+const GAP = 0.17; // 立軸在齒尖上方
+const BASE = -(TOOTH + GAP); // 齒根的高度(世界 y;立軸在 y = 0)
+const WHEEL = [-1.75, BASE - RIM / 2, 0]; // 擒縱輪中心:在立軸左段的下方
+const FLAG = { length: 0.3, width: 0.06, spread: (48 * Math.PI) / 180 }; // 叉瓦:離軸的長度、厚度、偏離正下方的角度(兩個相隔 96°)
+export const VERGE_SWING = 0.6; // 立軸的擺幅(±)
+
+// ── pirouette 的一對齒輪:擺輪軸上的小齒輪、立軸右端的冠狀齒輪 ─────────────────────────
+export const CONTRATE = { teeth: 24, radius: 0.7, width: 0.08, depth: 0.14, face: 0.18 };
+export const PINION = { teeth: 8, radius: (0.7 * 8) / 24 }; // 和冠狀齒輪同一個齒距
+/** 擺輪的擺幅(±):立軸擺幅 × 冠狀齒輪齒數 / 小齒輪齒數 */
+export const SWING = (VERGE_SWING * CONTRATE.teeth) / PINION.teeth;
+const STAFF_X = CONTRATE.width / 2 + CONTRATE.depth / 2 + PINION.radius; // 擺輪軸:小齒輪的節圓伸到冠狀齒輪齒深的一半
+const PINION_Y = CONTRATE.radius - CONTRATE.face / 2; // 小齒輪在冠狀齒輪齒面寬的中央
+const BALANCE = { y: 1.45, radius: 2.2 };
+const STAFF = { bottom: -1.2, top: 2.0 };
+const PINION_GEAR = { center: [STAFF_X, PINION_Y, 0], axis: Y, teeth: PINION.teeth, radius: PINION.radius };
+const CONTRATE_GEAR = { center: [0, 0, 0], axis: X, teeth: CONTRATE.teeth, radius: CONTRATE.radius };
+const MESH = [STAFF_X - PINION.radius, PINION_Y, 0]; // 接觸點:小齒輪的左緣,在冠狀齒輪的頂上
+const PHASE = meshAngle(PINION_GEAR, CONTRATE_GEAR, 0, MESH); // 擺輪在 0 時立軸的轉角(齒的相位)
 
 /** 擺輪累計擺動 v → 擺輪角 */
 export const balanceAngle = (v) => swing(v, -SWING, SWING);
-// 叉瓦在切面上的截面:擺輪局部 (lx, ly) 是世界 (x, −z);切面座標 x = 前端齒走的方向(世界 −z)、y = 齒高(沿輪軸量)
-const palletSection = (a) => {
-  const c = Math.cos(a);
-  const s = Math.sin(a);
-  const w = PALLET.width / 2;
-  const local = [[0.04 * c + w * s, 0.04 * s - w * c], [PALLET.length * c + w * s, PALLET.length * s - w * c], [PALLET.length * c - w * s, PALLET.length * s + w * c], [0.04 * c - w * s, 0.04 * s + w * c]];
-  return local.map(([lx, ly]) => [ly, CROWN.center[0] - STAFF_X - lx]);
-};
+/** 擺輪角 → 立軸轉角(繞 +x;經小齒輪與冠狀齒輪) */
+const vergeTurn = (b) => meshAngle(PINION_GEAR, CONTRATE_GEAR, b, MESH);
+/** 叉瓦的擺角:立軸自居中位置轉過的角度 */
+const palletAngle = (v) => vergeTurn(balanceAngle(v)) - PHASE;
+
+// 叉瓦在切面上的外形:切面的座標 x = 世界 −z(右端的齒在那裡走的方向)、y = 世界 y;立軸繞 +x 轉 = 切面上逆時針
+const flag = (a) => thickLine([[0, 0], [FLAG.length * Math.cos(a), FLAG.length * Math.sin(a)]], FLAG.width);
+const RIGHT = flag(-Math.PI / 2 + FLAG.spread); // 右叉瓦(輪的右端)
+const LEFT = flag(-Math.PI / 2 - FLAG.spread); // 左叉瓦(輪的左端)
+
 export const escapement = {
   ...crownByContact({
-    radius: CROWN.radius - 0.02,
+    radius: TEETH_R,
     teeth: N,
-    height: TOOTH.height,
-    base: TOOTH.base,
-    front0: Math.PI / 2, // 冠狀輪局部角 90° 對著上端
-    front: (v) => [palletSection(-PALLET.at + balanceAngle(v))],
-    back: (v) => [palletSection(PALLET.at + balanceAngle(v))],
+    height: TOOTH,
+    base: BASE,
+    front0: 0, // 輪的局部角 0 對著右端(世界 +x)
+    front: (v) => [placePoly(RIGHT, [0, 0], palletAngle(v))],
+    back: (v) => [placePoly(LEFT, [0, 0], palletAngle(v))],
     period: 4 * SWING,
   }),
   period: 4 * SWING,
 };
 
-/** 擺輪累計擺動 v → 擺輪角、冠狀輪轉角(由接觸算)、左下冠狀齒輪轉角 */
-export function verge(v) {
-  const crown = escapement.angle(v);
-  return { balance: balanceAngle(v), crown, contrate: (crown * PINION.teeth) / CONTRATE.teeth };
+/** 擺輪累計擺動 v → 擺輪角、立軸轉角、擒縱輪轉角(由接觸算) */
+export function pirouette(v) {
+  const balance = balanceAngle(v);
+  return { balance, verge: vergeTurn(balance), wheel: escapement.angle(v) };
 }
 
-// 叉瓦:立軸上的小方塊(沿立軸高 0.16),a 是繞立軸的方向
-const pallet = (a, height) => ({ kind: "box", size: [PALLET.length - 0.04, PALLET.width, 0.16], at: [((PALLET.length + 0.04) / 2) * Math.cos(a), ((PALLET.length + 0.04) / 2) * Math.sin(a), height], angle: a });
+// ── 推斷的重錘驅動 ─────────────────────────
+const ROPE_R = 0.035;
+const DRUM_R = 0.16;
+const DRUM = { center: [WHEEL[0], -1.4, 0], axis: Y, radius: DRUM_R + ROPE_R, sense: 1 }; // 輪往前轉(繞 +y)時繩從鼓的背面往左放出
+const PULLEY_R = 0.13;
+const PULLEY = { center: [-3.45, DRUM.center[1] - PULLEY_R - ROPE_R, -DRUM.radius], axis: Z, radius: PULLEY_R + ROPE_R, sense: -1 };
+const REWIND = 8 * 4 * SWING; // 擺輪擺八個來回上鍊一次
+const WEIGHT = { radius: 0.15, height: 0.4 };
+const hang = weightDrive({
+  drum: DRUM,
+  pulleys: [PULLEY],
+  eye: [PULLEY.center[0] - PULLEY.radius, -1.75, PULLEY.center[2]],
+  reserve: DRUM.radius * 8 * PITCH,
+  spare: 2 * Math.PI * DRUM.radius,
+  pitch: 2.1 * ROPE_R,
+});
+const weightAt = rewound(hang, escapement.angle, REWIND);
+
+export const geometry = { TEETH_R, DRUM, REWIND };
+
+// 擒縱輪的盤面:四個透孔(照原圖)
+const lens = (a) => {
+  const pts = [];
+  for (let i = 0; i <= 12; i++) {
+    const t = -1 + i / 6;
+    const s = i <= 6 ? 1 : -1;
+    const u = i <= 6 ? t : 2 - (i - 6) / 6 - 1;
+    const x = 0.26 * (s > 0 ? t : -u);
+    const y = s * 0.13 * (1 - (x / 0.26) ** 2);
+    pts.push([x, y]);
+  }
+  const c = 0.56;
+  return pts.slice(0, -1).map(([x, y]) => [c * Math.cos(a) - x * Math.sin(a) + y * Math.cos(a), c * Math.sin(a) + x * Math.cos(a) + y * Math.sin(a)]);
+};
+const ARBOR_R = 0.06;
+const FLOOR = -2.24; // 底板頂面
+
+// 軸承:環(axis 方向)
+const bearing = (axis, at, radius, inner, length) => ({ kind: "cylinder", axis, radius, inner, length, at });
+// 從底板立到 top 的立柱
+const post = (x, z, top, w = 0.12) => ({ kind: "box", size: [w, top - FLOOR, w], at: [x, (top + FLOOR) / 2, z] });
 
 export default {
   figure: 298,
@@ -67,74 +131,109 @@ export default {
       kind: "group",
       axis: Y,
       center: [STAFF_X, 0, 0],
-      spin: 2.0,
-      spinOffset: 1.75,
+      spin: BALANCE.radius,
+      spinOffset: BALANCE.y,
+      label: "C",
+      labelOffset: [0.9, BALANCE.y + 0.15, -0.6],
       pieces: [
-        { kind: "cylinder", radius: 2.0, inner: 1.86, length: 0.12, at: [0, 0, 1.75] },
-        ...[0, 1, 2].map((i) => ({ kind: "box", size: [1.9, 0.08, 0.05], at: [0.95 * Math.cos((i * TAU) / 3), 0.95 * Math.sin((i * TAU) / 3), 1.75], angle: (i * TAU) / 3, accent: i === 0 })),
-        { kind: "cylinder", radius: 0.05, length: 3.6 },
-        // 兩個叉瓦:在冠狀輪上、下齒尖的高度,彼此錯開 96°
-        pallet(-PALLET.at, CROWN.center[1] + CROWN.radius - 0.02), // 上叉瓦
-        pallet(PALLET.at, CROWN.center[1] - CROWN.radius + 0.02), // 下叉瓦
+        { kind: "cylinder", radius: BALANCE.radius, inner: BALANCE.radius - 0.12, length: 0.1, at: [0, 0, BALANCE.y] },
+        ...[0, 1, 2].map((i) => ({ kind: "box", size: [BALANCE.radius - 0.08, 0.08, 0.05], at: [((BALANCE.radius - 0.08) / 2) * Math.cos((i * TAU) / 3), ((BALANCE.radius - 0.08) / 2) * Math.sin((i * TAU) / 3), BALANCE.y], angle: (i * TAU) / 3, accent: i === 0 })),
+        { kind: "cylinder", radius: 0.13, length: 0.12, at: [0, 0, BALANCE.y] },
+        { kind: "cylinder", radius: 0.04, length: STAFF.top - STAFF.bottom, at: [0, 0, (STAFF.top + STAFF.bottom) / 2] },
+        // 小齒輪:緊接在擺輪下方,原圖畫成有直槽的圓柱
+        { kind: "gear", teeth: PINION.teeth, radius: PINION.radius, width: 0.14, at: [0, 0, PINION_Y] },
       ],
     },
     {
-      id: "crown",
+      id: "verge",
       kind: "group",
-      axis: [-1, 0, 0],
-      center: CROWN.center,
-      spin: CROWN.radius,
+      axis: X,
+      center: [0, 0, 0],
+      arrow: false,
       pieces: [
-        { kind: "cylinder", radius: CROWN.radius, inner: CROWN.radius - 0.08, length: 0.15 },
-        { kind: "plate", shape: shape(circle(CROWN.radius - 0.04), [circle(0.05).reverse()]), thickness: 0.04, at: [0, 0, -0.06] },
-        ...sawCrown({ teeth: N, radius: CROWN.radius - 0.02, height: 0.25, base: 0.075, thick: 0.05 }),
-        // 冠狀輪軸往右(背面)伸到右下輪的上方,末端的小齒輪
-        { kind: "cylinder", radius: 0.04, length: 2.0, at: [0, 0, -0.95] },
-        { kind: "gear", teeth: PINION.teeth, radius: PINION.radius, width: 0.2, at: [0, 0, CROWN.center[0] - CONTRATE_AT[0]] },
+        { kind: "cylinder", radius: 0.04, length: 3.15, at: [0, 0, -3.15 / 2] },
+        // 冠狀齒輪:齒在右面,朝擺輪軸
+        { kind: "gear", crown: true, teeth: CONTRATE.teeth, radius: CONTRATE.radius, width: CONTRATE.width, toothDepth: CONTRATE.depth, faceWidth: CONTRATE.face },
+        // 兩個叉瓦:在擒縱輪右、左兩端的正上方(局部 z = 世界 x);外形照接觸計算,轉到齒的相位
+        { kind: "plate", shape: shape(placePoly(RIGHT, [0, 0], -PHASE)), thickness: 0.12, at: [0, 0, WHEEL[0] + TEETH_R] },
+        { kind: "plate", shape: shape(placePoly(LEFT, [0, 0], -PHASE)), thickness: 0.12, at: [0, 0, WHEEL[0] - TEETH_R] },
       ],
     },
     {
-      id: "contrate",
-      kind: "gear",
-      crown: true,
-      center: CONTRATE_AT,
-      teeth: CONTRATE.teeth,
-      radius: CONTRATE.radius,
-      width: 0.12,
-      toothDepth: 0.16,
-      pieces: [{ kind: "cylinder", radius: 0.06, length: 0.6 }],
+      id: "wheel",
+      kind: "group",
+      axis: Y,
+      center: WHEEL,
+      spin: WHEEL_R,
+      spinOffset: -RIM / 2,
+      pieces: [
+        { kind: "cylinder", radius: WHEEL_R, inner: WHEEL_R - 0.12, length: RIM },
+        { kind: "plate", shape: shape(circle(WHEEL_R - 0.06), [0, 1, 2, 3].map((k) => lens(Math.PI / 4 + (k * Math.PI) / 2).reverse())), thickness: 0.05, at: [0, 0, -RIM / 2 + 0.025] },
+        ...sawCrown({ teeth: N, radius: TEETH_R, height: TOOTH, base: RIM / 2, thick: 0.06 }),
+        // 輪轂與輪軸:軸固定在輪轂裡,往下穿過鼓、伸進底板上的軸承
+        { kind: "cylinder", radius: 0.14, length: 0.16, at: [0, 0, -RIM / 2 - 0.03] },
+        { kind: "cylinder", radius: ARBOR_R, length: WHEEL[1] - FLOOR, at: [0, 0, -(WHEEL[1] - FLOOR) / 2] },
+        { kind: "cylinder", radius: DRUM_R, length: 0.3, at: [0, 0, DRUM.center[1] + 0.06 - WHEEL[1]] }, // 繞繩的鼓(推斷)
+      ],
     },
     {
       id: "frame",
       kind: "group",
       pieces: [
-        // 冠狀輪軸右端的軸承與立柱、立軸下端的軸承(原圖沒畫)
-        { kind: "cylinder", axis: [1, 0, 0], radius: 0.1, inner: 0.04, length: 0.12, at: [2.7, CROWN.center[1], 0] },
-        { kind: "box", size: [0.12, 1.3, 0.16], at: [2.7, CROWN.center[1] - 0.72, 0] },
-        { kind: "cylinder", axis: Y, radius: 0.12, inner: 0.05, length: 0.12, at: [STAFF_X, -1.86, 0] },
-        { kind: "box", size: [2.5, 0.1, 0.2], at: [STAFF_X + 1.2, -1.97, 0] },
+        { kind: "box", size: [4.1, 0.12, 2.0], at: [-1.25, FLOOR - 0.06, -0.4] }, // 底板
+        // 擒縱輪軸的軸承
+        bearing(Y, [WHEEL[0], FLOOR + 0.25, 0], 0.13, ARBOR_R, 0.5),
+        // 立軸左端與冠狀齒輪左邊的軸承架
+        ...[-3.05, -0.4].flatMap((x) => [bearing(X, [x, 0, 0], 0.11, 0.04, 0.12), post(x, 0, -0.07)]),
+        // 擺輪軸下端的軸承
+        bearing(Y, [STAFF_X, STAFF.bottom + 0.05, 0], 0.1, 0.04, 0.12),
+        post(STAFF_X, 0, STAFF.bottom - 0.01),
+        // 擺輪軸上端的軸承橋:從擺輪外側後方立起,跨到軸頂
+        post(-2.1, -1.2, STAFF.top + 0.03),
+        { kind: "box", size: [STAFF_X + 2.1 + 0.12, 0.1, 0.12], at: [(STAFF_X - 2.1) / 2, STAFF.top - 0.02, -1.2] },
+        { kind: "box", size: [0.12, 0.1, 1.2], at: [STAFF_X, STAFF.top - 0.02, -0.6] },
+        bearing(Y, [STAFF_X, STAFF.top - 0.02, 0], 0.1, 0.04, 0.1),
+        // 左邊軸承架伸出的托臂與滑輪的軸(推斷)
+        { kind: "box", size: [0.46, 0.1, 0.1], at: [-3.05 - 0.2, PULLEY.center[1], 0] },
+        { kind: "cylinder", radius: 0.035, length: 0.05 - PULLEY.center[2] + 0.1, at: [PULLEY.center[0], PULLEY.center[1], (0.05 + PULLEY.center[2] - 0.1) / 2] },
       ],
     },
+    { id: "pulley", kind: "pulley", style: "disc", center: PULLEY.center, axis: Z, radius: PULLEY_R, width: 0.08, arrow: false },
+    { id: "rope", kind: "rope", radius: ROPE_R },
+    { id: "weight", kind: "weight", axis: Y, radius: WEIGHT.radius, height: WEIGHT.height },
   ],
-  // 動力重演:只推擺輪;冠狀輪受固定的力矩(發條)轉動,由上下兩個叉瓦輪流擋住、推回、放行(小齒輪與冠狀齒輪照模型帶動)
+  // 動力重演:只推擺輪(立軸照模型經齒輪帶動);擒縱輪受重錘的固定力矩(以彈簧代替;重錘、滑輪照模型的姿勢走),
+  // 由左右兩個叉瓦輪流擋住、放行
   replay: {
     to: 8 * SWING,
-    free: { crown: { pivot: CROWN.center, spring: 1, gravity: false } },
-    ignore: [["crown", "contrate"], ["crown", "frame"]], // 小齒輪與冠狀齒輪的咬合不做動力重演;冠狀輪軸插在軸承裡(孔沒畫出來)
+    free: { wheel: { pivot: WHEEL, spring: 1, gravity: false } },
+    ignore: [["balance", "verge"], ["wheel", "frame"]], // 小齒輪與冠狀齒輪的咬合不做動力重演;擒縱輪軸插在軸承裡
     expect: [
-      { at: 2 * SWING, part: "crown", label: "擺輪擺過一次,冠狀輪轉過半個齒" },
-      { at: 4 * SWING, part: "crown", label: "擺輪一個來回,冠狀輪轉過一個齒" },
-      { part: "crown", label: "擺輪兩個來回,冠狀輪轉過兩個齒" },
+      { at: 2 * SWING, part: "wheel", label: "擺輪擺過一次,擒縱輪轉過半個齒" },
+      { at: 4 * SWING, part: "wheel", label: "擺輪一個來回,擒縱輪轉過一個齒" },
+      { part: "wheel", label: "擺輪兩個來回,擒縱輪轉過兩個齒" },
     ],
   },
   driver: { part: "balance", type: "rotation", cycle: [-SWING, SWING] },
-  target: "crown", // 冠狀輪(擒縱輪):擒縱讓它一齒一齒地放行
-  view: { direction: [0.15, 0.3, 1] },
+  target: "wheel", // 擒縱輪:擒縱讓它一齒一齒地放行
+  view: { direction: [0.55, 0.4, 1] },
   pose(v) {
-    const r = verge(v);
-    return { parts: { balance: { angle: r.balance }, crown: { angle: r.crown }, contrate: { angle: r.contrate } }, readouts: [] };
+    const r = pirouette(v);
+    const w = weightAt(v);
+    const eye = w.eye;
+    return {
+      parts: {
+        balance: { angle: r.balance },
+        verge: { angle: r.verge },
+        wheel: { angle: r.wheel },
+        pulley: { angle: w.pulleys[0] },
+        weight: { position: [eye[0], eye[1] - WEIGHT.height / 2 - WEIGHT.radius * 0.38, eye[2]] },
+      },
+      paths: { rope: { points: w.rope, closed: false, phase: 0 } },
+      readouts: [],
+    };
   },
   waivers: [
-    { check: "interference", parts: ["crown", "contrate"], reason: "簡化齒形:冠狀輪的小齒輪與端面齒輪的方塊齒齒側重疊 0.07" },
+    { check: "interference", parts: ["balance", "verge"], reason: "簡化齒形:冠狀齒輪的齒畫成方塊,與小齒輪的梯形齒在齒側互相擦到 0.04;嚙合關係(齒數比、轉向)不受影響" },
   ],
 };

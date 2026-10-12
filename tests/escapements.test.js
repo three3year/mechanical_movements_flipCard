@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { close, sweep } from "./helpers.js";
 import { penetrationDepth, polygonsOverlap, edgeDistance } from "../models/contact.js";
 import { placePoly } from "../models/escapement.js";
+import { part } from "./helpers.js";
+import { dist } from "../models/kit.js";
 
 import * as m288 from "../models/fig288.js";
 import * as m289 from "../models/fig289.js";
@@ -329,14 +331,126 @@ test("第 296 種:槓桿式擒縱:擺輪的銷在每次擺動的中途進入凹�
   apart(m296.escapement, "fork", "pin");
 });
 
-test("第 298 種:老式錶用擒縱(立軸):擺輪每擺一次,冠狀輪轉過半個齒,經小齒輪帶動左下的輪", () => {
-  escapes(m298.escapement, m298.PITCH, 1);
-  noPenetration(m298.escapement);
-  const r = m298.verge(4 * m298.SWING);
-  close(r.contrate / r.crown, m298.PINION.teeth / m298.CONTRATE.teeth, "齒數比", 1e-12);
-  // 立軸擒縱是回退式:叉瓦伸進齒間時把輪推回一點
-  const ws = sweep(2 * m298.escapement.period, 400).map((v) => m298.verge(v).crown);
-  assert.ok(ws.slice(1).some((w, i) => w < ws[i] - 1e-4), "有回退");
+// 第 298 種照原圖重讀成惠更斯的 pirouette(2026-10-12 決定):擺輪 C 的直立軸上端是小齒輪,水平立軸右端的冠狀齒輪咬它;
+// 立軸左段的兩個叉瓦擋左下的擒縱輪
+const piece298 = (def, id, kind) => part(def, id).pieces.find((p) => p.kind === kind);
+/** 兩個多邊形的間隙(不相交時是頂點到對方邊的最短距離) */
+const gap298 = (a, b) => (polygonsOverlap(a, b) ? 0 : Math.min(...a.map((p) => edgeDistance(p, b)), ...b.map((p) => edgeDistance(p, a))));
+
+test("第 298 種(原圖):擺輪軸上端的小齒輪咬水平立軸右端的冠狀齒輪;直立軸在冠狀齒輪右邊,立軸往左伸過左下的擒縱輪", () => {
+  const def = m298.default;
+  const balance = part(def, "balance");
+  const verge = part(def, "verge");
+  const wheel = part(def, "wheel");
+  const pinion = piece298(def, "balance", "gear");
+  const contrate = piece298(def, "verge", "gear");
+  assert.deepEqual(balance.axis, [0, 1, 0], "擺輪軸直立");
+  assert.deepEqual(verge.axis, [1, 0, 0], "立軸水平(左右)");
+  assert.ok(contrate.crown, "立軸右端是冠狀齒輪(齒長在輪面上,朝右)");
+  // 小齒輪的左緣(節圓)落在冠狀齒輪右面的齒帶裡:沿立軸在齒的深度內、離立軸的距離在齒面寬內
+  const left = [balance.center[0] - pinion.radius, balance.center[1] + pinion.at[2], balance.center[2]];
+  const face = verge.center[0] + contrate.width / 2;
+  assert.ok(left[0] > face && left[0] < face + contrate.toothDepth, `小齒輪的齒伸進冠狀齒輪的齒間(x ${left[0].toFixed(3)},齒帶 ${face.toFixed(3)}–${(face + contrate.toothDepth).toFixed(3)})`);
+  const r = Math.hypot(left[1] - verge.center[1], left[2] - verge.center[2]);
+  assert.ok(r > contrate.radius - contrate.faceWidth && r < contrate.radius, `小齒輪在冠狀齒輪的齒面寬內(離立軸 ${r.toFixed(3)})`);
+  assert.ok(pinion.at[2] > 0 && pinion.at[2] < part(def, "balance").pieces[0].at[2], "小齒輪在擺輪下方、立軸上方");
+  // 原圖的配置:直立軸在冠狀齒輪右邊;擒縱輪在左下,立軸往左伸過它
+  assert.ok(balance.center[0] > verge.center[0], "直立軸在冠狀齒輪右邊");
+  assert.ok(wheel.center[0] < verge.center[0] - 1 && wheel.center[1] < verge.center[1], "擒縱輪在左下");
+});
+
+test("第 298 種(pirouette):擺輪擺動經小齒輪帶動立軸,擺輪擺的角度是立軸的 冠狀齒輪齒數 / 小齒輪齒數 倍", () => {
+  const ratio = m298.CONTRATE.teeth / m298.PINION.teeth;
+  assert.ok(ratio >= 3, "擺輪擺得比立軸大好幾倍");
+  const p0 = m298.default.pose(0).parts;
+  for (const v of sweep(4 * m298.SWING, 40)) {
+    const p = m298.default.pose(v).parts;
+    close(Math.abs(p.balance.angle - p0.balance.angle), ratio * Math.abs(p.verge.angle - p0.verge.angle), `主動量 ${v.toFixed(3)}`, 1e-9);
+  }
+});
+
+test("第 298 種:立軸左段的兩個叉瓦輪流擋住擒縱輪(冠狀輪,偏離插圖):擺輪每擺一次,輪照原圖箭頭逆時針轉過半個齒", () => {
+  const e = m298.escapement;
+  escapes(e, m298.PITCH, 1);
+  noPenetration(e);
+  // 輪軸朝上:轉角增加 = 從上面看逆時針(原圖箭頭逆時針)
+  assert.deepEqual(part(m298.default, "wheel").axis, [0, 1, 0]);
+  const ws = sweep(4 * e.period, 200).map((v) => m298.default.pose(v).parts.wheel.angle);
+  assert.ok(ws.at(-1) - ws[0] > 3.9 * m298.PITCH, "往逆時針前進");
+});
+
+test("第 298 種:輪停住或被推回時是叉瓦真的擋住齒——間隙接近 0、輪再往前轉 0.01 就撞進叉瓦;一個來回裡兩個叉瓦各擋過", () => {
+  const e = m298.escapement;
+  const R = m298.geometry.TEETH_R;
+  const seen = new Set();
+  let stops = 0;
+  for (let i = 0; i < 720; i++) {
+    const v = (e.period * i) / 720;
+    if (e.angle(v + e.period / 1440) - e.angle(v) > 1e-6) continue; // 輪往前轉的取樣不查
+    stops++;
+    const s = e.at(v);
+    let best = Infinity;
+    let layer;
+    s.stops.forEach((st, j) =>
+      s.teeth.forEach((t, k) => {
+        if (s.layers[k] !== s.stopLayers[j]) return;
+        const g = gap298(st, t);
+        if (g < best) [best, layer] = [g, s.layers[k]];
+      }),
+    );
+    assert.ok(best < 2e-3, `主動量 ${v.toFixed(3)}:輪停住,但最近的叉瓦離齒 ${best.toFixed(4)}`);
+    seen.add(layer);
+    // 前端的齒往 +x 走、後端往 −x(轉角增加時)
+    const d = 0.01 * R;
+    const pushed = s.teeth.map((t, k) => t.map(([x, y]) => [x + (s.layers[k] === "front" ? d : -d), y]));
+    const hits = s.stops.some((st, j) => pushed.some((t, k) => s.layers[k] === s.stopLayers[j] && penetrationDepth(st, t) > 1e-4));
+    assert.ok(hits, `主動量 ${v.toFixed(3)}:輪再往前轉 0.01 就撞進叉瓦`);
+  }
+  assert.ok(stops > 100, `擺一個來回,輪有一段時間被擋住(停住的取樣 ${stops})`);
+  assert.deepEqual([...seen].sort(), ["back", "front"], "兩個叉瓦各擋過");
+});
+
+// 推斷的重錘驅動(第 298 種;同第 234、238 種):繩從擒縱輪軸上的鼓放出、經滑輪吊著重錘;重錘的拉力讓輪往前轉,輪停住時重錘也停
+const length298 = (pts) => pts.slice(1).reduce((s, p, i) => s + dist(p, pts[i]), 0);
+test("第 298 種:推斷的重錘驅動——擒縱輪軸上的鼓放出繩、經滑輪吊著重錘,重錘隨輪下降;降到底時捲回(上鍊)", () => {
+  const def = m298.default;
+  const { DRUM, REWIND } = m298.geometry;
+  const wheel = (v) => def.pose(v).parts.wheel.angle;
+  const poses = sweep(REWIND * 0.999, 240).map((v) => ({ v, pose: def.pose(v) }));
+  const lengths = poses.map(({ pose }) => length298(pose.paths.rope.points));
+  for (const l of lengths) close(l, lengths[0], "繩長不變(鼓放出的繩 = 重錘下降的量)", 0.02);
+  const radial = (p) => {
+    const d = [p[0] - DRUM.center[0], p[1] - DRUM.center[1], p[2] - DRUM.center[2]];
+    const along = d[0] * DRUM.axis[0] + d[1] * DRUM.axis[1] + d[2] * DRUM.axis[2];
+    return { along, r: Math.hypot(...d.map((x, i) => x - along * DRUM.axis[i])) };
+  };
+  for (const { v, pose } of poses) {
+    const pts = pose.paths.rope.points;
+    const w = pose.parts.weight.position;
+    assert.ok(Math.abs(w[0] - pts[0][0]) < 1e-9 && Math.abs(w[2] - pts[0][2]) < 1e-9 && w[1] < pts[0][1], `主動量 ${v.toFixed(3)}:重錘吊在繩的下端`);
+    const onDrum = pts.filter((p) => {
+      const q = radial(p);
+      return Math.abs(q.along) < 0.3 && Math.abs(q.r - DRUM.radius) < 1e-6;
+    });
+    assert.ok(onDrum.length > 10, `主動量 ${v.toFixed(3)}:鼓上還繞著繩`);
+  }
+  // 繩離開鼓的那一點受重錘往下拉:對輪軸的力矩朝輪往前轉(+y)的方向
+  const pts = def.pose(0).paths.rope.points;
+  const k = pts.findIndex((p) => Math.abs(radial(p).r - DRUM.radius) < 1e-6);
+  const t = pts[k];
+  const pull = [0, 1, 2].map((i) => pts[k - 1][i] - t[i]);
+  const r = [0, 1, 2].map((i) => t[i] - DRUM.center[i]);
+  const torque = [r[1] * pull[2] - r[2] * pull[1], r[2] * pull[0] - r[0] * pull[2], r[0] * pull[1] - r[1] * pull[0]];
+  assert.ok(torque[0] * DRUM.axis[0] + torque[1] * DRUM.axis[1] + torque[2] * DRUM.axis[2] > 0, "重錘的拉力讓輪往前轉");
+  // 輪被叉瓦擋住時重錘也停;輪往前轉時重錘下降
+  const ys = poses.map(({ v, pose }) => ({ y: pose.parts.weight.position[1], w: wheel(v) }));
+  for (let i = 1; i < ys.length; i++) {
+    if (Math.abs(ys[i].w - ys[i - 1].w) < 1e-12) close(ys[i].y, ys[i - 1].y, "輪不動,重錘不動", 1e-9);
+    if (ys[i].w - ys[i - 1].w > 1e-3) assert.ok(ys[i].y < ys[i - 1].y, "輪往前轉,重錘下降");
+  }
+  assert.ok(ys[0].y - ys.at(-1).y > 0.3, "上鍊之間重錘降下一段看得出來的距離");
+  assert.ok(REWIND >= 2 * 4 * m298.SWING, "至少擺兩個來回才上鍊一次");
+  close(def.pose(REWIND).parts.weight.position[1], ys[0].y, "降到底時捲回最高處(上鍊)", 1e-6);
 });
 
 test("第 300–301 種:同一機構的前視與側視圖;叉瓦交替地由兩個擒縱輪之一的齒作用,每擺一次輪轉過半個齒", () => {
