@@ -8,9 +8,11 @@
 // 其餘時間槓桿停在擋銷上(鎖面略往裡斜,齒壓在鎖面上時把槓桿拉向擋銷,所以銷不在凹槽裡時槓桿不會晃開;
 // models/escapement.js 的 periodic)。擒縱輪受重錘的固定力矩順時針轉,被叉瓦擋住就停;叉瓦被帶開時,
 // 齒推著叉瓦的斜面跟上(衝擊經槓桿傳給銷),脫開後加速落到另一個叉瓦的鎖面上(escapeByContact)。
-// 推斷:齒數、擺幅、叉瓦的衝擊角與拉入角、擋銷的位置(原圖沒畫擋銷);擺輪只畫出帶銷的圓盤(原圖只畫到凹槽旁的圓盤),
+// 推斷:齒數、擺幅、叉瓦的衝擊角與拉入角、擋銷的位置(原圖沒畫擋銷);
 // 輪軸、槓桿軸、擺輪軸裝在後面的夾板條上(原圖沒畫);夾板條從槓桿軸 B 再往右分一支到槓桿右臂底下,
 // 末端一塊小橋板,兩根擋銷從橋板立起(擋銷與橋板都是推斷)。
+// 推斷的擺輪(原圖只畫到凹槽旁帶銷的圓盤 D;原文「擺輪心軸上的圓盤」):擺輪軸往後穿過夾板條,擺輪(輪緣、三根輪輻與輪轂)
+// 固定在軸的後端、夾板條後面——和圓盤 D、銷是同一件(主動件);放在前面會蓋住銷與凹槽 E。
 // 推斷的驅動(原文沒說輪為什麼往前轉;共用 weight-drive.js,照第 234、238 種):輪軸往後伸,輪與夾板條之間有一個鼓,
 // 繩從鼓的右側垂下吊著重錘;重錘的重量就是讓輪順時針轉的固定力矩,輪轉多少重錘降多少,被叉瓦擋住時重錘也停。
 // 輪每轉一圈重錘捲回最高處一次(上鍊,畫面上一下子回到上面)。錶實際上是用發條經輪系帶動,這裡用重錘只是示意。
@@ -34,6 +36,7 @@ const B = [A[0], A[1] + R / Math.cos(SPAN)];
 const FORK = 2.15; // B 到凹槽 E
 const PIN = { r: 0.32, size: 0.05 }; // 擺輪上的銷:離擺輪軸的距離、半徑
 const BAL = [B[0] - FORK + 0.06 - PIN.r, B[1]]; // 擺輪軸:銷在擺輪居中時伸進凹槽 0.06
+const BALANCE = { radius: 1.0, rim: 0.1, z: -0.75 }; // 擺輪(推斷):在夾板條(z −0.58 起)後面
 
 // 擒縱輪:細尖齒(順時針轉,前面往前傾;齒間留出叉瓦伸進去的空間)
 const WHEEL = toothedWheel({ teeth: N, profile: [[ROOT, 0.5], [R, 0.3], [R, 0.37], [ROOT, 0.72]] });
@@ -95,7 +98,7 @@ const hang = weightDrive({
 });
 const weightAt = rewound(hang, (v) => -wheelRun.angle(v), REWIND); // 輪往前(順時針)轉的角度
 
-export const geometry = { BANK, FORK, BAL, B, DRUM, REWIND };
+export const geometry = { BANK, FORK, BAL, B, DRUM, REWIND, BALANCE };
 
 // 槓桿(相對 B):左臂到凹槽 E、右臂到 C;兩叉瓦從槓桿往下伸進輪齒之間
 const tail = (p) => [p.L * Math.cos(p.psi - p.s * 0.1), p.L * Math.sin(p.psi - p.s * 0.1)];
@@ -156,7 +159,14 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(circle(0.42), [circle(0.06).reverse()]), thickness: 0.06, at: [0, 0, -0.02] },
         { kind: "cylinder", radius: PIN.size, length: 0.22, at: [PIN.r, 0, 0.1], accent: true }, // 銷,伸到凹槽那一層
-        { kind: "cylinder", radius: 0.06, length: 0.7, at: [0, 0, -0.2] }, // 擺輪軸,往後伸進夾板條
+        { kind: "cylinder", radius: 0.06, length: 0.97, at: [0, 0, -0.335] }, // 擺輪軸,往後穿過夾板條到擺輪
+        // 擺輪(推斷):輪緣、三根輪輻與輪轂,固定在擺輪軸的後端
+        { kind: "plate", shape: shape(circle(BALANCE.radius), [circle(BALANCE.radius - BALANCE.rim).reverse()]), thickness: 0.06, at: [0, 0, BALANCE.z] },
+        ...[0, 1, 2].map((k) => {
+          const a = deg(90) + (k * TAU) / 3;
+          return { kind: "plate", shape: shape(thickLine([[0, 0], [(BALANCE.radius - 0.05) * Math.cos(a), (BALANCE.radius - 0.05) * Math.sin(a)]], 0.08)), thickness: 0.05, at: [0, 0, BALANCE.z] };
+        }),
+        { kind: "cylinder", radius: 0.12, length: 0.1, at: [0, 0, BALANCE.z] },
       ],
     },
     {

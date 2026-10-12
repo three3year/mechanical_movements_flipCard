@@ -6,10 +6,17 @@
 // 由接觸算(models/escapement.js 的 crownByContact):冠狀輪受重錘的固定力矩轉動,叉瓦只在輪的前、後兩端碰到齒,
 // 在那兩個切面上算齒與叉瓦的接觸——齒被擋住就停、被叉瓦推就退(立軸擒縱是回退式),放開後加速轉到對面的叉瓦上。
 // 比例照 525 px 原圖:叉瓦長約輪半徑的 0.55、齒高約輪半徑的一半、兩叉瓦張開約 130°(原圖從立軸的端面看,
-// 一個朝右、一個朝左下);齒那麼高、叉瓦那麼長時,齒距要夠寬叉瓦才伸得進齒間,所以齒數取 9(原圖從側面看齒距
-// 約 45–60°,齒很稀)、擺幅加大到 ±40°、立軸離齒尖 0.45(實物的立軸擒縱本來就擺得大)。
+// 一個朝右、一個朝左下);齒那麼高、叉瓦那麼長時,齒距要夠寬叉瓦才伸得進齒間(15、13 齒找不到可行的配法),
+// 所以齒數取 9(齒距 40°)、擺幅加大到 ±40°、立軸離齒尖 0.45(實物的立軸擒縱本來就擺得大)。
+// 原圖的齒距(2026-10-13 在 525 px 原圖上量):輪緣從側面看左右邊緣在 x 18、511 px(中心 264.5、半徑 246.5),
+// 前側兩個齒尖在 x 192、426,換算方位角 −17.1°、40.9°,相隔 58°;兩個齒根(陡面的下端)在 x 107、332,
+// −39.7°、15.9°,相隔 56°——原圖約 6–7 齒一圈,比 9 齒(40°)稀。改不改齒數待維護者決定
+// (.scratch/model-audit/16-escapement-2.md「需要你決定的」)。
 // 推斷:齒數(奇數,前後兩側的齒才錯開半個齒距)、擺幅、立軸的高度;冠狀輪的軸與機架(原圖沒畫):
 // 立軸兩端的軸承從上方的橫樑吊下來,橫樑接到冠狀輪右邊的立柱——前軸承下面不再有立柱擋在叉瓦前面。
+// 推斷的擺(原圖沒畫;原文只說是老式時鐘的擒縱,主動件立軸由擺帶動):立軸穿過後軸承再往後伸一段,軸端的轂上
+// 吊著擺桿,擺桿往下伸過底座的高度(在底座後面),下端是擺錘——擺錘若在冠狀輪正下方,正面看會被輪與鼓蓋住;擺和立軸是同一件(主動件),擺多少立軸就擺多少。
+// 擺在後叉瓦與後軸承的後面,從正面看不擋住叉瓦與齒。
 // 推斷的驅動(原文只說是老式時鐘的擒縱,沒說輪為什麼往前轉;共用 weight-drive.js):冠狀輪軸上、輪的下方有一個鼓,
 // 繩從鼓的前面往右拉到立柱上的滑輪,再垂下吊著重錘;重錘的重量就是讓輪往前轉的固定力矩,輪轉多少重錘降多少,
 // 被叉瓦擋住時重錘也停。重錘每降一段(立軸擺四個來回)捲回最高處一次(上鍊,畫面上一下子回到上面)。
@@ -34,6 +41,8 @@ const BEARING_Z = R + 0.6; // 立軸兩端的軸承
 const TOP = STAFF[1] + 0.9; // 吊著軸承的橫樑
 const POST = [2.75, -0.12]; // 右邊的立柱(x、z)
 const FLOOR = C[1] - 1.5; // 底座頂面
+const PENDULUM = { z: -(BEARING_Z + 0.3), bob: 0.4 }; // 擺(推斷):在後軸承之外
+const ROD = STAFF[1] - FLOOR + 1.4; // 擺桿長(立軸到擺錘中心):擺錘中心在底座頂面下方 1.4(正面看在底座下方看得到)
 
 // 叉瓦(相對立軸,在 x–y 平面):居中時前叉瓦朝右下、後叉瓦朝左下,各在水平下方 25°,彼此張開 130°
 const flag = (a) => thickLine([[0, 0], [FLAG.length * Math.cos(a), FLAG.length * Math.sin(a)]], FLAG.width);
@@ -74,7 +83,7 @@ const hang = weightDrive({
   pitch: 2.1 * ROPE_R,
 });
 const weightAt = rewound(hang, wheelAngle, REWIND);
-export const geometry = { DRUM, REWIND };
+export const geometry = { DRUM, REWIND, C, RIM };
 
 const axleLength = C[1] - RIM / 2 - FLOOR; // 冠狀輪的軸:從輪盤往下到底座
 const bearing = (z) => [
@@ -108,6 +117,11 @@ export default {
       pieces: [
         { kind: "cylinder", radius: STAFF_R, length: 2 * BEARING_Z + 0.3 }, // 立軸,兩端穿過軸承
         { kind: "cylinder", radius: 0.12, inner: STAFF_R, length: 0.14, at: [0, 0, R + 0.3] }, // 套環(固定在立軸上,主動件的抓取處)
+        // 推斷的擺:立軸穿過後軸承再往後伸到擺的轂,擺桿從轂往下,下端是擺錘
+        { kind: "cylinder", radius: STAFF_R, length: -(BEARING_Z + 0.15) - PENDULUM.z + 0.1, at: [0, 0, (-(BEARING_Z + 0.15) + PENDULUM.z - 0.1) / 2] },
+        { kind: "cylinder", radius: 0.13, length: 0.12, at: [0, 0, PENDULUM.z] },
+        { kind: "box", size: [0.08, ROD, 0.06], at: [0, -ROD / 2, PENDULUM.z] },
+        { kind: "cylinder", radius: PENDULUM.bob, length: 0.12, at: [0, -ROD, PENDULUM.z] },
         { kind: "plate", shape: shape(FRONT), thickness: 0.14, at: [0, 0, R - 0.04] }, // 前叉瓦
         { kind: "plate", shape: shape(BACK), thickness: 0.14, at: [0, 0, -R + 0.04] }, // 後叉瓦
       ],

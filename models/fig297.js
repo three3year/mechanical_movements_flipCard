@@ -8,6 +8,9 @@
 // 推斷:擺幅與銷的數目(依原圖八根)、叉瓦的位置與形狀(兩叉瓦在銷圈上相隔半個銷距;原圖的叉瓦是斜放的直條,
 // 模型做成以樞軸為圓心的弧形塊,鎖住時輪才不會被推回);
 // 輪軸與搖臂的樞軸裝在後面的夾板條上(原圖沒畫)。
+// 推斷的擺(原圖沒畫;這是時鐘的擒縱,搖臂 A 由擺帶著來回擺):搖臂的樞軸往後穿過夾板條,軸的後端有一個轂,
+// 擺桿從轂往下伸過輪的下緣,下端是擺錘;擺和搖臂是同一件(主動件),擺多少搖臂就擺多少。
+// 擺在夾板條後面、輪盤的背後,不擋住前面的叉瓦與銷。
 // 推斷的驅動(原文只說搖臂上的叉瓦擋住銷,沒說輪為什麼往前轉;共用 weight-drive.js):輪軸上、輪盤後面有一個鼓,
 // 繩從鼓頂往左拉到夾板條左端的滑輪,再垂下吊著重錘;重錘的重量就是讓輪逆時針轉的固定力矩,輪轉多少重錘降多少,
 // 被叉瓦擋住時重錘也停。輪每轉一圈(搖臂擺八個來回)重錘捲回最高處一次(上鍊,畫面上一下子回到上面)。
@@ -71,6 +74,8 @@ const PULLEY = { center: [-2.15, DRUM.radius - PULLEY_R - ROPE_R, DRUM_Z], axis:
 const REWIND = PINS * 4 * SWING; // 輪轉一圈(搖臂擺八個來回)上鍊一次
 const WEIGHT = { radius: 0.17, height: 0.4 };
 const BAR_Z = -0.6; // 夾板條
+const PENDULUM = { z: -0.85, bob: 0.35 }; // 擺(推斷):在夾板條後面
+const ROD = P[1] + R + 0.6; // 擺桿長(樞軸到擺錘中心):擺錘中心在輪的下緣下方 0.6
 const hang = weightDrive({
   drum: DRUM,
   pulleys: [PULLEY],
@@ -80,7 +85,7 @@ const hang = weightDrive({
   pitch: 2 * ROPE_R,
 });
 const weightAt = rewound(hang, wheelAngle, REWIND);
-export const geometry = { DRUM, REWIND };
+export const geometry = { DRUM, REWIND, R };
 
 // 搖臂(相對樞軸):從樞軸往下到 C 的內端;B 用一段支臂接在搖臂上
 const C_IN = C_ARC.end;
@@ -114,7 +119,11 @@ export default {
         { kind: "plate", shape: shape(thickLine([[B_OUT[0] - 0.25, B_OUT[1] + 0.15], B_OUT], 0.14)), thickness: 0.1, at: [0, 0, 0.55] },
         { kind: "plate", shape: shape(PALLET_B), thickness: 0.3, at: [0, 0, 0.35] }, // 叉瓦 B
         { kind: "plate", shape: shape(PALLET_C), thickness: 0.3, at: [0, 0, 0.35] }, // 叉瓦 C
-        { kind: "cylinder", radius: 0.08, length: 1.1, at: [0, 0, 0.0] }, // 搖臂的樞軸,往後伸進夾板條
+        { kind: "cylinder", radius: 0.08, length: 0.55 - PENDULUM.z + 0.1, at: [0, 0, (0.55 + PENDULUM.z - 0.1) / 2] }, // 搖臂的樞軸,往後穿過夾板條到擺的轂
+        // 推斷的擺:轂固定在樞軸的後端,擺桿往下伸過輪的下緣,下端是擺錘
+        { kind: "cylinder", radius: 0.16, length: 0.12, at: [0, 0, PENDULUM.z] },
+        { kind: "box", size: [0.08, ROD, 0.06], at: [0, -ROD / 2, PENDULUM.z] },
+        { kind: "cylinder", radius: PENDULUM.bob, length: 0.12, at: [0, -ROD, PENDULUM.z] },
       ],
     },
     {

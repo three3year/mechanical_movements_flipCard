@@ -127,3 +127,46 @@ export function assertGrooveGuides(def, period, n = 300) {
 
 /** 封閉折線的周長 */
 export const perimeter = (outline) => outline.reduce((sum, p, i) => sum + Math.hypot(outline[(i + 1) % outline.length][0] - p[0], outline[(i + 1) % outline.length][1] - p[1]), 0);
+
+/**
+ * 推斷的重錘驅動(models/weight-drive.js;第 234、238、288–301 種):繩從擒縱輪軸上的鼓放出、(經滑輪)吊著重錘。
+ * 斷言:繩長不變(鼓放出的繩 = 重錘下降的量)、重錘吊在繩的下端、鼓上還繞著繩、重錘的拉力讓輪往前轉、
+ * 輪不動重錘不動、輪往前轉重錘下降、上鍊之間重錘降下一段看得出來的距離、至少擺兩個來回才上鍊一次、
+ * 降到底時(主動量 every)捲回最高處(上鍊)。
+ * wheel(v):輪繞鼓軸(drum.axis)的轉角;dir:輪往前轉時繞鼓軸的方向(±1,預設 drum.sense);period:擺一個來回的主動量。
+ */
+export function assertWeightDrive(def, { drum, wheel, period, every, dir = drum.sense }) {
+  const length = (pts) => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1], p[2] - pts[i][2]), 0);
+  const radial = (p) => {
+    const d = [0, 1, 2].map((i) => p[i] - drum.center[i]);
+    const along = d[0] * drum.axis[0] + d[1] * drum.axis[1] + d[2] * drum.axis[2];
+    return { along, r: Math.hypot(...d.map((x, i) => x - along * drum.axis[i])) };
+  };
+  const onDrum = (p) => Math.abs(radial(p).r - drum.radius) < 1e-6;
+  const poses = sweep(every * 0.999, 240).map((v) => ({ v, pose: def.pose(v) }));
+  const l0 = length(poses[0].pose.paths.rope.points);
+  for (const { v, pose } of poses) {
+    const pts = pose.paths.rope.points;
+    close(length(pts), l0, `主動量 ${v.toFixed(3)}:繩長不變(鼓放出的繩 = 重錘下降的量)`, 0.02);
+    const w = pose.parts.weight.position;
+    assert.ok(Math.abs(w[0] - pts[0][0]) < 1e-9 && Math.abs(w[2] - pts[0][2]) < 1e-9 && w[1] < pts[0][1], `主動量 ${v.toFixed(3)}:重錘吊在繩的下端`);
+    assert.ok(pts.filter((p) => Math.abs(radial(p).along) < 0.3 && onDrum(p)).length > 10, `主動量 ${v.toFixed(3)}:鼓上還繞著繩`);
+  }
+  // 繩離開鼓的那一點受重錘拉:對輪軸的力矩朝輪往前轉的方向
+  const pts = def.pose(0).paths.rope.points;
+  const k = pts.findIndex(onDrum);
+  const t = pts[k];
+  const pull = [0, 1, 2].map((i) => pts[k - 1][i] - t[i]);
+  const r = [0, 1, 2].map((i) => t[i] - drum.center[i]);
+  const torque = [r[1] * pull[2] - r[2] * pull[1], r[2] * pull[0] - r[0] * pull[2], r[0] * pull[1] - r[1] * pull[0]];
+  assert.ok(dir * (torque[0] * drum.axis[0] + torque[1] * drum.axis[1] + torque[2] * drum.axis[2]) > 0, "重錘的拉力讓輪往前轉");
+  // 輪被擋住時重錘也停;輪往前轉時重錘下降
+  const ys = poses.map(({ v, pose }) => ({ y: pose.parts.weight.position[1], w: wheel(v) }));
+  for (let i = 1; i < ys.length; i++) {
+    if (Math.abs(ys[i].w - ys[i - 1].w) < 1e-12) close(ys[i].y, ys[i - 1].y, "輪不動,重錘不動", 1e-9);
+    if (dir * (ys[i].w - ys[i - 1].w) > 1e-3) assert.ok(ys[i].y < ys[i - 1].y, "輪往前轉,重錘下降");
+  }
+  assert.ok(ys[0].y - ys.at(-1).y > 0.3, "上鍊之間重錘降下一段看得出來的距離");
+  assert.ok(every >= 2 * period, "至少擺兩個來回才上鍊一次");
+  close(def.pose(every).parts.weight.position[1], ys[0].y, "重錘降到底時捲回最高處(上鍊)", 1e-6);
+}

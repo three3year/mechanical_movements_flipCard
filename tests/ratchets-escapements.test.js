@@ -1,7 +1,7 @@
 // 第十一章「棘輪與擒縱」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sweep, part, close } from "./helpers.js";
+import { sweep, part, close, assertWeightDrive } from "./helpers.js";
 import { placeOutline, polygonsOverlap, penetrationDepth, pointInPolygon, edgeDistance, circlePolygon } from "../models/contact.js";
 import { ratchetObstacles } from "../models/ratchets.js";
 import fig233, { barAngle, leverAngle, pinPolygons, barOutline, geometry as fig233Geometry } from "../models/fig233.js";
@@ -440,47 +440,6 @@ test("第 234 種:心軸 S 往復擺動,兩片叉瓦輪流擋住冠狀輪,輪間
     for (const t of teeth) for (const f of flags) assert.ok(penetrationDepth(t, f) < 2e-3, `主動量 ${v.toFixed(3)}:叉瓦不穿進齒`);
   }
 });
-
-// 推斷的重錘驅動(第 234、238 種):繩從輪軸上的鼓放出、重錘隨輪下降;重錘的拉力讓輪往前轉,輪停住時重錘也停
-const polylineLength = (pts) => pts.slice(1).reduce((s, p, i) => s + dist(p, pts[i]), 0);
-function assertWeightDrive(def, { drum, wheel, period, every, dir }) {
-  const poses = sweep(every * 0.999, 240).map((v) => ({ v, pose: def.pose(v) }));
-  const lengths = poses.map(({ pose }) => polylineLength(pose.paths.rope.points));
-  for (const l of lengths) close(l, lengths[0], "繩長不變(鼓放出的繩 = 重錘下降的量)", 0.02);
-  for (const { v, pose } of poses) {
-    const pts = pose.paths.rope.points;
-    const eye = pts[0];
-    const w = pose.parts.weight.position;
-    assert.ok(Math.abs(w[0] - eye[0]) < 1e-9 && Math.abs(w[2] - eye[2]) < 1e-9 && w[1] < eye[1], `主動量 ${v.toFixed(3)}:重錘吊在繩的下端`);
-    // 繩繞在鼓上:鼓上那一段離鼓軸的距離是繩中心的半徑(繩貼著鼓面)
-    const onDrum = pts.filter((p) => {
-      const d = [p[0] - drum.center[0], p[1] - drum.center[1], p[2] - drum.center[2]];
-      const along = d[0] * drum.axis[0] + d[1] * drum.axis[1] + d[2] * drum.axis[2];
-      return Math.abs(along) < 0.3 && Math.abs(Math.hypot(...d.map((x, i) => x - along * drum.axis[i])) - drum.radius) < 1e-6;
-    });
-    assert.ok(onDrum.length > 10, `主動量 ${v.toFixed(3)}:鼓上還繞著繩`);
-  }
-  // 繩離開鼓的那一點受重錘往下拉:對輪軸的力矩朝輪往前轉的方向
-  const pts = def.pose(0).paths.rope.points;
-  const k = pts.findIndex((p) => {
-    const d = [p[0] - drum.center[0], p[1] - drum.center[1], p[2] - drum.center[2]];
-    const along = d[0] * drum.axis[0] + d[1] * drum.axis[1] + d[2] * drum.axis[2];
-    return Math.abs(Math.hypot(...d.map((x, i) => x - along * drum.axis[i])) - drum.radius) < 1e-6;
-  });
-  const t = pts[k];
-  const pull = [pts[k - 1][0] - t[0], pts[k - 1][1] - t[1], pts[k - 1][2] - t[2]];
-  const r = [t[0] - drum.center[0], t[1] - drum.center[1], t[2] - drum.center[2]];
-  const torque = [r[1] * pull[2] - r[2] * pull[1], r[2] * pull[0] - r[0] * pull[2], r[0] * pull[1] - r[1] * pull[0]];
-  assert.ok(dir * (torque[0] * drum.axis[0] + torque[1] * drum.axis[1] + torque[2] * drum.axis[2]) > 0, "重錘的拉力讓輪往前轉");
-  // 輪被叉瓦擋住時重錘也停;輪往前轉時重錘下降
-  const ys = poses.map(({ v, pose }) => ({ y: pose.parts.weight.position[1], w: wheel(v) }));
-  for (let i = 1; i < ys.length; i++) {
-    if (Math.abs(ys[i].w - ys[i - 1].w) < 1e-12) close(ys[i].y, ys[i - 1].y, "輪不動,重錘不動", 1e-9);
-    if (ys[i].w - ys[i - 1].w > 1e-3) assert.ok(ys[i].y < ys[i - 1].y, "輪往前轉,重錘下降");
-  }
-  assert.ok(ys[0].y - ys[ys.length - 1].y > 0.3, "上鍊之間重錘降下一段看得出來的距離");
-  assert.ok(every >= 2 * period, "至少擺兩個來回才上鍊一次");
-}
 
 test("第 234 種:推斷的重錘驅動——冠狀輪軸上的鼓放出繩、經滑輪吊著重錘,重錘隨輪下降", () => {
   const { DRUM, SWING, REWIND } = m234.geometry;

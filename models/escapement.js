@@ -41,6 +41,9 @@ export function toothedWheel({ teeth, profile, bore = 0 }) {
   return { outline: all.flat(), holes: bore ? [ring] : [], teeth: all };
 }
 
+/** drop 的預設值:輪自靜止落過一個齒距花 0.08 個週期(escapeByContact、wheelByContact、crownByContact 共用) */
+export const DROP = 0.08;
+
 /**
  * 由接觸算的擒縱輪(ADR-0001;用語見 CONTEXT.md「由接觸算」):
  * 輪受發條或重錘的固定力矩往 dir(+1 逆時針 / −1 順時針)轉。主動量每走一小步——
@@ -52,7 +55,7 @@ export function toothedWheel({ teeth, profile, bore = 0 }) {
  * layers:輪齒分在前後不同層時(凸柱式),layers[i] 是第 i 齒的層;stops 回傳 { poly, layer },只和同一層的齒相碰。
  * 回傳 { angle(v)(輪的轉角,局部座標的 0 對著世界的 0), step(每週期轉過的角度,帶正負號), at(v)(檢查用的外形) }。
  */
-export function escapeByContact({ center, teeth, stops, dir, period, start = 0, samples = 720, drop = 0.08, warmup = 2, pitch, layers }) {
+export function escapeByContact({ center, teeth, stops, dir, period, start = 0, samples = 720, drop = DROP, warmup = 2, pitch, layers }) {
   const P = pitch ?? (2 * Math.PI) / teeth.length;
   const boxes = teeth.map(bounds2);
   const toLocal = (poly, a) => {
@@ -270,7 +273,7 @@ export function snapPeriod(table, pitch) {
  * 每一步先被推開(若被壓進去,往較近的一邊),否則加速往前走、碰上就停。先空走 warmup 個週期,記下一個週期的表。
  * 回傳 { angle(v), step(每週期的前進量,帶正負號) }。冠狀輪(立軸擒縱)等不是平面轉動的輪也用這個。
  */
-export function wheelByContact({ hit, dir, period, pitch: P, start = 0, samples = 720, drop = 0.08, warmup = 2 }) {
+export function wheelByContact({ hit, dir, period, pitch: P, start = 0, samples = 720, drop = DROP, warmup = 2 }) {
   // 從 a 往 sign 方向轉多少才不再相碰(上限一個齒距;推不開回傳 Infinity)
   const clear = (a, v, sign) => {
     let lo = 0;
@@ -345,7 +348,7 @@ export function wheelByContact({ hit, dir, period, pitch: P, start = 0, samples 
  * 切面的座標:x 是前端齒走的方向,y 是齒朝上的方向;front0 是轉角 0 時輪的局部角裡對著前端的方位。
  * 其餘同 wheelByContact;回傳 { angle(v), step, at(v)(檢查用:攤平的齒與叉瓦,layers 標前後) }。
  */
-export function crownByContact({ radius: R, teeth: N, height, base = 0, front, back, front0 = -Math.PI / 2, dir = 1, period, samples = 720, start = 0, drop = 0.08, warmup = 2, window = 2 }) {
+export function crownByContact({ radius: R, teeth: N, height, base = 0, front, back, front0 = -Math.PI / 2, dir = 1, period, samples = 720, start = 0, drop = DROP, warmup = 2, window = 2 }) {
   const p = (2 * Math.PI) / N;
   const span = R * p;
   const near = (a, sideAngle) => {
