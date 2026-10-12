@@ -49,7 +49,7 @@ import * as m244 from "../models/fig244.js";
 import * as m246 from "../models/fig246.js";
 import * as m252 from "../models/fig252.js";
 import * as m273 from "../models/fig273.js";
-import { dist, sub, len, partPoint, rot2 } from "../models/kit.js";
+import { dist, sub, len, partPoint, rot2, quatRotate, dot, cross, add, scale, Z as ZAXIS } from "../models/kit.js";
 import * as m251 from "../models/fig251.js";
 import * as m253 from "../models/fig253.js";
 import * as m277 from "../models/fig277.js";
@@ -1084,11 +1084,115 @@ test("第 266 種:軸的旋轉使可動軸承直線移動,每旋轉一圈移動�
   close(one.shaft, m266.P1, "軸每圈穿過固定軸承前進一個螺距");
 });
 
+// 方塊附件在世界中的範圍(零件沒有轉動時:位置 + at ± size/2)
+const boxSpan = (piece, at = [0, 0, 0]) => [0, 1, 2].map((k) => [at[k] + (piece.at?.[k] ?? 0) - piece.size[k] / 2, at[k] + (piece.at?.[k] ?? 0) + piece.size[k] / 2]);
+
+test("第 266 種:可動軸承的底板座在導軌上滑,兩側的擋邊擋住它跟著軸轉", () => {
+  const def = m266.default;
+  const base = part(def, "base").pieces.filter((p) => p.kind === "box").map((p) => boxSpan(p));
+  for (const t of sweep(m266.RANGE[1], 16)) {
+    const pos = def.pose(t).parts.bearing.position;
+    const boxes = part(def, "bearing").pieces.map((p) => boxSpan(p, pos));
+    const plate = boxes.reduce((m, b) => (b[1][0] < m[1][0] ? b : m)); // 最低的一塊是底板
+    // 底板正下方的導軌:x 範圍蓋住底板、頂面最接近底板底面
+    const under = base.filter((b) => b[1][1] <= plate[1][0] + 1e-6).sort((a, b) => b[1][1] - a[1][1]);
+    const rail = under[0];
+    close(plate[1][0], rail[1][1], `曲柄轉 ${t.toFixed(2)}:底板底面落在導軌頂面`, 2e-3);
+    assert.ok(rail[0][0] <= plate[0][0] && plate[0][1] <= rail[0][1], `曲柄轉 ${t.toFixed(2)}:底板整塊都在導軌上`);
+    // 兩側擋邊:在導軌頂面之上、和底板同高的那一段,夾住底板的前後兩面
+    const lips = base.filter((b) => b[1][0] < plate[1][1] && b[1][1] > plate[1][0] && b[0][0] <= plate[0][0] && plate[0][1] <= b[0][1]);
+    const front = lips.find((b) => b[2][0] >= plate[2][1] - 1e-6);
+    const back = lips.find((b) => b[2][1] <= plate[2][0] + 1e-6);
+    assert.ok(front && back, `曲柄轉 ${t.toFixed(2)}:底板前後兩側都有擋邊`);
+    assert.ok(front[2][0] - plate[2][1] < 0.01 && plate[2][0] - back[2][1] < 0.01, "擋邊貼著底板(間隙小於 0.01)");
+  }
+});
+
+// 第 265 種:滾子在鼓輪軸線所在的直立面(z = 0)上的斷面:沿軸 u 寬 width、沿 n(和 u 垂直、朝上)高 2·半徑的長方形
+function rollerSection265(pose) {
+  const { ROLLER, WIDTH } = m265.geometry;
+  const u = quatRotate(pose.roller.rotation, ZAXIS);
+  const n = [u[1], -u[0], 0];
+  const c = pose.roller.position;
+  const corner = (a, b) => add(c, add(scale(u, a * WIDTH / 2), scale(n, b * ROLLER)));
+  const rect = [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)].map((p) => [p[0], p[1]]);
+  return { u, n, c, rect, bottom: [corner(-1, -1), corner(1, -1)] };
+}
+const drumSection265 = () => {
+  const L = m265.geometry.LEN;
+  return [[-L / 2, 0], ...sweep(L, 400, 0).map((s) => [s - L / 2, m265.drumRadius(s - L / 2)]), [L / 2, 0]];
+};
+const T265 = 2 * 2 * Math.PI * m265.geometry.TRAVERSE; // 滾子來回一趟
+
 test("第 265 種:圓錐形鼓輪規則轉動,摩擦滾子沿長度方向橫移,得到變速的旋轉運動", () => {
-  const rates = sweep(12 * 2 * Math.PI, 60).map((t) => m265.roller(t).rate);
+  const def = m265.default;
+  const xs = [];
+  const rates = [];
+  for (const t of sweep(T265, 60)) {
+    const p = def.pose(t).parts;
+    const h = 1e-4;
+    const rate = (def.pose(t + h).parts.roller.angle - p.roller.angle) / h;
+    // 接觸處:滾子斷面底邊兩角中離鼓面較近的那一角(鼓面母線內凹,接觸總在角上)
+    const { bottom } = rollerSection265(p);
+    const [hit] = bottom.map((q) => ({ q, gap: q[1] - m265.drumRadius(q[0]) })).sort((a, b) => a.gap - b.gap);
+    close(rate, m265.drumRadius(hit.q[0]) / m265.geometry.ROLLER, `鼓輪轉 ${t.toFixed(2)}:滾子線速度 = 鼓輪在接觸處的線速度`, 2e-3);
+    xs.push(p.roller.position[0]);
+    rates.push(rate);
+  }
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.75 * m265.geometry.LEN, "滾子沿鼓輪的長度方向橫移(走過大半個鼓長)");
   assert.ok(Math.max(...rates) / Math.min(...rates) > 1.8, "滾子轉速隨位置改變");
-  const { x, spin } = m265.roller(0.001);
-  close(-spin / 0.001, m265.drumRadius(x) / m265.geometry.ROLLER, "滾子線速度 = 鼓輪在接觸處的線速度", 1e-3);
+});
+
+test("第 265 種:滾子用滑鍵套在一根斜的輸出軸上,全程壓在鼓面上(相碰、不穿入),輸出軸的傾角隨滾子的位置改變", () => {
+  const def = m265.default;
+  const drum = drumSection265();
+  const tilts = [];
+  for (const t of sweep(T265, 48)) {
+    const p = def.pose(t).parts;
+    const { u, c, rect } = rollerSection265(p);
+    // 滾子與輸出軸同軸、跟著軸轉(滑鍵),輸出軸的右端鉸在擺架的樞軸上
+    const us = quatRotate(p.shaft.rotation, ZAXIS);
+    close(dot(u, us), 1, "滾子與輸出軸同軸", 1e-9);
+    assert.deepEqual(p.shaft.rotation, p.roller.rotation, "滾子與輸出軸一起轉(滑鍵)");
+    const pivot = p.arm.position;
+    close(len(cross(sub(c, pivot), u)), 0, "滾子的中心在輸出軸上", 1e-9);
+    close(len(cross(sub(p.shaft.position, pivot), us)), 0, "輸出軸穿過擺架的樞軸", 1e-9);
+    close(p.arm.angle, -Math.atan2(u[1], -u[0]), "擺架和輸出軸一起擺", 1e-9);
+    // 壓在鼓面上:不穿入、間隙接近 0;再往下擺一點就穿進鼓面
+    assert.ok(penetrationDepth(rect, drum) < 1e-3, `鼓輪轉 ${t.toFixed(2)}:滾子不陷進鼓面`);
+    const gap = Math.min(...rect.slice(0, 2).map((q) => q[1] - m265.drumRadius(q[0])));
+    assert.ok(gap < 2e-3, `鼓輪轉 ${t.toFixed(2)}:滾子貼著鼓面(間隙 ${gap})`);
+    const lower = rect.map((q) => {
+      const [x, y] = rot2([q[0] - pivot[0], q[1] - pivot[1]], 0.01);
+      return [pivot[0] + x, pivot[1] + y];
+    });
+    assert.ok(penetrationDepth(lower, drum) > 1e-3, `鼓輪轉 ${t.toFixed(2)}:擺架再往下擺 0.01 就陷進鼓面`);
+    tilts.push(Math.atan2(u[1], -u[0]));
+  }
+  assert.ok(Math.min(...tilts) > 0, "輸出軸往右下斜(右端低)");
+  assert.ok(Math.max(...tilts) - Math.min(...tilts) > (2 * Math.PI) / 180, "輸出軸的傾角隨滾子的位置改變(> 2°)");
+});
+
+test("第 265 種:撥叉夾在滾子輪轂的兩片凸緣之間推它橫移,不穿進滾子", () => {
+  const def = m265.default;
+  const roller = part(def, "roller");
+  const fork = part(def, "fork");
+  const yoke = fork.pieces.find((q) => q.kind === "plate");
+  const hub = roller.pieces.filter((q) => q.kind === "cylinder" && q.radius > m265.geometry.SHAFT).sort((a, b) => b.radius - a.radius);
+  const flanges = hub.slice(0, 2).map((q) => [q.at[2] - q.length / 2, q.at[2] + q.length / 2]).sort((a, b) => a[0] - b[0]);
+  for (const t of sweep(T265, 48)) {
+    const p = def.pose(t).parts;
+    const { u, c } = rollerSection265(p);
+    close(p.fork.angle, p.arm.angle, "撥叉跟著擺架擺(滑套套在擺架的導桿上)", 1e-9);
+    // 撥叉板沿軸的範圍(撥叉的局部 x 朝樞軸那一側,即 −u)
+    const s = dot(sub(p.fork.position, c), u) - (yoke.at?.[0] ?? 0);
+    const [lo, hi] = [s - yoke.thickness / 2, s + yoke.thickness / 2];
+    close(len(cross(sub(p.fork.position, c), u)), 0, "撥叉對準輸出軸", 1e-9);
+    const g1 = lo - flanges[0][1];
+    const g2 = flanges[1][0] - hi;
+    assert.ok(g1 > 0 && g2 > 0, `鼓輪轉 ${t.toFixed(2)}:撥叉不穿進凸緣(${g1}, ${g2})`);
+    assert.ok(g1 < 0.01 && g2 < 0.01, `鼓輪轉 ${t.toFixed(2)}:撥叉兩面都貼著凸緣(間隙 < 0.01)`);
+  }
 });
 
 test("第 268 種:曲柄轉動時,擺動桿的端點往復運動", () => {
