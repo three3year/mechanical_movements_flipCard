@@ -868,6 +868,95 @@ test("第 278 種:平台升降時棘爪縮在棘齒外;繩索斷裂時彈簧壓�
   }
 });
 
+// 第 278 種:零件(或附件)在零件局部座標的範圍 [x0, x1, y0, y1, z0, z1](盒、板、圓柱;不轉的附件)
+function span278(piece) {
+  const [ax, ay, az] = piece.at ?? [0, 0, 0];
+  if (piece.kind === "box") {
+    const [w, h, d] = piece.size;
+    return [ax - w / 2, ax + w / 2, ay - h / 2, ay + h / 2, az - d / 2, az + d / 2];
+  }
+  if (piece.kind === "cylinder") return [ax - piece.radius, ax + piece.radius, ay - piece.radius, ay + piece.radius, az - piece.length / 2, az + piece.length / 2];
+  const xs = piece.shape.outline.map(([x]) => x);
+  const ys = piece.shape.outline.map(([, y]) => y);
+  const t = piece.thickness ?? 0.2;
+  return [ax + Math.min(...xs), ax + Math.max(...xs), ay + Math.min(...ys), ay + Math.max(...ys), az - t / 2, az + t / 2];
+}
+
+test("第 278 種:每支肘形槓桿只有一個裝在平台上的樞軸;銷 b 下壓槓桿相連的一端,槓桿繞樞軸轉、把棘爪 d 推出(由接觸算)", () => {
+  const def = m278.default;
+  const g = m278.geometry;
+  const platform = part(def, "platform");
+  for (const [id, s] of [["leverR", 1], ["leverL", -1]]) {
+    // 樞軸:槓桿的轉軸相對平台固定不動,平台上有一根銷穿過槓桿的轂
+    const rel = sweep(1, 60).map((p) => {
+      const pose = def.pose(p).parts;
+      return [pose[id].position[0] - pose.platform.position[0], pose[id].position[1] - pose.platform.position[1], pose[id].angle];
+    });
+    for (const [x, y] of rel) {
+      close(x, s * g.pivot[0], `${id} 的樞軸固定在平台上(x)`, 1e-9);
+      close(y, g.pivot[1], `${id} 的樞軸固定在平台上(y)`, 1e-9);
+    }
+    const angles = rel.map(([, , a]) => a);
+    assert.ok(Math.max(...angles) - Math.min(...angles) > 0.2, `${id} 繞樞軸擺動`);
+    const z = def.pose(0).parts[id].position[2];
+    const pin = platform.pieces.find((q) => q.kind === "cylinder" && Math.abs(q.at[0] - s * g.pivot[0]) < 1e-9 && Math.abs(q.at[1] - g.pivot[1]) < 1e-9);
+    assert.ok(pin, `平台上有 ${id} 的樞軸銷`);
+    const [, , , , z0, z1] = span278(pin);
+    assert.ok(z0 < z - 0.04 && z1 > z + 0.04, `${id} 的樞軸銷穿過槓桿`);
+  }
+  for (const p of sweep(1, 400)) {
+    const c = m278.contactAt(p);
+    // 橫臂內端的圓頭卡在 b 下端方塊的槽裡:上下兩面都貼著(b 壓下時是上面推它往下)、不穿入
+    for (const jaw of c.jaws) {
+      assert.ok(penetrationDepth(c.nose.circle, jaw) < 2e-3, `進程 ${p.toFixed(3)}:槓桿圓頭不穿進 b 的方塊`);
+      assert.ok(edgeDistance(c.nose.center, jaw) - c.nose.r < 3e-3, `進程 ${p.toFixed(3)}:槓桿圓頭貼著 b 的方塊`);
+    }
+    // 下臂下端的銷在棘爪的直槽裡:貼著槽壁、不穿入(棘爪的位置由銷推)
+    assert.ok(penetrationDepth(c.pin.circle, c.pawlSolid) < 2e-3, `進程 ${p.toFixed(3)}:銷不穿進棘爪`);
+    assert.ok(edgeDistance(c.pin.center, c.pawlSolid.holes[0]) - c.pin.r < 3e-3, `進程 ${p.toFixed(3)}:銷貼著棘爪的槽壁`);
+  }
+  // b 下壓 → 槓桿相連的一端往下 → 棘爪往外(原文:彈簧 c 會將銷 b 及槓桿相連的兩端下壓,因此將棘爪推入棘齒中)
+  const before = m278.contactAt(g.P.brk - 0.001);
+  const after = m278.contactAt(g.P.brk + m278.landing.T_LAND + 0.01);
+  assert.ok(after.nose.center[1] - after.top < before.nose.center[1] - before.top - 0.1, "繩斷後槓桿相連的一端被壓下");
+  assert.ok(after.pin.center[0] > before.pin.center[0] + 0.1, "槓桿把棘爪往外推");
+});
+
+test("第 278 種:拉桿 b 穿過橫樑 B;彈簧 c 是橫樑下的弓形板彈簧,外端頂著橫樑、中段壓在 b 的方塊上;側柱在棘爪處沒有切斷", () => {
+  const def = m278.default;
+  const g = m278.geometry;
+  const pieces = part(def, "platform").pieces.map(span278);
+  const shank = span278(part(def, "rodB").pieces.find((q) => q.id === "shank"));
+  for (const p of sweep(1, 80)) {
+    const pose = def.pose(p);
+    const top = pose.parts.platform.position[1];
+    const by = pose.parts.rodB.position[1];
+    // 拉桿 b 的桿身從橫樑下面穿到上面,橫樑留了孔(沒有一塊佔著桿身的位置)
+    assert.ok(by + shank[2] < top + g.beam.bottom && by + shank[3] > top, `進程 ${p.toFixed(2)}:拉桿 b 穿過橫樑`);
+  }
+  // 板彈簧(左右兩半):外端頂著橫樑底面,內端壓在 b 的方塊頂面(由接觸算:貼著、不穿入)
+  for (const p of sweep(1, 200)) {
+    const c = m278.contactAt(p);
+    for (const spring of c.springs) {
+      const ys = spring.map(([, y]) => y);
+      assert.ok(Math.abs(Math.max(...ys) - (c.top + g.beam.bottom)) < 0.01, `進程 ${p.toFixed(3)}:彈簧 c 的外端頂著橫樑底面`);
+      assert.ok(penetrationDepth(spring, c.jaws[0]) < 2e-3, `進程 ${p.toFixed(3)}:彈簧 c 不穿進 b 的方塊`);
+      assert.ok(Math.min(...spring.map((v) => edgeDistance(v, c.jaws[0]))) < 3e-3, `進程 ${p.toFixed(3)}:彈簧 c 壓在 b 的方塊頂面`);
+    }
+  }
+  for (const [x0, x1, y0, y1, z0, z1] of pieces) {
+    if (y1 <= g.beam.bottom || y0 >= 0) continue;
+    const apart = x1 <= shank[0] || x0 >= shank[1] || z1 <= shank[4] || z0 >= shank[5];
+    assert.ok(apart, "橫樑留了讓拉桿 b 穿過的孔");
+  }
+  // 側柱:棘爪穿過的導座只開在前半,後半整段相連(上下不斷開)
+  for (const s of [1, -1]) {
+    const [lx0, lx1] = s > 0 ? [g.leg.inner, g.leg.outer] : [-g.leg.outer, -g.leg.inner];
+    const through = pieces.some(([x0, x1, y0, y1]) => x0 >= lx0 - 1e-9 && x1 <= lx1 + 1e-9 && y0 < g.PAWL_Y - 0.15 && y1 > g.PAWL_Y + 0.15);
+    assert.ok(through, `${s > 0 ? "右" : "左"}側柱在棘爪的高度沒有切斷`);
+  }
+});
+
 test("第 244 種:測功計:軸轉動時輪 A 在木塊間轉,槓桿 D 由擋止 C、C' 限制;夾緊程度剛好時槓桿呈水平", () => {
   const def = m244.default;
   close(def.pose(1, "right").parts.leverD.angle, 0, "剛好時槓桿水平");
