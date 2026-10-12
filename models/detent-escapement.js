@@ -126,8 +126,9 @@ export function detentMechanism({ teeth: N, swing: SWING, wheel, balance, detent
  * 各零件的外觀(局部座標:擒縱輪、擺輪以軸為原點,止動器以固定端為原點,細彈簧以固定點為原點,foot、plate 用世界座標);
  * labels:[{ text, at(世界座標), offset }];texts:各處的說明(重演的標籤與原文);
  * initial:打開時的主動量(預設 0:擺輪在逆時針那一端;動力重演照樣從 0 開始,預期事件的主動量才對得上)。
+ * extra(可省略):各圖另外補上的零件——{ parts:[零件定義], pose(v, 擒縱輪轉角) → { parts, paths } }(例如推斷的重錘驅動)。
  */
-export function detentModel(mech, { figure, ids, pieces, labels, texts, view, initial }) {
+export function detentModel(mech, { figure, ids, pieces, labels, texts, view, initial, extra }) {
   const { W, BAL, B, I, R, roller } = mech.geometry;
   const SWING = mech.SWING;
   const at3 = (p, z = 0) => [...p, z];
@@ -141,6 +142,7 @@ export function detentModel(mech, { figure, ids, pieces, labels, texts, view, in
       { id: "foot", kind: "group", pieces: pieces.foot }, // 鎖在錶板上的座與止動器的擋銷
       { id: "plate", kind: "group", pieces: pieces.plate },
       ...labels.map((l, k) => ({ id: `label${k}`, kind: "group", center: at3(l.at), label: l.text, labelOffset: [...(l.offset ?? [0, 0.25]), 0.3] })),
+      ...(extra?.parts ?? []),
     ],
     // 動力重演:只推擺輪;擒縱輪受固定的力矩順時針轉;止動器繞固定端鉸接、被彈簧壓在擋銷上(推開為順時針);
     // 細彈簧鉸在固定座上、被彈力頂著鉤(只能往一邊彎)
@@ -165,6 +167,7 @@ export function detentModel(mech, { figure, ids, pieces, labels, texts, view, in
     view,
     pose(v) {
       const st = mech.state(v);
+      const more = extra?.pose?.(v, st.w);
       return {
         parts: {
           balance: { angle: mech.balanceAngle(v) },
@@ -173,7 +176,9 @@ export function detentModel(mech, { figure, ids, pieces, labels, texts, view, in
           [ids.wheel]: { angle: st.w },
           foot: { angle: 0 },
           plate: { angle: 0 },
+          ...more?.parts,
         },
+        ...(more?.paths ? { paths: more.paths } : {}),
         readouts: [],
       };
     },
