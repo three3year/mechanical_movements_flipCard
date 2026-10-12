@@ -50,7 +50,7 @@ import * as m244 from "../models/fig244.js";
 import * as m246 from "../models/fig246.js";
 import * as m252 from "../models/fig252.js";
 import * as m273 from "../models/fig273.js";
-import { dist, sub, len, partPoint, rot2, quatRotate, dot, cross, add, scale, Z as ZAXIS } from "../models/kit.js";
+import { dist, sub, len, partPoint, rot2, quatRotate, dot, cross, add, scale, Z as ZAXIS, planeBasis, norm } from "../models/kit.js";
 import * as m251 from "../models/fig251.js";
 import * as m253 from "../models/fig253.js";
 import * as m277 from "../models/fig277.js";
@@ -1035,6 +1035,25 @@ test("第 273 種:當桿 A 和 B 被拉近時,桿 C 和 D 會被進一步推開,
   for (const w of sweep(hi, 10, lo)) close(Math.hypot(w, m273.spread(w)), m273.SIDE, "四根桿長度不變");
 });
 
+test("第 273 種:四個導套固定在後面的十字形底板上(導套的背面貼著底板的前面)", () => {
+  const pieces = part(m273.default, "guides").pieces;
+  const range = (p, i) => [p.at[i] - p.size[i] / 2, p.at[i] + p.size[i] / 2];
+  const base = pieces.filter((p) => p.size[0] > 3 || p.size[1] > 3);
+  const plates = pieces.filter((p) => !base.includes(p));
+  assert.equal(base.length, 2, "十字形底板");
+  const front = Math.max(...base.map((p) => range(p, 2)[1]));
+  // 四個導套:各取最後面的那片板,背面要落在底板的前面上,而且在平面上壓在底板範圍內
+  for (const [x, y] of [[-1, 0], [1, 0], [0, 1], [0, -1]]) {
+    const own = plates.filter((p) => Math.sign(Math.round(p.at[0])) === x && Math.sign(Math.round(p.at[1])) === y);
+    assert.equal(own.length, 4, "每個導套四片板");
+    const back = Math.min(...own.map((p) => range(p, 2)[0]));
+    close(back, front, "導套的背面貼著底板", 1e-9);
+    const rear = own.find((p) => range(p, 2)[0] === back);
+    const under = base.some((b) => [0, 1].every((i) => range(rear, i)[0] >= range(b, i)[0] - 1e-9 && range(rear, i)[1] <= range(b, i)[1] + 1e-9));
+    assert.ok(under, "導套壓在底板上");
+  }
+});
+
 test("第 260 種:兩輪 D、E 轉速相同時螺桿不動;轉速不同時,螺桿依兩者的速度差移動", () => {
   const { F, D, B, E, PITCH } = m260;
   const turns = 3;
@@ -1587,21 +1606,97 @@ test("第 269 種:齒輪的轉向箭頭畫在框架前面的齒輪面上,不被�
   assert.ok(g.spinOffset > 0.11 && g.spin < g.radius - 1.2 * m269.geometry.M, "箭頭在齒根圓以內、框架前面");
 });
 
+// 第 272 種的量測:斜盤當成半徑 R、厚 2H 的實心圓柱(盤的局部 z 是盤面法線),點到它的距離與最近點的半徑
+const disc272 = (() => {
+  const p = part(m272.default, "disc");
+  return { R: Math.max(...p.shape.outline.map(([x, y]) => Math.hypot(x, y))), H: p.thickness / 2 };
+})();
+function toDisc272(theta, p) {
+  const n = quatRotate(m272.default.pose(theta).parts.disc.rotation, [0, 0, 1]);
+  const a = n[0] * p[0] + n[1] * p[1] + n[2] * p[2];
+  const r = Math.sqrt(Math.max(0, p[0] ** 2 + p[1] ** 2 + p[2] ** 2 - a * a));
+  const { R, H } = disc272;
+  const dr = Math.max(r - R, 0);
+  const da = Math.max(Math.abs(a) - H, 0);
+  return { a, r, dist: dr === 0 && da === 0 ? -Math.min(R - r, H - Math.abs(a)) : Math.hypot(dr, da) };
+}
+
 test("第 272 種:斜面圓盤凸輪旋轉,靠在盤上的桿得到往復直線運動", () => {
   const ts = sweep(2 * Math.PI, 72).map(m272.rodTravel);
-  assert.ok(Math.max(...ts) - Math.min(...ts) > 0.3, "桿往復");
+  assert.ok(Math.max(...ts) - Math.min(...ts) > 0.15, "桿往復");
   close(m272.rodTravel(2 * Math.PI), m272.rodTravel(0), "軸一圈回到原處", 1e-9);
-  // 桿端是圓頭:圓頭的中心離盤面恰好一個半徑(貼著、不陷進去)
+});
+
+test("第 272 種:桿端「靠在其圓周上」:圓頭全程貼著盤的圓周(間隙接近 0、不穿入),再往盤推 0.01 就穿入", () => {
   const def = m272.default;
-  const ball = def.parts.find((p) => p.id === "rod").pieces.find((p) => p.kind === "sphere").radius;
-  for (const t of sweep(2 * Math.PI, 24)) {
-    const tip = def.pose(t).parts.rod.position;
+  const ball = part(def, "rod").pieces.find((p) => p.kind === "sphere").radius;
+  for (const t of sweep(2 * Math.PI, 72)) {
+    const { position: tip, angle } = def.pose(t).parts.rod;
+    const k = toDisc272(t, tip);
+    close(k.dist, ball, `轉角 ${t.toFixed(2)}:圓頭貼著盤(間隙 0)`, 1e-4);
+    // 最近點在圓周上(半徑 R 的那一圈,含兩個邊角),不在盤面中段
+    assert.ok(k.r >= disc272.R - 1e-9, `轉角 ${t.toFixed(2)}:碰到的是圓周(圓頭中心離盤軸 ${k.r.toFixed(3)})`);
+    const deeper = [tip[0] - 0.01 * Math.cos(angle), tip[1] - 0.01 * Math.sin(angle), tip[2]];
+    assert.ok(toDisc272(t, deeper).dist < ball - 0.003, `轉角 ${t.toFixed(2)}:再往盤推 0.01 就穿入`);
+  }
+});
+
+test("第 272 種:兩個導套是四片板圍成的方框,桿全程穿在框裡、不碰到板;重演不再略過桿與導套的碰撞", () => {
+  const def = m272.default;
+  const rod = part(def, "rod");
+  const bar = rod.pieces.find((p) => p.kind === "box");
+  const { position: P0, angle: A } = def.pose(0).parts.rod;
+  const U = [Math.cos(A), Math.sin(A), 0];
+  const V = [-Math.sin(A), Math.cos(A), 0];
+  const along = (p) => (p[0] - P0[0]) * U[0] + (p[1] - P0[1]) * U[1];
+  const across = (p) => (p[0] - P0[0]) * V[0] + (p[1] - P0[1]) * V[1];
+  // 桿身在桿的座標裡:u 的範圍隨轉角變,截面 |v|、|z| ≤ 半寬
+  const half = bar.size[1] / 2;
+  const spans = sweep(2 * Math.PI, 72).map((t) => {
+    const u0 = along(def.pose(t).parts.rod.position) + bar.at[0];
+    return [u0 - bar.size[0] / 2, u0 + bar.size[0] / 2];
+  });
+  const plates = part(def, "rodGuides").pieces.filter((p) => p.kind === "box" && Math.abs((p.angle ?? 0) - A) < 1e-9 && p.size[0] < 0.5);
+  const guides = new Map();
+  for (const p of plates) {
+    const u = along(p.at);
+    const v = [across(p.at) - p.size[1] / 2, across(p.at) + p.size[1] / 2];
+    const z = [p.at[2] - p.size[2] / 2, p.at[2] + p.size[2] / 2];
+    // 不碰到桿:截面上分開(v 或 z 方向的間隙 ≥ 0)
+    const gap = Math.max(v[0] - half, -half - v[1], z[0] - half, -half - z[1]);
+    assert.ok(gap >= -1e-9, `導套的板穿進桿(間隙 ${gap.toFixed(3)})`);
+    const key = u.toFixed(2);
+    if (!guides.has(key)) guides.set(key, { u: [u - p.size[0] / 2, u + p.size[0] / 2], sides: new Set() });
+    if (gap < 0.03) guides.get(key).sides.add(v[0] >= half - 1e-9 ? "+v" : v[1] <= -half + 1e-9 ? "-v" : z[0] >= half - 1e-9 ? "+z" : "-z");
+  }
+  assert.equal(guides.size, 2, "兩個導套");
+  for (const g of guides.values()) {
+    assert.deepEqual([...g.sides].sort(), ["+v", "+z", "-v", "-z"], "四片板圍住桿");
+    for (const [lo, hi] of spans) assert.ok(lo <= g.u[0] && hi >= g.u[1], "整個行程桿都穿在導套裡");
+  }
+  assert.ok(!def.replay.ignore?.some((pair) => pair.includes("rodGuides")), "重演不略過桿與導套");
+});
+
+test("第 272 種:斜盤的輪轂緊貼盤的右面,把盤固定在軸上(輪轂一端埋在盤裡、另一端伸出盤面,一圈都沒有空隙)", () => {
+  const def = m272.default;
+  const hub = part(def, "disc").pieces.find((p) => p.kind === "cylinder");
+  assert.ok(hub, "盤有輪轂");
+  const [e1, e2] = planeBasis(hub.axis);
+  const axis = norm(hub.axis);
+  for (const t of sweep(2 * Math.PI, 12)) {
     const q = def.pose(t).parts.disc.rotation;
-    // 盤面法線 = 盤的局部 z 轉到世界
-    const [x, y, z, w] = q;
-    const n = [2 * (x * z + w * y), 2 * (y * z - w * x), 1 - 2 * (x * x + y * y)];
-    const d = Math.abs(n[0] * tip[0] + n[1] * tip[1] + n[2] * tip[2]);
-    close(d, 0.16 + ball, `轉角 ${t.toFixed(2)}:圓頭貼著盤面`, 1e-6);
+    const world = (local) => quatRotate(q, local);
+    const ax = world(axis);
+    close(Math.abs(ax[0]), 1, "輪轂和軸同軸", 1e-9);
+    const c = world(hub.at);
+    close(Math.hypot(c[1], c[2]), 0, "輪轂的中心在軸上", 1e-9);
+    for (const phi of sweep(2 * Math.PI, 24)) {
+      const rim = (s) => world(add(add(hub.at, scale(axis, (s * hub.length) / 2)), add(scale(e1, hub.radius * Math.cos(phi)), scale(e2, hub.radius * Math.sin(phi)))));
+      const inner = toDisc272(t, rim(-1));
+      const outer = toDisc272(t, rim(1));
+      assert.ok(Math.abs(inner.a) <= disc272.H + 1e-9, "輪轂的內端埋在盤裡");
+      assert.ok(outer.a > disc272.H + 0.1, "輪轂的外端伸出盤的右面");
+    }
   }
 });
 
