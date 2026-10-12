@@ -331,6 +331,160 @@ test("第 296 種:槓桿式擒縱:擺輪的銷在每次擺動的中途進入凹�
   apart(m296.escapement, "fork", "pin");
 });
 
+// 第 294–296 種的檢查共用:零件塊的深度範圍(z)、平面上的點是否在凸多邊形 / 轉過角度的長方形裡
+const depth294 = (p) => {
+  const z = p.at?.[2] ?? 0;
+  const h = p.kind === "plate" ? p.thickness / 2 : p.kind === "cylinder" ? p.length / 2 : p.size[2] / 2;
+  return [z - h, z + h];
+};
+const depthsMeet294 = ([a0, a1], [b0, b1]) => Math.min(a1, b1) - Math.max(a0, b0) > 1e-6;
+const inConvex294 = ([x, y], poly) => {
+  const s = poly.map((a, i) => {
+    const b = poly[(i + 1) % poly.length];
+    return (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]);
+  });
+  return s.every((v) => v > 0) || s.every((v) => v < 0);
+};
+const inBox294 = ([x, y], box) => {
+  const a = box.angle ?? 0;
+  const [dx, dy] = [x - box.at[0], y - box.at[1]];
+  const u = dx * Math.cos(a) + dy * Math.sin(a);
+  const w = -dx * Math.sin(a) + dy * Math.cos(a);
+  return Math.abs(u) <= box.size[0] / 2 + 1e-9 && Math.abs(w) <= box.size[1] / 2 + 1e-9;
+};
+// 各塊的外接盒(平面上的板取外形的範圍、box 取轉過角度後的四角、圓柱沿 z),外接盒相接的連成一群
+const aabb294 = (p) => {
+  const [z0, z1] = depth294(p);
+  const at = p.at ?? [0, 0, 0];
+  let pts;
+  if (p.kind === "plate") pts = p.shape.outline.map(([x, y]) => [x + at[0], y + at[1]]);
+  else if (p.kind === "cylinder") pts = [[at[0] - p.radius, at[1] - p.radius], [at[0] + p.radius, at[1] + p.radius]];
+  else {
+    const a = p.angle ?? 0;
+    pts = [[1, 1], [1, -1], [-1, 1], [-1, -1]].map(([i, j]) => {
+      const [u, w] = [(i * p.size[0]) / 2, (j * p.size[1]) / 2];
+      return [at[0] + u * Math.cos(a) - w * Math.sin(a), at[1] + u * Math.sin(a) + w * Math.cos(a)];
+    });
+  }
+  const xs = pts.map((q) => q[0]);
+  const ys = pts.map((q) => q[1]);
+  return [[Math.min(...xs), Math.min(...ys), z0], [Math.max(...xs), Math.max(...ys), z1]];
+};
+function groups294(pieces) {
+  const boxes = pieces.map(aabb294);
+  const touch = ([a0, a1], [b0, b1]) => [0, 1, 2].every((i) => a0[i] <= b1[i] + 1e-6 && b0[i] <= a1[i] + 1e-6);
+  const left = new Set(boxes.keys());
+  const groups = [];
+  while (left.size) {
+    const g = [left.values().next().value];
+    left.delete(g[0]);
+    for (let k = 0; k < g.length; k++) for (const i of [...left]) if (touch(boxes[i], boxes[g[k]])) [left.delete(i), g.push(i)];
+    groups.push(g.sort((x, y) => x - y));
+  }
+  return groups;
+}
+
+// 推斷的重錘驅動(第 294–296 種,照第 234、238 種):繩從輪軸上的鼓放出、重錘隨輪下降;重錘的拉力讓輪往前轉,輪停住時重錘也停;
+// 輪轉一圈重錘捲回最高處一次(上鍊)
+function assertWeightDrive294(def, { drum, wheel, period, every, dir }) {
+  const ropeLength = (pts) => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1], p[2] - pts[i][2]), 0);
+  const radial = (p) => {
+    const d = [0, 1, 2].map((i) => p[i] - drum.center[i]);
+    const along = d[0] * drum.axis[0] + d[1] * drum.axis[1] + d[2] * drum.axis[2];
+    return { along, r: Math.hypot(...d.map((x, i) => x - along * drum.axis[i])) };
+  };
+  const poses = sweep(every * 0.999, 240).map((v) => ({ v, pose: def.pose(v) }));
+  const lengths = poses.map(({ pose }) => ropeLength(pose.paths.rope.points));
+  for (const l of lengths) close(l, lengths[0], "繩長不變(鼓放出的繩 = 重錘下降的量)", 0.02);
+  for (const { v, pose } of poses) {
+    const pts = pose.paths.rope.points;
+    const w = pose.parts.weight.position;
+    assert.ok(Math.abs(w[0] - pts[0][0]) < 1e-9 && Math.abs(w[2] - pts[0][2]) < 1e-9 && w[1] < pts[0][1], `主動量 ${v.toFixed(3)}:重錘吊在繩的下端`);
+    const onDrum = pts.filter((p) => Math.abs(radial(p).along) < 0.3 && Math.abs(radial(p).r - drum.radius) < 1e-6);
+    assert.ok(onDrum.length > 10, `主動量 ${v.toFixed(3)}:鼓上還繞著繩`);
+  }
+  const pts = def.pose(0).paths.rope.points;
+  const k = pts.findIndex((p) => Math.abs(radial(p).r - drum.radius) < 1e-6);
+  const t = pts[k];
+  const pull = [0, 1, 2].map((i) => pts[k - 1][i] - t[i]);
+  const r = [0, 1, 2].map((i) => t[i] - drum.center[i]);
+  const torque = [r[1] * pull[2] - r[2] * pull[1], r[2] * pull[0] - r[0] * pull[2], r[0] * pull[1] - r[1] * pull[0]];
+  assert.ok(dir * (torque[0] * drum.axis[0] + torque[1] * drum.axis[1] + torque[2] * drum.axis[2]) > 0, "重錘的拉力讓輪往前轉");
+  const ys = poses.map(({ v, pose }) => ({ y: pose.parts.weight.position[1], w: wheel(v) }));
+  for (let i = 1; i < ys.length; i++) {
+    if (Math.abs(ys[i].w - ys[i - 1].w) < 1e-12) close(ys[i].y, ys[i - 1].y, "輪不動,重錘不動", 1e-9);
+    if (dir * (ys[i].w - ys[i - 1].w) > 1e-3) assert.ok(ys[i].y < ys[i - 1].y, "輪往前轉,重錘下降");
+  }
+  assert.ok(ys[0].y - ys[ys.length - 1].y > 0.3, "上鍊之間重錘降下一段看得出來的距離");
+  assert.ok(every >= 2 * period, "至少擺兩個來回才上鍊一次");
+  close(def.pose(every).parts.weight.position[1], def.pose(0).parts.weight.position[1], "重錘降到底時捲回最高處(上鍊)", 1e-9);
+}
+
+test("第 294–295 種:推斷的重錘驅動——擒縱輪軸上的鼓放出繩、吊著重錘,重錘隨輪下降,輪轉一圈捲回", () => {
+  const { DRUM, REWIND } = cyl.geometry;
+  for (const def of [fig294, fig295]) assertWeightDrive294(def, { drum: DRUM, wheel: cyl.escapement.angle, period: cyl.escapement.period, every: REWIND, dir: -1 });
+});
+
+test("第 296 種:推斷的重錘驅動——擒縱輪 A 軸上的鼓放出繩、吊著重錘,重錘隨輪下降,輪轉一圈捲回", () => {
+  const { DRUM, REWIND } = m296.geometry;
+  assertWeightDrive294(m296.default, { drum: DRUM, wheel: m296.escapement.angle, period: m296.escapement.period, every: REWIND, dir: -1 });
+});
+
+test("第 294–295 種:楔形齒立在細柄上(柄從輪緣伸出、短柱頂著楔形齒的後端),軸承架是一件", () => {
+  const wheel = fig294.parts.find((p) => p.id === "wheel").pieces;
+  const wedges = wheel.filter((p) => p.kind === "plate" && p.shape.outline.length === 3);
+  assert.equal(wedges.length, cyl.N, "每齒一個楔形叉瓦");
+  const posts = wheel.filter((p) => p.kind === "cylinder" && p.at && Math.hypot(p.at[0], p.at[1]) > 1);
+  const stalks = wheel.filter((p) => p.kind === "box" && p.at && Math.hypot(p.at[0], p.at[1]) > 1);
+  for (const [i, w] of wedges.entries()) {
+    const post = posts.find((c) => inConvex294(c.at, w.shape.outline) && depthsMeet294(depth294(c), depth294(w)));
+    assert.ok(post, `第 ${i} 齒:有一根短柱在楔形齒底下、頂到齒`);
+    assert.ok(stalks.some((s) => inBox294(post.at, s) && depthsMeet294(depth294(s), depth294(post))), `第 ${i} 齒:短柱立在細柄上`);
+  }
+  const cock = fig294.parts.find((p) => p.id === "cock").pieces;
+  const g = groups294(cock);
+  assert.equal(g.length, 1, `軸承架各塊相連(不相連的群 ${g.map((x) => x.join("、")).join(" / ")})`);
+});
+
+test("第 294–295 種:圓筒的頂部連接著擺輪(推斷補上的擺輪裝在擺輪軸上、圓筒切口那一層的另一端)", () => {
+  const cylinder = fig294.parts.find((p) => p.id === "cylinder").pieces;
+  const { BALANCE } = cyl.geometry;
+  const wheelPiece = cylinder.find((p) => p.kind === "plate" && Math.max(...p.shape.outline.map(([x, y]) => Math.hypot(x, y))) > BALANCE.radius - 1e-6);
+  assert.ok(wheelPiece, "圓筒那一件裡有擺輪");
+  assert.ok(BALANCE.radius > 2.5 * 0.24, "擺輪比圓筒大得多");
+  // 圓筒(外徑 0.24 的各塊)的一端是切口那一層,擺輪在另一端之外
+  const [r0, r1] = depth294(cylinder[0]);
+  const tube = cylinder.filter((p) => (p.kind === "cylinder" && Math.abs(p.radius - 0.24) < 1e-9) || (p.kind === "plate" && Math.abs(Math.max(...p.shape.outline.map(([x, y]) => Math.hypot(x, y))) - 0.24) < 1e-3));
+  const [t0, t1] = [Math.min(...tube.map((p) => depth294(p)[0])), Math.max(...tube.map((p) => depth294(p)[1]))];
+  const [b0, b1] = depth294(wheelPiece);
+  assert.ok((Math.abs(r1 - t1) < 1e-9 && b1 <= t0 + 1e-9) || (Math.abs(r0 - t0) < 1e-9 && b0 >= t1 - 1e-9), "擺輪在圓筒的另一端(切口那一層的對面)之外");
+  const staff = cylinder.find((p) => p.kind === "cylinder" && p.radius < 0.1 && depthsMeet294(depth294(p), [b0, b1]));
+  assert.ok(staff, "擺輪軸穿過擺輪");
+});
+
+test("第 294–295 種:初始視角看得到齒與圓筒切口——第 295 種從叉瓦那一層的正面看,前面沒有圓筒的其餘部分與軸承架;第 294 種以圓筒取景、軸橫放", () => {
+  const d = fig295.view.direction;
+  assert.ok(Math.abs(d[2]) > 3 * Math.hypot(d[0], d[1]), "第 295 種沿圓筒軸看(看叉瓦那一層的剖面)");
+  // 切開的圓環(cylinder 的第一塊)之外,圓筒、擺輪軸、擺輪與軸承架的每一塊都在圓環背對觀看者的那一面之後
+  const [r0, r1] = depth294(fig295.parts.find((p) => p.id === "cylinder").pieces[0]);
+  for (const id of ["cylinder", "cock"])
+    for (const [i, p] of fig295.parts.find((q) => q.id === id).pieces.entries()) {
+      if (id === "cylinder" && i === 0) continue;
+      const [z0, z1] = depth294(p);
+      assert.ok(d[2] > 0 ? z1 <= r0 + 1e-9 : z0 >= r1 - 1e-9, `${id} pieces[${i}](z ${z0.toFixed(2)}..${z1.toFixed(2)})擋在叉瓦那一層的前面`);
+    }
+  assert.deepEqual(fig294.view.fit, ["cylinder"], "第 294 種以圓筒取景");
+  const e = fig294.view.direction;
+  assert.ok(Math.abs(e[2]) < 0.5 * Math.hypot(e[0], e[1]), "第 294 種從側面看,圓筒軸橫放");
+});
+
+test("第 296 種:兩根擋銷裝在夾板條上(從夾板條立起)", () => {
+  const frame = m296.default.parts.find((p) => p.id === "frame").pieces;
+  const pins = frame.filter((p) => p.kind === "cylinder" && p.radius < 0.1);
+  assert.equal(pins.length, 2, "兩根擋銷");
+  const bars = frame.filter((p) => p.kind === "box");
+  for (const pin of pins) assert.ok(bars.some((b) => inBox294(pin.at, b) && depthsMeet294(depth294(b), depth294(pin))), `擋銷 (${pin.at[0].toFixed(2)}, ${pin.at[1].toFixed(2)}) 插在夾板條裡`);
+});
 // 第 298 種照原圖重讀成惠更斯的 pirouette(2026-10-12 決定):擺輪 C 的直立軸上端是小齒輪,水平立軸右端的冠狀齒輪咬它;
 // 立軸左段的兩個叉瓦擋左下的擒縱輪
 const piece298 = (def, id, kind) => part(def, id).pieces.find((p) => p.kind === kind);

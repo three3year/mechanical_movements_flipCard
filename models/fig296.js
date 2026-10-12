@@ -6,15 +6,20 @@
 //
 // 由接觸算:槓桿是鉸接在 B 的零件,只被擺輪的銷推動——銷在每次擺動的中途進到凹槽、推側壁把槓桿撥到另一邊,
 // 其餘時間槓桿停在擋銷上(鎖面略往裡斜,齒壓在鎖面上時把槓桿拉向擋銷,所以銷不在凹槽裡時槓桿不會晃開;
-// models/escapement.js 的 periodic)。擒縱輪受發條的固定力矩順時針轉,被叉瓦擋住就停;叉瓦被帶開時,
+// models/escapement.js 的 periodic)。擒縱輪受重錘的固定力矩順時針轉,被叉瓦擋住就停;叉瓦被帶開時,
 // 齒推著叉瓦的斜面跟上(衝擊經槓桿傳給銷),脫開後加速落到另一個叉瓦的鎖面上(escapeByContact)。
 // 推斷:齒數、擺幅、叉瓦的衝擊角與拉入角、擋銷的位置(原圖沒畫擋銷);擺輪只畫出帶銷的圓盤(原圖只畫到凹槽旁的圓盤),
-// 輪軸、槓桿軸、擺輪軸裝在後面的夾板條上(原圖沒畫)。
-import { TAU, deg, swing } from "./kit.js";
+// 輪軸、槓桿軸、擺輪軸裝在後面的夾板條上(原圖沒畫);夾板條從槓桿軸 B 再往右分一支到槓桿右臂底下,
+// 末端一塊小橋板,兩根擋銷從橋板立起(擋銷與橋板都是推斷)。
+// 推斷的驅動(原文沒說輪為什麼往前轉;共用 weight-drive.js,照第 234、238 種):輪軸往後伸,輪與夾板條之間有一個鼓,
+// 繩從鼓的右側垂下吊著重錘;重錘的重量就是讓輪順時針轉的固定力矩,輪轉多少重錘降多少,被叉瓦擋住時重錘也停。
+// 輪每轉一圈重錘捲回最高處一次(上鍊,畫面上一下子回到上面)。錶實際上是用發條經輪系帶動,這裡用重錘只是示意。
+import { TAU, deg, swing, Y, Z } from "./kit.js";
 import { anchorPallet, placePoly, toothedWheel, periodic, anyOverlap, clearance, escapeByContact } from "./escapement.js";
 import { shape, circle, thickLine, rect } from "./shapes.js";
 import { circlePolygon } from "./contact.js";
 import { plateBar } from "./supports.js";
+import { weightDrive, rewound } from "./weight-drive.js";
 
 export const N = 15;
 export const PITCH = TAU / N;
@@ -74,7 +79,23 @@ export const escapement = {
   angle: wheelRun.angle,
   at: (v) => ({ ...wheelRun.at(v), fork: forkAt(leverAngle(v)), pin: pinAt(balanceAngle(v)) }),
 };
-export const geometry = { BANK, FORK, BAL, B };
+
+// 推斷的重錘驅動:鼓在輪軸上、輪與夾板條之間,繩從鼓的右側垂下吊著重錘
+const ROPE_R = 0.04;
+const DRUM_R = 0.15;
+const DRUM = { center: [...A, -0.29], axis: Z, radius: DRUM_R + ROPE_R, sense: -1 }; // 輪往前(順時針)轉時繩從鼓上放出
+const WEIGHT = { radius: 0.17, height: 0.4 };
+const REWIND = N * 4 * SWING; // 輪轉一圈(擺輪擺十五個來回)上鍊一次
+const hang = weightDrive({
+  drum: DRUM,
+  eye: [A[0] + DRUM.radius, -2.8, DRUM.center[2]],
+  reserve: DRUM.radius * TAU,
+  spare: 0.8 * TAU * DRUM.radius,
+  pitch: 2 * ROPE_R,
+});
+const weightAt = rewound(hang, (v) => -wheelRun.angle(v), REWIND); // 輪往前(順時針)轉的角度
+
+export const geometry = { BANK, FORK, BAL, B, DRUM, REWIND };
 
 // 槓桿(相對 B):左臂到凹槽 E、右臂到 C;兩叉瓦從槓桿往下伸進輪齒之間
 const tail = (p) => [p.L * Math.cos(p.psi - p.s * 0.1), p.L * Math.sin(p.psi - p.s * 0.1)];
@@ -86,6 +107,10 @@ const BANK_PINS = [1, -1].map((side) => {
   const a = side * BANK + side * Math.atan(off / d);
   return [B[0] + Math.hypot(d, off) * Math.cos(a), B[1] + Math.hypot(d, off) * Math.sin(a)];
 });
+// 擋銷底下的小橋板:夾板條從 B 往右分一支到兩根擋銷之間,橋板橫跨兩根擋銷
+const BRIDGE = [BANK_PINS[0][0], B[1]];
+const BRIDGE_SPAN = Math.abs(BANK_PINS[0][1] - BANK_PINS[1][1]) + 0.24;
+const PIN_Z = { from: -0.5, to: 0.145 }; // 擋銷從夾板條那一層立起,到槓桿那一層
 
 export default {
   figure: 296,
@@ -102,6 +127,7 @@ export default {
         ...[0, 1, 2].map((i) => ({ kind: "plate", shape: shape(thickLine([[0, 0], [0.55, 0.45], [1.15, 0.2]].map(([x, y]) => [x * Math.cos((i * TAU) / 3) - y * Math.sin((i * TAU) / 3), x * Math.sin((i * TAU) / 3) + y * Math.cos((i * TAU) / 3)]), 0.12)), thickness: 0.1 })),
         { kind: "cylinder", radius: 0.16, length: 0.25 },
         { kind: "cylinder", radius: 0.06, length: 0.5, at: [0, 0, -0.25] }, // 輪軸,往後伸進夾板條
+        { kind: "cylinder", radius: DRUM_R, length: 0.2, at: [0, 0, DRUM.center[2]] }, // 繞繩的鼓(推斷)
         { kind: "box", size: [0.14, 0.14, 0.14], at: [1.2, 0, 0.08], accent: true },
       ],
     },
@@ -138,13 +164,17 @@ export default {
       kind: "group",
       pieces: [
         ...plateBar({ points: [A, B, BAL], z: -0.5, width: 0.24, boss: 0.16 }),
-        ...BANK_PINS.map(([x, y]) => ({ kind: "cylinder", radius: 0.05, length: 0.55, at: [x, y, -0.13] })), // 擋銷,從夾板條立起
+        { kind: "box", size: [BRIDGE[0] - B[0], 0.24, 0.1], at: [(B[0] + BRIDGE[0]) / 2, B[1], -0.5] }, // 夾板條往右分出的一支
+        { kind: "box", size: [0.24, BRIDGE_SPAN, 0.1], at: [...BRIDGE, -0.5] }, // 擋銷底下的小橋板
+        ...BANK_PINS.map(([x, y]) => ({ kind: "cylinder", radius: 0.05, length: PIN_Z.to - PIN_Z.from, at: [x, y, (PIN_Z.from + PIN_Z.to) / 2] })), // 擋銷,從橋板立起
       ],
     },
     { id: "labelC", kind: "group", center: [B[0] + C[0], B[1] + C[1], 0], label: "C", labelOffset: [0.3, 0, 0.3] },
     { id: "labelE", kind: "group", center: [B[0] - FORK, B[1], 0], label: "E", labelOffset: [0.2, 0.32, 0.3] },
+    { id: "rope", kind: "rope", radius: ROPE_R },
+    { id: "weight", kind: "weight", axis: Y, radius: WEIGHT.radius, height: WEIGHT.height },
   ],
-  // 動力重演:只推擺輪;擒縱輪受固定的力矩(發條)順時針轉;槓桿鉸在 B、自由轉動,被銷與齒推動、靠在擋銷上
+  // 動力重演:只推擺輪;擒縱輪受重錘的固定力矩順時針轉(以彈簧代替;重錘照模型的姿勢走);槓桿鉸在 B、自由轉動,被銷與齒推動、靠在擋銷上
   replay: {
     to: 8 * SWING,
     seconds: 24,
@@ -165,6 +195,17 @@ export default {
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
     const l = lever(v);
-    return { parts: { roller: { angle: l.balance }, anchor: { angle: l.lever }, wheelA: { angle: l.wheel } }, readouts: [] };
+    const w = weightAt(v);
+    const eye = w.eye;
+    return {
+      parts: {
+        roller: { angle: l.balance },
+        anchor: { angle: l.lever },
+        wheelA: { angle: l.wheel },
+        weight: { position: [eye[0], eye[1] - WEIGHT.height / 2 - WEIGHT.radius * 0.38, eye[2]] },
+      },
+      paths: { rope: { points: w.rope, closed: false, phase: 0 } },
+      readouts: [],
+    };
   },
 };
