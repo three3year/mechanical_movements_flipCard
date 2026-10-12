@@ -160,6 +160,44 @@ test("第 257、258 種是圓形皮帶:不設寬度,畫成圓管", () => {
   for (const m of [m257, m258]) assert.equal(part(m.default, "strand").width, undefined);
 });
 
+test("第 254 種:直立鏈節卡在叉口裡、平躺的鏈節落在兩齒之間:鏈條節距配上 12 個叉齒,繞在輪上的每一節直立鏈節都對著一個叉齒", () => {
+  const def = m254.default;
+  const wheel = part(def, "wheel");
+  const chain = part(def, "strand");
+  const forks = wheel.pieces.filter((p) => p.kind === "plate");
+  assert.equal(forks.length, m254.TEETH);
+  const polar = ([, y, z]) => Math.atan2(z, y);
+  const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  for (const angle of [0, 0.2, 1, 2.5, -0.7]) {
+    const { points, phase } = def.pose(angle).paths.strand;
+    // 和畫面(viewer/paths.js 的鍊條)同一套擺法:第 k 節的兩銷在路徑弧長 k·節距 + 相位 與下一個節距處;k 為偶數的是直立鏈節
+    const cum = [0];
+    for (let i = 1; i < points.length; i++) cum.push(cum[i - 1] + dist(points[i], points[i - 1]));
+    const at = (s) => {
+      let i = 1;
+      while (i < cum.length - 1 && cum[i] < s) i++;
+      const t = (s - cum[i - 1]) / (cum[i] - cum[i - 1]);
+      return points[i - 1].map((v, j) => v + (points[i][j] - v) * t);
+    };
+    const forkAngles = forks.map((f) => polar(partPoint([0, 0, 0], wheel.axis, angle, f.at)));
+    const seat = Math.hypot(...points[Math.floor(points.length / 2)].slice(1));
+    let upright = 0;
+    for (let k = Math.ceil(-phase / chain.pitch); k * chain.pitch + phase + chain.pitch <= cum.at(-1); k++) {
+      const a = at(k * chain.pitch + phase);
+      const b = at((k + 1) * chain.pitch + phase);
+      const onWheel = [a, b].every((p) => Math.abs(Math.hypot(p[1], p[2]) - seat) < 0.01); // 路徑在輪上是折線,弦的中段略低於圓
+      if (!onWheel) continue;
+      const mid = polar(a.map((v, j) => (v + b[j]) / 2));
+      const off = Math.min(...forkAngles.map((f) => Math.abs(wrap(mid - f))));
+      if (((k % 2) + 2) % 2 === 0) {
+        upright++;
+        assert.ok(off < 0.02, `輪轉 ${angle}:第 ${k} 節直立鏈節離最近的叉齒 ${((off * 180) / Math.PI).toFixed(1)}°`);
+      } else assert.ok(Math.abs(off - Math.PI / m254.TEETH) < 0.02, `輪轉 ${angle}:第 ${k} 節平躺鏈節落在兩齒正中`);
+    }
+    assert.ok(upright >= 3, "繞在輪上的一段有好幾節直立鏈節");
+  }
+});
+
 test("第 259 種:V 形槽的溝槽刻有凹紋(兩斜面各一圈),第 258 種的槽面平滑", () => {
   const ridges = (def) => def.parts[0].pieces.filter((p) => p.kind === "box").length;
   assert.equal(ridges(m259.default), 2 * m259.GROOVES);
@@ -692,15 +730,81 @@ test("第 251 種:重物落到樁頭上(推斷補上的樁在 W 正下方,落到
   assert.ok(Math.abs(landed[0] - head.at[0]) < head.radius, "樁在 W 正下方");
 });
 test("第 253 種:鼓輪轉得危險地快時,鉤子因離心力往外甩出,鉤住凸柱 D,制止鼓輪", () => {
-  const { P_STOP, REACH, clearance } = m253.geometry;
+  const { P_STOP } = m253.geometry;
   const slow = m253.check(0.2);
   assert.ok(slow.tipRadius < m253.check(0.9).tipRadius, "高速時鉤子甩出");
   const stop = m253.check(P_STOP + 0.01).drum;
   close(m253.check(0.95).drum, stop, "鉤住後鼓輪停住");
-  for (const p of sweep(P_STOP, 400)) {
-    const c = m253.check(p);
-    assert.ok(clearance(c.drum, c.beta) >= REACH - 1e-6, `進程 ${p.toFixed(3)}:鉤尖不穿過凸柱`);
+});
+
+// 第 253 種:量實際外形——鉤子的板(定義裡的輪廓,照 pose 擺放)對凸柱(定義裡的圓柱)
+const fig253 = (() => {
+  const def = m253.default;
+  const hooks = def.parts.filter((p) => p.id.startsWith("hook"));
+  const studs = def.parts
+    .filter((p) => p.id === "frameA" || p.id.startsWith("studD"))
+    .flatMap((p) => p.pieces.filter((q) => q.kind === "cylinder").map((q) => ({ c: [q.at[0], q.at[1]], r: q.radius, z: [p.center[2] + q.at[2] - q.length / 2, p.center[2] + q.at[2] + q.length / 2] })));
+  const placed = (poses) => hooks.map((h) => placeOutline(h.shape.outline, poses[h.id].position, poses[h.id].angle));
+  /** 鉤子外形離凸柱最近的距離(負值:凸柱的圓心在鉤子裡面) */
+  const gap = (outlines) => Math.min(...outlines.flatMap((o) => studs.map((s) => (pointInPolygon(s.c, o) ? -1 : edgeDistance(s.c, o) - s.r))));
+  const depth = (outlines) => Math.max(...outlines.flatMap((o) => studs.map((s) => penetrationDepth(o, circlePolygon(s.c, s.r, 64)))));
+  return { def, hooks, studs, placed, gap, depth };
+})();
+
+test("第 253 種:凸柱 D 與鉤子同一層(三根凸柱一樣深,鉤子的板整個在凸柱的深度範圍裡)", () => {
+  const { def, hooks, studs } = fig253;
+  assert.equal(studs.length, 3);
+  for (const s of studs) assert.deepEqual(s.z.map((v) => +v.toFixed(6)), studs[0].z.map((v) => +v.toFixed(6)), "三根凸柱的深度範圍相同");
+  const pose = def.pose(0).parts;
+  for (const h of hooks) {
+    const z = pose[h.id].position[2];
+    assert.ok(z - h.thickness / 2 >= studs[0].z[0] && z + h.thickness / 2 <= studs[0].z[1], `${h.id} 的板在凸柱的深度範圍裡`);
   }
+});
+
+test("第 253 種:鼓輪正常轉動時,鉤子收在凸緣旁、從凸柱內側經過(量鉤子的外形,含鉤尖與粗細)", () => {
+  const { def, placed, gap } = fig253;
+  const { FOLDED } = m253.geometry;
+  let folded = 0;
+  for (const p of sweep(0, 2000, m253.geometry.P_STOP)) {
+    if (m253.check(p).beta !== FOLDED) continue;
+    folded++;
+    const g = gap(placed(def.pose(p).parts));
+    assert.ok(g > 0.05, `進程 ${p.toFixed(4)}:收著的鉤子離凸柱 ${g.toFixed(3)},要留出明顯間隙`);
+  }
+  assert.ok(folded > 1000, "正常轉動佔了進程的一大段");
+});
+
+test("第 253 種:鉤子甩出後鉤住凸柱:停住時鉤子的外形貼著凸柱(間隙接近 0),全程不穿入;再轉一點就撞進凸柱", () => {
+  const { def, placed, gap, depth, studs } = fig253;
+  const { P_STOP, hookPoses, ARM } = m253.geometry;
+  for (const p of sweep(0, 4000, 0.999)) {
+    const d = depth(placed(def.pose(p).parts));
+    assert.ok(d < 0.002, `進程 ${p.toFixed(4)}:鉤子穿進凸柱 ${d.toFixed(4)}`);
+  }
+  const at = m253.check(P_STOP + 0.01);
+  const g = gap(placed(def.pose(P_STOP + 0.01).parts));
+  assert.ok(Math.abs(g) < 0.005, `停住時鉤子貼著凸柱(間隙 ${g.toFixed(4)})`);
+  const further = Object.fromEntries(hookPoses(at.drum + 0.01 * Math.sign(at.drum), at.beta).map((q, i) => [`hook${i}`, q]));
+  assert.ok(depth(placed(further)) > 0.005, "鼓輪再往前轉 0.01 就撞進凸柱");
+  // 凸柱落在鉤的彎裡:在鉤臂前方那一側(鉤尖彎的那一側),比鉤臂末端靠內
+  const poses = def.pose(P_STOP + 0.01).parts;
+  const caught = fig253.hooks.some((h) => {
+    const { position, angle } = poses[h.id];
+    return studs.some((s) => {
+      const [x, y] = rot2([s.c[0] - position[0], s.c[1] - position[1]], -angle);
+      return y > 0 && x > 0.3 && x < ARM - s.r && Math.abs(Math.hypot(x - ARM, y)) < 0.6;
+    });
+  });
+  assert.ok(caught, "凸柱被鉤臂與鉤尖圍住");
+});
+
+test("第 253 種:鉤尖往鼓輪轉的方向彎(原圖三支鉤尖都往逆時針那一側彎;鉤尖朝前才鉤得住)", () => {
+  const { hooks } = fig253;
+  // 鉤臂沿局部 +X;鉤尖彎出去的那一側,外形伸得比另一側遠得多
+  const ys = hooks[0].shape.outline.map((p) => p[1]);
+  assert.ok(Math.max(...ys) > 3 * -Math.min(...ys), "鉤尖在鉤臂的逆時針那一側(局部 +Y)");
+  assert.ok(m253.check(0.3).drum > m253.check(0.2).drum, "鼓輪逆時針轉");
 });
 
 test("第 277 種:把擊錘往後扳起時,爪 a 推轉輪背面的棘齒 b,轉輪轉過一個膛室;擊錘落下時轉輪不動(由接觸算)", () => {
@@ -896,6 +1000,33 @@ test("第 252 種:把部件 D 上下移動,滾子 A 和 B 在溝槽 C 內以相�
   }
   assert.ok(m252.rollers(0.5).b > rest.b, "D 往上時兩滾子分開");
   assert.ok(m252.rollers(m252.RANGE[0]).b - m252.rollers(m252.RANGE[0]).a < 2 * m252.ROLL + 0.05, "D 到最下面時兩滾子互相靠到");
+});
+
+test("第 252 種:滾子的銷在溝槽 C 裡滑:溝槽只有銷那麼寬;由前往後是 D 的斜槽臂、滾子、溝槽桿 C(原圖溝槽桿穿過滾子的線畫成虛線)", () => {
+  const def = m252.default;
+  const guide = part(def, "guideC");
+  const roller = part(def, "rollerA");
+  const pin = roller.pieces.find((p) => p.kind === "cylinder");
+  const span = (pts, i) => [Math.min(...pts.map((p) => p[i])), Math.max(...pts.map((p) => p[i]))];
+  // 溝槽的兩條軌:guideC 裡橫跨滾子行程的兩條長板
+  const rails = guide.pieces.filter((p) => p.kind === "plate" && span(p.shape.outline, 0)[1] - span(p.shape.outline, 0)[0] > 3);
+  assert.equal(rails.length, 2, "溝槽是上下兩條軌");
+  const [lower, upper] = rails.map((r) => span(r.shape.outline, 1)).sort((a, b) => a[0] - b[0]);
+  const slot = upper[0] - lower[1];
+  close(slot, 2 * pin.radius, "溝槽寬等於銷徑", 0.011);
+  assert.ok(slot < 0.5 * 2 * m252.ROLL, "溝槽比滾子窄得多(滾子不在溝槽裡)");
+  const zRange = (z, t) => [z - t / 2, z + t / 2];
+  for (const v of sweep(m252.RANGE[0], 6, m252.RANGE[1])) {
+    const pose = def.pose(v).parts;
+    close(pose.rollerA.position[1], (upper[0] + lower[1]) / 2, "銷在溝槽正中,上下兩緣都貼著銷", 1e-9);
+    const railZ = zRange(rails[0].at?.[2] ?? 0, rails[0].thickness);
+    const rollerZ = zRange(pose.rollerA.position[2], roller.thickness);
+    const armZ = zRange(pose.partD.position[2], part(def, "partD").pieces[0].thickness);
+    const pinZ = zRange(pose.rollerA.position[2] + (pin.at?.[2] ?? 0), pin.length);
+    assert.ok(rollerZ[0] >= railZ[1] - 1e-9, "滾子在溝槽桿前面");
+    assert.ok(armZ[0] >= rollerZ[1] - 1e-9, "D 的斜槽臂在滾子前面");
+    assert.ok(pinZ[0] <= railZ[0] && pinZ[1] >= armZ[1], "銷從溝槽 C 穿過滾子,伸過 D 的斜槽");
+  }
 });
 
 test("第 273 種:當桿 A 和 B 被拉近時,桿 C 和 D 會被進一步推開,反之亦然", () => {
