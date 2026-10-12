@@ -2116,3 +2116,103 @@ test("第 287 種:彈簧屈服於球的離心力而抬起套筒;離心力減小�
   assert.ok(fast.sleeve > slow.sleeve, "高速時套筒較高");
   for (const s of [0, 4, 10]) close(m287.springLength(s), m287.springLength(0), "彈簧長度不變", 1e-6);
 });
+
+// 調速器的被調節對象(第 274、287 種,推斷):量叉臂的銷、套筒的環槽、閥桿與曲柄、閥板的實際外形
+function assertThrottle(def, values) {
+  const lever = part(def, "lever");
+  const valve = part(def, "valve");
+  const groove = part(def, "sleeve").pieces.find((p) => p.role === "groove");
+  const pins = lever.pieces.filter((p) => p.role === "forkPin");
+  const rodPin = lever.pieces.find((p) => p.role === "rodPin");
+  const crankPin = valve.pieces.find((p) => p.role === "crankPin");
+  const disc = valve.pieces.find((p) => p.role === "disc");
+  assert.equal(pins.length, 2, "叉臂兩邊各一支銷");
+  const world = (center, piece, angle) => {
+    const [x, y] = rot2(piece.at, angle);
+    return [center[0] + x, center[1] + y];
+  };
+  const rows = values.map((v) => {
+    const pose = def.pose(v).parts;
+    const sy = pose.sleeve.position[1];
+    const top = sy + groove.at[1] + groove.length / 2;
+    const bottom = sy + groove.at[1] - groove.length / 2;
+    for (const pin of pins) {
+      const [, y] = world(lever.center, pin, pose.lever.angle);
+      const above = top - (y + pin.radius);
+      const below = y - pin.radius - bottom;
+      assert.ok(above >= -1e-9 && above < 0.006, `主動量 ${v.toFixed(2)}:叉臂的銷頂著環槽的上壁(間隙 ${above.toFixed(4)})`);
+      assert.ok(below >= -1e-9 && below < 0.006, `主動量 ${v.toFixed(2)}:叉臂的銷頂著環槽的下壁(間隙 ${below.toFixed(4)})`);
+    }
+    const A = world(lever.center, rodPin, pose.lever.angle);
+    const C = world(valve.center, crankPin, pose.valve.angle);
+    close(Math.hypot(pose.valveRod.from[0] - A[0], pose.valveRod.from[1] - A[1]), 0, "閥桿上端接在槓桿的銷上", 1e-9);
+    close(Math.hypot(pose.valveRod.to[0] - C[0], pose.valveRod.to[1] - C[1]), 0, "閥桿下端接在曲柄銷上", 1e-9);
+    const n = rot2(disc.axis, pose.valve.angle);
+    return { v, sleeve: sy, rod: Math.hypot(A[0] - C[0], A[1] - C[1]), opening: 1 - Math.abs(n[0]) };
+  });
+  for (const r of rows) close(r.rod, rows[0].rod, "閥桿長度不變", 1e-9);
+  const bySleeve = [...rows].sort((a, b) => a.sleeve - b.sleeve);
+  for (let i = 1; i < bySleeve.length; i++) {
+    if (bySleeve[i].sleeve - bySleeve[i - 1].sleeve < 1e-9) continue;
+    assert.ok(bySleeve[i].opening < bySleeve[i - 1].opening, `套筒越高,節流閥開得越小(套筒 ${bySleeve[i].sleeve.toFixed(3)})`);
+  }
+  assert.ok(bySleeve[0].opening > 0.95, "套筒在最低處時閥全開");
+  assert.ok(bySleeve[bySleeve.length - 1].opening < 0.15, "套筒在最高處時閥幾乎關上");
+}
+
+test("第 274 種(推斷):套筒的環槽經叉形槓桿與閥桿拉節流閥,閥的開度跟著套筒高度變", () => {
+  assertThrottle(m274.default, sweep(10, 40));
+});
+
+test("第 274 種:套筒高度對 (轉速/上限)² 線性,滑桿前段也看得出套筒升降", () => {
+  const lo = m274.governor(0).sleeve;
+  const travel = m274.governor(10).sleeve - lo;
+  close((m274.governor(3).sleeve - lo) / travel, 0.09, "0→3 升 9%", 1e-6);
+  close((m274.governor(5).sleeve - lo) / travel, 0.25, "0→5 升 25%", 1e-6);
+});
+
+test("第 274 種:兩支臂 B 的下段在心軸處接成一條弧,心軸上的方塊 a 壓在弧上;套筒升到頂也碰不到 a", () => {
+  const def = m274.default;
+  const frame = part(def, "frame");
+  const arc = frame.pieces.find((p) => p.role === "arc");
+  const a = frame.pieces.find((p) => p.role === "hubA");
+  assert.ok(arc && a, "有接成一條的弧與方塊 a");
+  for (const x of [-0.3, 0, 0.3]) assert.ok(pointInPolygon([x, m274.parabola(x) - 0.05], arc.shape.outline), `弧穿過 x = ${x}`);
+  const [w, h, d] = a.size;
+  assert.ok(a.at[1] + h / 2 > m274.parabola(0) && a.at[1] - h / 2 < m274.parabola(0) - 0.11, "方塊 a 包住弧");
+  assert.ok(w / 2 > 0.07, "方塊 a 套在心軸上");
+  assert.ok(a.at[2] - d / 2 <= arc.at[2] - 0.05 && a.at[2] + d / 2 >= 0.07, "方塊 a 從心軸伸到臂那一層");
+  const sleeveTop = Math.max(...part(def, "sleeve").pieces.map((p) => (p.at ?? [0, 0, 0])[1] + (p.kind === "box" ? p.size[1] : p.length) / 2));
+  for (const s of sweep(10, 20)) assert.ok(def.pose(s).parts.sleeve.position[1] + sleeveTop < a.at[1] - h / 2 - 0.02, `轉速 ${s}:套筒不碰方塊 a`);
+});
+
+test("第 287 種(推斷):塔輪由引擎的皮帶帶著轉,皮帶不打滑", () => {
+  const def = m287.default;
+  const ps = sweep(m287.PERIOD, 96);
+  for (let i = 1; i < ps.length; i++) {
+    const [a, b] = [def.pose(ps[i - 1]), def.pose(ps[i])];
+    assert.ok(b.parts.spindle.angle > a.parts.spindle.angle, `進程 ${ps[i].toFixed(2)}:心軸與塔輪一直往前轉`);
+  }
+  for (const p of ps) {
+    const pose = def.pose(p);
+    close(pose.parts.engine.angle * m287.belt.engine, pose.parts.spindle.angle * m287.belt.spindle, "兩輪輪緣走的距離一樣", 1e-9);
+    close(pose.paths.belt.phase, pose.parts.spindle.angle * m287.belt.spindle, "皮帶跟著輪緣走", 1e-9);
+  }
+});
+
+test("第 287 種:轉速起伏時套筒跟著升降,滑桿從頭到尾都看得出變化", () => {
+  const def = m287.default;
+  const lo = m287.governor(0).sleeve;
+  const travel = m287.governor(10).sleeve - lo;
+  close((m287.governor(3).sleeve - lo) / travel, 0.09, "套筒高度對 (轉速/上限)² 線性:0→3 升 9%", 1e-6);
+  const n = 12;
+  for (let i = 0; i < n; i++) {
+    const seg = sweep(((i + 1) * m287.PERIOD) / n, 10, (i * m287.PERIOD) / n).map((p) => def.pose(p).parts.sleeve.position[1]);
+    assert.ok(Math.max(...seg) - Math.min(...seg) > 0.08 * travel, `滑桿第 ${i + 1}/${n} 段:套筒有看得出的升降`);
+  }
+  for (const p of sweep(m287.PERIOD, 48)) close(def.pose(p).parts.sleeve.position[1], m287.governor(m287.speedAt(p)).sleeve, "套筒高度由當下的轉速決定", 1e-9);
+});
+
+test("第 287 種(推斷):套筒的環槽經叉形槓桿與閥桿拉節流閥,閥的開度跟著套筒高度變", () => {
+  assertThrottle(m287.default, sweep(m287.PERIOD, 96));
+});
