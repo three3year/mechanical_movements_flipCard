@@ -8,11 +8,16 @@
 // 推斷:擺幅與銷的數目(依原圖八根)、叉瓦的位置與形狀(兩叉瓦在銷圈上相隔半個銷距;原圖的叉瓦是斜放的直條,
 // 模型做成以樞軸為圓心的弧形塊,鎖住時輪才不會被推回);
 // 輪軸與搖臂的樞軸裝在後面的夾板條上(原圖沒畫)。
-import { TAU, deg, swing } from "./kit.js";
+// 推斷的驅動(原文只說搖臂上的叉瓦擋住銷,沒說輪為什麼往前轉;共用 weight-drive.js):輪軸上、輪盤後面有一個鼓,
+// 繩從鼓頂往左拉到夾板條左端的滑輪,再垂下吊著重錘;重錘的重量就是讓輪逆時針轉的固定力矩,輪轉多少重錘降多少,
+// 被叉瓦擋住時重錘也停。輪每轉一圈(搖臂擺八個來回)重錘捲回最高處一次(上鍊,畫面上一下子回到上面)。
+// 實物也可能用發條;重錘只是示意「輪受固定的力矩」。
+import { TAU, deg, swing, Y, Z } from "./kit.js";
 import { escapeByContact, placePoly } from "./escapement.js";
 import { shape, circle, thickLine } from "./shapes.js";
 import { circlePolygon } from "./contact.js";
 import { plateBar } from "./supports.js";
+import { weightDrive, rewound } from "./weight-drive.js";
 
 export const PINS = 8;
 export const PITCH = TAU / PINS;
@@ -56,6 +61,27 @@ export const escapement = {
 /** 搖臂累計擺動 v → 輪的轉角(逆時針為正,由接觸算) */
 export const wheelAngle = escapement.angle;
 
+// 推斷的重錘驅動:鼓在輪盤後面的輪軸上,繩從鼓頂往左拉到夾板條左端的滑輪頂上,再垂下吊重錘
+const ROPE_R = 0.045; // 繩的半徑(畫面上的繩粗)
+const DRUM_R = 0.15;
+const DRUM_Z = -0.3; // 鼓(與繩、滑輪)所在的深度:輪盤背面與夾板條之間
+const DRUM = { center: [0, 0, DRUM_Z], axis: Z, radius: DRUM_R + ROPE_R, sense: 1 }; // 輪往前(逆時針)轉時繩從鼓上放出
+const PULLEY_R = 0.15;
+const PULLEY = { center: [-2.15, DRUM.radius - PULLEY_R - ROPE_R, DRUM_Z], axis: Z, radius: PULLEY_R + ROPE_R, sense: -1 };
+const REWIND = PINS * 4 * SWING; // 輪轉一圈(搖臂擺八個來回)上鍊一次
+const WEIGHT = { radius: 0.17, height: 0.4 };
+const BAR_Z = -0.6; // 夾板條
+const hang = weightDrive({
+  drum: DRUM,
+  pulleys: [PULLEY],
+  eye: [PULLEY.center[0] - PULLEY.radius, -0.4, DRUM_Z],
+  reserve: DRUM.radius * TAU,
+  spare: 0.8 * TAU * DRUM.radius,
+  pitch: 2 * ROPE_R,
+});
+const weightAt = rewound(hang, wheelAngle, REWIND);
+export const geometry = { DRUM, REWIND };
+
 // 搖臂(相對樞軸):從樞軸往下到 C 的內端;B 用一段支臂接在搖臂上
 const C_IN = C_ARC.end;
 const B_OUT = B_ARC.end;
@@ -72,6 +98,7 @@ export default {
         { kind: "plate", shape: shape(circle(R), [circle(0.12).reverse()]), thickness: 0.14, circles: [R - 0.12] },
         { kind: "cylinder", radius: 0.3, length: 0.3 },
         { kind: "cylinder", radius: 0.1, length: 0.6, at: [0, 0, -0.35] }, // 輪軸,往後伸進夾板條
+        { kind: "cylinder", radius: DRUM_R, length: 0.3, at: [0, 0, DRUM_Z] }, // 繞繩的鼓(推斷),接在輪轂背面
         ...Array.from({ length: PINS }, (_, i) => ({ kind: "cylinder", radius: PIN, length: 0.45, at: [RP * Math.cos(i * PITCH), RP * Math.sin(i * PITCH), 0.25], accent: i === 0 })),
       ],
     },
@@ -90,11 +117,22 @@ export default {
         { kind: "cylinder", radius: 0.08, length: 1.1, at: [0, 0, 0.0] }, // 搖臂的樞軸,往後伸進夾板條
       ],
     },
-    { id: "frame", kind: "group", pieces: plateBar({ points: [[0, 0], P], z: -0.6 }) },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        // 夾板條從輪軸往右上到搖臂的樞軸、往左伸到滑輪的軸(推斷)
+        ...plateBar({ points: [[PULLEY.center[0], PULLEY.center[1]], [0, 0], P], z: BAR_Z }),
+        { kind: "cylinder", radius: 0.04, length: DRUM_Z + 0.1 - BAR_Z, at: [PULLEY.center[0], PULLEY.center[1], (DRUM_Z + 0.1 + BAR_Z) / 2] }, // 滑輪的軸
+      ],
+    },
+    { id: "pulley", kind: "pulley", style: "disc", center: PULLEY.center, axis: Z, radius: PULLEY_R, width: 0.1, arrow: false },
+    { id: "rope", kind: "rope", radius: ROPE_R },
+    { id: "weight", kind: "weight", axis: Y, radius: WEIGHT.radius, height: WEIGHT.height },
     { id: "labelB", kind: "group", center: [...P, 0], label: "B", labelOffset: [B_OUT[0] + 0.25, B_OUT[1], 0.6] },
     { id: "labelC", kind: "group", center: [...P, 0], label: "C", labelOffset: [C_IN[0] - 0.2, C_IN[1] - 0.25, 0.6] },
   ],
-  // 動力重演:只推搖臂;燈籠輪受固定的力矩(重錘)往逆時針轉,銷由兩個叉瓦輪流擋住、放行
+  // 動力重演:只推搖臂;燈籠輪受重錘的固定力矩往逆時針轉(以彈簧代替;重錘、滑輪照模型的姿勢走),銷由兩個叉瓦輪流擋住、放行
   replay: {
     to: 8 * SWING,
     free: { wheel: { pivot: [0, 0, 0], spring: 1, gravity: false } },
@@ -109,6 +147,17 @@ export default {
   target: "wheel", // 燈籠輪:擒縱讓它一格一格地放行
   view: { direction: [0.03, 0.04, 1] },
   pose(v) {
-    return { parts: { armA: { angle: armAngle(v) }, wheel: { angle: wheelAngle(v) } }, readouts: [] };
+    const w = weightAt(v);
+    const eye = w.eye;
+    return {
+      parts: {
+        armA: { angle: armAngle(v) },
+        wheel: { angle: wheelAngle(v) },
+        pulley: { angle: w.pulleys[0] },
+        weight: { position: [eye[0], eye[1] - WEIGHT.height / 2 - WEIGHT.radius * 0.38, eye[2]] },
+      },
+      paths: { rope: { points: w.rope, closed: false, phase: 0 } },
+      readouts: [],
+    };
   },
 };

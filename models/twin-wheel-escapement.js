@@ -7,12 +7,19 @@
 // 由接觸算(models/escapement.js 的 escapeByContact,兩個輪分開算):在每個輪的平面上,半圓板的截面是一根直條,
 // 上緣的高度是「輪的位置 × tan(擺軸的轉角)」;輪受重錘的固定力矩逆時針轉,齒碰上翹起的那一端就停,
 // 那一端降到齒尖下面時齒滑過去,輪加速轉到另一個輪的齒碰上另一端為止。
-// 推斷:齒數與擺幅(依原圖約十二齒的鉤形齒)、擺軸的高度(在齒尖圓的最低點);擺軸與輪軸的軸承(原圖沒畫)。
-import { X, TAU, deg, swing } from "./kit.js";
+// 推斷:齒數與擺幅(525 px 原圖數得約 18–20 個鉤形齒,取 20;每擺一次放走半個齒距 9°)、擺軸的高度(在齒尖圓的最低點);
+// 擺軸與輪軸的軸承(原圖沒畫):輪軸兩端的軸承各由一支 L 形托架往左接到立柱,立柱站在底座上——
+// 不從輪心往下立,前視圖(第 300 種)裡半圓叉瓦前面才沒有東西擋著。
+// 推斷的驅動(原文只說叉瓦交替地由兩個輪的齒作用,沒說輪為什麼往前轉;共用 weight-drive.js):輪軸上、後輪與後軸承之間
+// 有一個鼓,繩從鼓頂往左拉到左後托架上的滑輪,再垂下吊著重錘;重錘的重量就是讓輪逆時針轉的固定力矩,輪轉多少重錘降多少,
+// 被叉瓦擋住時重錘也停。輪每轉一圈(擺軸擺二十個來回)重錘捲回最高處一次(上鍊,畫面上一下子回到上面)。
+// 實物也可能用發條;重錘只是示意「輪受固定的力矩」。
+import { X, Y, Z, TAU, deg, swing } from "./kit.js";
+import { weightDrive, rewound } from "./weight-drive.js";
 import { escapeByContact, toothedWheel } from "./escapement.js";
 import { shape, circle, arcPoints, rect } from "./shapes.js";
 
-export const N = 12;
+export const N = 20;
 export const PITCH = TAU / N;
 export const SWING = deg(18);
 const C = [0, 1.0];
@@ -49,6 +56,28 @@ export const escapement = {
   period: 4 * SWING,
 };
 
+// 推斷的重錘驅動:鼓在輪軸上(後輪與後軸承之間),繩從鼓頂往左拉到左後托架上的滑輪頂上,再垂下吊重錘
+const AXLE_Z = 1.56; // 輪軸兩端的軸承
+const BRACKET_X = -2.35; // 托架的立柱
+const ROPE_R = 0.045; // 繩的半徑(畫面上的繩粗)
+const DRUM_R = 0.2;
+const DRUM = { center: [...C, -1.0], axis: Z, radius: DRUM_R + ROPE_R, sense: 1 }; // 輪往前(逆時針)轉時繩從鼓上放出
+const PULLEY_R = 0.15;
+const PULLEY = { center: [BRACKET_X, C[1] + DRUM.radius - PULLEY_R - ROPE_R, DRUM.center[2]], axis: Z, radius: PULLEY_R + ROPE_R, sense: -1 };
+const REWIND = N * 4 * SWING; // 輪轉一圈上鍊一次
+const WEIGHT = { radius: 0.17, height: 0.4 };
+const FLOOR = STAFF_Y - 0.56; // 底座頂面
+const hang = weightDrive({
+  drum: DRUM,
+  pulleys: [PULLEY],
+  eye: [PULLEY.center[0] - PULLEY.radius, C[1] - 0.2, PULLEY.center[2]],
+  reserve: DRUM.radius * TAU,
+  spare: 0.8 * TAU * DRUM.radius,
+  pitch: 2 * ROPE_R,
+});
+const weightAt = rewound(hang, escapement.angle, REWIND);
+export const geometry = { STAFF_Y, DISC, PALLET_X, DRUM, REWIND };
+
 /** 擺軸累計擺動 v → 擺軸角、擒縱輪轉角(逆時針為正,由接觸算) */
 export function twin(v) {
   return { staff: staffAngle(v), wheel: escapement.angle(v) };
@@ -68,8 +97,14 @@ export function twinWheels(figure, direction) {
         kind: "group",
         center: [...C, 0],
         spin: R,
-        pieces: [...wheel(GAP, 0), ...wheel(-GAP, PITCH / 2), { kind: "cylinder", radius: 0.18, length: 2 * GAP + 0.3 }, { kind: "cylinder", radius: 0.08, length: 3.0 }, { kind: "box", size: [0.14, 0.14, 0.14], at: [R - 0.75, 0, GAP + 0.08], accent: true }],
+        pieces: [...wheel(GAP, 0), ...wheel(-GAP, PITCH / 2), { kind: "cylinder", radius: 0.18, length: 2 * GAP + 0.3 }, { kind: "cylinder", radius: 0.08, length: 3.0 }, { kind: "cylinder", radius: DRUM_R, length: 0.3, at: [0, 0, DRUM.center[2]] }, // 繞繩的鼓(推斷)
+          // 抓取用的方塊:貼在前輪的一根輪輻上
+          { kind: "box", size: [0.14, 0.14, 0.14], at: [0.75 * Math.cos(0.4), 0.75 * Math.sin(0.4), GAP + 0.11], angle: 0.4, accent: true },
+        ],
       },
+      { id: "pulley", kind: "pulley", style: "disc", center: PULLEY.center, axis: Z, radius: PULLEY_R, width: 0.1, arrow: false },
+      { id: "rope", kind: "rope", radius: ROPE_R },
+      { id: "weight", kind: "weight", axis: Y, radius: WEIGHT.radius, height: WEIGHT.height },
       {
         id: "staff",
         kind: "group",
@@ -86,16 +121,21 @@ export function twinWheels(figure, direction) {
         id: "frame",
         kind: "group",
         pieces: [
-          // 擺軸兩端與輪軸兩端的軸承(原圖沒畫)
+          // 擺軸兩端的軸承立在底座上;輪軸兩端的軸承各由一支 L 形托架(往左的橫臂 + 立柱)接到底座(原圖沒畫)
           ...[-1, 1].map((s) => ({ kind: "cylinder", axis: X, radius: 0.13, inner: 0.06, length: 0.12, at: [s * 2.06, STAFF_Y, 0] })),
-          ...[-1, 1].map((s) => ({ kind: "cylinder", radius: 0.15, inner: 0.08, length: 0.12, at: [C[0], C[1], s * 1.56] })),
-          ...[-1, 1].map((s) => ({ kind: "box", size: [0.14, C[1] - STAFF_Y + 0.5, 0.12], at: [C[0], (C[1] + STAFF_Y - 0.5) / 2 - 0.15, s * 1.56] })),
           ...[-1, 1].map((s) => ({ kind: "box", size: [0.14, 0.5, 0.14], at: [s * 2.06, STAFF_Y - 0.31, 0] })),
-          { kind: "box", size: [4.3, 0.12, 3.3], at: [0, STAFF_Y - 0.62, 0] },
+          ...[-1, 1].flatMap((s) => [
+            { kind: "cylinder", radius: 0.15, inner: 0.08, length: 0.12, at: [C[0], C[1], s * AXLE_Z] },
+            { kind: "box", size: [C[0] - BRACKET_X + 0.07, 0.14, 0.12], at: [(C[0] + BRACKET_X - 0.07) / 2, C[1], s * AXLE_Z] },
+            { kind: "box", size: [0.14, C[1] - FLOOR + 0.07, 0.12], at: [BRACKET_X, (C[1] + FLOOR + 0.07) / 2, s * AXLE_Z] },
+          ]),
+          { kind: "box", size: [4.8, 0.12, 3.5], at: [-0.25, FLOOR - 0.06, 0] },
+          // 托架伸出的滑輪軸(推斷)
+          { kind: "cylinder", radius: 0.04, length: PULLEY.center[2] + AXLE_Z, at: [PULLEY.center[0], PULLEY.center[1], (PULLEY.center[2] - AXLE_Z) / 2] },
         ],
       },
     ],
-    // 動力重演:只推擺軸;雙擒縱輪受固定的力矩(重錘)逆時針轉,由半圓叉瓦的兩端輪流擋住、放行
+    // 動力重演:只推擺軸;雙擒縱輪受重錘的固定力矩逆時針轉(以彈簧代替;重錘、滑輪照模型的姿勢走),由半圓叉瓦的兩端輪流擋住、放行
     replay: {
       to: 8 * SWING,
       free: { wheels: { pivot: [...C, 0], spring: 1, gravity: false } },
@@ -111,7 +151,18 @@ export function twinWheels(figure, direction) {
     view: { direction },
     pose(v) {
       const t = twin(v);
-      return { parts: { staff: { angle: t.staff }, wheels: { angle: t.wheel } }, readouts: [] };
+      const w = weightAt(v);
+      const eye = w.eye;
+      return {
+        parts: {
+          staff: { angle: t.staff },
+          wheels: { angle: t.wheel },
+          pulley: { angle: w.pulleys[0] },
+          weight: { position: [eye[0], eye[1] - WEIGHT.height / 2 - WEIGHT.radius * 0.38, eye[2]] },
+        },
+        paths: { rope: { points: w.rope, closed: false, phase: 0 } },
+        readouts: [],
+      };
     },
   };
 }
