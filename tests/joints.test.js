@@ -703,7 +703,133 @@ test("第 262–263 種:同一機構的端視圖與側視圖;錐體偏心地轉,
   }
   assert.ok(up > 0.5 && down > 0.5, "滾子上下往復");
   assert.ok(Math.abs(up - down) > 0.1, "兩個方向的行程不等");
-  close(cone.cone(2 * Math.PI).cx - cone.cone(0).cx, cone.PITCH, "螺桿每轉一圈前進一個螺距");
+  close(Math.abs(cone.cone(2 * Math.PI).cx - cone.cone(0).cx), cone.PITCH, "螺桿每轉一圈前進一個螺距");
+});
+
+// 第 262–263 種的外形量測:錐體的截面半徑從 lathe 輪廓與姿勢量,滾子、立桿、導套、螺紋、螺帽從零件定義量
+const coneShape = {
+  /** 錐體在世界座標 x 處的截面半徑(錐軸平行於 x);x 在錐體之外回傳 null */
+  radius(pose, x) {
+    const profile = part(fig263, "coneB").profile.filter(([r]) => r > 0); // [半徑, 沿軸位置]
+    const a = x - pose.coneB.position[0];
+    for (let i = 1; i < profile.length; i++) {
+      const [r0, a0] = profile[i - 1];
+      const [r1, a1] = profile[i];
+      if (a >= Math.min(a0, a1) && a <= Math.max(a0, a1)) return r0 + ((r1 - r0) * (a - a0)) / (a1 - a0);
+    }
+    return null;
+  },
+  ends(pose) {
+    const as = part(fig263, "coneB").profile.map(([, a]) => a);
+    return [pose.coneB.position[0] + Math.min(...as), pose.coneB.position[0] + Math.max(...as)];
+  },
+};
+/** 滾子與錐面在滾子寬度內各截面的間隙(兩圓的中心距 − 兩半徑),取最小;有截面落在錐體外回傳 null */
+function rollerConeGap(v) {
+  const pose = fig263.pose(v).parts;
+  const roller = part(fig263, "rollerC");
+  const [xr, yr, zr] = pose.rollerC.position;
+  const [, ey, ez] = pose.coneB.position;
+  let gap = Infinity;
+  for (let k = 0; k <= 10; k++) {
+    const x = xr - roller.length / 2 + (roller.length * k) / 10;
+    const r = coneShape.radius(pose, x);
+    if (r == null) return null;
+    gap = Math.min(gap, Math.hypot(yr - ey, zr - ez) - r - roller.radius);
+  }
+  return gap;
+}
+/** 群組零件的一塊 box 在世界座標的範圍(群組不轉,只平移) */
+const boxSpan = (piece, origin = [0, 0, 0]) => piece.size.map((s, i) => [origin[i] + (piece.at?.[i] ?? 0) - s / 2, origin[i] + (piece.at?.[i] ?? 0) + s / 2]);
+
+test("第 262–263 種:錐體往左走、離開螺帽 E,滾子壓的部位由大端一路往小端,接觸處越來越細", () => {
+  const vs = sweep(cone.RANGE[1], 280);
+  const radii = vs.map((v) => {
+    const pose = fig263.pose(v).parts;
+    return coneShape.radius(pose, pose.rollerC.position[0]);
+  });
+  for (let i = 1; i < radii.length; i++) assert.ok(radii[i] <= radii[i - 1] + 1e-12, `主動量 ${vs[i].toFixed(2)}:接觸處沒有變粗`);
+  const big = Math.max(...part(fig263, "coneB").profile.map(([r]) => r));
+  const small = Math.min(...part(fig263, "coneB").profile.filter(([r]) => r > 0).map(([r]) => r));
+  assert.ok(radii[0] > big - 0.25 * (big - small), `起點在大端附近(半徑 ${radii[0].toFixed(3)})`);
+  assert.ok(radii.at(-1) < small + 0.3 * (big - small), `終點在小端附近(半徑 ${radii.at(-1).toFixed(3)})`);
+  // 錐體與 E 之間是光軸:螺紋一直在 E 裡,而且螺紋的左端在錐體小端的右邊
+  const screw = part(fig263, "screwD");
+  const nut = part(fig263, "base").pieces.find((p) => p.kind === "cylinder" && p.axis?.[0] === 1);
+  const [n0, n1] = [nut.at[0] - nut.length / 2, nut.at[0] + nut.length / 2];
+  let gapToNut = -Infinity;
+  for (const v of vs) {
+    const pose = fig263.pose(v).parts;
+    const sx = pose.screwD.position[0];
+    const [t0, t1] = [sx - screw.length / 2, sx + screw.length / 2];
+    assert.ok(t0 < n0 && t1 > n1, `主動量 ${v.toFixed(2)}:螺紋穿過 E`);
+    const [, coneRight] = coneShape.ends(pose);
+    assert.ok(t0 > coneRight, `主動量 ${v.toFixed(2)}:錐體與 E 之間是光軸`);
+    const g = n0 - coneRight;
+    assert.ok(g >= gapToNut - 1e-12, `主動量 ${v.toFixed(2)}:錐體離 E 越來越遠`);
+    gapToNut = g;
+  }
+});
+
+test("第 262–263 種:滾子全程壓在錐面上(間隙接近 0、不穿入);每次頂起比上一次低,往上的行程比往下短", () => {
+  const vs = sweep(cone.RANGE[1], 700);
+  for (const v of vs) {
+    const gap = rollerConeGap(v);
+    assert.ok(gap != null, `主動量 ${v.toFixed(2)}:滾子整個寬度都在錐體上`);
+    assert.ok(gap > -1e-6, `主動量 ${v.toFixed(2)}:滾子穿入錐面 ${(-gap).toFixed(4)}`);
+    assert.ok(gap < 2e-3, `主動量 ${v.toFixed(2)}:滾子離開錐面 ${gap.toFixed(4)}`);
+  }
+  const ys = vs.map((v) => fig263.pose(v).parts.stemC.position[1]);
+  const peaks = [];
+  const troughs = [];
+  for (let i = 1; i < ys.length - 1; i++) {
+    if (ys[i] >= ys[i - 1] && ys[i] > ys[i + 1]) peaks.push(ys[i]);
+    if (ys[i] <= ys[i - 1] && ys[i] < ys[i + 1]) troughs.push(ys[i]);
+  }
+  peaks.unshift(ys[0]);
+  assert.ok(peaks.length >= 4, "頂起好幾次");
+  for (let i = 1; i < peaks.length; i++) assert.ok(peaks[i] < peaks[i - 1], `第 ${i + 1} 次頂起比上一次低`);
+  for (let i = 1; i < troughs.length; i++) assert.ok(troughs[i] < troughs[i - 1], `第 ${i + 1} 次落下比上一次低`);
+  // 每一段往上的行程(谷 → 下一個峰)比它前後往下的行程(峰 → 谷)短
+  for (let i = 0; i < troughs.length && i + 1 < peaks.length; i++) {
+    const down = peaks[i] - troughs[i];
+    const upStroke = peaks[i + 1] - troughs[i];
+    assert.ok(upStroke < down, `第 ${i + 1} 圈:往上 ${upStroke.toFixed(3)} 比往下 ${down.toFixed(3)} 短`);
+  }
+});
+
+test("第 262–263 種:滾子裝在叉上,立桿全程在導套裡,叉與立桿都不穿進滾子的盤面", () => {
+  const stem = part(fig263, "stemC");
+  const roller = part(fig263, "rollerC");
+  const guideAxis = [cone.geometry.XC, 0]; // 立桿的 x、z
+  const rod = stem.pieces.filter((p) => p.kind === "box").sort((a, b) => b.size[1] - a.size[1])[0]; // 最長的直立方桿
+  // 導套:底座裡圍著立桿(x、z 離立桿中心 0.15 以內)、在滾子上方的板
+  const sleeve = part(fig263, "base").pieces.filter((p) => p.kind === "box" && Math.abs(p.at[0] - guideAxis[0]) < 0.15 && Math.abs(p.at[2] - guideAxis[1]) < 0.15 && p.at[1] > 1);
+  assert.ok(sleeve.length >= 4, "四片板圍成的導套");
+  const g0 = Math.min(...sleeve.map((p) => boxSpan(p)[1][0]));
+  const g1 = Math.max(...sleeve.map((p) => boxSpan(p)[1][1]));
+  for (const v of sweep(cone.RANGE[1], 400)) {
+    const pose = fig263.pose(v).parts;
+    const [r0, r1] = boxSpan(rod, pose.stemC.position)[1];
+    assert.ok(r0 <= g0 && r1 >= g1, `主動量 ${v.toFixed(2)}:立桿 ${r0.toFixed(2)}…${r1.toFixed(2)} 沒有穿滿導套 ${g0.toFixed(2)}…${g1.toFixed(2)}`);
+  }
+  // 叉、立桿、重物這些方塊都不進到滾子盤面(滾子局部:x 在寬度內、yz 離軸心小於半徑)
+  for (const p of stem.pieces.filter((q) => q.kind === "box")) {
+    const [[x0, x1], [y0, y1], [z0, z1]] = boxSpan(p);
+    const overlapX = x0 < roller.length / 2 && x1 > -roller.length / 2;
+    const dy = Math.max(y0, Math.min(0, y1)) - 0;
+    const dz = Math.max(z0, Math.min(0, z1)) - 0;
+    assert.ok(!overlapX || Math.hypot(dy, dz) >= roller.radius, `立桿的方塊 ${JSON.stringify(p.at)} 穿進滾子盤面`);
+  }
+  // 叉的兩片托住滾子銷的兩端
+  const pin = stem.pieces.find((p) => p.kind === "cylinder");
+  assert.ok(pin, "銷裝在叉上");
+  const cheeks = stem.pieces.filter((p) => p.kind === "box" && Math.abs(p.at?.[0] ?? 0) > roller.length / 2 && boxSpan(p)[1][0] <= 0 && boxSpan(p)[1][1] >= 0);
+  assert.ok(cheeks.some((p) => p.at[0] < 0) && cheeks.some((p) => p.at[0] > 0), "滾子兩側各一片叉板");
+  for (const p of cheeks) {
+    const [x0, x1] = boxSpan(p)[0];
+    assert.ok(x0 >= -pin.length / 2 && x1 <= pin.length / 2, "叉板套在銷上");
+  }
 });
 
 test("第 264 種:100 齒與 101 齒的蝸輪,在蝸桿 10,100 次旋轉期間,一個輪比另一個多轉一圈", () => {
@@ -712,6 +838,22 @@ test("第 264 種:100 齒與 101 齒的蝸輪,在蝸桿 10,100 次旋轉期間,�
   const [a1, b1] = m264.wheels(2 * Math.PI);
   close(Math.abs(a1) * 100, 2 * Math.PI, "蝸桿一圈,100 齒輪轉一齒");
   close(Math.abs(b1) * 101, 2 * Math.PI, "蝸桿一圈,101 齒輪轉一齒");
+});
+
+test("第 264 種:蝸桿的軸兩端都穿過軸承環", () => {
+  const def = m264.default;
+  const worm = part(def, "worm");
+  const shaft = worm.pieces.find((p) => p.kind === "cylinder");
+  const z0 = (shaft.at?.[2] ?? 0) - shaft.length / 2;
+  const z1 = (shaft.at?.[2] ?? 0) + shaft.length / 2;
+  // 蝸桿軸沿 z、軸心在蝸桿中心;軸承環是框架裡和蝸桿同軸(x、y 相同)的空心圓柱
+  const rings = part(def, "frame").pieces.filter((p) => p.kind === "cylinder" && p.inner && !p.axis && Math.abs(p.at[1] - worm.center[1]) < 1e-9);
+  assert.equal(rings.length, 2, "兩端各一個軸承環");
+  for (const ring of rings) {
+    const [r0, r1] = [ring.at[2] - ring.length / 2, ring.at[2] + ring.length / 2];
+    assert.ok(shaft.radius <= ring.inner, "軸放得進孔");
+    assert.ok(z0 <= r0 && z1 >= r1, `軸 ${z0}…${z1} 穿過 z ${r0}…${r1} 的軸承環`);
+  }
 });
 
 test("第 266 種:軸的旋轉使可動軸承直線移動,每旋轉一圈移動的距離等於兩螺距之差", () => {

@@ -36,7 +36,7 @@ const wheel = (id, n, x, pieces) => ({
 export default {
   figure: 264,
   parts: [
-    { id: "worm", kind: "worm", axis: Z, center: [0, R + WORM.radius - 0.02, 0], radius: WORM.radius, length: WORM.length, pitch: (TAU * R) / 100, thread: 0.07, pieces: [{ kind: "cylinder", radius: 0.1, length: 2.4 }] },
+    { id: "worm", kind: "worm", axis: Z, center: [0, R + WORM.radius - 0.02, 0], radius: WORM.radius, length: WORM.length, pitch: (TAU * R) / 100, thread: 0.07, pieces: [{ kind: "cylinder", radius: 0.1, length: 2.7 }] }, // 軸兩端穿過軸承環(z ±1.19…1.31)
     // 100 齒輪帶著軸轉(軸穿過 101 齒輪的孔);針的轂在軸末端 x ≈ 0.74
     wheel("wheel100", TEETH[0], -GAP, [
       { kind: "cylinder", radius: 0.09, length: 2.6, at: [0, 0, 0.4 + GAP] },
@@ -52,7 +52,7 @@ export default {
         // 蝸桿軸兩端的軸承:由輪的另一側(−X,沒有針的那側)立起的柱子伸出的橫臂托著
         ...[-1.25, 1.25].flatMap((z) => [
           { kind: "cylinder", radius: 0.18, inner: 0.1, length: 0.12, at: [0, R + WORM.radius - 0.02, z] },
-          { kind: "box", size: [0.6, 0.12, 0.12], at: [-0.35, R + WORM.radius - 0.02, z] },
+          { kind: "box", size: [0.52, 0.12, 0.12], at: [-0.4, R + WORM.radius - 0.02, z] }, // 橫臂接到環的外緣,不伸進孔裡
           { kind: "box", size: [0.14, R + WORM.radius + 2.2, 0.14], at: [-0.68, (R + WORM.radius - 2.2) / 2 - 0.01, z] },
         ]),
         // 輪軸兩端的軸承座
