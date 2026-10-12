@@ -1903,6 +1903,207 @@ test("第 283 種:手柄擺動,經小齒輪使齒條上下移動;齒條移動量
   close(y(0.5, "rackL") - y(0, "rackL"), -(y(0.5, "rack") - y(0, "rack")), "兩側的齒條反向移動同樣的量(兩缸輪流抽氣)");
 });
 
+// 第 281–283 種:零件一塊的外接盒(box、plate、cylinder;cylinder 的軸沿 x、y 或 z),在零件的局部座標
+const pieceBox281 = (p) => {
+  const [x, y, z] = p.at ?? [0, 0, 0];
+  if (p.kind === "box") return [[x - p.size[0] / 2, y - p.size[1] / 2, z - p.size[2] / 2], [x + p.size[0] / 2, y + p.size[1] / 2, z + p.size[2] / 2]];
+  if (p.kind === "plate") {
+    const xs = p.shape.outline.map((q) => q[0] + x);
+    const ys = p.shape.outline.map((q) => q[1] + y);
+    const t = p.thickness ?? 0.2;
+    return [[Math.min(...xs), Math.min(...ys), z - t / 2], [Math.max(...xs), Math.max(...ys), z + t / 2]];
+  }
+  if (p.kind === "cylinder") {
+    const half = (p.axis ?? [0, 0, 1]).map((a) => (Math.abs(a) > 0.5 ? p.length / 2 : p.radius));
+    return [[x - half[0], y - half[1], z - half[2]], [x + half[0], y + half[1], z + half[2]]];
+  }
+  throw new Error(`沒處理的塊:${p.kind}`);
+};
+// 外接盒和第一塊接不上的塊(從第一塊出發,相接的連成一群)
+const unjoined281 = (pieces) => {
+  const boxes = pieces.map(pieceBox281);
+  const reached = new Set([boxes[0]]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const b of boxes) if (!reached.has(b) && [...reached].some((r) => boxesMeet(r, b))) (reached.add(b), (grew = true));
+  }
+  return pieces.filter((_, i) => !reached.has(boxes[i]));
+};
+const zSpan281 = (p, z0 = 0) => {
+  const [lo, hi] = pieceBox281(p);
+  return [z0 + lo[2], z0 + hi[2]];
+};
+const overlap281 = ([a0, a1], [b0, b1]) => Math.min(a1, b1) - Math.max(a0, b0);
+const plateAt281 = (pieces, [x, y]) => pieces.find((p) => p.kind === "plate" && pointInPolygon([x - (p.at?.[0] ?? 0), y - (p.at?.[1] ?? 0)], p.shape.outline));
+const zPinAt281 = (pieces, [x, y]) => pieces.find((p) => p.kind === "cylinder" && !p.axis && Math.hypot(p.at[0] - x, p.at[1] - y) < 1e-9);
+
+test("第 281 種:銷裝在槓桿跨過盤緣的凸起處,沒有另外的銷架;槽的最外側靠近盤緣(#281-1)", () => {
+  const def = m281.default;
+  const lever = part(def, "lever");
+  const pin = lever.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) > 0.5);
+  const plates = lever.pieces.filter((p) => p.kind === "plate");
+  const bar = plates.find((p) => p.shape.holes?.length); // 有樞軸孔的那一塊:槓桿本身
+  const boss = plateAt281(plates, pin.at);
+  assert.ok(boss, "銷立在槓桿的一塊板上");
+  for (const p of plates) assert.deepEqual(zSpan281(p), zSpan281(bar), "槓桿的每一塊板都在槓桿那一層(沒有伸到別層的銷架)");
+  const moved = (p) => p.shape.outline.map(([x, y]) => [x + (p.at?.[0] ?? 0), y + (p.at?.[1] ?? 0)]);
+  assert.ok(boss === bar || polygonsOverlap(moved(boss), moved(bar)), "凸起和槓桿接成一件");
+  const dir = [Math.cos(m281.BAR), Math.sin(m281.BAR)];
+  assert.ok(Math.abs(pin.at[0] * dir[1] - pin.at[1] * dir[0]) < 0.25, "銷就在槓桿邊上的凸起處");
+  // 銷的實際位置就是槽的路徑;銷離盤心最遠時(槽的最外側)靠近盤緣,槓桿正在那裡跨過盤緣
+  const [C, R] = [m281.DISC.center, m281.DISC.radius];
+  const pinWorld = (t) => {
+    const [x, y] = rot2(pin.at, m281.lever(t));
+    return [m281.PIVOT[0] + x, m281.PIVOT[1] + y];
+  };
+  for (const t of sweep(2 * Math.PI, 48)) close(Math.hypot(pinWorld(t)[0] - m281.pinAt(t)[0], pinWorld(t)[1] - m281.pinAt(t)[1]), 0, "槽照銷的位置反推", 1e-9);
+  const ts = sweep(2 * Math.PI, 240);
+  const far = ts.reduce((a, b) => (Math.hypot(...sub(m281.pinAt(b), C).slice(0, 2)) > Math.hypot(...sub(m281.pinAt(a), C).slice(0, 2)) ? b : a));
+  const rFar = Math.hypot(...sub(m281.pinAt(far), C).slice(0, 2));
+  assert.ok(rFar > 0.85 * R, `槽的最外側在盤緣附近(${(rFar / R).toFixed(2)}R)`);
+  assert.ok(rFar + 0.16 < R, "槽壁仍在盤面內");
+  const a = m281.lever(far) + m281.BAR;
+  const p = pinWorld(far);
+  const along = (p[0] - m281.PIVOT[0]) * Math.cos(a) + (p[1] - m281.PIVOT[1]) * Math.sin(a);
+  const q = [m281.PIVOT[0] + along * Math.cos(a), m281.PIVOT[1] + along * Math.sin(a)];
+  assert.ok(Math.abs(Math.hypot(q[0] - C[0], q[1] - C[1]) - R) < 0.15, "槓桿在銷的旁邊跨過盤緣");
+});
+
+test("第 281 種:槓桿的支柱在圓盤後面、從底座立到樞軸;樞軸銷從支柱往前穿過槓桿的孔(#281-2)", () => {
+  const def = m281.default;
+  const frame = part(def, "frame");
+  const disc = part(def, "disc");
+  const lever = part(def, "lever");
+  const P = m281.PIVOT;
+  const strut = plateAt281(frame.pieces, P);
+  assert.ok(strut, "有一根支柱伸到樞軸");
+  const discBack = disc.center[2] - disc.thickness / 2;
+  assert.ok(zSpan281(strut)[1] <= discBack, "支柱在圓盤後面(原圖的虛線)");
+  const base = frame.pieces.find((p) => p.kind === "box");
+  close(pieceBox281(strut)[0][1], pieceBox281(base)[1][1], "支柱的下端落在底座頂面", 1e-9);
+  const pin = zPinAt281(frame.pieces, P);
+  assert.ok(pin, "樞軸有銷");
+  const bar = lever.pieces.find((p) => p.kind === "plate" && p.shape.holes?.length);
+  assert.ok(covers(zSpan281(pin), zSpan281(bar, P[2])), "銷穿過槓桿");
+  assert.ok(overlap281(zSpan281(pin), zSpan281(strut)) > 0.1, "銷伸進支柱");
+  const hole = Math.min(...bar.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  assert.ok(hole >= pin.radius, "槓桿的孔套得進銷");
+  assert.deepEqual(unjoined281(frame.pieces), [], "機架每一塊都接在一起");
+});
+
+test("第 282 種:主動圓盤有軸,往後穿過托架上的軸承;托架從圓盤後面的橫樑斜伸到盤心(原圖的虛線)(#282-1)", () => {
+  const def = m282.default;
+  const frame = part(def, "frame");
+  const disc = part(def, "disc");
+  const C = disc.center;
+  const axle = disc.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9);
+  assert.ok(axle, "圓盤有一根軸");
+  const az = zSpan281(axle, C[2]);
+  const bracket = plateAt281(frame.pieces, C);
+  assert.ok(bracket, "有托架伸到盤心");
+  assert.ok(covers(az, zSpan281(bracket)), "軸穿過托架的整個厚度(軸承)");
+  assert.ok(zSpan281(bracket)[1] < C[2] - (disc.thickness * 1.6) / 2, "托架在圓盤(連輪轂)後面");
+  const radius = Math.max(...disc.shape.outline.map(([x, y]) => Math.hypot(x, y)));
+  assert.ok(pieceBox281(bracket)[0][1] < C[1] - radius * 0.5, "托架往下伸到圓盤後面的橫樑");
+  assert.deepEqual(unjoined281(frame.pieces), [], "機架每一塊都接在一起");
+});
+
+test("第 282 種:滑輪的軸裝在從拱頂右端伸出的托板上,托板是機架的一部分(#282-2)", () => {
+  const def = m282.default;
+  const frame = part(def, "frame");
+  const pulley = part(def, "pulley");
+  const P = pulley.center;
+  const axle = zPinAt281(frame.pieces, P);
+  assert.ok(axle, "滑輪有軸");
+  assert.ok(covers(zSpan281(axle), [P[2] - pulley.width / 2, P[2] + pulley.width / 2]), "軸穿過滑輪");
+  const plate = plateAt281(frame.pieces, P);
+  assert.ok(plate && overlap281(zSpan281(axle), zSpan281(plate)) > 0.1, "軸伸進托板");
+  assert.deepEqual(unjoined281(frame.pieces), [], "托板接到拱頂(機架是一件)");
+});
+
+test("第 282 種:直立桿以樞軸銷裝在後面的橫樑上:銷從橫樑往前穿過桿的轂與桿(#282-3)", () => {
+  const def = m282.default;
+  const frame = part(def, "frame");
+  const bar = part(def, "bar");
+  const O = m282.O;
+  const pin = zPinAt281(frame.pieces, O);
+  assert.ok(pin, "樞軸有銷");
+  const plate = bar.pieces.find((p) => p.kind === "plate");
+  const hub = bar.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9);
+  assert.ok(covers(zSpan281(pin), zSpan281(plate, O[2])) && covers(zSpan281(pin), zSpan281(hub, O[2])), "銷穿過桿與轂");
+  const beam = frame.pieces.find((p) => {
+    const [lo, hi] = pieceBox281(p);
+    return p !== pin && lo[0] < O[0] && hi[0] > O[0] && lo[1] < O[1] && hi[1] > O[1];
+  });
+  assert.ok(beam && overlap281(zSpan281(pin), zSpan281(beam)) > 0.1, "銷伸進後面的橫樑");
+});
+
+test("第 282 種:拱頂有一道以擺動中心為圓心的弧形槽,直立桿上的銷伸進槽裡,全程在槽內、不碰槽壁(#282-4)", () => {
+  const def = m282.default;
+  const frame = part(def, "frame");
+  const bar = part(def, "bar");
+  const O = m282.O;
+  const arch = frame.pieces.find((p) => p.kind === "plate" && p.shape.holes?.length);
+  assert.ok(arch, "拱頂開了槽");
+  const hole = arch.shape.holes[0];
+  const rs = hole.map(([x, y]) => Math.hypot(x - O[0], y - O[1]));
+  assert.ok(Math.max(...rs) - Math.min(...rs) < 0.2, "槽是以擺動中心為圓心的弧");
+  const pin = bar.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) > 3);
+  assert.ok(pin, "直立桿上有伸進槽的銷");
+  assert.ok(overlap281(zSpan281(pin, O[2]), zSpan281(arch)) > 0.1, "銷伸進拱頂那一層");
+  for (const t of sweep(2 * Math.PI, 96)) {
+    const [x, y] = rot2(pin.at, def.pose(t).parts.bar.angle);
+    const w = [O[0] + x, O[1] + y];
+    assert.ok(pointInPolygon(w, hole) && edgeDistance(w, hole) >= pin.radius, `主動量 ${t.toFixed(2)}:銷在槽裡、不碰槽壁`);
+  }
+});
+
+// 第 283 種:齒條局部座標的點 → 世界座標(姿勢:位置與繞 z 的轉角)
+const rackWorld283 = ({ position, angle }, [x, y, z]) => {
+  const [c, s] = [Math.cos(angle), Math.sin(angle)];
+  return [position[0] + c * x - s * y, position[1] + s * x + c * y, position[2] + z];
+};
+
+test("第 283 種:每支齒條和平行的光桿在頂上以圓頭接成 U 形一件;光桿穿過立柱頂塊上的導塊、往下穿過台板進泵缸,下端是活塞(#283-1,決定 (a))", () => {
+  const def = m283.default;
+  const stand = part(def, "stand");
+  const plateTop = Math.max(...stand.pieces.filter((p) => p.kind === "box" && p.size[0] > 0.6 && p.size[2] > 1).map((p) => pieceBox281(p)[1][1]).filter((y) => y < 0));
+  for (const id of ["rack", "rackL"]) {
+    const r = part(def, id);
+    const back = -(1.2 * r.pitch) / Math.PI - r.depth; // 齒條本體的背面(局部 y)
+    const half = (r.teeth * r.pitch) / 2;
+    const body = [[-half, back, -r.width / 2], [half, (r.pitch / Math.PI), r.width / 2]];
+    const rod = r.pieces.find((p) => p.kind === "cylinder" && p.length > 3);
+    assert.ok(rod && rod.at[1] + rod.radius < back - 0.05, `${id}:光桿在齒條背後、和齒條平行`);
+    const head = r.pieces.find((p) => p.kind === "plate");
+    assert.ok(head && boxesMeet(pieceBox281(head), body) && boxesMeet(pieceBox281(head), pieceBox281(rod)), `${id}:圓頭把齒條與光桿接成一件`);
+    const piston = r.pieces.find((p) => p.kind === "cylinder" && p.radius > 0.2);
+    close(piston.at[1], rod.at[1], `${id}:活塞在光桿的下端,不在齒條下面`, 1e-9);
+    for (const a of sweep(m283.RANGE[1], 24, m283.RANGE[0])) {
+      const pose = def.pose(a).parts[id];
+      const ends = [-1, 1].map((k) => rackWorld283(pose, [rod.at[0] + (k * rod.length) / 2, rod.at[1], rod.at[2]]));
+      const [xr, , zr] = ends[0];
+      const [yb, yt] = [Math.min(ends[0][1], ends[1][1]), Math.max(ends[0][1], ends[1][1])];
+      const guides = stand.pieces.map(pieceBox281).filter(([lo, hi]) => lo[0] < xr - rod.radius && hi[0] > xr + rod.radius && lo[2] < zr - rod.radius && hi[2] > zr + rod.radius && lo[1] > plateTop);
+      assert.ok(guides.length && guides.every(([lo, hi]) => yb < lo[1] && yt > hi[1]), `${id} 轉角 ${a.toFixed(2)}:光桿穿過導塊`);
+      const barrel = stand.pieces.find((p) => p.kind === "cylinder" && p.inner && Math.abs(p.at[0] - xr) < 1e-9);
+      assert.ok(barrel, `${id}:泵缸在光桿正下方`);
+      const pc = rackWorld283(pose, piston.at);
+      const [blo, bhi] = pieceBox281(barrel);
+      assert.ok(pc[1] - piston.length / 2 > blo[1] && pc[1] + piston.length / 2 < bhi[1], `${id} 轉角 ${a.toFixed(2)}:活塞在缸裡`);
+      const lowest = Math.min(...[-half, half].map((x) => rackWorld283(pose, [x, back, 0])[1]));
+      assert.ok(lowest > plateTop + 0.3, `${id} 轉角 ${a.toFixed(2)}:齒條懸在小齒輪旁,不碰台板`);
+      const teeth = [-half, half].map((x) => rackWorld283(pose, [x, 0, 0])[1]);
+      const pinionY = part(def, "pinion").center[1];
+      assert.ok(Math.min(...teeth) < pinionY - 0.3 && Math.max(...teeth) > pinionY + 0.3, `${id} 轉角 ${a.toFixed(2)}:齒條全程咬著小齒輪`);
+    }
+  }
+});
+
+test("第 283 種:柱頂的方塊坐在立柱頂上,台架是一件(#283-2)", () => {
+  assert.deepEqual(unjoined281(part(m283.default, "stand").pieces), [], "台架每一塊都接在一起");
+});
+
 test("第 284 種:曲柄每轉一圈,卡榫推棘輪前進一段,小齒輪帶平台的齒條前進;接點越遠進料越慢", () => {
   const slow = m284.feed(2 * Math.PI, "slow");
   const fast = m284.feed(2 * Math.PI, "fast");
