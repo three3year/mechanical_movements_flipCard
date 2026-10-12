@@ -821,6 +821,25 @@ test("第 277 種:把擊錘往後扳起時,爪 a 推轉輪背面的棘齒 b,轉�
   }
 });
 
+test("第 277 種:彈簧 c 是從機架塊垂下的板彈簧,下端全程壓在爪 a 的背面(由接觸算)", () => {
+  const def = m277.default;
+  const c = part(def, "springC");
+  assert.equal(c.kind, "plate", "原圖的 c 是一片板彈簧,不是螺旋彈簧");
+  const { block } = m277.LEAF;
+  assert.ok(part(def, "frame").pieces.includes(block), "機架塊是機架的一部分");
+  const [bx, by] = boxSpan(block);
+  for (const v of sweep(4 * m277.COCK, 80)) {
+    const { pivot, outline, angle } = m277.leafAt(v);
+    const pawl = m277.contactAt(v).hand;
+    const placed = placeOutline(outline, pivot, angle);
+    const tip = placed.reduce((a, b) => (b[1] < a[1] ? b : a));
+    assert.ok(tip[1] < pivot[1] - 1, "板彈簧從固定端往下垂");
+    assert.ok(pivot[0] > bx[0] && pivot[0] < bx[1] && Math.abs(pivot[1] - by[0]) < 0.03, "固定端在機架塊的下緣");
+    assert.ok(!polygonsOverlap(placed, pawl), `主動量 ${v.toFixed(3)}:板彈簧不穿進爪`);
+    assert.ok(polygonsOverlap(placeOutline(outline, pivot, angle - 0.01), pawl), `主動量 ${v.toFixed(3)}:板彈簧的下端貼著爪的背面`);
+  }
+});
+
 test("第 278 種:平台升降時棘爪縮在棘齒外;繩索斷裂時彈簧壓下 b,棘爪 d 被推進棘齒,阻止平台下降", () => {
   const { toothTip, B_UP, pitch, P, PAWL_TIP } = m278.geometry;
   assert.ok(m278.pawlReach(B_UP) < toothTip, "繩拉著時棘爪不碰棘齒");
@@ -1709,6 +1728,41 @@ test("第 276 種:凸輪橫跨中心所測的每個方向直徑皆相等,兩滾�
   assert.ok(Math.max(...xs) - Math.min(...xs) > 0.4, "桿往復");
 });
 
+test("第 276 種:桿是一根從凸輪後面穿過的直桿,兩個滾子用短銷裝在同一根桿上,凸輪軸穿過桿上的長槽", () => {
+  const def = m276.default;
+  const rod = part(def, "rod");
+  const cam = part(def, "cam");
+  const { bar, pins, ends } = m276.ROD;
+  for (const p of [bar, ...pins, ...ends]) assert.ok(rod.pieces.includes(p), "都是桿的一部分");
+  // 直桿在凸輪(連同轂)後面一層
+  const barZ = [bar.at[2] - bar.thickness / 2, bar.at[2] + bar.thickness / 2];
+  const hubBack = -(cam.thickness * 1.6) / 2;
+  assert.ok(barZ[1] < hubBack, `桿在凸輪的轂後面(桿前面 ${barZ[1]},轂後面 ${hubBack})`);
+  // 一根桿:扁平段從左滾子的銷一直延伸到右滾子的銷,兩端的圓桿接在扁平段上
+  const xsBar = bar.shape.outline.map(([x]) => x + bar.at[0]);
+  for (const pin of pins) {
+    assert.ok(Math.min(...xsBar) < pin.at[0] - pin.radius && Math.max(...xsBar) > pin.at[0] + pin.radius, "銷在扁平段上");
+    const pinZ = [pin.at[2] - pin.length / 2, pin.at[2] + pin.length / 2];
+    assert.ok(pinZ[0] <= barZ[0] + 1e-9 && pinZ[1] >= 0.1, "銷從桿往前伸過滾子那一層(凸輪那一層)");
+  }
+  for (const end of ends) {
+    const ex = [end.at[0] - end.length / 2, end.at[0] + end.length / 2];
+    assert.ok(ex[0] < Math.max(...xsBar) && ex[1] > Math.min(...xsBar), "圓桿接在扁平段上");
+    assert.ok(Math.abs(end.at[2] - bar.at[2]) < 1e-9, "圓桿和扁平段在同一層");
+  }
+  // 兩個滾子始終在銷上;凸輪軸全程在長槽裡、不碰桿
+  const shaft = part(def, "stand").pieces[0];
+  for (const t of sweep(2 * Math.PI, 90)) {
+    const pose = def.pose(t).parts;
+    const x = pose.rod.position[0];
+    const pinXs = pins.map((p) => p.at[0] + x).sort((a, b) => a - b);
+    close(pose.rollerL.position[0], pinXs[0], "左滾子在銷上", 1e-9);
+    close(pose.rollerR.position[0], pinXs[1], "右滾子在銷上", 1e-9);
+    const barShape = { outline: bar.shape.outline.map(([px, py]) => [px + bar.at[0] + x, py + bar.at[1]]), holes: bar.shape.holes.map((h) => h.map(([px, py]) => [px + bar.at[0] + x, py + bar.at[1]])) };
+    assert.ok(penetrationDepth(circlePolygon([0, 0], shaft.radius, 32), barShape) < 1e-6, `轉角 ${t.toFixed(2)}:凸輪軸在長槽裡`);
+  }
+});
+
 test("第 279 種:曲柄轉動,套在曲柄銷上的軸承盒在十字頭的槽裡滑動,十字頭往復直線運動", () => {
   const xs = sweep(2 * Math.PI, 72).map((t) => m279.crosshead(t).x);
   assert.ok(Math.max(...xs) - Math.min(...xs) > 1.4, "十字頭往復,行程 = 曲柄直徑");
@@ -1884,6 +1938,73 @@ test("第 274 種:轉速越快,球 K 沿拋物線臂 B 升得越高,桿 F 把套
 
 test("第 275 種:蝸桿的旋轉運動使齒條直線運動,每圈一個螺距", () => {
   close(m275.rack(2 * Math.PI) - m275.rack(0), m275.PITCH, "每圈一個螺距");
+});
+
+// 第 275 種:蝸桿螺紋在齒條那一側(世界 −x)、平面 z = zc 上的剖面中心(世界座標)。
+// 照零件定義的外形算:螺紋是繞在芯(半徑 radius − thread)上的管,局部角 a 處在局部 z = −L/2 + (a/hand)·節距/2π
+function thread275(theta, zc) {
+  const w = part(m275.default, "worm");
+  const hand = w.hand ?? 1;
+  const core = w.radius - w.thread;
+  const phi = Math.atan2(-zc, -Math.sqrt(core * core - zc * zc)); // 世界方向 (−x, 0, zc) 在零件局部平面的角度(局部 X = 世界 x、局部 Y = 世界 −z)
+  const out = [];
+  for (let k = -12; k <= 12; k++) {
+    const a = phi - theta + k * 2 * Math.PI;
+    const z = -w.length / 2 + ((a / hand) * w.pitch) / (2 * Math.PI);
+    if (Math.abs(z) <= w.length / 2) out.push(partPoint(w.center, w.axis, theta, [core * Math.cos(a), core * Math.sin(a), z]));
+  }
+  const lead = Math.atan(w.pitch / (2 * Math.PI * core));
+  return { centers: out, radius: w.thread / Math.cos(lead) }; // 管沿軸向的剖面略寬於管徑
+}
+const rack275 = (theta, shift = 0) => {
+  const p = m275.default.pose(theta).parts.rack;
+  return placeOutline(part(m275.default, "rack").shape.outline, [p.position[0], p.position[1] + shift], p.angle);
+};
+const RACK275_Z = [-0.15, -0.075, 0, 0.075, 0.15]; // 齒條的厚度內取五層
+
+test("第 275 種:齒條沿螺紋的方向前進(照原圖是左旋蝸桿),螺紋全程落在齒間、不穿進齒", () => {
+  assert.equal(part(m275.default, "worm").hand, -1, "原圖螺紋正面的線由左上往右下:左旋");
+  // 咬合處的螺紋沿軸移動的方向和齒條相同:轉一點,螺紋剖面與齒條走一樣的距離
+  const mid = part(m275.default, "worm").center[1];
+  const nearest = (t, y) => thread275(t, 0).centers.map((c) => c[1]).reduce((a, b) => (Math.abs(b - y) < Math.abs(a - y) ? b : a));
+  const dt = 0.05;
+  const y0 = nearest(0, mid);
+  const along = nearest(dt, y0) - y0;
+  const moved = m275.rack(dt) - m275.rack(0);
+  assert.ok(along * moved > 0, `螺紋與齒條同向(螺紋 ${along},齒條 ${moved})`);
+  close(along, moved, "螺紋與齒條走一樣遠", 1e-9);
+  const [lo, hi] = m275.RANGE;
+  for (const t of sweep(hi, 150, lo)) {
+    const rack = rack275(t);
+    for (const zc of RACK275_Z) {
+      const { centers, radius } = thread275(t, zc);
+      for (const c of centers) assert.ok(penetrationDepth(circlePolygon([c[0], c[1]], radius, 48), rack) < 1e-3, `轉角 ${t.toFixed(2)}、z ${zc}:螺紋不穿進齒`);
+    }
+  }
+  // 螺紋把齒條推著走:齒條沿軸錯開 0.01 就撞進螺紋(兩側的間隙都接近 0)
+  for (const shift of [-0.01, 0.01]) {
+    const hit = sweep(hi, 30, lo).some((t) => RACK275_Z.some((zc) => thread275(t, zc).centers.some((c) => penetrationDepth(circlePolygon([c[0], c[1]], thread275(t, zc).radius, 48), rack275(t, shift)) > 1e-3)));
+    assert.ok(hit, `齒條錯開 ${shift} 就碰到螺紋`);
+  }
+});
+
+test("第 275 種:齒條的導塊從背面與兩側夾著齒條,整個行程齒條都在導塊裡", () => {
+  const guide = part(m275.default, "guide");
+  const [lo, hi] = m275.RANGE;
+  for (const g of m275.GUIDES) {
+    for (const piece of [g.web, ...g.cheeks]) assert.ok(guide.pieces.includes(piece), "導塊是固定件的一部分");
+    const web = boxSpan(g.web);
+    for (const t of [lo, 0, hi]) {
+      const rack = rack275(t);
+      const back = Math.min(...rack.map(([x]) => x));
+      const ys = rack.map(([, y]) => y);
+      assert.ok(Math.abs(back - web[0][1]) < 0.01, `轉角 ${t.toFixed(2)}:齒條背面貼著導塊(間隙 ${(back - web[0][1]).toFixed(3)})`);
+      assert.ok(Math.min(...ys) <= web[1][0] && Math.max(...ys) >= web[1][1], `轉角 ${t.toFixed(2)}:齒條在導塊的長度內`);
+    }
+    const [front, rear] = g.cheeks.map((c) => boxSpan(c)[2]).sort((a, b) => b[0] - a[0]);
+    assert.ok(Math.abs(front[0] - 0.15) < 0.01 && Math.abs(rear[1] + 0.15) < 0.01, "兩側的夾板貼著齒條的前後面");
+    assert.ok(web[2][0] <= boxSpan(guide.pieces[0])[2][1], "導塊接到背板");
+  }
 });
 
 test("第 285 種:車床可動頭:轉動手輪,螺桿使心軸直線移動", () => {

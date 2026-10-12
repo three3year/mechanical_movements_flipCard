@@ -6,12 +6,15 @@
 // 爪 a 鉸在擊錘關節的銷上,在轉輪靠讀者那一側(棘齒圈最前面的地方)上下動,彈簧 c 把爪尖往轉輪背面壓。
 // 在那個平面上算:扳起時爪尖頂著齒的直面往上推,轉輪轉多少由爪尖與齒相碰算出;落下時爪尖被齒背頂開、滑過齒尖,
 // 越過後被彈簧加速壓回下一格。
+// 彈簧 c 照原圖是一片板彈簧:從爪上方的機架塊(原圖斜線剖面的扇形塊)往下垂,下端壓在爪的背面(離轉輪那一面);
+// 爪上下動時,板彈簧的下端沿爪背滑,整片繞固定端轉一個小角度示意彎曲,轉角由下端與爪相碰算。
 // 推斷:六個膛室、扳起一次轉一格;棘齒圈的半徑與齒高;爪在棘齒上的接觸位置(原圖只畫側面);
-// 擊錘樞軸與轉輪軸的支架(原圖只畫零件本身)。
+// 擊錘樞軸與轉輪軸的支架、機架塊畫成方塊並往後接到機架(原圖只畫零件本身與剖開的機架塊)。
 import { X, TAU, deg, swingPhase, rot2 } from "./kit.js";
 import { shape, circle, thickLine } from "./shapes.js";
 import { sawCrown } from "./escapement.js";
 import { pawlDrive } from "./pawl-drive.js";
+import { placeOutline, swingUntilContact } from "./contact.js";
 
 export const COCK = deg(32);
 export const CHAMBERS = 6;
@@ -106,8 +109,18 @@ const flutes = Array.from({ length: CHAMBERS }, (_, i) => {
   const a = (i + 0.5) * (TAU / CHAMBERS);
   return { kind: "box", size: [0.12, 0.12, CYL.length * 0.8], at: [CYL.radius * Math.cos(a), CYL.radius * Math.sin(a), 0], angle: a };
 });
-const SPRING_SEAT = [BACK + 0.75, 1.1]; // 彈簧 c 的固定端(在機架上)
-const SPRING_ON = [0.75, -0.15]; // 彈簧端圈的中心(爪的局部座標):端圈貼著爪身的側面
+// 板彈簧 c:固定端在機架塊的下緣,往下垂到爪背(爪扳起前後,接觸處都在爪背上:靜止時近爪尖、扳起時近銷)
+const LEAF_ROOT = [BACK + 0.5, 1.15];
+const LEAF_OUTLINE = thickLine([[0, 0.02], [-0.045, -1.3]], 0.05); // 根部伸進機架塊 0.02
+const LEAF_BLOCK = { kind: "box", size: [0.45, 0.4, 0.2], at: [LEAF_ROOT[0] - 0.05, LEAF_ROOT[1] + 0.2, HAND_Z] };
+/** 測試用:板彈簧的機架塊 */
+export const LEAF = { block: LEAF_BLOCK };
+/** 主動量 v 時板彈簧的姿勢:從爪背外面往爪轉(順時針,下端往 −x),停在下端碰到爪的地方 */
+export function leafAt(v) {
+  const pawl = drive.shapes(v).pawls.hand;
+  const angle = swingUntilContact({ pivot: LEAF_ROOT, outline: LEAF_OUTLINE, from: 0.15, into: -1, sweep: 0.4, steps: 80 }, [pawl]);
+  return { pivot: LEAF_ROOT, outline: LEAF_OUTLINE, angle };
+}
 
 export default {
   figure: 277,
@@ -153,7 +166,7 @@ export default {
       label: "a",
       labelOffset: [0.3, -0.1, 0.3],
     },
-    { id: "springC", kind: "spring", coils: 6, radius: 0.08, wire: 0.02, label: "c", labelOffset: [0.15, 0.25, 0.3] },
+    { id: "springC", kind: "plate", center: [...LEAF_ROOT, HAND_Z], shape: shape(LEAF_OUTLINE), thickness: 0.1, arrow: false, label: "c", labelOffset: [0.25, -0.5, 0.3] },
     {
       id: "frame",
       kind: "group",
@@ -164,8 +177,9 @@ export default {
         { kind: "box", size: [0.15, 0.2, 0.4], at: [BACK + 0.85, CYL.center[1], -0.2] },
         { kind: "cylinder", radius: 0.12, length: 0.7, at: [PIVOT[0], PIVOT[1], -0.2] }, // 擊錘的樞軸
         { kind: "box", size: [1.65, 0.2, 0.2], at: [(PIVOT[0] + BACK + 1.0) / 2, PIVOT[1], -0.5] },
-        { kind: "cylinder", radius: 0.06, length: 0.5, at: [...SPRING_SEAT, HAND_Z - 0.2] }, // 彈簧 c 的固定座
-        { kind: "box", size: [0.12, SPRING_SEAT[1] - 0.1, 0.12], at: [SPRING_SEAT[0], (SPRING_SEAT[1] + 0.1) / 2, -0.1] },
+        // 板彈簧 c 的機架塊(原圖斜線剖面的扇形塊),往後接到機架的立柱
+        LEAF_BLOCK,
+        { kind: "box", size: [0.45, 0.3, HAND_Z + 0.1 + 0.45], at: [BACK + 0.775, LEAF_ROOT[1] + 0.25, (HAND_Z + 0.1 - 0.45) / 2] },
       ],
     },
   ],
@@ -174,7 +188,7 @@ export default {
     to: 4 * COCK,
     seconds: 16,
     free: { cylinder: { hold: true, gravity: false }, pawl: { on: "hammer", spring: 1, gravity: false } },
-    // 轉輪的軸在機架的軸承裡;彈簧 c 只是畫出來的示意(它的力由 spring 給),不算碰撞
+    // 轉輪的軸在機架的軸承裡;板彈簧 c 的姿勢跟著運動學的爪算,它的力由 spring 給,不算碰撞
     ignore: [["cylinder", "frame"], ["pawl", "springC"], ["cylinder", "springC"]],
     expect: [
       { at: COCK, part: "cylinder", label: "扳起擊錘:爪 a 推棘齒 b,轉輪轉一格", quote: "當將擊錘向後拉以扳起時，連接於擊錘關節（tumbler）上的爪 a 會作動於轉輪背面的棘齒 b 上" },
@@ -195,13 +209,12 @@ export default {
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {
     const { hammer: h, cylinder, pin, hand } = colt(v);
-    const [sx, sy] = rot2(SPRING_ON, hand);
     return {
       parts: {
         hammer: { angle: h },
         cylinder: { angle: cylinder - S0 }, // colt 的轉角是自起點算的;零件要的是絕對轉角(和 teethAt 的 θ = −s 一致)
         pawl: { position: pin, angle: hand },
-        springC: { from: [...SPRING_SEAT, HAND_Z], to: [pin[0] + sx, pin[1] + sy, HAND_Z] },
+        springC: { angle: leafAt(v).angle },
       },
       readouts: [],
     };
