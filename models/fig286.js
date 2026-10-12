@@ -32,8 +32,8 @@ const TOE_TOP = (() => {
 // 升降器的下緣:往左下斜的直線(相對升降桿上的固定點,升降桿高度為 0 時)
 const LIFTER = { x0: -1.6, y0: -0.2, slope: 0.1 }; // 下緣在 x 處的高度 = y0 + slope·(x − x0)
 
-/** 搖臂軸轉 psi(負值為順時針,推頂子左端往上)→ 升降桿上升量 */
-export function lift(psi0) {
+// 推頂子曲面頂得最高的一點高出升降器下緣多少(負值是還沒碰到);升降桿高度為 0、搖臂軸轉 psi 時
+function reach(psi0) {
   const psi = clamp(psi0, ...RANGE);
   let best = -Infinity;
   for (const p of TOE_TOP) {
@@ -43,7 +43,14 @@ export function lift(psi0) {
     if (wx < LIFTER.x0 - 1.4 || wx > ROD_X - 0.2) continue;
     best = Math.max(best, wy - (LIFTER.y0 + LIFTER.slope * (wx - LIFTER.x0)));
   }
-  return Math.max(0, best);
+  return best;
+}
+// 升降器靠重量壓在推頂子上:搖臂軸沒轉時下緣就貼著曲面(擺放時留 0.0005 的間隙),升降桿的高度 0 定在這個姿勢
+const REST = reach(0);
+
+/** 搖臂軸轉 psi(負值為順時針,推頂子左端往上)→ 升降桿從靜止處上升多少 */
+export function lift(psi0) {
+  return reach(psi0) - REST;
 }
 
 // 推頂子:上緣 → 轂的圓(從頂端順時針繞過右邊、下面到左側)→ 下緣回到尖端
@@ -120,6 +127,6 @@ export default {
   view: { direction: [0.06, 0.06, 1] },
   pose(psi) {
     const h = lift(psi);
-    return { parts: { toe: { angle: clamp(psi, ...RANGE) }, lifter: { position: [0, h, 0] } }, readouts: [] };
+    return { parts: { toe: { angle: clamp(psi, ...RANGE) }, lifter: { position: [0, h + REST + 5e-4, 0] } }, readouts: [] };
   },
 };

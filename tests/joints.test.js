@@ -2147,6 +2147,21 @@ test("第 286 種:搖臂軸上的曲面推頂子作用於升降器,把升降桿�
   assert.ok(lifts.every((l, i) => i === 0 || l >= lifts[i - 1] - 1e-9), "轉得越多抬得越高");
 });
 
+test("第 286 種:升降器靠重量壓在推頂子上——全程(含搖臂軸沒轉時)升降器下緣貼著推頂子的曲面、不穿入", () => {
+  const def = m286.default;
+  const toePart = part(def, "toe");
+  const plate = part(def, "lifter").pieces.find((p) => p.kind === "plate").shape.outline;
+  const [lo, hi] = m286.RANGE;
+  for (const psi of sweep(lo, 28, hi)) {
+    const pose = def.pose(psi).parts;
+    const toe = placeOutline(toePart.shape.outline, toePart.center, pose.toe.angle);
+    const lifter = plate.map(([x, y]) => [x, y + pose.lifter.position[1]]);
+    assert.ok(!polygonsOverlap(toe, lifter), `ψ ${psi.toFixed(3)}:升降器不穿進推頂子`);
+    const gap = Math.min(...toe.map((p) => edgeDistance(p, lifter)));
+    assert.ok(gap < 2e-3, `ψ ${psi.toFixed(3)}:升降器下緣貼著推頂子(間隙 ${gap.toFixed(4)})`);
+  }
+});
+
 test("第 286 種:照原圖的虛線,升降桿在推頂子的前面;推頂子的轂是套在搖臂軸上的完整圓", () => {
   const def = m286.default;
   const toe = part(def, "toe");
