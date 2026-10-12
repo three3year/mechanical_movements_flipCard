@@ -1705,6 +1705,76 @@ test("第 271 種:裝有兩根棘爪的槓桿擺動時,棘齒桿得到近乎連�
   }
 });
 
+test("第 271 種:棘齒桿左端繫的繩繞過滑輪吊著重物,桿往右走多少重物就升多少,繩長不變", () => {
+  const def = m271.default;
+  const T = m271.STROKE;
+  const ropeLength = (pts) => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1], p[2] - pts[i][2]), 0);
+  const p0 = def.pose(0);
+  const L0 = ropeLength(p0.paths.rope.points);
+  const { RACK, PULLEY } = m271.geometry;
+  for (const v of sweep(T, 64)) {
+    const p = def.pose(v);
+    const shift = p.parts.bar.position[0] - p0.parts.bar.position[0];
+    close(shift, m271.motion(v).x, `主動量 ${v.toFixed(3)}:棘齒桿的位移就是棘爪拉出的量`, 1e-9);
+    close(p.parts.weight.position[1] - p0.parts.weight.position[1], shift, `主動量 ${v.toFixed(3)}:桿往右多少,重物升多少`, 1e-6);
+    close(ropeLength(p.paths.rope.points), L0, `主動量 ${v.toFixed(3)}:繩長不變`, 2e-3);
+    const pts = p.paths.rope.points;
+    // 繩的一端繫在桿的左端,水平拉到滑輪頂上;另一端從滑輪左側垂下吊著重物
+    const eye = [p.parts.bar.position[0] + RACK.eye[0], RACK.eye[1], 0];
+    close(Math.hypot(pts[0][0] - eye[0], pts[0][1] - eye[1]), 0, "繩端在桿左端的環上", 1e-9);
+    close(pts[1][1], pts[0][1], "桿到滑輪那一段是水平的", 1e-3);
+    close(pts[1][0], PULLEY.center[0], "水平段搭在滑輪頂上", 1e-3);
+    const last = pts[pts.length - 1];
+    close(last[0], PULLEY.center[0] - PULLEY.radius, "垂下的那段從滑輪左側往下", 1e-3);
+    assert.ok(last[1] < PULLEY.center[1] - 0.2, "重物吊在滑輪下方");
+  }
+  // 滑輪被繩帶著轉:繩往右走(桿那一段),滑輪順時針轉,輪緣走過的弧長等於繩走的長度
+  const v1 = 3 * m271.SWING;
+  close(-def.pose(v1).parts.pulley.angle * PULLEY.rim, m271.motion(v1).x, "滑輪的輪緣跟著繩走", 1e-9);
+});
+
+test("第 271 種:桿的行程有限——兩支爪全程都搭在桿的齒上、桿全程平躺在固定的床台上,走完從頭再演", () => {
+  const def = m271.default;
+  const T = m271.STROKE;
+  const { RACK, BED } = m271.geometry;
+  for (const v of sweep(T, 120)) {
+    const left = def.pose(v).parts.bar.position[0];
+    const { hooks } = m271.contactAt(v);
+    for (const h of hooks) {
+      const xs = h.map((q) => q[0]);
+      assert.ok(Math.min(...xs) > left + RACK.firstTooth && Math.max(...xs) < left + RACK.length - 0.1, `主動量 ${v.toFixed(3)}:鉤搭在桿的齒上,不會滑出桿端`);
+    }
+    // 桿的重心在床台上(不會從床台端翻落),桿底貼著床台頂面
+    const mid = left + RACK.length / 2;
+    assert.ok(mid > BED.left && mid < BED.right, `主動量 ${v.toFixed(3)}:桿的重心在床台上`);
+    assert.ok(left >= BED.left - 1e-9, `主動量 ${v.toFixed(3)}:桿左端沒有伸出床台`);
+  }
+  close(RACK.bottom, BED.top, "桿底貼在床台頂面");
+  // 走完一個行程從頭再演
+  for (const v of [0.3, 1.1, 2.0]) {
+    const a = def.pose(v).parts;
+    const b = def.pose(v + T).parts;
+    close(b.bar.position[0], a.bar.position[0], "下一輪的桿從起點再走一次");
+    close(b.weight.position[1], a.weight.position[1], "重物也回到下面");
+  }
+  assert.ok(def.pose(T).parts.bar.position[0] - def.pose(0).parts.bar.position[0] > 1, "行程終點是桿走到最右(不是已經跳回起點)");
+});
+
+test("第 271 種:每支爪的鉤和爪身是一件(深度上相接),鉤伸到棘齒那一層", () => {
+  const def = m271.default;
+  const { RACK } = m271.geometry;
+  const pose = def.pose(0).parts;
+  for (const id of ["pawlUp", "pawlDown"]) {
+    const p = part(def, id);
+    const z = pose[id].position[2];
+    const body = [z - p.thickness / 2, z + p.thickness / 2];
+    const hook = p.pieces[0];
+    const hz = [z + hook.at[2] - hook.thickness / 2, z + hook.at[2] + hook.thickness / 2];
+    assert.ok(Math.min(body[1], hz[1]) - Math.max(body[0], hz[0]) > 0.02, `${id}:鉤和爪身在深度上重疊`);
+    assert.ok(hz[0] <= -RACK.depth / 2 + 1e-9 && hz[1] >= RACK.depth / 2 - 1e-9, `${id}:鉤橫跨整個棘齒的厚度`);
+  }
+});
+
 test("第 274 種:轉速越快,球 K 沿拋物線臂 B 升得越高,桿 F 把套筒沿心軸往上帶", () => {
   const lo = m274.governor(2);
   const hi = m274.governor(9);
