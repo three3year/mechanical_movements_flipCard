@@ -165,7 +165,6 @@ export function coneRoller(figure, view) {
       to: 4 * Math.PI,
       seconds: 8,
       free: { stemC: { slide: [0, 1, 0] }, rollerC: { on: "stemC" } },
-      ignore: [["stemC", "base"]], // 立桿在導套裡滑(重演不算立桿與導套壁的摩擦)
       expect: [
         { at: Math.PI, part: "stemC", label: "錐體轉半圈,偏心轉到螺桿下方,滾子落到最低" },
         { at: 2 * Math.PI, part: "stemC", label: "轉一圈,滾子又被頂起,但比起點低(錐體往左走了一個螺距,接觸處變細)" },

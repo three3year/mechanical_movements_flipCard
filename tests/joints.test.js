@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { penetrationDepth, circlePolygon, pointInPolygon, polygonsOverlap, placeOutline, edgeDistance } from "../models/contact.js";
-import { close, turned, part, sweep } from "./helpers.js";
+import { close, turned, part, sweep, plateLayers } from "./helpers.js";
 
 import fig243, { turns as turns243 } from "../models/fig243.js";
 import * as m254 from "../models/fig254.js";
@@ -16,8 +16,6 @@ import * as m248 from "../models/fig248.js";
 import * as m249 from "../models/fig249.js";
 import * as m250 from "../models/fig250.js";
 import * as m267 from "../models/fig267.js";
-import * as contactJs from "../models/contact.js";
-import * as helpersJs from "./helpers.js";
 import * as m270 from "../models/fig270.js";
 import * as m247 from "../models/fig247.js";
 import * as m271 from "../models/fig271.js";
@@ -45,7 +43,7 @@ import * as cone from "../models/cone-roller.js";
 import * as m264 from "../models/fig264.js";
 import * as m266 from "../models/fig266.js";
 import { meshAngle } from "../models/gears.js";
-import { gearProfile } from "../models/shapes.js";
+import { gearProfile, rackShape } from "../models/shapes.js";
 import * as m244 from "../models/fig244.js";
 import * as m246 from "../models/fig246.js";
 import * as m252 from "../models/fig252.js";
@@ -55,7 +53,6 @@ import * as m251 from "../models/fig251.js";
 import * as m253 from "../models/fig253.js";
 import * as m277 from "../models/fig277.js";
 import * as m278 from "../models/fig278.js";
-import { rackShape as rackShape284 } from "../models/shapes.js";
 
 test("第 243 種:透過皮帶輪與皮帶,把動力從一根水平軸傳到兩根垂直軸", () => {
   const main = fig243.parts.find((p) => p.id === "main");
@@ -358,7 +355,7 @@ const arms267 = (v) => {
   return Array.from({ length: 4 }, (_, i) => {
     const p = pose[`arm${i}`];
     const d = part(def, `arm${i}`);
-    return { def: d, pose: p, outline: contactJs.placeOutline(d.shape.outline, p.position, p.angle) };
+    return { def: d, pose: p, outline: placeOutline(d.shape.outline, p.position, p.angle) };
   });
 };
 const reach267 = (outline) => Math.max(...outline.map(([x, y]) => Math.hypot(x, y)));
@@ -376,7 +373,7 @@ test("第 267 種:四支偏心臂以樞軸銷裝在軸轂上——銷落在軸�
       assert.ok(pin, "臂在樞軸處有銷");
       const local = rot2(arm.pose.position, -shaftPose.angle);
       assert.ok(pointInPolygon(local, hub.shape.outline), `樞軸 (${local.map((n) => n.toFixed(2))}) 在軸轂的外形裡`);
-      assert.ok(contactJs.edgeDistance(local, hub.shape.outline) > pin.radius, "銷整根在軸轂裡(不從邊緣露出)");
+      assert.ok(edgeDistance(local, hub.shape.outline) > pin.radius, "銷整根在軸轂裡(不從邊緣露出)");
       const [z0, z1] = zRange267(arm.pose.position[2], pin);
       const armZ = arm.pose.position[2];
       assert.ok(z0 <= hubZ - hub.thickness / 2 + 1e-9 && z1 >= armZ + arm.def.thickness / 2, "銷穿過軸轂與臂");
@@ -419,7 +416,7 @@ test("第 267 種:輪緣朝箭頭方向轉時,臂被帶著繞樞軸往內轉、�
   const drag = [-tip[1] / r, tip[0] / r];
   const lever = [tip[0] - arm.pose.position[0], tip[1] - arm.pose.position[1]];
   assert.ok(lever[0] * drag[1] - lever[1] * drag[0] > 0, "逆箭頭轉時,摩擦把臂往逆時針帶");
-  const turnedBy = (d) => contactJs.placeOutline(arm.def.shape.outline, arm.pose.position, arm.pose.angle + d);
+  const turnedBy = (d) => placeOutline(arm.def.shape.outline, arm.pose.position, arm.pose.angle + d);
   const oneDeg = Math.PI / 180;
   assert.ok(reach267(turnedBy(oneDeg)) > RIM.inner + 0.005, "臂往逆時針轉會頂進輪緣:卡住、把運動傳給軸");
   assert.ok(reach267(turnedBy(-oneDeg)) < RIM.inner - 0.005, "臂往順時針轉會離開輪緣:繞樞軸讓開");
@@ -431,7 +428,7 @@ test("第 267 種:輪緣經四根輻條接到鬆套在軸上的輪轂;輻條、�
   const rim = part(def, "rim");
   const pose = def.pose(0).parts;
   const rimZ = pose.rim.position?.[2] ?? 0;
-  const layers = helpersJs.plateLayers(rim).slice(1); // 第一層是輪緣本身
+  const layers = plateLayers(rim).slice(1); // 第一層是輪緣本身
   const radii = (loop) => loop.map(([x, y]) => Math.hypot(x, y));
   const hub = layers.find((l) => l.solid.holes.length === 1);
   assert.ok(hub, "輪緣有一個帶孔的輪轂");
@@ -648,6 +645,24 @@ test("第 251 種:鉤 A 的上端被框架頂部的槽 B 兩側向內壓——�
       const at = def.pose(v).parts[h.id];
       const less = placeOutline(h.shape.outline, at.position, at.angle - Math.sign(at.angle) * 0.01);
       assert.ok(walls.some((w) => polygonsOverlap(less, w.shape.outline)), `${h.id} 少張 0.01 就壓進槽壁:是槽壁把它往內壓`);
+    }
+  }
+});
+
+test("第 251 種:提起重物時,兩支鉤爪托住 T 形頭的兩端——貼著(間隙接近 0)、不穿入,重物再低 0.01 就壓進鉤爪", () => {
+  const def = m251.default;
+  const hooks = def.driver.grips.map((id) => def.parts.find((p) => p.id === id));
+  const head = def.parts.find((p) => p.id === "weight").pieces.find((p) => p.kind === "plate" && p.thickness === 0.3);
+  const lifting = sweep(m251.RELEASE, 40).slice(1, -1); // 吊起到放開之前
+  for (const v of lifting) {
+    assert.ok(m251.hook(v).hold, `主動量 ${v.toFixed(2)}:鉤爪托著重物`);
+    const w = def.pose(v).parts.weight.position;
+    const at = (dy) => head.shape.outline.map(([x, y]) => [x + w[0], y + w[1] + dy]);
+    for (const h of hooks) {
+      const outline = placed251(h, v);
+      assert.ok(!polygonsOverlap(at(0), outline), `主動量 ${v.toFixed(2)}:T 形頭不穿進 ${h.id}`);
+      assert.ok(gap251(at(0), outline) < 0.005, `主動量 ${v.toFixed(2)}:${h.id} 的鉤爪貼著 T 形頭(間隙 ${gap251(at(0), outline).toFixed(4)})`);
+      assert.ok(polygonsOverlap(at(-0.01), outline), `主動量 ${v.toFixed(2)}:重物再低 0.01 就壓進 ${h.id}——是鉤爪托著它`);
     }
   }
 });
@@ -1601,7 +1616,7 @@ test("第 268 種:滾子被滑過的桿帶著滾——接觸處滾子表面的�
     const a = m268.rod(t);
     const b = m268.rod(t + h);
     // 桿通過滾子上方的固定點,桿上的材料沿桿的方向走了 −Δreach(dir:曲柄銷 → 桿端)
-    const dir = contactJs.placeOutline([[1, 0]], [0, 0], Math.atan2(a.end[1] - a.pin[1], a.end[0] - a.pin[0]))[0];
+    const dir = placeOutline([[1, 0]], [0, 0], Math.atan2(a.end[1] - a.pin[1], a.end[0] - a.pin[0]))[0];
     const rodSlide = -(b.reach - a.reach);
     // 接觸處在滾子的上方,法線朝上(垂直於桿);滾子逆時針轉 dα 時表面沿切線 (−n_y, n_x) 走 r·dα
     const n = dir[0] < 0 ? [dir[1], -dir[0]] : [-dir[1], dir[0]];
@@ -1863,7 +1878,7 @@ test("第 279 種:曲柄轉動,套在曲柄銷上的軸承盒在十字頭的槽�
 });
 
 // 第 279 種:軸承盒的板件(局部座標,原點在曲柄銷中心)
-const boxPlates279 = () => helpersJs.plateLayers(part(m279.default, "box")).map((l) => l.solid);
+const boxPlates279 = () => plateLayers(part(m279.default, "box")).map((l) => l.solid);
 
 test("第 279 種:軸承盒由兩塊錐形襯裡片與兩根錐形鑲條組成,收緊在腕銷上、往外撐開貼緊十字頭的溝槽(#279-1)", () => {
   const def = m279.default;
@@ -1876,7 +1891,7 @@ test("第 279 種:軸承盒由兩塊錐形襯裡片與兩根錐形鑲條組成,�
     const drawn = (poly) => plates.some((s) => s.outline.length === poly.length && s.outline.every((p, i) => Math.hypot(p[0] - poly[i][0], p[1] - poly[i][1]) < 1e-9));
     assert.ok(drawn(lining.outline) && drawn(gib), "襯裡與鑲條畫在軸承盒裡");
     // 錐形:襯裡外緣與鑲條內緣是同一條斜邊(上寬下窄),兩件貼著、不重疊
-    const onGib = lining.outline.filter((p) => contactJs.edgeDistance(p, gib) < 1e-9);
+    const onGib = lining.outline.filter((p) => edgeDistance(p, gib) < 1e-9);
     assert.ok(onGib.length >= 2, "襯裡的斜邊貼著鑲條");
     const top = onGib.reduce((a, b) => (b[1] > a[1] ? b : a));
     const bottom = onGib.reduce((a, b) => (b[1] < a[1] ? b : a));
@@ -1918,9 +1933,9 @@ const placed280 = (def, id, pose, extra = 0) => {
   const p = pose.parts[id];
   const at = p.position ?? part(def, id).center ?? [0, 0, 0];
   const pz = at[2] ?? 0;
-  return helpersJs.plateLayers(part(def, id)).map((l) => ({
+  return plateLayers(part(def, id)).map((l) => ({
     z: [pz + l.z0, pz + l.z1],
-    solid: contactJs.placeOutline(l.solid.outline, at, (p.angle ?? 0) + extra),
+    solid: placeOutline(l.solid.outline, at, (p.angle ?? 0) + extra),
   }));
 };
 const rim280 = (def) => {
@@ -2351,7 +2366,7 @@ test("第 284 種:支點 a 的座、止回爪支架接到立柱,曲柄軸接到�
   close(shaft.at[2] + shaft.length / 2, (arm.at?.[2] ?? 0) - arm.thickness / 2, "曲柄軸的前端貼著曲柄臂的背面", 1e-9);
   // 平台:板的下緣壓到齒條的背面(齒條的局部 −y 是背面)
   const carriage = part(def, "carriage");
-  const back = Math.min(...rackShape284({ teeth: carriage.teeth, pitch: carriage.pitch, depth: carriage.depth }).outline.map((p) => p[1]));
+  const back = Math.min(...rackShape({ teeth: carriage.teeth, pitch: carriage.pitch, depth: carriage.depth }).outline.map((p) => p[1]));
   const plateTop = Math.max(...carriage.pieces[0].shape.outline.map((p) => p[1]));
   assert.ok(plateTop >= back - 1e-9, `平台的板接到齒條的背面(板緣 ${plateTop.toFixed(3)}、齒條背面 ${back.toFixed(3)})`);
 });
@@ -2524,10 +2539,10 @@ test("第 275 種:齒條沿螺紋的方向前進(照原圖是左旋蝸桿),螺�
       for (const c of centers) assert.ok(penetrationDepth(circlePolygon([c[0], c[1]], radius, 48), rack) < 1e-3, `轉角 ${t.toFixed(2)}、z ${zc}:螺紋不穿進齒`);
     }
   }
-  // 螺紋把齒條推著走:齒條沿軸錯開 0.01 就撞進螺紋(兩側的間隙都接近 0)
+  // 螺紋把齒條推著走:整個行程齒條沿軸錯開 0.01 就撞進螺紋(兩側的間隙全程都接近 0)
   for (const shift of [-0.01, 0.01]) {
-    const hit = sweep(hi, 30, lo).some((t) => RACK275_Z.some((zc) => thread275(t, zc).centers.some((c) => penetrationDepth(circlePolygon([c[0], c[1]], thread275(t, zc).radius, 48), rack275(t, shift)) > 1e-3)));
-    assert.ok(hit, `齒條錯開 ${shift} 就碰到螺紋`);
+    const hit = sweep(hi, 30, lo).every((t) => RACK275_Z.some((zc) => thread275(t, zc).centers.some((c) => penetrationDepth(circlePolygon([c[0], c[1]], thread275(t, zc).radius, 48), rack275(t, shift)) > 1e-3)));
+    assert.ok(hit, `整個行程,齒條錯開 ${shift} 都會碰到螺紋`);
   }
 });
 
