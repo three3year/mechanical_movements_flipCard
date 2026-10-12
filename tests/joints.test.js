@@ -55,6 +55,7 @@ import * as m251 from "../models/fig251.js";
 import * as m253 from "../models/fig253.js";
 import * as m277 from "../models/fig277.js";
 import * as m278 from "../models/fig278.js";
+import { rackShape as rackShape284 } from "../models/shapes.js";
 
 test("第 243 種:透過皮帶輪與皮帶,把動力從一根水平軸傳到兩根垂直軸", () => {
   const main = fig243.parts.find((p) => p.id === "main");
@@ -2251,11 +2252,11 @@ test("第 283 種:柱頂的方塊坐在立柱頂上,台架是一件(#283-2)", ()
   assert.deepEqual(unjoined281(part(m283.default, "stand").pieces), [], "台架每一塊都接在一起");
 });
 
-test("第 284 種:曲柄每轉一圈,卡榫推棘輪前進一段,小齒輪帶平台的齒條前進;接點越遠進料越慢", () => {
+test("第 284 種:曲柄每轉一圈,卡榫推棘輪前進一段,小齒輪帶平台的齒條前進;卡榫接點離 a 越遠進料越快", () => {
   const slow = m284.feed(2 * Math.PI, "slow");
   const fast = m284.feed(2 * Math.PI, "fast");
   close(slow.wheel - m284.feed(0, "slow").wheel, slow.step, "一圈前進一段", 1e-9);
-  assert.ok(fast.step > slow.step, "接點靠近支點時進料快");
+  assert.ok(m284.geometry.SLIDER.fast > m284.geometry.SLIDER.slow && fast.step > slow.step, "卡榫接點離 a 越遠,進料越快");
   const ws = sweep(4 * Math.PI, 200).map((t) => m284.feed(t, "slow").wheel);
   assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-9), "棘輪只往前");
   assert.ok(ws.slice(1).some((w, i) => w === ws[i]), "回程時棘輪不動");
@@ -2273,6 +2274,111 @@ test("第 284 種:曲柄每轉一圈,卡榫推棘輪前進一段,小齒輪帶平
     }
   const clicks = sweep(2 * Math.PI, 120).map((t) => m284.feed(t, "slow").clickAngle);
   assert.ok(Math.max(...clicks) - Math.min(...clicks) > 0.05, "棘輪轉動時止回爪被齒背頂起、再落回齒間");
+});
+
+test("第 284 種:「進料速度可透過曲柄搖臂槓桿上的螺絲加以調節」:螺絲在垂直臂的開槽框裡,轉它移動卡榫樞軸所在的滑塊;連桿固定接在水平臂末端,長度不變", () => {
+  const { A, ROD, H_ARM, SLIDER } = m284.geometry;
+  const def = m284.default;
+  for (const state of ["slow", "fast"])
+    for (const t of sweep(2 * Math.PI, 48)) {
+      const f = m284.feed(t, state);
+      close(Math.hypot(f.H[0] - f.pin[0], f.H[1] - f.pin[1]), ROD, `${state} 曲柄 ${t.toFixed(2)}:兩個狀態用同一根連桿(長度不變)`, 1e-9);
+      close(Math.hypot(f.H[0] - A[0], f.H[1] - A[1]), H_ARM, `${state}:連桿接在水平臂的末端`, 1e-9);
+      // 卡榫的樞軸在垂直臂上、離 a 的距離就是滑塊在螺絲上的位置
+      close(Math.hypot(f.V[0] - A[0], f.V[1] - A[1]), SLIDER[state], `${state}:卡榫樞軸離 a 的距離 = 滑塊的位置`, 1e-9);
+      close(Math.atan2(f.V[1] - A[1], f.V[0] - A[0]), f.beta - Math.PI / 2, `${state}:樞軸在垂直臂上`, 1e-9);
+      const s = def.pose(t, state).parts.slider;
+      close(Math.hypot(s.position[0] - f.V[0], s.position[1] - f.V[1]), 0, `${state}:滑塊跟著卡榫樞軸`, 1e-9);
+      close(s.angle, f.beta, `${state}:滑塊跟著槓桿轉`, 1e-9);
+    }
+  // 螺絲沿垂直臂(槓桿局部 −y)穿過整個槽,兩個狀態的滑塊都套在螺絲上;框頂有轉螺絲的環首
+  const lever = part(def, "bellCrank").pieces;
+  const screw = lever.find((p) => p.kind === "worm");
+  assert.ok(screw && screw.axis[1] === 1 && Math.abs(screw.at[0]) < 1e-9, "螺絲沿垂直臂");
+  const [y0, y1] = [screw.at[1] - screw.length / 2, screw.at[1] + screw.length / 2];
+  const slider = part(def, "slider").pieces[0];
+  for (const state of ["slow", "fast"]) assert.ok(y0 < -SLIDER[state] - slider.size[1] / 2 && y1 > -SLIDER[state] + slider.size[1] / 2, `${state}:滑塊整個套在螺絲上`);
+  assert.ok(y1 > 0, "螺絲伸到 a 的上方(框頂的環首)");
+  assert.ok(lever.some((p) => p.kind === "cylinder" && p.inner && p.at[1] > y1 - 0.05), "螺絲頂上有環首");
+  // 滑塊在槽裡:兩側貼著框的側條
+  const sides = lever.filter((p) => p.kind === "box" && Math.abs(p.at[0]) > 0.05 && p.size[1] > 0.5);
+  assert.equal(sides.length, 2, "開槽框的兩根側條");
+  for (const b of sides) close(Math.abs(b.at[0]) - b.size[0] / 2, slider.size[0] / 2, "滑塊兩側貼著槽壁", 1e-9);
+});
+
+test("第 284 種:畫出來的卡榫的鉤、止回爪全程不穿進畫出來的棘輪(模型的姿勢和算接觸用的齒位置一致)", () => {
+  const def = m284.default;
+  const wheel = part(def, "ratchet");
+  const click = part(def, "click");
+  for (const state of ["slow", "fast"])
+    for (const t of sweep(4 * Math.PI, 160)) {
+      const p = def.pose(t, state).parts;
+      const teeth = placeOutline(wheel.shape.outline, wheel.center, p.ratchet.angle);
+      const hook = placeOutline(m284.CATCH_OUTLINE, p.catch.position, p.catch.angle);
+      const pawl = placeOutline(click.pieces[0].shape.outline, click.center, p.click.angle);
+      assert.ok(penetrationDepth(hook, teeth) < 2e-3, `${state} 曲柄 ${t.toFixed(2)}:鉤不穿進輪齒(${penetrationDepth(hook, teeth).toFixed(3)})`);
+      assert.ok(penetrationDepth(pawl, teeth) < 2e-3, `${state} 曲柄 ${t.toFixed(2)}:止回爪不穿進輪齒(${penetrationDepth(pawl, teeth).toFixed(3)})`);
+    }
+});
+
+// 第 284 種的量測:軸向對齊的方塊與圓柱(軸沿 x/y/z)的外接範圍,兩塊相連 = 三個方向都重疊或貼著
+function span284(p) {
+  const at = p.at ?? [0, 0, 0];
+  const axis = p.axis ? p.axis.findIndex((x) => x !== 0) : 2;
+  const half = p.kind === "box" ? p.size.map((s) => s / 2) : [0, 1, 2].map((i) => (i === axis ? p.length / 2 : p.radius));
+  return at.map((c, i) => [c - half[i], c + half[i]]);
+}
+const touch284 = (a, b, eps = 0.005) => span284(a).every(([a0, a1], i) => a0 <= span284(b)[i][1] + eps && span284(b)[i][0] <= a1 + eps);
+
+test("第 284 種:支點 a 的座、止回爪支架接到立柱,曲柄軸接到曲柄臂,齒條裝在平台上(各塊都相連)", () => {
+  const def = m284.default;
+  // 機架:從立柱出發,方塊與圓柱一塊接一塊,每一塊都連得到(a 的座、止回爪的支架與樞軸銷、軸承座、底座、導軌)
+  const frame = part(def, "frame").pieces.filter((p) => p.kind === "box" || p.kind === "cylinder");
+  const column = frame.find((p) => p.kind === "box" && p.size[1] > 4);
+  const reached = new Set([column]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const p of frame) if (!reached.has(p) && [...reached].some((q) => touch284(p, q))) (reached.add(p), (grew = true));
+  }
+  const { A } = m284.geometry;
+  const seat = frame.find((p) => p.kind === "box" && span284(p)[0][0] <= A[0] && span284(p)[0][1] >= A[0] && span284(p)[1][0] <= A[1] && span284(p)[1][1] >= A[1]);
+  assert.ok(seat && reached.has(seat), "a 的座接到立柱");
+  for (const p of frame) assert.ok(reached.has(p), `機架的塊 ${JSON.stringify(p.at)} 接到立柱`);
+  // 曲柄:軸接到曲柄臂的背面
+  const crank = part(def, "crank").pieces;
+  const arm = crank.find((p) => p.kind === "plate");
+  const shaft = crank.find((p) => p.kind === "cylinder" && p.radius >= 0.1);
+  close(shaft.at[2] + shaft.length / 2, (arm.at?.[2] ?? 0) - arm.thickness / 2, "曲柄軸的前端貼著曲柄臂的背面", 1e-9);
+  // 平台:板的下緣壓到齒條的背面(齒條的局部 −y 是背面)
+  const carriage = part(def, "carriage");
+  const back = Math.min(...rackShape284({ teeth: carriage.teeth, pitch: carriage.pitch, depth: carriage.depth }).outline.map((p) => p[1]));
+  const plateTop = Math.max(...carriage.pieces[0].shape.outline.map((p) => p[1]));
+  assert.ok(plateTop >= back - 1e-9, `平台的板接到齒條的背面(板緣 ${plateTop.toFixed(3)}、齒條背面 ${back.toFixed(3)})`);
+});
+
+test("第 284 種:棘輪照原圖是輪緣、四根輪輻與輪轂,小齒輪與齒條的咬合處從正面看得到(在輪的開口後面)", () => {
+  const def = m284.default;
+  const wheel = part(def, "ratchet");
+  const pinion = part(def, "pinion");
+  assert.ok(pinion.center[2] < wheel.center[2], "小齒輪在棘輪後面(同一根軸)");
+  const hole = Math.min(...(wheel.shape.holes[0] ?? [[0, 0]]).map(([x, y]) => Math.hypot(x, y)));
+  const hub = Math.max(...wheel.pieces.filter((p) => p.kind === "cylinder" && (p.at?.[2] ?? 0) + p.length / 2 > 0).map((p) => p.radius));
+  const spokes = wheel.pieces.filter((p) => p.kind === "box");
+  assert.equal(spokes.length * 2, 4, "四根輪輻(兩根貫穿的條)");
+  // 咬合處:小齒輪頂上的節點(輪的局部座標),輪轉一圈,被輪緣、輪轂或輪輻擋住的時間不超過三成
+  const mesh = [pinion.center[0] - wheel.center[0], pinion.center[1] - wheel.center[1] + pinion.radius];
+  const covered = (w) => {
+    const [x, y] = rot2(mesh, -w);
+    const r = Math.hypot(x, y);
+    if (r >= hole || r <= hub) return true;
+    return spokes.some((s) => {
+      const [u, v] = rot2([x, y], -(s.angle ?? 0));
+      return Math.abs(u) <= s.size[0] / 2 && Math.abs(v) <= s.size[1] / 2 + 0.02;
+    });
+  };
+  const ws = sweep(2 * Math.PI, 360);
+  assert.ok(ws.filter((w) => !covered(w)).length / ws.length > 0.7, "咬合處大部分時間看得到");
+  assert.ok(!covered(def.pose(0).parts.ratchet.angle), "初始姿勢看得到咬合處");
 });
 
 test("第 271 種:裝有兩根棘爪的槓桿擺動時,棘齒桿得到近乎連續的直線運動(由接觸算)", () => {
