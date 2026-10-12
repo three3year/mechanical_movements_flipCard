@@ -1,7 +1,7 @@
 // 第十二章「接頭與器具」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { penetrationDepth, circlePolygon, pointInPolygon, polygonsOverlap } from "../models/contact.js";
+import { penetrationDepth, circlePolygon, pointInPolygon, polygonsOverlap, placeOutline, edgeDistance } from "../models/contact.js";
 import { close, turned, part, sweep } from "./helpers.js";
 
 import fig243, { turns as turns243 } from "../models/fig243.js";
@@ -549,6 +549,124 @@ test("第 251 種:放下吊繩時,合攏的鉤爪碰到凸頭被撐開、越過�
   const opens = sweep(0.5, 100, 2 * H - 0.5).map((v) => m251.hook(v).open);
   assert.ok(Math.max(...opens) > 0.05, "鉤爪經過凸頭時被撐開");
   close(m251.hook(2 * H).open, 0, "落到底時鉤爪合攏,勾在寬頭底下", 1e-9);
+});
+
+// 第 251 種的量測:量模型定義裡的實際外形(板件輪廓擺到姿勢上),不量算式
+const placed251 = (p, v) => {
+  const at = m251.default.pose(v).parts[p.id];
+  return placeOutline(p.shape.outline, at.position, at.angle ?? 0);
+};
+const gap251 = (a, b) =>
+  polygonsOverlap(a, b) ? 0 : Math.min(...a.map((p) => edgeDistance(p, b)), ...b.map((p) => edgeDistance(p, a)));
+const depth251 = (z, t) => [z - t / 2, z + t / 2];
+
+test("第 251 種:鉤 A 的上端被框架頂部的槽 B 兩側向內壓——兩支鉤都和槽壁同一層,壓著時貼住、少張一點就壓進槽壁,全程不穿入", () => {
+  const def = m251.default;
+  const H = m251.HEIGHT;
+  const walls = def.parts.find((p) => p.id === "frame").pieces.filter((p) => p.kind === "plate");
+  const hooks = def.driver.grips.map((id) => def.parts.find((p) => p.id === id));
+  assert.equal(hooks.length, 2, "兩支鉤");
+  for (const h of hooks) {
+    const [a0, a1] = depth251(def.pose(0).parts[h.id].position[2], h.thickness);
+    for (const w of walls) {
+      const [b0, b1] = depth251(w.at?.[2] ?? 0, w.thickness);
+      assert.ok(a0 >= b0 - 1e-9 && a1 <= b1 + 1e-9, `${h.id}(z ${a0.toFixed(2)}–${a1.toFixed(2)})整支在槽壁的深度(z ${b0}–${b1})裡`);
+    }
+  }
+  for (const v of sweep(2 * H, 300))
+    for (const h of hooks)
+      for (const w of walls) {
+        const d = penetrationDepth(placed251(h, v), w.shape.outline);
+        assert.ok(d < 0.002, `主動量 ${v.toFixed(2)}:${h.id} 穿進槽壁 ${d.toFixed(3)}`);
+      }
+  for (const v of [m251.RELEASE, H]) {
+    for (const h of hooks) {
+      const near = Math.min(...walls.map((w) => gap251(placed251(h, v), w.shape.outline)));
+      assert.ok(near < 0.005, `主動量 ${v.toFixed(2)}:${h.id} 的上端貼著槽壁(間隙 ${near.toFixed(3)})`);
+      const at = def.pose(v).parts[h.id];
+      const less = placeOutline(h.shape.outline, at.position, at.angle - Math.sign(at.angle) * 0.01);
+      assert.ok(walls.some((w) => polygonsOverlap(less, w.shape.outline)), `${h.id} 少張 0.01 就壓進槽壁:是槽壁把它往內壓`);
+    }
+  }
+});
+
+test("第 251 種:吊繩從頂樑上的槽 B 穿下來,不貼著、不穿過實心的樑", () => {
+  const def = m251.default;
+  const ROPE = 0.045;
+  const boxes = def.parts.find((p) => p.id === "frame").pieces.filter((p) => p.kind === "box");
+  for (const v of sweep(2 * m251.HEIGHT, 24)) {
+    const pts = def.pose(v).paths.rope.points;
+    const ys = pts.map((p) => p[1]);
+    const [x, , z] = pts[0];
+    for (const p of pts) assert.ok(Math.abs(p[0] - x) < 1e-9 && Math.abs(p[2] - z) < 1e-9, "吊繩是一條直上直下的線");
+    for (const b of boxes) {
+      const [sx, sy, sz] = b.size;
+      const [bx, by, bz] = b.at;
+      if (by + sy / 2 < Math.min(...ys) || by - sy / 2 > Math.max(...ys)) continue;
+      const dx = Math.max(Math.abs(x - bx) - sx / 2, 0);
+      const dz = Math.max(Math.abs(z - bz) - sz / 2, 0);
+      assert.ok(Math.hypot(dx, dz) >= ROPE - 1e-9, `主動量 ${v.toFixed(2)}:吊繩和框架的方塊(${b.at})只隔 ${Math.hypot(dx, dz).toFixed(3)}`);
+    }
+  }
+});
+
+test("第 251 種:照原圖,兩支鉤 A 各自以一根銷裝在吊架上,吊架掛在吊繩下", () => {
+  const def = m251.default;
+  const carrier = def.parts.find((p) => p.id === def.driver.part);
+  const hooks = def.driver.grips.map((id) => def.parts.find((p) => p.id === id));
+  for (const v of sweep(2 * m251.HEIGHT, 12)) {
+    const pose = def.pose(v);
+    const c = pose.parts[carrier.id].position;
+    const [l, r] = hooks.map((h) => pose.parts[h.id].position);
+    assert.ok(Math.abs(l[0] - r[0]) > 0.4, "兩支鉤各有自己的銷,左右分開");
+    for (const h of hooks) {
+      const p = pose.parts[h.id].position;
+      const pin = carrier.pieces.find((q) => q.kind === "cylinder" && Math.hypot(q.at[0] - (p[0] - c[0]), q.at[1] - (p[1] - c[1])) < 1e-6);
+      assert.ok(pin, `${h.id} 的樞軸上有吊架的銷`);
+      const [a0, a1] = depth251(pin.at[2] + c[2], pin.length);
+      const [b0, b1] = depth251(p[2], h.thickness);
+      assert.ok(a0 < b0 && a1 > b1, `${h.id} 的銷穿過鉤`);
+      assert.ok(h.shape.holes.some((hole) => pointInPolygon([0, 0], hole) && edgeDistance([0, 0], hole) >= pin.radius - 1e-9), `${h.id} 的銷孔套得住銷`);
+    }
+    const rope = pose.paths.rope.points;
+    const end = rope[rope.length - 1];
+    assert.ok(Math.abs(end[0] - c[0]) < 1e-9 && end[1] > c[1], "吊繩接在吊架上方");
+  }
+});
+
+test("第 251 種:重物 W 兩側的凹口套在立柱的導條上(導條在前後凸耳之間,貼近、不穿入)", () => {
+  const def = m251.default;
+  const frameBoxes = def.parts.find((p) => p.id === "frame").pieces.filter((p) => p.kind === "box");
+  const w = def.parts.find((p) => p.id === "weight");
+  const range = (b, i) => [b.at[i] - b.size[i] / 2, b.at[i] + b.size[i] / 2];
+  for (const side of [-1, 1]) {
+    const lugs = w.pieces.filter((q) => q.kind === "box" && side * q.at[0] > 1);
+    const front = lugs.filter((q) => q.at[2] > 0);
+    const back = lugs.filter((q) => q.at[2] < 0);
+    assert.ok(front.length && back.length, "W 這一側前後都有凸耳");
+    const guide = frameBoxes.find((g) => {
+      const [gx0, gx1] = range(g, 0);
+      const [gz0, gz1] = range(g, 2);
+      return lugs.every((q) => range(q, 0)[0] < gx1 && range(q, 0)[1] > gx0) &&
+        front.every((q) => range(q, 2)[0] >= gz1 && range(q, 2)[0] - gz1 < 0.03) &&
+        back.every((q) => range(q, 2)[1] <= gz0 && gz0 - range(q, 2)[1] < 0.03);
+    });
+    assert.ok(guide, "立柱上有導條,夾在 W 前後凸耳之間(間隙 0.03 以內)");
+  }
+});
+
+test("第 251 種:重物落到樁頭上(推斷補上的樁在 W 正下方,落到底時 W 的底面貼著樁頭)", () => {
+  const def = m251.default;
+  const pile = def.parts.find((p) => p.id === "pile");
+  assert.ok(pile, "畫出樁");
+  const head = pile.pieces.find((q) => q.kind === "cylinder");
+  const top = head.at[1] + head.length / 2;
+  const w = def.parts.find((p) => p.id === "weight");
+  const body = w.pieces.find((q) => q.kind === "plate");
+  const landed = def.pose(m251.RELEASE + m251.DROP).parts.weight.position;
+  const bottom = landed[1] + Math.min(...body.shape.outline.map((p) => p[1]));
+  close(bottom, top, "W 的底面落在樁頭上", 1e-6);
+  assert.ok(Math.abs(landed[0] - head.at[0]) < head.radius, "樁在 W 正下方");
 });
 test("第 253 種:鼓輪轉得危險地快時,鉤子因離心力往外甩出,鉤住凸柱 D,制止鼓輪", () => {
   const { P_STOP, REACH, clearance } = m253.geometry;
