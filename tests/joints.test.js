@@ -16,6 +16,8 @@ import * as m248 from "../models/fig248.js";
 import * as m249 from "../models/fig249.js";
 import * as m250 from "../models/fig250.js";
 import * as m267 from "../models/fig267.js";
+import * as contactJs from "../models/contact.js";
+import * as helpersJs from "./helpers.js";
 import * as m270 from "../models/fig270.js";
 import * as m247 from "../models/fig247.js";
 import * as m271 from "../models/fig271.js";
@@ -299,7 +301,7 @@ test("第 250 種:軸上帶著被托著轉的大輪(約為支撐輪的 0.8 倍),
   assert.ok(frame.center[2] - frame.thickness / 2 > front, "支架板在兩輪前面(原圖支架擋住兩輪的下半)");
 });
 
-test("第 267 種:輪緣逆箭頭轉時,偏心臂把運動傳給軸;朝箭頭方向轉時,臂繞樞軸讓開,軸保持靜止", () => {
+test("第 267 種:輪緣逆箭頭轉時,偏心臂把運動傳給軸;朝箭頭方向轉時,軸保持靜止", () => {
   const S = m267.SWING;
   const ccw = m267.friction(S);
   close(ccw.rim, S, "輪緣逆時針轉了一程");
@@ -307,8 +309,110 @@ test("第 267 種:輪緣逆箭頭轉時,偏心臂把運動傳給軸;朝箭頭方
   const back = m267.friction(2 * S);
   close(back.rim, 0, "輪緣順時針(箭頭方向)轉回");
   close(back.shaft, ccw.shaft, "軸保持靜止");
-  assert.ok(m267.friction(1.5 * S).yieldAngle > 0, "回程時臂繞樞軸讓開");
-  assert.equal(m267.friction(0.5 * S).yieldAngle, 0, "帶動時臂卡住輪緣");
+});
+
+// 第 267 種:各支臂的定義、姿勢與世界座標的外形(xy)
+const arms267 = (v) => {
+  const def = m267.default;
+  const pose = def.pose(v).parts;
+  return Array.from({ length: 4 }, (_, i) => {
+    const p = pose[`arm${i}`];
+    const d = part(def, `arm${i}`);
+    return { def: d, pose: p, outline: contactJs.placeOutline(d.shape.outline, p.position, p.angle) };
+  });
+};
+const reach267 = (outline) => Math.max(...outline.map(([x, y]) => Math.hypot(x, y)));
+// 圓柱附件的世界 z 範圍(零件姿勢的 z 加上附件的 at)
+const zRange267 = (poseZ, piece) => [poseZ + piece.at[2] - piece.length / 2, poseZ + piece.at[2] + piece.length / 2];
+
+test("第 267 種:四支偏心臂以樞軸銷裝在軸轂上——銷落在軸轂的外形裡,穿過軸轂與臂", () => {
+  const def = m267.default;
+  const hub = part(def, "shaft");
+  for (const v of [0, 0.5, 1.7]) {
+    const shaftPose = def.pose(v).parts.shaft;
+    const hubZ = shaftPose.position?.[2] ?? 0;
+    for (const arm of arms267(v)) {
+      const pin = arm.def.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9);
+      assert.ok(pin, "臂在樞軸處有銷");
+      const local = rot2(arm.pose.position, -shaftPose.angle);
+      assert.ok(pointInPolygon(local, hub.shape.outline), `樞軸 (${local.map((n) => n.toFixed(2))}) 在軸轂的外形裡`);
+      assert.ok(contactJs.edgeDistance(local, hub.shape.outline) > pin.radius, "銷整根在軸轂裡(不從邊緣露出)");
+      const [z0, z1] = zRange267(arm.pose.position[2], pin);
+      const armZ = arm.pose.position[2];
+      assert.ok(z0 <= hubZ - hub.thickness / 2 + 1e-9 && z1 >= armZ + arm.def.thickness / 2, "銷穿過軸轂與臂");
+      assert.ok(armZ - arm.def.thickness / 2 > hubZ + hub.thickness / 2, "臂在軸轂前面一層");
+    }
+  }
+});
+
+test("第 267 種:這些臂透過彈簧被抵住輪緣——兩程臂端都貼著輪緣、不穿入;彈簧兩端接在軸轂與臂上", () => {
+  const { RIM } = m267.geometry;
+  const def = m267.default;
+  // 端點落在零件的某根圓柱附件上:柱的軸線穿過端點,端點在柱的 z 範圍內
+  const onPost = (point, owner, ownerPose) => {
+    const [px, py, pz] = ownerPose.position ?? [0, 0, 0];
+    const [x, y] = rot2([point[0] - px, point[1] - py], -ownerPose.angle);
+    return owner.pieces.some((p) => {
+      if (p.kind !== "cylinder" || Math.hypot(p.at[0] - x, p.at[1] - y) > 1e-6) return false;
+      const [z0, z1] = zRange267(pz, p);
+      return point[2] > z0 && point[2] < z1;
+    });
+  };
+  for (const v of sweep(4 * m267.SWING, 64)) {
+    const pose = def.pose(v).parts;
+    for (const [i, arm] of arms267(v).entries()) {
+      const gap = RIM.inner - reach267(arm.outline);
+      assert.ok(gap > -1e-6 && gap < 0.005, `主動量 ${v.toFixed(2)}:臂 ${i} 的端頭離輪緣 ${gap.toFixed(4)}`);
+      const spring = pose[`spring${i}`];
+      assert.ok(onPost(spring.from, part(def, "shaft"), pose.shaft), `彈簧 ${i} 的一端接在軸轂的座柱上`);
+      assert.ok(onPost(spring.to, arm.def, arm.pose), `彈簧 ${i} 的另一端接在臂的柱上`);
+    }
+  }
+});
+
+test("第 267 種:輪緣朝箭頭方向轉時,臂被帶著繞樞軸往內轉、離開輪緣(讓開);逆箭頭轉時往外轉、頂進輪緣(卡住)", () => {
+  const { RIM } = m267.geometry;
+  const [arm] = arms267(0);
+  const tip = arm.outline.reduce((a, b) => (Math.hypot(...b) > Math.hypot(...a) ? b : a));
+  // 輪緣逆時針(逆箭頭)轉時,臂端受到沿切線往逆時針的摩擦;它對樞軸的力矩把臂往逆時針帶
+  const r = Math.hypot(...tip);
+  const drag = [-tip[1] / r, tip[0] / r];
+  const lever = [tip[0] - arm.pose.position[0], tip[1] - arm.pose.position[1]];
+  assert.ok(lever[0] * drag[1] - lever[1] * drag[0] > 0, "逆箭頭轉時,摩擦把臂往逆時針帶");
+  const turnedBy = (d) => contactJs.placeOutline(arm.def.shape.outline, arm.pose.position, arm.pose.angle + d);
+  const oneDeg = Math.PI / 180;
+  assert.ok(reach267(turnedBy(oneDeg)) > RIM.inner + 0.005, "臂往逆時針轉會頂進輪緣:卡住、把運動傳給軸");
+  assert.ok(reach267(turnedBy(-oneDeg)) < RIM.inner - 0.005, "臂往順時針轉會離開輪緣:繞樞軸讓開");
+});
+
+test("第 267 種:輪緣經四根輻條接到鬆套在軸上的輪轂;輻條、輪轂在臂與軸轂的後面一層", () => {
+  const { RIM } = m267.geometry;
+  const def = m267.default;
+  const rim = part(def, "rim");
+  const pose = def.pose(0).parts;
+  const rimZ = pose.rim.position?.[2] ?? 0;
+  const layers = helpersJs.plateLayers(rim).slice(1); // 第一層是輪緣本身
+  const radii = (loop) => loop.map(([x, y]) => Math.hypot(x, y));
+  const hub = layers.find((l) => l.solid.holes.length === 1);
+  assert.ok(hub, "輪緣有一個帶孔的輪轂");
+  const shaftHub = part(def, "shaft");
+  const shaft = shaftHub.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9 && p.length > 1);
+  const bore = Math.min(...radii(hub.solid.holes[0]));
+  assert.ok(bore >= shaft.radius - 1e-6 && bore < shaft.radius + 0.02, `輪轂的孔(${bore.toFixed(3)})鬆套在軸(${shaft.radius})上`);
+  const shaftZ = pose.shaft.position?.[2] ?? 0;
+  const [s0, s1] = zRange267(shaftZ, shaft);
+  assert.ok(s0 < rimZ + hub.z0 && s1 > rimZ + hub.z1, "軸穿過輪轂");
+  const shaftHubBack = shaftZ - shaftHub.thickness / 2;
+  assert.ok(rimZ + hub.z1 < shaftHubBack, "輪轂藏在軸轂後面");
+  const spokes = layers.filter((l) => l.solid.holes.length === 0);
+  assert.equal(spokes.length, 4, "四根輻條");
+  const hubOuter = Math.max(...radii(hub.solid.outline));
+  for (const s of spokes) {
+    const rs = radii(s.solid.outline);
+    assert.ok(Math.min(...rs) < hubOuter && Math.max(...rs) > RIM.inner, "輻條從輪轂伸進輪緣");
+    assert.ok(rimZ + s.z1 < shaftHubBack, "輻條在軸轂(與臂)後面");
+    assert.ok(s.z0 >= -rim.thickness / 2, "輻條在輪緣的厚度裡");
+  }
 });
 
 test("第 270 種:皮帶輪的抗摩擦軸承:滾子在不動的軸與輪孔之間滾動,不滑動", () => {
@@ -873,6 +977,42 @@ test("第 268 種:曲柄轉動時,擺動桿的端點往復運動", () => {
   const xs = sweep(2 * Math.PI, 72).map((t) => m268.rod(t).end[0]);
   assert.ok(Math.max(...xs) - Math.min(...xs) > 0.6, "桿端往復");
   close(m268.rod(2 * Math.PI).end[0], m268.rod(0).end[0], "曲柄一圈回到原處", 1e-9);
+});
+
+test("第 268 種:滾子被滑過的桿帶著滾——接觸處滾子表面的線速度和桿相同(轉向一致)", () => {
+  const def = m268.default;
+  const r = part(def, "roller").radius;
+  const h = 1e-5;
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const a = m268.rod(t);
+    const b = m268.rod(t + h);
+    // 桿通過滾子上方的固定點,桿上的材料沿桿的方向走了 −Δreach(dir:曲柄銷 → 桿端)
+    const dir = contactJs.placeOutline([[1, 0]], [0, 0], Math.atan2(a.end[1] - a.pin[1], a.end[0] - a.pin[0]))[0];
+    const rodSlide = -(b.reach - a.reach);
+    // 接觸處在滾子的上方,法線朝上(垂直於桿);滾子逆時針轉 dα 時表面沿切線 (−n_y, n_x) 走 r·dα
+    const n = dir[0] < 0 ? [dir[1], -dir[0]] : [-dir[1], dir[0]];
+    const tangent = [-n[1], n[0]];
+    const da = def.pose(t + h).parts.roller.angle - def.pose(t).parts.roller.angle;
+    const surface = r * da * (tangent[0] * dir[0] + tangent[1] * dir[1]);
+    close(surface, rodSlide, `曲柄 ${t.toFixed(2)}:滾子表面與桿同向同速`, 1e-8);
+  }
+});
+
+test("第 268 種:曲柄是圓盤前面的一根臂,從盤心伸到曲柄銷,在圓盤與桿之間", () => {
+  const def = m268.default;
+  const disc = part(def, "disc");
+  const crank = disc.pieces.find((p) => p.kind === "plate");
+  assert.ok(crank, "圓盤上有曲柄臂");
+  const pin = disc.pieces.find((p) => p.kind === "cylinder");
+  const outline = crank.shape.outline.map(([x, y]) => [x + crank.at[0], y + crank.at[1]]);
+  assert.ok(pointInPolygon([0, 0], outline) && pointInPolygon([pin.at[0], pin.at[1]], outline), "臂從盤心伸到曲柄銷");
+  const z0 = crank.at[2] - crank.thickness / 2;
+  const z1 = crank.at[2] + crank.thickness / 2;
+  assert.ok(z0 >= disc.width / 2 - 1e-9, "臂在圓盤前面");
+  const rod = def.pose(0).parts.rod;
+  const rodBack = rod.from[2] - part(def, "rod").thickness / 2;
+  assert.ok(z1 <= rodBack + 1e-9, "臂在桿的後面");
+  assert.ok(pin.at[2] - pin.length / 2 < z0 && pin.at[2] + pin.length / 2 > rodBack, "曲柄銷穿過臂、伸進桿");
 });
 
 test("第 269 種:框架持續往同一方向直線移動,正齒輪得到交替方向的旋轉", () => {

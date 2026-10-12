@@ -1,10 +1,12 @@
 // 第 268 種:藉由曲柄與擺動桿,把圓周運動轉換為往復運動。長桿的右端鉸接在曲柄盤的曲柄銷上,
 // 中段架在左邊的一個固定滾子上;曲柄轉動時,桿在滾子上來回滑動、同時擺動,左端往復(原圖虛線為其他位置)。
-// 主動件是曲柄盤。滾子被滑過的桿帶著轉。
+// 主動件是曲柄盤。曲柄是圓盤前面的一根兩端有眼的臂(照原圖),從盤心伸到曲柄銷,跟著圓盤轉。
+// 滾子被滑過的桿帶著滾:桿往左滑時滾子頂面跟著往左(逆時針),接觸處兩者同速。
 // 推斷:滾子的銷、曲柄盤的軸與後面的軸承座(原圖只畫兩個圓)。
 import { sub, add, scale, norm, dist } from "./kit.js";
 import { crankPin } from "./linkage.js";
 import { pedestal } from "./supports.js";
+import { stadium } from "./shapes.js";
 
 const DISC = { center: [2.3, -0.35, 0], radius: 0.78, crank: 0.52 };
 const ROLLER = { center: [-0.9, -0.45, 0], radius: 0.28 };
@@ -23,7 +25,11 @@ const R0 = rod(0).reach;
 export default {
   figure: 268,
   parts: [
-    { id: "disc", kind: "pulley", style: "disc", center: DISC.center, radius: DISC.radius, width: 0.16, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.4, at: [DISC.crank, 0, 0.15] }] },
+    { id: "disc", kind: "pulley", style: "disc", center: DISC.center, radius: DISC.radius, width: 0.16, pieces: [
+        { kind: "cylinder", radius: 0.07, length: 0.4, at: [DISC.crank, 0, 0.15] }, // 曲柄銷
+        { kind: "plate", shape: stadium(DISC.crank, 0.17), thickness: 0.06, at: [0, 0, 0.12], accent: true }, // 曲柄臂:在圓盤前面、桿的後面(塗記號色,看得出轉動)
+      ],
+    },
     { id: "roller", kind: "pulley", style: "disc", center: [...ROLLER.center.slice(0, 2), 0.18], radius: ROLLER.radius, width: 0.14 },
     {
       id: "frame",
@@ -46,7 +52,7 @@ export default {
       parts: {
         disc: { angle: theta },
         rod: { from: [pin[0], pin[1], 0.2], to: [end[0], end[1], 0.2] },
-        roller: { angle: (reach - R0) / ROLLER.radius },
+        roller: { angle: (R0 - reach) / ROLLER.radius }, // 桿通過滾子上方的固定點:銷離滾子近了,桿往左滑,滾子逆時針滾
       },
       readouts: [],
     };
