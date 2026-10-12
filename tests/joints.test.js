@@ -1919,6 +1919,26 @@ test("第 279 種:軸承盒由兩塊錐形襯裡片與兩根錐形鑲條組成,�
   }
 });
 
+test("第 279 種:鑲條可透過螺絲調整——每根螺絲穿過鑲條頂上的凸緣,下端頂在襯裡的頂面上(#279-1)", () => {
+  const box = part(m279.default, "box");
+  const screws = box.pieces.filter((p) => p.kind === "cylinder" && p.axis?.[1] === 1);
+  assert.equal(screws.length, 2, "左右各一根螺絲");
+  for (const s of screws) {
+    const [x, y] = s.at;
+    const [bottom, top] = [y - s.length / 2, y + s.length / 2];
+    const side = x < 0 ? 0 : 1;
+    const lining = m279.journalBox.linings[side].outline;
+    const gib = m279.journalBox.gibs[side];
+    // 襯裡在螺絲正下方的頂面高度:螺絲的 x 處襯裡外形的最高點
+    const liningTop = Math.max(...sweep(1, 400, -1).map((y) => [x, y]).filter((p) => pointInPolygon(p, lining)).map((p) => p[1]));
+    close(bottom, liningTop, `螺絲下端頂在襯裡頂上(x ${x.toFixed(3)})`, 3e-3);
+    // 螺絲穿過鑲條的凸緣:螺絲的 x 處,鑲條在螺絲的高度範圍裡有材料(螺絲從凸緣中間穿過)
+    const flange = sweep(top, 200, bottom).filter((y) => pointInPolygon([x, y], gib));
+    assert.ok(flange.length > 0 && Math.min(...flange) > bottom && Math.max(...flange) < top, "螺絲從鑲條的凸緣中間穿過,上下都伸出");
+    for (const r of [-s.radius, s.radius]) assert.ok(!pointInPolygon([x + r, bottom + 0.01], lining), "螺絲不穿進襯裡");
+  }
+});
+
 test("第 279 種:曲柄銷插進曲柄臂(#279-2)", () => {
   const crank = part(m279.default, "crank");
   const arm = crank.pieces.find((p) => p.kind === "plate");
@@ -1999,7 +2019,7 @@ test("第 280 種:原圖的兩支止回爪、頂端的曲柄搖臂接直立拉�
     close(Math.hypot(from[0] - c.short.end[0], from[1] - c.short.end[1]), 0, "拉桿下端接在短槓桿外端", 1e-9);
     assert.ok(to[0] < T[0] && to[1] > from[1], "拉桿上端在樞軸左邊的短臂上");
     const tilt = Math.abs(Math.atan2(to[0] - from[0], to[1] - from[1]));
-    assert.ok(tilt < (15 * Math.PI) / 180, `拉桿大致直立(偏 ${tilt})`);
+    assert.ok(tilt < (3 * Math.PI) / 180, `拉桿大致直立:全程偏離直立不到 3°(偏 ${tilt})`);
   }
   // 長槓桿的樞軸:穿過槓桿,孔和軸一樣大,後端插進立柱
   const frame = part(def, "frame");
@@ -2369,6 +2389,20 @@ test("第 284 種:支點 a 的座、止回爪支架接到立柱,曲柄軸接到�
   const back = Math.min(...rackShape({ teeth: carriage.teeth, pitch: carriage.pitch, depth: carriage.depth }).outline.map((p) => p[1]));
   const plateTop = Math.max(...carriage.pieces[0].shape.outline.map((p) => p[1]));
   assert.ok(plateTop >= back - 1e-9, `平台的板接到齒條的背面(板緣 ${plateTop.toFixed(3)}、齒條背面 ${back.toFixed(3)})`);
+});
+
+test("第 284 種:曲柄搖臂槓桿的支點在 a——槓桿的轂往後插進 a 的座裡(#284-2)", () => {
+  const def = m284.default;
+  const { A } = m284.geometry;
+  const lever = part(def, "bellCrank");
+  assert.deepEqual(lever.center, A, "槓桿繞 a 擺");
+  const hub = lever.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9 && p.length >= 0.3);
+  assert.ok(hub, "槓桿在 a 有一個轂");
+  const seat = part(def, "frame").pieces.find((p) => p.kind === "box" && span284(p)[0][0] <= A[0] && span284(p)[0][1] >= A[0] && span284(p)[1][0] <= A[1] && span284(p)[1][1] >= A[1]);
+  const [[x0, x1], [y0, y1], [z0, z1]] = span284(seat);
+  assert.ok(A[0] - hub.radius >= x0 && A[0] + hub.radius <= x1 && A[1] - hub.radius >= y0 && A[1] + hub.radius <= y1, "轂整圈在座的範圍裡");
+  const [h0, h1] = [A[2] + hub.at[2] - hub.length / 2, A[2] + hub.at[2] + hub.length / 2];
+  assert.ok(h0 < z1 - 0.1 && h0 >= z0 - 1e-9, `轂的後段插進座裡 0.1 以上、不穿出座的背面(轂 z ${h0.toFixed(2)}..${h1.toFixed(2)},座 ${z0}..${z1})`);
 });
 
 test("第 284 種:棘輪照原圖是輪緣、四根輪輻與輪轂,小齒輪與齒條的咬合處從正面看得到(在輪的開口後面)", () => {
