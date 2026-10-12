@@ -95,6 +95,147 @@ test("第 290 種:擺式擒縱:框架每擺一次,叉瓦 A、B 輪流放走半�
   noPenetration(m290.escapement);
 });
 
+// ── 第 288–290 種(model-audit-fixes-2 票 19):沒有瞬移、重錘驅動、擺、輪輻、字母 ──
+
+/**
+ * 沒有瞬移:整週期以每週期 n 步取樣,每步的轉角不超過「自靜止加速落過一個齒距」最後一步的 1.5 倍
+ * (escapeByContact 的 drop 預設 0.08:落過一個齒距花 0.08 週期)。齒被推過叉瓦(一步跳過去)時會超過很多。
+ */
+function noJump290(e, pitch, n = 2880) {
+  const free = (2 * pitch) / (0.08 * n);
+  let max = 0;
+  let at = 0;
+  for (let i = 1; i <= 2 * n; i++) {
+    const d = Math.abs(e.angle((e.period * i) / n) - e.angle((e.period * (i - 1)) / n));
+    if (d > max) [max, at] = [d, i / n];
+  }
+  assert.ok(max < 1.5 * free, `最大一步 ${max.toFixed(4)}(第 ${at.toFixed(4)} 週期)是自由加速步長 ${free.toFixed(4)} 的 ${(max / free).toFixed(1)} 倍`);
+}
+
+test("第 290 種:叉瓦 A 放開齒時,輪從靜止加速轉到 B 上,不會一步被推過叉瓦(整週期沒有瞬移)", () => {
+  noJump290(m290.escapement, m290.PITCH);
+});
+
+test("第 288、289 種:叉瓦放開齒時,輪從靜止加速轉到另一個叉瓦上(整週期沒有瞬移)", () => {
+  noJump290(m288.escapement, m288.PITCH);
+  noJump290(m289.escapement, m289.PITCH);
+});
+
+/**
+ * 推斷的重錘驅動(照第 234、238 種的 weight-drive.js):繩從輪軸上的鼓放出、經滑輪吊著重錘。
+ * 繩長不變、鼓上還繞著繩、重錘的拉力讓輪往前轉(dir:輪往前轉時繞鼓軸的方向)、輪停重錘停、輪往前轉重錘降;
+ * 每隔 every 重錘捲回最高處(上鍊)。
+ */
+function assertWeightDrive288(def, { drum, wheel, period, every, dir }) {
+  const len = (pts) => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1], p[2] - pts[i][2]), 0);
+  const radial = (p) => {
+    const d = [p[0] - drum.center[0], p[1] - drum.center[1], p[2] - drum.center[2]];
+    const along = d[0] * drum.axis[0] + d[1] * drum.axis[1] + d[2] * drum.axis[2];
+    return { along, r: Math.hypot(...d.map((x, i) => x - along * drum.axis[i])) };
+  };
+  const poses = sweep(every * 0.999, 240).map((v) => ({ v, pose: def.pose(v) }));
+  const l0 = len(poses[0].pose.paths.rope.points);
+  for (const { v, pose } of poses) {
+    const pts = pose.paths.rope.points;
+    close(len(pts), l0, `主動量 ${v.toFixed(3)}:繩長不變(鼓放出的繩 = 重錘下降的量)`, 0.02);
+    const eye = pts[0];
+    const w = pose.parts.weight.position;
+    assert.ok(Math.abs(w[0] - eye[0]) < 1e-9 && Math.abs(w[2] - eye[2]) < 1e-9 && w[1] < eye[1], `主動量 ${v.toFixed(3)}:重錘吊在繩的下端`);
+    const wound = pts.filter((p) => Math.abs(radial(p).along) < 0.3 && Math.abs(radial(p).r - drum.radius) < 1e-6);
+    assert.ok(wound.length > 10, `主動量 ${v.toFixed(3)}:鼓上還繞著繩`);
+  }
+  // 繩離開鼓的那一點受重錘拉:對輪軸的力矩朝輪往前轉的方向
+  const pts = def.pose(0).paths.rope.points;
+  const k = pts.findIndex((p) => Math.abs(radial(p).r - drum.radius) < 1e-6);
+  const t = pts[k];
+  const pull = [0, 1, 2].map((i) => pts[k - 1][i] - t[i]);
+  const r = [0, 1, 2].map((i) => t[i] - drum.center[i]);
+  const torque = [r[1] * pull[2] - r[2] * pull[1], r[2] * pull[0] - r[0] * pull[2], r[0] * pull[1] - r[1] * pull[0]];
+  assert.ok(dir * (torque[0] * drum.axis[0] + torque[1] * drum.axis[1] + torque[2] * drum.axis[2]) > 0, "重錘的拉力讓輪往前轉");
+  const ys = poses.map(({ v, pose }) => ({ y: pose.parts.weight.position[1], w: wheel(v) }));
+  for (let i = 1; i < ys.length; i++) {
+    if (Math.abs(ys[i].w - ys[i - 1].w) < 1e-12) close(ys[i].y, ys[i - 1].y, "輪不動,重錘不動", 1e-9);
+    if (dir * (ys[i].w - ys[i - 1].w) > 1e-3) assert.ok(ys[i].y < ys[i - 1].y, "輪往前轉,重錘下降");
+  }
+  assert.ok(ys[0].y - ys[ys.length - 1].y > 0.3, "上鍊之間重錘降下一段看得出來的距離");
+  assert.ok(every >= 2 * period, "至少擺兩個來回才上鍊一次");
+  close(def.pose(every).parts.weight.position[1], ys[0].y, "重錘降到底時捲回最高處(上鍊)", 1e-6);
+}
+
+test("第 288 種:推斷的重錘驅動——擒縱輪 A 軸上的鼓放出繩、經滑輪吊著重錘,重錘的拉力讓輪逆時針轉", () => {
+  const { DRUM, REWIND } = m288.geometry;
+  assertWeightDrive288(m288.default, { drum: DRUM, wheel: m288.wheelAngle, period: 4 * m288.SWING, every: REWIND, dir: 1 });
+});
+
+test("第 289 種:推斷的重錘驅動——擒縱輪 A 軸上的鼓放出繩、經滑輪吊著重錘,重錘的拉力讓輪逆時針轉", () => {
+  const { DRUM, REWIND } = m289.geometry;
+  assertWeightDrive288(m289.default, { drum: DRUM, wheel: m289.wheelAngle, period: 4 * m289.SWING, every: REWIND, dir: 1 });
+});
+
+test("第 290 種:推斷的重錘驅動——擒縱輪 D 軸上的鼓放出繩、經滑輪吊著重錘,重錘的拉力讓輪順時針轉", () => {
+  const { DRUM, REWIND } = m290.geometry;
+  assertWeightDrive288(m290.default, { drum: DRUM, wheel: m290.wheelAngle, period: 4 * m290.SWING, every: REWIND, dir: -1 });
+});
+
+/** 錨形件由擺帶動(推斷的擺):錨形件最低的一塊(擺錘)在輪的下方,擺桿從軸 a 的轂一路接到擺錘 */
+function pendulum288(def, wheelBottom) {
+  const anchor = def.parts.find((p) => p.id === "anchor");
+  const axisY = anchor.center[1];
+  const lowest = anchor.pieces.reduce((m, p) => ((p.at?.[1] ?? 0) < (m.at?.[1] ?? 0) ? p : m));
+  assert.ok(axisY + lowest.at[1] < wheelBottom, `擺錘(y ${(axisY + lowest.at[1]).toFixed(2)})在輪的下緣(y ${wheelBottom.toFixed(2)})下方`);
+  const rod = anchor.pieces.find((p) => p.kind === "box" && Math.abs(p.at?.[0] ?? 1) < 1e-9 && p.at[1] + p.size[1] / 2 >= 0 && p.at[1] - p.size[1] / 2 <= lowest.at[1]);
+  assert.ok(rod, "擺桿從軸 a 往下一路接到擺錘(錨形件由擺的擺動所帶動)");
+}
+
+test("第 288、289 種:錨形件 H、L、K 由擺的擺動所帶動——補上的擺桿與擺錘裝在軸 a 上,擺錘在輪的下方", () => {
+  pendulum288(m288.default, -1.6 - 2.2);
+  pendulum288(m289.default, -0.55 - 1.5);
+});
+
+/** 輪輻伸進輪緣(輪緣的孔半徑以內),標記方塊在輪緣上 */
+function spokes288(def) {
+  const wheel = def.parts.find((p) => p.id === "wheelA");
+  const rim = wheel.pieces[0];
+  const hole = Math.max(...rim.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  const spokes = wheel.pieces.filter((p) => p.kind === "box" && !p.at);
+  assert.ok(spokes.length >= 3);
+  for (const s of spokes) assert.ok(s.size[0] / 2 > hole + 0.01, `輪輻(半長 ${(s.size[0] / 2).toFixed(3)})伸進輪緣(孔半徑 ${hole.toFixed(3)})`);
+  const mark = wheel.pieces.find((p) => p.accent);
+  assert.ok(Math.hypot(mark.at[0], mark.at[1]) - mark.size[0] / 2 >= hole - 1e-9, "標記方塊在輪緣上,不懸在孔裡");
+}
+
+test("第 288、289 種:輪輻接到輪緣,標記方塊裝在輪緣上(輪是一件)", () => {
+  spokes288(m288.default);
+  spokes288(m289.default);
+});
+
+/**
+ * 原文的字母:「齒交替地與叉瓦 K 的外側表面以及叉瓦 H 的內側表面接觸」「齒的末端會沿著表面 c、e 和 d、b 滑動」。
+ * H、c、e 標在叉瓦 H 旁,K、d、b 標在叉瓦 K 旁(離自己的叉瓦比離另一個近),c、e(d、b)分在衝擊面的兩端,跟著錨形件擺。
+ */
+function letters288(mod, ids) {
+  const def = mod.default;
+  for (const v of sweep(mod.escapement.period, 8)) {
+    const [K, H] = mod.escapement.at(v).stops;
+    const pose = def.pose(v).parts;
+    const near = (id, poly) => {
+      const part = def.parts.find((p) => p.id === id);
+      assert.ok(part?.label, `標了 ${id}`);
+      const pos = pose[id]?.position ?? [...part.center];
+      const off = part.labelOffset ?? [0, 0, 0];
+      const p = [pos[0] + off[0], pos[1] + off[1]];
+      return Math.min(...poly.map((q) => Math.hypot(q[0] - p[0], q[1] - p[1])));
+    };
+    for (const id of ids.H) assert.ok(near(id, H) < 0.45 && near(id, H) < near(id, K), `主動量 ${v.toFixed(3)}:${id} 標在叉瓦 H 旁`);
+    for (const id of ids.K) assert.ok(near(id, K) < 0.45 && near(id, K) < near(id, H), `主動量 ${v.toFixed(3)}:${id} 標在叉瓦 K 旁`);
+  }
+}
+
+test("第 288、289 種:原文解說用的字母 H、K 與衝擊面兩端的 c、e、d、b 標在叉瓦旁", () => {
+  letters288(m288, { H: ["labelc", "labele"], K: ["labeld", "labelb"] });
+  letters288(m289, { H: ["labelH", "labelc", "labele"], K: ["labelK", "labeld", "labelb"] });
+});
+
 test("第 292 種:凸柱式擒縱:凸柱交替抵在前、後叉瓦上;叉瓦為以 F 為圓心的圓弧,所以是靜擊式", () => {
   const e = m292.escapement;
   close(e.step, -2 * m292.STEP, "擺一個來回,前後各放走一根凸柱", 1e-9);
