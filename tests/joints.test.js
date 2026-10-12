@@ -45,6 +45,7 @@ import * as cone from "../models/cone-roller.js";
 import * as m264 from "../models/fig264.js";
 import * as m266 from "../models/fig266.js";
 import { meshAngle } from "../models/gears.js";
+import { gearProfile } from "../models/shapes.js";
 import * as m244 from "../models/fig244.js";
 import * as m246 from "../models/fig246.js";
 import * as m252 from "../models/fig252.js";
@@ -422,6 +423,28 @@ test("第 270 種:皮帶輪的抗摩擦軸承:滾子在不動的軸與輪孔之�
     // 滾子貼軸的那一點速度為零,貼輪孔的那一點速度等於輪孔表面速度
     close(carrier * (SHAFT + ROLLER) - spin * ROLLER, 0, "貼軸處不滑動", 1e-12);
     close(carrier * (SHAFT + ROLLER) + spin * ROLLER, a * BORE, "貼輪孔處不滑動", 1e-12);
+  }
+});
+
+test("第 270 種:左圖是蓋上蓋板的同一個輪:蓋板中央的孔裡看得到不動的軸與六個滾子的內緣,和右圖同步", () => {
+  const def = m270.default;
+  const { SHAFT, ROLLER } = m270.geometry;
+  const L = part(def, "pulleyL");
+  const cover = L.pieces.find((p) => p.kind === "plate");
+  const hole = Math.max(...cover.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  assert.ok(hole > SHAFT + 0.03 && hole < SHAFT + 2 * ROLLER - 0.1, "蓋板的孔比軸大、比滾子外緣小:孔裡看得到滾子的內緣");
+  assert.ok(Math.max(...L.shape.holes[0].map(([x, y]) => Math.hypot(x, y))) >= SHAFT + 2 * ROLLER - 1e-9, "蓋板後面的輪和右圖一樣有放滾子的大孔");
+  const shaftL = part(def, "stands").pieces.find((p) => p.kind === "cylinder" && p.at[0] === L.center[0] && p.radius === SHAFT);
+  assert.ok(shaftL, "左圖也有同樣粗的不動軸");
+  for (const a of sweep(3, 6)) {
+    const pose = def.pose(a).parts;
+    for (let i = 0; i < 6; i++) {
+      const l = pose[`rollerL${i}`];
+      const r = pose[`roller${i}`];
+      close(l.angle, r.angle, "左右兩圖的滾子同步自轉", 1e-12);
+      close(dist(l.position, L.center), SHAFT + ROLLER, "左圖的滾子夾在軸與輪孔之間", 1e-12);
+      close(l.position[1] - L.center[1], r.position[1], "左右兩圖的滾子同步公轉", 1e-12);
+    }
   }
 });
 
@@ -1347,15 +1370,90 @@ test("第 268 種:曲柄是圓盤前面的一根臂,從盤心伸到曲柄銷,在
   assert.ok(pin.at[2] - pin.length / 2 < z0 && pin.at[2] + pin.length / 2 > rodBack, "曲柄銷穿過臂、伸進桿");
 });
 
-test("第 269 種:框架持續往同一方向直線移動,正齒輪得到交替方向的旋轉", () => {
+test("第 269 種:框架持續往同一方向直線移動,正齒輪得到交替方向的旋轉(照原圖上下交錯好幾段,換向不只一次)", () => {
+  const { SEGMENTS } = m269.geometry;
+  // 原圖由左到右:上 4 齒、下 4 齒、上 6 齒、下 1 齒,上下交錯
+  assert.deepEqual(SEGMENTS.map((s) => [s.side, s.teeth]), [["top", 4], ["bottom", 4], ["top", 6], ["bottom", 1]], "齒條的分段照原圖");
   const [lo, hi] = m269.RANGE;
-  const angles = sweep(lo, 400, hi).map(m269.gear); // 框架從右往左持續移動
-  const steps = angles.slice(1).map((a, i) => Math.sign(a - angles[i])).filter(Boolean);
+  const angles = sweep(lo, 1200, hi).map(m269.gear); // 框架從右往左持續移動
+  const steps = angles.slice(1).map((a, i) => a - angles[i]).filter((d) => Math.abs(d) > 1e-6).map(Math.sign);
   const changes = steps.slice(1).filter((s, i) => s !== steps[i]).length;
-  assert.ok(steps.includes(1) && steps.includes(-1), "齒輪兩個方向都轉");
-  assert.equal(changes, 1, "先一個方向、再反方向");
-  const { TOP, P, R } = m269.geometry;
-  close(m269.gear(TOP.from - P) - m269.gear(TOP.from), P / R, "咬合時齒輪轉角 = 框架位移 / 節圓半徑");
+  assert.equal(changes, 3, "上、下、上、下輪流帶動,齒輪換向三次");
+});
+
+test("第 269 種:每段齒條咬合時,齒輪轉角 = 框架位移 / 節圓半徑,上齒條與下齒條帶動的轉向相反", () => {
+  const { SEGMENTS, P, R } = m269.geometry;
+  for (const seg of SEGMENTS.filter((s) => s.teeth >= 4)) {
+    // 段中間的齒走過齒輪正上(下)方的那一個齒距
+    const mid = seg.first + Math.floor((seg.teeth - 1) / 2) * P;
+    const turn = m269.gear(-mid + P / 2) - m269.gear(-mid - P / 2);
+    close(Math.abs(turn), P / R, `${seg.side} ${seg.teeth} 齒那一段`, 0.02);
+    assert.equal(Math.sign(turn), seg.side === "top" ? -1 : 1, "框架往右走:上齒條推齒輪順時針、下齒條推逆時針");
+  }
+});
+
+// 齒輪在框架位移 s 時的齒形(世界座標 2D)
+const gear269 = (s, extra = 0) => {
+  const { N, R } = m269.geometry;
+  const a = m269.gear(s) + extra;
+  return gearProfile({ teeth: N, radius: R }).map((p) => rot2(p, a));
+};
+
+test("第 269 種:行程全程(兩端與換排處)齒條的齒不穿進齒輪,也沒有推不開的地方", () => {
+  assert.deepEqual(m269.jams(), [], "沒有卡死");
+  const [lo, hi] = m269.RANGE;
+  let worst = { depth: 0 };
+  for (const s of sweep(hi, 2400, lo)) {
+    const g = gear269(s);
+    for (const r of m269.rackOutlines(s)) {
+      const depth = penetrationDepth(g, r.outline);
+      if (depth > worst.depth) worst = { depth, s, side: r.side };
+    }
+  }
+  assert.ok(worst.depth < 0.003, `穿入 ${worst.depth.toFixed(4)}(框架位移 ${worst.s},${worst.side})`);
+});
+
+test("第 269 種:齒輪是被齒條的齒推著轉的:咬合時齒面相碰(少轉一點就穿入),行程兩端齒條的齒完全離開齒輪", () => {
+  const { SEGMENTS, P, TIP } = m269.geometry;
+  for (const seg of SEGMENTS) {
+    for (let k = 0; k < seg.teeth; k++) {
+      const s = -(seg.first + k * P); // 這一齒正在齒輪正上(下)方
+      // 框架往右走:上齒條推齒輪順時針、下齒條推逆時針。少轉一點 = 往推的反方向退一點
+      const push = seg.side === "top" ? -1 : 1;
+      const depthOf = (extra) => Math.max(...m269.rackOutlines(s).map((r) => penetrationDepth(gear269(s, extra), r.outline)));
+      assert.ok(depthOf(0) < 0.003, `${seg.side} 第 ${k} 齒:不穿入`);
+      assert.ok(depthOf(-push * 0.01) > 0.002, `${seg.side} 第 ${k} 齒:齒輪少轉 0.01 就穿入(齒面相碰)`);
+    }
+  }
+  const tip = circlePolygon([0, 0], TIP, 96);
+  for (const s of m269.RANGE)
+    for (const r of m269.rackOutlines(s)) assert.ok(!polygonsOverlap(tip, r.outline), `框架位移 ${s}:齒條的齒離開齒輪的齒頂圓`);
+});
+
+test("第 269 種:框架的桿穿過導套(四片板圍成的方框),導套由立柱撐到地面,桿全程都在導套裡", () => {
+  const def = m269.default;
+  const { GUIDE_X, FLOOR } = m269.geometry;
+  const guide = part(def, "guide").pieces;
+  const inBox = (p, b) => b.size.every((d, i) => Math.abs(p[i] - b.at[i]) < d / 2);
+  assert.ok(!guide.some((b) => inBox([GUIDE_X, 0, 0], b)), "桿的中心線不在任何一塊實心裡(導套是空心的)");
+  for (const [i, sign] of [[1, 1], [1, -1], [2, 1], [2, -1]])
+    assert.ok(
+      guide.some((b) => Math.abs(b.at[0] - GUIDE_X) < 1e-9 && Math.sign(b.at[i]) === sign && Math.abs(b.at[3 - i]) < 1e-9 && Math.abs(b.at[i]) < 0.2),
+      "上下前後四片板圍住桿",
+    );
+  assert.ok(Math.min(...guide.map((b) => b.at[1] - b.size[1] / 2)) <= FLOOR - 0.1, "導套接到地面");
+  const frame = part(def, "frame").pieces;
+  const rod = frame[frame.length - 1];
+  const right = Math.max(...frame.slice(0, -1).filter((b) => b.kind === "box").map((b) => b.at[0] + b.size[0] / 2));
+  for (const s of m269.RANGE) {
+    assert.ok(rod.at[0] + s - rod.size[0] / 2 < GUIDE_X - 0.15 && rod.at[0] + s + rod.size[0] / 2 > GUIDE_X + 0.15, `框架位移 ${s}:桿穿出導套兩端`);
+    assert.ok(right + s < GUIDE_X - 0.2, `框架位移 ${s}:框架碰不到導套`);
+  }
+});
+
+test("第 269 種:齒輪的轉向箭頭畫在框架前面的齒輪面上,不被齒條擋住", () => {
+  const g = part(m269.default, "gear");
+  assert.ok(g.spinOffset > 0.11 && g.spin < g.radius - 1.2 * m269.geometry.M, "箭頭在齒根圓以內、框架前面");
 });
 
 test("第 272 種:斜面圓盤凸輪旋轉,靠在盤上的桿得到往復直線運動", () => {

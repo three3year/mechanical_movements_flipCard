@@ -183,12 +183,13 @@ export function fallingRest(restAt, v, { into, accel, window, samples = 12 }) {
 /**
  * 被推的零件(位置或轉角 value)往 dir(+1 / −1)推到剛好不再重疊:overlaps(v) 回答在 v 時是否重疊。
  * 一步最多推 max(通常是推它的零件這一步走的量加一點餘裕);推了 max 仍重疊就表示不是被這一面推,回傳原值。
+ * iterations:二分的次數(精度 max / 2^iterations;逐步推很多步時可以少一點)。
  */
-export function pushUntilClear(value, dir, max, overlaps) {
+export function pushUntilClear(value, dir, max, overlaps, iterations = 30) {
   if (!overlaps(value)) return value;
   if (overlaps(value + dir * max)) return value;
   let [lo, hi] = [0, max];
-  for (let k = 0; k < 30; k++) {
+  for (let k = 0; k < iterations; k++) {
     const mid = (lo + hi) / 2;
     if (overlaps(value + dir * mid)) lo = mid;
     else hi = mid;
