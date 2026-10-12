@@ -3,18 +3,32 @@
 // 升降桿跟著上升,把閥門抬起;搖臂軸轉回時升降器隨桿落下。主動件是搖臂軸。
 // 接觸:升降桿的高度由推頂子的曲面與升降器下緣相碰算出(取曲面上頂得最高的一點);搖臂軸轉回時升降器靠自重跟著落下。
 // 推斷:升降器靠桿與閥門的重量壓在推頂子上;推頂子曲面的形狀依原圖;搖臂軸的軸承、升降桿的導套與後面的牆板(原圖沒畫)。
+// 前後順序照原圖:推頂子的轂是套在搖臂軸上的圓,右緣藏在升降桿後面(原圖那一段畫成虛線),所以升降桿在推頂子前面一層。
 import { deg, clamp, rot2 } from "./kit.js";
 import { shape, thickLine, circle } from "./shapes.js";
 
 const SHAFT = [1.35, -0.55, 0]; // 搖臂軸
 const ROD_X = 1.85; // 升降桿
+const ROD_Z = 0.33; // 升降桿在推頂子(含轂與搖臂軸的前端,z 到 0.205)前面一層
 export const RANGE = [deg(-14), 0];
-// 推頂子的上緣(局部座標,軸心為原點):從左端往右緩緩升到軸心上方
-const TOE_TOP = Array.from({ length: 21 }, (_, i) => {
-  const t = i / 20;
-  const x = -2.85 + t * 2.85;
-  return [x, 0.32 + 0.28 * t * t - 0.08 * Math.sin(Math.PI * t)];
-});
+// 推頂子的轂:套在搖臂軸上的圓,半徑照原圖(右緣伸到升降桿後面,原圖那一段畫成虛線)
+const HUB_R = 0.42;
+// 推頂子的上緣(局部座標,軸心為原點):從左端往右緩緩升高,在 x −0.9 之後以二次曲線接到轂頂,和轂的圓相切
+const TOE_TOP = (() => {
+  const arm = (x) => {
+    const t = (x + 2.85) / 2.85;
+    return 0.32 + 0.28 * t * t - 0.08 * Math.sin(Math.PI * t);
+  };
+  const pts = Array.from({ length: 15 }, (_, i) => -2.85 + (i * 1.95) / 14).map((x) => [x, arm(x)]);
+  const p0 = pts[pts.length - 1];
+  const c = [-0.7, HUB_R];
+  for (let i = 1; i <= 6; i++) {
+    const u = i / 6;
+    const w = [(1 - u) ** 2, 2 * u * (1 - u), u * u];
+    pts.push([w[0] * p0[0] + w[1] * c[0], w[0] * p0[1] + w[1] * c[1] + w[2] * HUB_R]);
+  }
+  return pts;
+})();
 // 升降器的下緣:往左下斜的直線(相對升降桿上的固定點,升降桿高度為 0 時)
 const LIFTER = { x0: -1.6, y0: -0.2, slope: 0.1 }; // 下緣在 x 處的高度 = y0 + slope·(x − x0)
 
@@ -32,10 +46,23 @@ export function lift(psi0) {
   return Math.max(0, best);
 }
 
-const toe = shape(
-  [...TOE_TOP, [0.5, 0.45], [0.55, 0], [0.4, -0.38], [0, -0.48], [-0.5, -0.3], ...TOE_TOP.map(([x, y]) => [x, y - 0.18 - 0.15 * ((x + 2.85) / 2.85)]).reverse().slice(0, -2)].map((p) => p),
-  [circle(0.16).reverse()],
-);
+// 推頂子:上緣 → 轂的圓(從頂端順時針繞過右邊、下面到左側)→ 下緣回到尖端
+const HUB_END = deg(-160); // 下緣接到轂的左下
+const toe = (() => {
+  const arc = Array.from({ length: 25 }, (_, i) => {
+    const a = Math.PI / 2 + ((HUB_END - Math.PI / 2) * (i + 1)) / 25;
+    return [HUB_R * Math.cos(a), HUB_R * Math.sin(a)];
+  });
+  const a0 = arc[arc.length - 1];
+  const tip = [-2.62, 0.16]; // 尖端的下角
+  const c = [-1.45, -0.12];
+  const lower = Array.from({ length: 12 }, (_, i) => {
+    const u = (i + 1) / 12;
+    const w = [(1 - u) ** 2, 2 * u * (1 - u), u * u];
+    return [w[0] * a0[0] + w[1] * c[0] + w[2] * tip[0], w[0] * a0[1] + w[1] * c[1] + w[2] * tip[1]];
+  });
+  return shape([...TOE_TOP, ...arc, ...lower], [circle(0.16).reverse()]);
+})();
 
 export default {
   figure: 286,
@@ -59,9 +86,9 @@ export default {
       kind: "group",
       arrow: false,
       pieces: [
-        // 直立桿在趾形凸輪的後面一層(凸輪從它前方轉過),升降器的臂從桿上的座往前伸
-        { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 4.4, at: [ROD_X, -0.4, -0.35] },
-        { kind: "box", size: [0.42, 0.55, 0.42], at: [ROD_X - 0.05, 0.45, -0.07] },
+        // 直立桿照原圖的虛線在推頂子前面一層(轂的右緣藏在它後面),升降器的臂從桿上的座往後伸到推頂子那一層
+        { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 4.4, at: [ROD_X, -0.4, ROD_Z] },
+        { kind: "box", size: [0.42, 0.55, 0.6], at: [ROD_X - 0.05, 0.45, 0.15] },
         // 升降器:從桿上的座往左伸出的楔形臂,下緣是一條斜直線
         { kind: "plate", shape: shape([[LIFTER.x0 - 1.4, LIFTER.y0 - 0.14], [ROD_X - 0.2, LIFTER.y0 + LIFTER.slope * (ROD_X - 0.2 - LIFTER.x0)], [ROD_X - 0.2, 0.7], [LIFTER.x0 - 1.35, LIFTER.y0 + 0.05]]), thickness: 0.3 },
       ],
@@ -73,9 +100,10 @@ export default {
         { kind: "box", size: [2.4, 4.4, 0.1], at: [1.4, -0.6, -1.1] }, // 牆板
         { kind: "cylinder", radius: 0.25, inner: 0.12, length: 0.2, at: [SHAFT[0], SHAFT[1], -0.95] }, // 搖臂軸的軸承
         // 升降桿的兩個導套,各由一根托架接到牆板
-        ...[-1.6, 1.35].flatMap((y) => [
-          { kind: "cylinder", axis: [0, 1, 0], radius: 0.18, inner: 0.1, length: 0.25, at: [ROD_X, y, -0.35] },
-          { kind: "box", size: [0.12, 0.12, 0.54], at: [ROD_X, y, -0.8] },
+        // 上導套放在升降器的座頂起到最高時之上;托架從牆板往前伸到桿那一層
+        ...[-1.6, 1.5].flatMap((y) => [
+          { kind: "cylinder", axis: [0, 1, 0], radius: 0.18, inner: 0.1, length: 0.25, at: [ROD_X, y, ROD_Z] },
+          { kind: "box", size: [0.12, 0.12, ROD_Z - 0.18 + 1.05], at: [ROD_X, y, (ROD_Z - 0.18 - 1.05) / 2] },
         ]),
       ],
     },

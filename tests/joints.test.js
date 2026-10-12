@@ -2101,12 +2101,66 @@ test("第 285 種:車床可動頭:轉動手輪,螺桿使心軸直線移動", () 
   assert.ok(m285.extend(m285.RANGE[1]) > 1, "心軸伸出");
 });
 
+// 第 285 種:螺桿與心軸孔(世界 x 範圍)的重疊長度
+const engage285 = (theta) => {
+  const def = m285.default;
+  const pose = def.pose(theta).parts;
+  const screw = part(def, "screw");
+  const sx = pose.screw.position[0];
+  const bore = part(def, "spindle").pieces[0].profile.map(([, x]) => x);
+  const sp = pose.spindle.position[0];
+  return Math.min(sx + screw.length / 2, sp + Math.max(...bore)) - Math.max(sx - screw.length / 2, sp + Math.min(...bore));
+};
+
+test("第 285 種:螺桿旋在心軸裡,心軸行程兩端與途中螺桿都咬住心軸至少一個螺距", () => {
+  const [lo, hi] = m285.RANGE;
+  for (const t of sweep(hi, 40, lo)) assert.ok(engage285(t) >= m285.PITCH, `手輪 ${t.toFixed(2)}:咬合 ${engage285(t).toFixed(3)} 不到一個螺距`);
+  // 螺桿不頂到心軸實心的前段(頂尖那一段)
+  const def = m285.default;
+  const sx = def.pose(lo).parts.screw.position[0];
+  const sp = def.pose(lo).parts.spindle.position[0];
+  const bore = part(def, "spindle").pieces[0].profile.map(([, x]) => x);
+  assert.ok(sx - part(def, "screw").length / 2 > sp + Math.min(...bore), "心軸縮到底時螺桿左端仍在孔裡");
+});
+
+test("第 285 種:右旋螺紋,手輪從右邊看逆時針轉(繞 +X 正轉)時心軸往左伸出", () => {
+  const def = m285.default;
+  assert.deepEqual(part(def, "handwheel").axis, [1, 0, 0]);
+  assert.ok(def.pose(1).parts.spindle.position[0] < def.pose(0).parts.spindle.position[0], "繞 +X 正轉,心軸往 −X 走");
+});
+
+test("第 285 種:套筒是鑄件頂部的一段(鑄件板接到套筒後壁),鑄件坐在床身上", () => {
+  const body = part(m285.default, "body").pieces;
+  const [casting, bed] = body;
+  const barrel = body[4];
+  const outer = Math.max(...barrel.profile.map(([r]) => r));
+  assert.ok(casting.at[2] + casting.thickness / 2 >= -outer - 1e-9, `鑄件板前面 ${casting.at[2] + casting.thickness / 2} 沒接到套筒後壁 ${-outer}`);
+  const castingBottom = Math.min(...casting.shape.outline.map(([, y]) => y));
+  close(castingBottom, bed.at[1] + bed.size[1] / 2, "鑄件底面坐在床身頂面", 1e-9);
+});
+
 test("第 286 種:搖臂軸上的曲面推頂子作用於升降器,把升降桿抬起", () => {
   const [lo, hi] = m286.RANGE;
   close(m286.lift(hi), 0, "推頂子沒轉時升降器停在原位", 1e-9);
   assert.ok(m286.lift(lo) > 0.4, "推頂子轉上來時升降桿被抬起");
   const lifts = sweep(lo, 40, hi).map(m286.lift);
   assert.ok(lifts.every((l, i) => i === 0 || l >= lifts[i - 1] - 1e-9), "轉得越多抬得越高");
+});
+
+test("第 286 種:照原圖的虛線,升降桿在推頂子的前面;推頂子的轂是套在搖臂軸上的完整圓", () => {
+  const def = m286.default;
+  const toe = part(def, "toe");
+  const rod = part(def, "lifter").pieces.find((p) => p.kind === "cylinder" && p.axis?.[1] === 1);
+  // 推頂子(板、轂、搖臂軸)最前面的 z
+  const front = Math.max(toe.thickness / 2, ...toe.pieces.map((p) => (p.at?.[2] ?? 0) + p.length / 2));
+  assert.ok(rod.at[2] - rod.radius > front, `升降桿的後緣 ${rod.at[2] - rod.radius} 沒在推頂子前面 ${front}`);
+  // 轂:軸心右側的輪廓都在同一個圓上
+  const right = toe.shape.outline.filter(([x]) => x > 0);
+  assert.ok(right.length >= 8, "轂的輪廓有一段圓弧");
+  const r = Math.hypot(...right[0]);
+  for (const p of right) close(Math.hypot(...p), r, "轂右半是圓", 1e-6);
+  // 原圖轂的右緣是虛線:藏在升降桿後面
+  assert.ok(toe.center[0] + r > rod.at[0] - rod.radius, "轂的右緣被升降桿擋住(原圖的虛線)");
 });
 
 test("第 287 種:彈簧屈服於球的離心力而抬起套筒;離心力減小時把球拉回心軸,套筒下降", () => {
