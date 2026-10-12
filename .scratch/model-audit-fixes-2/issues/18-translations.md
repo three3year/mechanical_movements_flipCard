@@ -7,7 +7,7 @@
 **Status:** done
 
 - [x] `data.js` 只由 `tools/gen_data.py` 產生,不手改;卡片上看得到改好的句子
-- [ ] 報告裡每一筆加「狀態:已修(日期):做了什麼」,報告的鏡像照 review-mirror 重新發布
+- [x] 報告裡每一筆加「狀態:已修(日期):做了什麼」,報告的鏡像照 review-mirror 重新發布
 - [x] 以獨立暫存區提交(只放自己的檔案)
 
 ## Comments
