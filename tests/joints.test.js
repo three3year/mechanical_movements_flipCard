@@ -912,6 +912,119 @@ test("第 261 種:圓盤 B 轉動時重物 W 上下往復,下行程比上行程�
   assert.ok(m261.weight(m261.RANGE[1]).yW > m261.weight(0).yW, "每轉一圈淨上升");
 });
 
+// 機架各塊的外接盒(box 與 plate;plate 的輪廓在 xy 平面、沿 z 擠出,厚度以 at 的 z 為中心)
+const frameBox = (p) => {
+  if (p.kind === "box") return [p.at.map((v, i) => v - p.size[i] / 2), p.at.map((v, i) => v + p.size[i] / 2)];
+  const xs = p.shape.outline.map((q) => q[0]);
+  const ys = p.shape.outline.map((q) => q[1]);
+  const z = p.at?.[2] ?? 0;
+  return [[Math.min(...xs), Math.min(...ys), z - p.thickness / 2], [Math.max(...xs), Math.max(...ys), z + p.thickness / 2]];
+};
+const boxesMeet = ([a0, a1], [b0, b1]) => [0, 1, 2].every((i) => a0[i] <= b1[i] + 1e-6 && b0[i] <= a1[i] + 1e-6);
+const covers = ([a0, a1], [b0, b1]) => a0 <= b0 + 1e-9 && a1 >= b1 - 1e-9;
+
+test("第 260 種:短支柱連同斜撐板落到底板上,機架是一件;驅動軸 A 兩端都穿過軸承——左支柱與 B 右邊的軸承座(推斷)(#260-1)", () => {
+  const def = m260.default;
+  const frame = part(def, "frame").pieces.map(frameBox);
+  // 從底板(最低的一塊)出發,相接的塊連成一群
+  const base = frame.reduce((a, b) => (b[0][1] < a[0][1] ? b : a));
+  const reached = new Set([base]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const b of frame) if (!reached.has(b) && [...reached].some((r) => boxesMeet(r, b))) (reached.add(b), (grew = true));
+  }
+  assert.equal(reached.size, frame.length, "機架每一塊都接到底板");
+  const plate = part(def, "frame").pieces.find((p) => p.kind === "plate");
+  close(Math.min(...plate.shape.outline.map((q) => q[1])), base[1][1], "斜撐板的底落在底板頂面", 1e-9);
+  // 驅動軸 A(沿 x)的範圍
+  const shaftA = part(def, "shaftA");
+  const axle = shaftA.pieces.find((p) => p.kind === "cylinder");
+  const ax = [shaftA.center[0] + axle.at[2] - axle.length / 2, shaftA.center[0] + axle.at[2] + axle.length / 2];
+  const [, y, z] = shaftA.center;
+  // 軸承:A 的軸線穿過的機架塊,而且 A 從它的兩面伸出
+  const bearings = frame.filter(([lo, hi]) => lo[1] < y - axle.radius && hi[1] > y + axle.radius && lo[2] < z - axle.radius && hi[2] > z + axle.radius && lo[0] > ax[0] && hi[0] < ax[1]);
+  const gears = [m260.F, m260.B].flatMap((g) => [g.center[0]]);
+  assert.ok(bearings.some(([, hi]) => hi[0] < Math.min(...gears) - 0.5), "A 的左端穿過左支柱");
+  assert.ok(bearings.some(([lo]) => lo[0] > m260.B.center[0]), "A 的右端穿過 B 右邊的軸承");
+});
+
+test("第 261 種:鼓輪、繩、滑輪 E 與重物 W 都在圓盤 B 背面,曲柄銷在盤前,每圈都不會掃過繩(#261-4,決定 (a))", () => {
+  const def = m261.default;
+  const disc = part(def, "discB");
+  const zc = disc.center[2];
+  const back = zc - disc.width / 2;
+  const span = (p) => [zc + p.at[2] - p.length / 2, zc + p.at[2] + p.length / 2];
+  const drum = disc.pieces.find((p) => p.kind === "cylinder" && p.radius === m261.DRUM);
+  const pin = disc.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) > 0.1);
+  assert.ok(drum && span(drum)[1] <= back + 1e-9, "鼓輪在圓盤背面");
+  assert.ok(span(pin)[0] >= back - 1e-9, "曲柄銷不伸到盤後");
+  const ROPE = 0.045; // 繩的粗細(半徑)
+  const E = part(def, "pulleyE");
+  const W = part(def, "weightW");
+  for (const t of sweep(m261.RANGE[1], 96)) {
+    const pose = def.pose(t);
+    for (const p of pose.paths.ropeD.points) assert.ok(p[2] + ROPE <= back, `主動量 ${t.toFixed(2)}:繩在圓盤背面`);
+    assert.ok(pose.parts.pulleyE.position[2] + (E.width * 1.6) / 2 <= back, "滑輪 E(含軸頭)在圓盤背面");
+    assert.ok(pose.parts.weightW.position[2] + W.size[2] / 2 <= back, "重物 W 在圓盤背面");
+  }
+  assert.ok(!def.waivers?.some((w) => w.parts.includes("ropeD")), "曲柄銷掃過繩的豁免拿掉了");
+});
+
+test("第 261 種:圓盤 B 的軸往後穿過鼓輪,伸進牆上支架的軸承;支架接到牆(主動件不懸空)(#261-1)", () => {
+  const def = m261.default;
+  const disc = part(def, "discB");
+  const zc = disc.center[2];
+  const span = (p) => [zc + p.at[2] - p.length / 2, zc + p.at[2] + p.length / 2];
+  const drum = disc.pieces.find((p) => p.kind === "cylinder" && p.radius === m261.DRUM);
+  const axle = disc.pieces.find((p) => p.kind === "cylinder" && p.at[0] === 0 && p.at[1] === 0 && p.radius < m261.DRUM);
+  assert.ok(axle, "圓盤有一根軸");
+  assert.ok(covers(span(axle), span(drum)), "軸穿過鼓輪");
+  assert.ok(covers(span(axle), [zc - disc.width / 2, zc + disc.width / 2]), "軸穿過圓盤");
+  const wall = part(def, "wall");
+  const holder = wall.pieces.find((p) => p.kind === "plate" && pointInPolygon([disc.center[0], disc.center[1]], p.shape.outline));
+  assert.ok(holder, "支架板延伸到盤心後方");
+  const [hlo, hhi] = frameBox(holder);
+  assert.ok(covers(span(axle), [hlo[2], hhi[2]]), "軸穿過整個支架板的厚度(軸承)");
+  assert.ok(hhi[2] < span(drum)[0], "支架在鼓輪後面,不碰轉動的鼓輪");
+  const post = frameBox(wall.pieces.find((p) => p.kind === "box"));
+  assert.ok(boxesMeet(post, [hlo, hhi]), "支架板接到牆");
+});
+
+test("第 261 種:連桿 C 與臂 A 的接點有一根銷穿過兩者;曲柄銷穿過 C 的下端;滑輪 E 用短軸裝在臂 A 上;臂 A 的樞軸銷伸進牆上的支架(#261-3)", () => {
+  const def = m261.default;
+  const rod = part(def, "rodC");
+  const arm = part(def, "armA");
+  const disc = part(def, "discB");
+  const E = part(def, "pulleyE");
+  const wall = part(def, "wall");
+  const at = (x) => arm.pieces.find((p) => p.kind === "cylinder" && Math.abs(p.at[0] - x) < 1e-9);
+  const pinG = at(0);
+  const pinJ = at(m261.JOINT);
+  const axleE = at(m261.ARM);
+  assert.ok(pinG && pinJ && axleE, "臂 A 在 G、接點與 E 各有一根銷或軸");
+  const crank = disc.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) > 0.1);
+  const layer = (z, t) => [z - t / 2, z + t / 2];
+  for (const t of sweep(m261.RANGE[1], 24)) {
+    const p = def.pose(t).parts;
+    const [gx, gy, zA] = p.armA.from;
+    const len = Math.hypot(p.armA.to[0] - gx, p.armA.to[1] - gy);
+    const u = [(p.armA.to[0] - gx) / len, (p.armA.to[1] - gy) / len];
+    close(Math.hypot(p.rodC.to[0] - (gx + m261.JOINT * u[0]), p.rodC.to[1] - (gy + m261.JOINT * u[1])), 0, "連桿 C 的上端在臂 A 的接點上", 1e-9);
+    const zC = p.rodC.to[2];
+    const span = (q) => [zA + q.at[2] - q.length / 2, zA + q.at[2] + q.length / 2];
+    assert.ok(covers(span(pinJ), layer(zC, rod.thickness)) && covers(span(pinJ), layer(zA, arm.thickness)), "接點的銷穿過連桿 C 與臂 A");
+    const crankZ = [disc.center[2] + crank.at[2] - crank.length / 2, disc.center[2] + crank.at[2] + crank.length / 2];
+    assert.ok(covers(crankZ, layer(p.rodC.from[2], rod.thickness)), "曲柄銷穿過連桿 C 的下端");
+    close(Math.hypot(p.pulleyE.position[0] - p.armA.to[0], p.pulleyE.position[1] - p.armA.to[1]), 0, "E 的中心在臂 A 的端點", 1e-9);
+    assert.ok(covers(span(axleE), layer(p.pulleyE.position[2], E.width)) && covers(span(axleE), layer(zA, arm.thickness)), "E 的短軸從臂 A 穿過 E");
+  }
+  const bracket = wall.pieces.find((p) => p.kind === "plate" && pointInPolygon([m261.G[0], m261.G[1]], p.shape.outline));
+  const [blo, bhi] = frameBox(bracket);
+  const zA = def.pose(0).parts.armA.from[2];
+  const gz = [zA + pinG.at[2] - pinG.length / 2, zA + pinG.at[2] + pinG.length / 2];
+  assert.ok(gz[0] < bhi[2] - 0.05 && covers(gz, layer(zA, arm.thickness)), "G 的樞軸銷穿過臂 A、伸進支架");
+});
+
 test("第 262–263 種:同一機構的端視圖與側視圖;錐體偏心地轉,滾子 C 往復,朝某一方向的運動比另一方向短", () => {
   for (const v of [0, 3, 9]) assert.deepEqual(fig262.pose(v).parts, fig263.pose(v).parts, "兩圖的零件姿勢一致");
   assert.notDeepEqual(fig262.view.direction, fig263.view.direction, "初始視角不同");

@@ -549,14 +549,17 @@ class Session {
     camera.updateProjectionMatrix();
   }
 
-  // 外框要容納主動量各處的姿勢:有範圍時取兩端與中間,往復取兩端,一直轉的取一圈中的幾處
+  // 外框要容納主動量各處的姿勢:有範圍時取兩端與中間,往復取兩端,一直轉的取一圈中的幾處。
+  // 零件在中途才走到最遠的模型(第 261 種的重物在第一圈中途最低),定義用 view.fitSamples: n 改成在範圍(或一圈)內均勻取 n + 1 處
   fitSamples() {
+    const n = this.def.view?.fitSamples;
+    const even = n ? Array.from({ length: n + 1 }, (_, i) => i / n) : null;
     if (this.bounds) {
       const [min, max] = this.bounds;
-      return [min, (min + max) / 2, max, this.value];
+      return [...(even ?? [0, 0.5, 1]).map((f) => min + f * (max - min)), this.value];
     }
     const span = this.cycle ? Math.abs(this.cycle[1] - this.cycle[0]) : this.progress ? this.def.driver.range[1] - this.def.driver.range[0] : Math.PI * 2;
-    return [0, 0.25, 0.5, 0.75, 1].map((f) => this.value + f * span);
+    return (even ?? [0, 0.25, 0.5, 0.75, 1]).map((f) => this.value + f * span);
   }
 
   fitCamera() {
