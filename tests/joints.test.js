@@ -1084,9 +1084,6 @@ test("第 266 種:軸的旋轉使可動軸承直線移動,每旋轉一圈移動�
   close(one.shaft, m266.P1, "軸每圈穿過固定軸承前進一個螺距");
 });
 
-// 方塊附件在世界中的範圍(零件沒有轉動時:位置 + at ± size/2)
-const boxSpan = (piece, at = [0, 0, 0]) => [0, 1, 2].map((k) => [at[k] + (piece.at?.[k] ?? 0) - piece.size[k] / 2, at[k] + (piece.at?.[k] ?? 0) + piece.size[k] / 2]);
-
 test("第 266 種:可動軸承的底板座在導軌上滑,兩側的擋邊擋住它跟著軸轉", () => {
   const def = m266.default;
   const base = part(def, "base").pieces.filter((p) => p.kind === "box").map((p) => boxSpan(p));
