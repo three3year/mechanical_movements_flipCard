@@ -1,10 +1,11 @@
 // 把一個模型的零件擺進物理引擎做碰撞查詢(不模擬力):每個姿勢算出任兩個零件實體之間的距離。
-// 姿勢的擺放沿用繪圖層的規則(viewer/placement.js);線狀零件沿路徑每一段是一個膠囊。
+// 姿勢的擺放沿用繪圖層的規則(viewer/placement.js);線狀零件沿路徑每一段是一個膠囊,
+// 扁帶(設了 width 的皮帶)每一段是一個扁盒(寬 width、厚 thickness,寬度方向見 flatAcross)。
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { PATH_KINDS } from "../models/kinds.js";
 import { placement } from "../viewer/placement.js";
-import { pathRadius } from "../viewer/paths.js";
+import { pathRadius, isFlat, flatAcross } from "../viewer/paths.js";
 import { buildSolid } from "./solids.js";
 
 await RAPIER.init();
@@ -15,6 +16,9 @@ const tmpP = new THREE.Vector3();
 const tmpS = new THREE.Vector3();
 const tmpQ = new THREE.Quaternion();
 const tmpV = new THREE.Vector3();
+const tmpA2 = new THREE.Vector3();
+const tmpN = new THREE.Vector3();
+const tmpM = new THREE.Matrix4();
 
 /** 不參與實體驗證的零件:存量填色、作圖軌跡(流體示意本來就不是零件) */
 export const isSolidPart = (part) => part.kind !== "fill" && part.kind !== "trace";
@@ -46,7 +50,7 @@ export class Scene {
     for (const part of def.parts) {
       if (!isSolidPart(part)) continue;
       if (PATH_KINDS.has(part.kind)) {
-        const entry = { id: part.id, part, path: true, radius: pathRadius(part), pieces: [], visible: true, changed: true, points: null, box: new Float64Array(6) };
+        const entry = { id: part.id, part, path: true, radius: pathRadius(part), flat: isFlat(part), pieces: [], visible: true, changed: true, points: null, box: new Float64Array(6) };
         this.paths.push(entry);
         this.byId.set(part.id, entry);
         continue;
@@ -124,21 +128,41 @@ export class Scene {
       if (!entry.changed) continue;
       entry.points = points;
       const pieces = [];
+      const across = entry.flat ? flatAcross(entry.part, p.points) : null;
+      const half = entry.flat ? entry.part.width / 2 : 0;
       for (let i = 0; i + 1 < points.length; i++) {
         tmpP.set(...points[i]);
         tmpV.set(...points[i + 1]).sub(tmpP);
         const length = tmpV.length();
         if (length < 1e-6) continue;
-        const piece = entry.pieces[pieces.length] ?? { collider: this.world.createCollider(RAPIER.ColliderDesc.capsule(length / 2, entry.radius)), box: new Float64Array(6) };
-        piece.collider.setHalfHeight(length / 2);
         const a = points[i];
         const b = points[i + 1];
-        for (let k = 0; k < 3; k++) {
-          piece.box[k] = Math.min(a[k], b[k]) - entry.radius;
-          piece.box[k + 3] = Math.max(a[k], b[k]) + entry.radius;
+        let piece = entry.pieces[pieces.length];
+        if (entry.flat) {
+          // 扁盒:Y 沿這一段、X 是寬度方向(扣掉沿這一段的分量)、Z 是厚度方向
+          piece ??= { collider: this.world.createCollider(RAPIER.ColliderDesc.cuboid(half, length / 2, entry.radius)), box: new Float64Array(6) };
+          piece.collider.setHalfExtents({ x: half, y: length / 2, z: entry.radius });
+          tmpV.divideScalar(length);
+          tmpA2.set(...across);
+          tmpA2.addScaledVector(tmpV, -tmpV.dot(tmpA2)).normalize();
+          tmpN.crossVectors(tmpA2, tmpV);
+          piece.collider.setRotation(tmpQ.setFromRotationMatrix(tmpM.makeBasis(tmpA2, tmpV, tmpN)));
+          for (let k = 0; k < 3; k++) {
+            const reach = Math.abs(tmpA2.getComponent(k)) * half + Math.abs(tmpN.getComponent(k)) * entry.radius;
+            piece.box[k] = Math.min(a[k], b[k]) - reach;
+            piece.box[k + 3] = Math.max(a[k], b[k]) + reach;
+          }
+          piece.collider.setTranslation(tmpP.addScaledVector(tmpV, length / 2));
+        } else {
+          piece ??= { collider: this.world.createCollider(RAPIER.ColliderDesc.capsule(length / 2, entry.radius)), box: new Float64Array(6) };
+          piece.collider.setHalfHeight(length / 2);
+          for (let k = 0; k < 3; k++) {
+            piece.box[k] = Math.min(a[k], b[k]) - entry.radius;
+            piece.box[k + 3] = Math.max(a[k], b[k]) + entry.radius;
+          }
+          piece.collider.setTranslation(tmpP.addScaledVector(tmpV, 0.5));
+          piece.collider.setRotation(tmpQ.setFromUnitVectors(Y_AXIS, tmpV.divideScalar(length)));
         }
-        piece.collider.setTranslation(tmpP.addScaledVector(tmpV, 0.5));
-        piece.collider.setRotation(tmpQ.setFromUnitVectors(Y_AXIS, tmpV.divideScalar(length)));
         piece.segment = i;
         pieces.push(piece);
       }

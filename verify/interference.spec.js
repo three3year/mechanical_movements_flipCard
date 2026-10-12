@@ -126,6 +126,30 @@ test("皮帶繞在輪上不報;繩穿過一塊板會報", () => {
   assert.deepEqual(interference(rope(1.3)), []);
 });
 
+test("設了寬度的扁帶:碰撞體是扁盒,寬度方向沿路徑所在平面的法線(或 across),厚度方向很薄", () => {
+  // 皮帶在 z = 0 的平面上轉一個彎,寬 1、厚 0.1;寬度方向是 Z
+  const points = [[-2, 1, 0], [0, 0, 0], [2, 1, 0]];
+  const belted = (belt, block) =>
+    model([{ id: "block", kind: "box", size: [0.3, 0.3, 0.3], center: block }, { id: "belt", ...belt }], () => ({}), {
+      paths: () => ({ belt: { points, closed: false } }),
+    });
+  const flat = { kind: "belt", width: 1, thickness: 0.1 };
+  const round = { kind: "belt" };
+  const beside = [0, 0, 0.42]; // 在中心線旁 0.42(寬度範圍內),圓管碰不到
+  assert.equal(interference(belted(flat, beside)).length, 1, "扁帶的寬度範圍內有東西就是干涉");
+  assert.deepEqual(interference(belted(round, beside)), [], "圓管碰不到中心線旁 0.42 的方塊");
+  assert.deepEqual(interference(belted(flat, [0, 0, 0.75])), [], "寬度範圍外不碰");
+  assert.deepEqual(interference(belted(flat, [0, 0.4, 0])), [], "厚度方向只有 0.05:中心線上方 0.25 的方塊碰不到");
+
+  // 直的皮帶算不出所在的平面,由 across 指定寬度方向
+  const straight = (across, block) =>
+    model([{ id: "block", kind: "box", size: [0.3, 0.3, 0.3], center: block }, { id: "belt", kind: "belt", width: 1, thickness: 0.1, across }], () => ({}), {
+      paths: () => ({ belt: { points: [[-2, 0, 0], [2, 0, 0]], closed: false } }),
+    });
+  assert.equal(interference(straight([0, 1, 0], [0, 0.42, 0])).length, 1, "寬度沿 Y");
+  assert.deepEqual(interference(straight([0, 1, 0], [0, 0, 0.42])), [], "厚度沿 Z,很薄");
+});
+
 test("繩的端點繫在零件上不算干涉", () => {
   const def = model([{ id: "weight", kind: "box", size: [0.6, 0.6, 0.6], center: [0, -1, 0] }, { id: "rope", kind: "rope" }], () => ({}), {
     paths: () => ({ rope: { points: [[0, 1, 0], [0, -1, 0]] } }),

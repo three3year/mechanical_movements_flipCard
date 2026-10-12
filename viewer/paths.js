@@ -10,8 +10,37 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 const RADIUS = { belt: 0.05, rope: 0.045, rod: 0.03, chain: 0.06, trace: 0.035 };
 const MARK_SPACING = { belt: 0.42, rope: 0.24, chain: 0.36 }; // 相鄰兩個記號的距離,也就是一個色段的長度
-/** 線狀零件的粗細(半徑):鍊條取鏈節寬的一半。繪圖與實體驗證共用 */
-export const pathRadius = (part) => (part.kind === "chain" ? (part.width ?? 0.2) / 2 : (part.radius ?? RADIUS[part.kind]));
+const FLAT_THICKNESS = 0.08;
+
+/** 扁帶:設了 width 的皮帶畫成矩形斷面(寬 width、厚 thickness),不是圓管 */
+export const isFlat = (part) => part.kind === "belt" && part.width != null;
+
+/** 線狀零件的粗細(半徑):鍊條取鏈節寬的一半,扁帶取厚度的一半。繪圖與實體驗證共用 */
+export const pathRadius = (part) =>
+  part.kind === "chain" ? (part.width ?? 0.2) / 2 : isFlat(part) ? (part.thickness ?? FLAT_THICKNESS) / 2 : (part.radius ?? RADIUS[part.kind]);
+
+/**
+ * 扁帶的寬度方向:定義的 across,沒給就取路徑所在平面的法線(Newell 法;繞輪的皮帶走在垂直輪軸的平面上,
+ * 法線就是輪軸)。路徑是直線、算不出平面時要在定義給 across。繪圖與實體驗證共用。
+ */
+export function flatAcross(part, points) {
+  if (part.across) return unit(part.across);
+  const n = [0, 0, 0];
+  for (let i = 0; i < points.length; i++) {
+    const [ax, ay, az] = points[i];
+    const [bx, by, bz] = points[(i + 1) % points.length];
+    n[0] += (ay - by) * (az + bz);
+    n[1] += (az - bz) * (ax + bx);
+    n[2] += (ax - bx) * (ay + by);
+  }
+  if (Math.hypot(...n) < 1e-9) throw new Error(`扁帶 ${part.id} 的路徑是一直線,算不出寬度方向:請在定義給 across`);
+  return unit(n);
+}
+
+const unit = (v) => {
+  const l = Math.hypot(...v);
+  return v.map((x) => x / l);
+};
 const TRACE_COLOR = "#b3261e";
 const SEGMENT_COLORS = ["#f0b429", "#d6559b", "#7b4bb7"]; // 不用綠色:會和目標件的青綠撞色
 const MARK_COLOR = "#2a2a2a";
@@ -58,6 +87,7 @@ class PolylineCurve extends THREE.Curve {
 
 export class PathPart {
   constructor(part, material) {
+    this.part = part;
     this.kind = part.kind;
     this.radius = pathRadius(part);
     this.material = material.clone();
@@ -79,8 +109,12 @@ export class PathPart {
       const curve = new PolylineCurve(points, closed);
       this.length = curve.total;
       this.mesh.geometry.dispose();
-      const segments = Math.max(8, Math.min(600, Math.round(curve.total * 24), points.length * 3));
-      this.mesh.geometry = new THREE.TubeGeometry(curve, segments, this.radius, 8, false);
+      if (isFlat(this.part)) {
+        this.mesh.geometry = flatGeometry(curve.pts, closed, flatAcross(this.part, points), this.part.width, 2 * this.radius);
+      } else {
+        const segments = Math.max(8, Math.min(600, Math.round(curve.total * 24), points.length * 3));
+        this.mesh.geometry = new THREE.TubeGeometry(curve, segments, this.radius, 8, false);
+      }
     }
     if (this.texture) {
       // 封閉的皮帶繞一圈要剛好整數輪色段,接頭處才不會有色差接縫
@@ -96,6 +130,71 @@ export class PathPart {
     this.material.dispose();
     this.texture?.dispose();
   }
+}
+
+// 扁帶的矩形斷面:沿折線(pts,封閉時已接回起點)每個頂點放一個寬 width、厚 thickness 的矩形,
+// 寬度方向是 across 扣掉切線分量,厚度方向是切線 × 寬度方向;四個側面各用自己的頂點(稜角分明),
+// 紋理座標 u = 離起點的弧長 / 全長(和圓管一樣,色段沿材料走)。開放的皮帶兩端封口。
+function flatGeometry(pts, closed, across, width, thickness) {
+  const n = pts.length;
+  const acrossV = new THREE.Vector3(...across);
+  const cum = [0];
+  for (let i = 1; i < n; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
+  const total = cum[n - 1] || 1;
+  const frames = pts.map((p, i) => {
+    // 頂點的切線取前後兩段的平均(封閉時頭尾相接)
+    const prev = i > 0 ? pts[i - 1] : closed ? pts[n - 2] : null;
+    const next = i < n - 1 ? pts[i + 1] : closed ? pts[1] : null;
+    const t = new THREE.Vector3();
+    if (prev) t.add(new THREE.Vector3().subVectors(p, prev).normalize());
+    if (next) t.add(new THREE.Vector3().subVectors(next, p).normalize());
+    t.normalize();
+    const a = acrossV.clone().addScaledVector(t, -acrossV.dot(t)).normalize();
+    const b = new THREE.Vector3().crossVectors(t, a);
+    return { p, a, b, t };
+  });
+  const corner = (f, sa, sb) => f.p.clone().addScaledVector(f.a, (sa * width) / 2).addScaledVector(f.b, (sb * thickness) / 2);
+  const positions = [];
+  const normals = [];
+  const uvs = [];
+  const index = [];
+  const quad = (v0, v1, v2, v3, n0, n1, u0, u1) => {
+    // v0–v1 在前一個斷面(法線 n0)、v3–v2 在後一個斷面(法線 n1);依法線決定繞向,讓正面朝外。
+    // 法線取各斷面自己的,相鄰兩段在接縫處法線相同,彎處不會描出一道道橫線
+    const base = positions.length / 3;
+    for (const v of [v0, v1, v2, v3]) positions.push(v.x, v.y, v.z);
+    for (const n of [n0, n0, n1, n1]) normals.push(n.x, n.y, n.z);
+    const normal = n0.clone().add(n1);
+    uvs.push(u0, 0, u0, 1, u1, 1, u1, 0);
+    const face = new THREE.Vector3().crossVectors(new THREE.Vector3().subVectors(v1, v0), new THREE.Vector3().subVectors(v3, v0));
+    if (face.dot(normal) >= 0) index.push(base, base + 1, base + 3, base + 1, base + 2, base + 3);
+    else index.push(base, base + 3, base + 1, base + 1, base + 3, base + 2);
+  };
+  // 四個側面:(+a,+b)→(−a,+b) 頂面朝 +b、(−a,+b)→(−a,−b) 側面朝 −a、(−a,−b)→(+a,−b) 底面朝 −b、(+a,−b)→(+a,+b) 側面朝 +a
+  const sides = [
+    [[1, 1], [-1, 1], (f) => f.b],
+    [[-1, 1], [-1, -1], (f) => f.a.clone().negate()],
+    [[-1, -1], [1, -1], (f) => f.b.clone().negate()],
+    [[1, -1], [1, 1], (f) => f.a],
+  ];
+  for (let i = 0; i + 1 < n; i++) {
+    const [f, g] = [frames[i], frames[i + 1]];
+    for (const [[sa0, sb0], [sa1, sb1], out] of sides) {
+      quad(corner(f, sa0, sb0), corner(f, sa1, sb1), corner(g, sa1, sb1), corner(g, sa0, sb0), out(f), out(g), cum[i] / total, cum[i + 1] / total);
+    }
+  }
+  if (!closed && n > 1) {
+    for (const [f, u, sign] of [[frames[0], 0, -1], [frames[n - 1], 1, 1]]) {
+      const cap = f.t.clone().multiplyScalar(sign);
+      quad(corner(f, 1, 1), corner(f, -1, 1), corner(f, -1, -1), corner(f, 1, -1), cap, cap, u, u);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(index);
+  return geometry;
 }
 
 function samePoints(a, b) {

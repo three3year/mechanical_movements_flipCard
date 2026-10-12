@@ -15,7 +15,8 @@ const REACH = [2.9, 1.5]; // 兩股的端點:上下各伸出這麼高、往前�
 
 /**
  * wheel:輪的零件定義(不含 id、axis);seat:皮帶中心線所在的半徑;
- * strand:皮帶的路徑零件({ kind, radius? } 或鍊條定義)。輪的軸沿 X,皮帶在 yz 平面。
+ * strand:皮帶的路徑零件({ kind, radius? }、扁帶 { kind: "belt", width, thickness } 或鍊條定義)。
+ * 輪的軸沿 X,皮帶在 yz 平面(扁帶的寬度方向因此沿輪軸)。
  */
 export function facePulley({ figure, wheel, seat, strand }) {
   // 皮帶從上方前端往後繞過輪的後半圈,回到下方前端(兩股斜向上下伸出,不擋住輪緣正面);上股往後走時輪繞 X 負向轉(sense −1)

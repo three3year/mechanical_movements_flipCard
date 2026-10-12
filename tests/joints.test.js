@@ -100,6 +100,63 @@ for (const [n, m, what] of [
   });
 }
 
+// 旋轉體剖面([半徑, 軸向])在軸向位置 z 的外緣半徑(剖面上的直立邊取較大的一端)
+function profileRadius(profile, z) {
+  let r = 0;
+  for (let i = 0; i + 1 < profile.length; i++) {
+    const [[r0, z0], [r1, z1]] = [profile[i], profile[i + 1]];
+    if (z < Math.min(z0, z1) - 1e-9 || z > Math.max(z0, z1) + 1e-9) continue;
+    r = Math.max(r, Math.abs(z1 - z0) < 1e-9 ? Math.max(r0, r1) : r0 + ((r1 - r0) * (z - z0)) / (z1 - z0));
+  }
+  return r;
+}
+
+for (const [n, m] of [
+  [255, m255],
+  [256, m256],
+]) {
+  test(`第 ${n} 種:扁皮帶(flat belt)是扁的:寬約輪面的 0.8 倍、寬度沿輪軸,內面貼著輪面而不穿入`, () => {
+    const def = m.default;
+    const wheel = part(def, "wheel");
+    const belt = part(def, "strand");
+    assert.equal(belt.kind, "belt");
+    assert.ok(belt.width && belt.thickness, "扁帶有寬度與厚度");
+    assert.ok(belt.width > 5 * belt.thickness, `寬 ${belt.width} 遠大於厚 ${belt.thickness}`);
+    const { points } = def.pose(0).paths.strand;
+    assert.ok(points.every((p) => Math.abs(p[0]) < 1e-9), "皮帶走在垂直輪軸(X)的平面上,寬度方向就是輪軸");
+    // 輪面:剖面上外緣比最低處高不到 0.05 的那一段(第 255 種在兩側凸緣之間,第 256 種是整個隆起的輪面)
+    const zs = wheel.profile.map((p) => p[1]);
+    const samples = Array.from({ length: 401 }, (_, i) => Math.min(...zs) + ((Math.max(...zs) - Math.min(...zs)) * i) / 400);
+    const low = Math.min(...samples.map((z) => profileRadius(wheel.profile, z)));
+    const face = samples.filter((z) => profileRadius(wheel.profile, z) < low + 0.05);
+    const faceWidth = Math.max(...face) - Math.min(...face);
+    const ratio = belt.width / faceWidth;
+    assert.ok(ratio > 0.75 && ratio < 0.85, `寬約輪面的 0.8 倍(${ratio.toFixed(2)})`);
+    // 皮帶繞在輪上那一段的中心線半徑 seat;內面在 seat − 厚/2
+    const seat = Math.min(...points.map((p) => Math.hypot(p[1], p[2])));
+    const inner = seat - belt.thickness / 2;
+    const top = Math.max(...samples.filter((z) => Math.abs(z) <= belt.width / 2).map((z) => profileRadius(wheel.profile, z)));
+    assert.ok(inner >= top, `整個寬度上不穿進輪面(內面 ${inner.toFixed(3)}、輪面最高 ${top.toFixed(3)})`);
+    assert.ok(inner - top < 0.02, `內面貼著輪面(間隙 ${(inner - top).toFixed(3)})`);
+  });
+}
+
+test("第 255 種:輪面兩側的凸緣擋住扁皮帶,不讓它滑出:皮帶兩邊各離凸緣不到皮帶寬的 0.15", () => {
+  const wheel = part(m255.default, "wheel");
+  const belt = part(m255.default, "strand");
+  const flange = Math.max(...wheel.profile.map((p) => p[0]));
+  const [z0, z1] = [Math.min(...wheel.profile.map((p) => p[1])), Math.max(...wheel.profile.map((p) => p[1]))];
+  const zs = Array.from({ length: 401 }, (_, i) => z0 + ((z1 - z0) * i) / 400);
+  const inside = zs.filter((z) => profileRadius(wheel.profile, z) < flange - 1e-6);
+  const room = (Math.max(...inside) - Math.min(...inside) - belt.width) / 2;
+  assert.ok(room > 0, "皮帶放得進兩側凸緣之間");
+  assert.ok(room < 0.15 * belt.width, `兩邊各只留 ${room.toFixed(3)},凸緣擋得住`);
+});
+
+test("第 257、258 種是圓形皮帶:不設寬度,畫成圓管", () => {
+  for (const m of [m257, m258]) assert.equal(part(m.default, "strand").width, undefined);
+});
+
 test("第 259 種:V 形槽的溝槽刻有凹紋(兩斜面各一圈),第 258 種的槽面平滑", () => {
   const ridges = (def) => def.parts[0].pieces.filter((p) => p.kind === "box").length;
   assert.equal(ridges(m259.default), 2 * m259.GROOVES);
