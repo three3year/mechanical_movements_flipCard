@@ -1861,22 +1861,169 @@ test("第 279 種:曲柄轉動,套在曲柄銷上的軸承盒在十字頭的槽�
   }
 });
 
+// 第 279 種:軸承盒的板件(局部座標,原點在曲柄銷中心)
+const boxPlates279 = () => helpersJs.plateLayers(part(m279.default, "box")).map((l) => l.solid);
+
+test("第 279 種:軸承盒由兩塊錐形襯裡片與兩根錐形鑲條組成,收緊在腕銷上、往外撐開貼緊十字頭的溝槽(#279-1)", () => {
+  const def = m279.default;
+  const { linings, gibs } = m279.journalBox;
+  const pinR = part(def, "crank").pieces.find((p) => p.kind === "cylinder" && p.at?.[1] > 0).radius;
+  const plates = boxPlates279();
+  for (const side of [0, 1]) {
+    const lining = linings[side];
+    const gib = gibs[side];
+    const drawn = (poly) => plates.some((s) => s.outline.length === poly.length && s.outline.every((p, i) => Math.hypot(p[0] - poly[i][0], p[1] - poly[i][1]) < 1e-9));
+    assert.ok(drawn(lining.outline) && drawn(gib), "襯裡與鑲條畫在軸承盒裡");
+    // 錐形:襯裡外緣與鑲條內緣是同一條斜邊(上寬下窄),兩件貼著、不重疊
+    const onGib = lining.outline.filter((p) => contactJs.edgeDistance(p, gib) < 1e-9);
+    assert.ok(onGib.length >= 2, "襯裡的斜邊貼著鑲條");
+    const top = onGib.reduce((a, b) => (b[1] > a[1] ? b : a));
+    const bottom = onGib.reduce((a, b) => (b[1] < a[1] ? b : a));
+    assert.ok(Math.abs(top[0]) - Math.abs(bottom[0]) > 0.05, "襯裡外緣是斜的,上寬下窄(錐形)");
+    assert.ok(penetrationDepth(lining.outline, gib) < 1e-9, "襯裡與鑲條不重疊");
+    // 收緊在腕銷上:襯裡內側的半圓孔包住曲柄銷,間隙接近 0、不穿入
+    const pin = circlePolygon([0, 0], pinR, 96);
+    assert.ok(penetrationDepth(pin, lining.outline) < 1e-3, "曲柄銷不穿進襯裡");
+    const gap = Math.min(...lining.outline.map(([x, y]) => Math.hypot(x, y))) - pinR;
+    assert.ok(gap >= 0 && gap < 0.01, `襯裡的孔貼著曲柄銷(間隙 ${gap})`);
+    const wrapped = lining.outline.filter(([x, y]) => Math.abs(Math.hypot(x, y) - pinR) < 0.01);
+    assert.ok(Math.max(...wrapped.map((p) => p[1])) - Math.min(...wrapped.map((p) => p[1])) > 1.6 * pinR, "孔是包住銷的半圓");
+  }
+  // 撐開貼緊十字頭的溝槽:鑲條外側到槽壁的間隙接近 0;軸承盒走滿整道槽也不碰槽的兩端
+  const slot = part(def, "crosshead").shape.holes[0];
+  const sx = slot.map((p) => p[0]);
+  const sy = slot.map((p) => p[1]);
+  const half = (Math.max(...sx) - Math.min(...sx)) / 2;
+  const reach = Math.max(...gibs.flatMap((g) => g.map((p) => Math.abs(p[0]))));
+  assert.ok(half - reach >= 0 && half - reach < 0.01, `鑲條外側貼著槽壁(間隙 ${half - reach})`);
+  const ys = plates.flatMap((s) => s.outline.map((p) => p[1]));
+  for (const t of sweep(2 * Math.PI, 72)) {
+    const { pin } = m279.crosshead(t);
+    assert.ok(pin[1] + Math.max(...ys) < Math.max(...sy) && pin[1] + Math.min(...ys) > Math.min(...sy), "軸承盒在槽裡滑動,不撞槽的兩端");
+  }
+});
+
+test("第 279 種:曲柄銷插進曲柄臂(#279-2)", () => {
+  const crank = part(m279.default, "crank");
+  const arm = crank.pieces.find((p) => p.kind === "plate");
+  const pin = crank.pieces.find((p) => p.kind === "cylinder" && p.at?.[1] > 0);
+  const armFront = arm.at[2] + arm.thickness / 2;
+  const pinBack = pin.at[2] - pin.length / 2;
+  assert.ok(pinBack < armFront - 0.02, `銷的後端在曲柄臂的厚度裡(銷後端 ${pinBack},臂前面 ${armFront})`);
+});
+
+// 第 280 種:零件的板件換到世界座標(2D)與它的 z 範圍
+const placed280 = (def, id, pose, extra = 0) => {
+  const p = pose.parts[id];
+  const at = p.position ?? part(def, id).center ?? [0, 0, 0];
+  const pz = at[2] ?? 0;
+  return helpersJs.plateLayers(part(def, id)).map((l) => ({
+    z: [pz + l.z0, pz + l.z1],
+    solid: contactJs.placeOutline(l.solid.outline, at, (p.angle ?? 0) + extra),
+  }));
+};
+const rim280 = (def) => {
+  const wheel = part(def, "wheel");
+  const rim = wheel.pieces.find((p) => p.kind === "cylinder" && p.inner);
+  const c = wheel.center;
+  return { c, outer: rim.radius, inner: rim.inner, z: [c[2] - rim.length / 2, c[2] + rim.length / 2], solid: { outline: circlePolygon(c, rim.radius, 720), holes: [circlePolygon(c, rim.inner, 720)] } };
+};
+const inLayer280 = (z, rim) => z[0] < rim.z[1] && z[1] > rim.z[0];
+
+test("第 280 種:輪緣被夾在短槓桿末端與鐵塊凸緣之間:往上那一程兩邊都貼著輪緣、少轉一點就穿入;往下那一程槓桿頭離開;全程不穿入(#280-1)", () => {
+  const def = m280.default;
+  const rim = rim280(def);
+  const { H } = m280.geometry;
+  const gaps = (pose, extra = 0) => {
+    const flanges = placed280(def, "block", pose).filter((l) => inLayer280(l.z, rim));
+    const lever = placed280(def, "short", pose, extra).filter((l) => inLayer280(l.z, rim));
+    const r = (p) => Math.hypot(p[0] - rim.c[0], p[1] - rim.c[1]);
+    return {
+      flanges: flanges.map((l) => rim.inner - Math.max(...l.solid.map(r))),
+      head: Math.min(...lever.flatMap((l) => l.solid.map(r))) - rim.outer,
+      depth: Math.max(...[...flanges, ...lever].map((l) => penetrationDepth(l.solid, rim.solid))),
+    };
+  };
+  // 鐵塊有前後兩個夾爪跨過輪緣,各有一道凸緣伸進輪緣的內側
+  const block = placed280(def, "block", def.pose(0));
+  assert.ok(block.some((l) => l.z[0] >= rim.z[1]) && block.some((l) => l.z[1] <= rim.z[0]), "兩個夾爪在輪緣前後兩面");
+  assert.equal(block.filter((l) => inLayer280(l.z, rim)).length, 2, "兩道凸緣伸進輪緣內側");
+  let gripped = 0;
+  let freed = 0;
+  for (const v of sweep(4 * H, 400)) {
+    const pose = def.pose(v);
+    const g = gaps(pose);
+    assert.ok(g.depth < 1e-3, `主動量 ${v.toFixed(3)}:短槓桿與凸緣不穿進輪緣(${g.depth})`);
+    for (const f of g.flanges) assert.ok(f >= 0 && f < 0.01, `主動量 ${v.toFixed(3)}:凸緣貼著輪緣內面(間隙 ${f})`);
+    const turning = m280.capstan(v + 1e-4).wheel - m280.capstan(v).wheel > 1e-6;
+    const sliding = m280.capstan(v + 1e-4).block < m280.capstan(v).block - 1e-6;
+    if (turning) {
+      gripped++;
+      assert.ok(g.head > -1e-4 && g.head < 2e-3, `主動量 ${v.toFixed(3)}:輪轉動時槓桿末端壓在輪緣上(間隙 ${g.head})`);
+      assert.ok(gaps(pose, 0.01).depth > 1e-3, `主動量 ${v.toFixed(3)}:槓桿再往上轉一點就壓進輪緣(已經夾緊)`);
+    }
+    if (sliding) {
+      freed++;
+      assert.ok(g.head > 0.03, `主動量 ${v.toFixed(3)}:往下推時槓桿末端離開輪緣(間隙 ${g.head})`);
+    }
+  }
+  assert.ok(gripped > 50 && freed > 50, "兩程都取到樣");
+});
+
+test("第 280 種:原圖的兩支止回爪、頂端的曲柄搖臂接直立拉桿、長槓桿的樞軸穿過槓桿接到立柱(#280-2、#280-3)", () => {
+  const def = m280.default;
+  const { H, pitch } = m280.geometry;
+  const long = part(def, "long");
+  const T = long.center;
+  // 直立拉桿:上端接在長槓桿樞軸旁往左伸出的短臂,下端接短槓桿外端
+  for (const v of sweep(2 * H, 60)) {
+    const pose = def.pose(v);
+    const { from, to } = pose.parts.link;
+    const c = m280.capstan(v);
+    close(Math.hypot(from[0] - c.short.end[0], from[1] - c.short.end[1]), 0, "拉桿下端接在短槓桿外端", 1e-9);
+    assert.ok(to[0] < T[0] && to[1] > from[1], "拉桿上端在樞軸左邊的短臂上");
+    const tilt = Math.abs(Math.atan2(to[0] - from[0], to[1] - from[1]));
+    assert.ok(tilt < (15 * Math.PI) / 180, `拉桿大致直立(偏 ${tilt})`);
+  }
+  // 長槓桿的樞軸:穿過槓桿,孔和軸一樣大,後端插進立柱
+  const frame = part(def, "frame");
+  const shaft = frame.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - T[0], p.at[1] - T[1]) < 1e-9);
+  const z = [shaft.at[2] - shaft.length / 2, shaft.at[2] + shaft.length / 2];
+  const plate = long.pieces.find((p) => p.kind === "plate" && p.shape.holes.length);
+  const hole = plate.shape.holes[0];
+  close(Math.max(...hole.map((p) => Math.hypot(p[0], p[1]))), shaft.radius, "槓桿的孔和樞軸一樣大", 1e-6);
+  assert.ok(z[0] < plate.at[2] - plate.thickness / 2 && z[1] > plate.at[2] + plate.thickness / 2, "樞軸穿過長槓桿");
+  const post = frame.pieces.find((p) => p.kind === "box" && Math.abs(p.at[0] - T[0]) < p.size[0] / 2 && p.at[1] + p.size[1] / 2 >= T[1]);
+  assert.ok(post, "樞軸下有立柱");
+  assert.ok(z[0] < post.at[2] + post.size[2] / 2, "樞軸的後端插進立柱");
+  // 兩支止回爪錯開半個齒距,輪流落下
+  const ids = ["pawl", "pawl2"];
+  const vs = sweep(H, 240);
+  const dropAt = ids.map((id) => {
+    const a = vs.map((v) => m280.pawlAngles(v)[id]);
+    assert.ok(Math.max(...a) - Math.min(...a) > 0.05, `${id} 被齒背頂起、越過齒尖後落下`);
+    let best = 0;
+    let at = 0;
+    for (let i = 1; i < a.length; i++) if (a[i] - a[i - 1] > best) [best, at] = [a[i] - a[i - 1], vs[i]];
+    return at;
+  });
+  assert.ok(Math.abs(dropAt[0] - dropAt[1]) > 0.2 * pitch, "兩支爪不在同一刻落下(錯開半個齒距)");
+});
+
 test("第 280 種:短槓桿外端往上時夾住輪緣、帶動輪轉;往下推時鬆開滑回,棘輪擋住輪不倒轉", () => {
-  const { FROM, TO } = m280.geometry;
+  const { FROM, TO, H } = m280.geometry;
   const span = TO - FROM;
-  const up = m280.capstan(span);
+  const up = m280.capstan(H);
   close(up.wheel, span, "往上那一程輪跟著轉");
-  const down = m280.capstan(2 * span);
+  const down = m280.capstan(2 * H);
   close(down.wheel, span, "往下那一程輪不動");
   close(down.block, FROM, "夾具滑回原位");
-  const ws = sweep(6 * span, 300).map((v) => m280.capstan(v).wheel);
+  const ws = sweep(6 * H, 300).map((v) => m280.capstan(v).wheel);
   assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-12), "輪只朝一個方向轉");
-  close(span / m280.geometry.pitch, 2, "每程棘輪轉過整兩齒,止回爪落回齒間");
-  const pawl = sweep(span, 120).map(m280.pawlAngle);
-  assert.ok(Math.max(...pawl) - Math.min(...pawl) > 0.05, "輪轉動時止回爪被齒背頂起、越過齒尖後落下");
-  for (const v of sweep(2 * span, 120)) {
-    const { pawl: p, teeth } = m280.contactAt(v);
-    for (const t of teeth) assert.ok(penetrationDepth(p, t) < 2e-3, `主動量 ${v.toFixed(3)}:止回爪不穿進棘齒`);
+  close(span / m280.geometry.pitch, 1, "每程棘輪轉過整一齒,兩支止回爪都落回齒間");
+  for (const v of sweep(2 * H, 120)) {
+    const { pawls, teeth } = m280.contactAt(v);
+    for (const p of Object.values(pawls)) for (const t of teeth) assert.ok(penetrationDepth(p, t) < 2e-3, `主動量 ${v.toFixed(3)}:止回爪不穿進棘齒`);
   }
 });
 
