@@ -255,7 +255,7 @@ test("第 151 種:蝸桿帶動螺桿軸,左右旋螺紋上的螺帽彼此靠近�
 
 import fig147, { governor } from "../models/fig147.js";
 import { shuttle, stroke as stroke153, contactShapes as contactShapes153 } from "../models/fig153.js";
-import { lift as lift154 } from "../models/fig154.js";
+import fig154, { lift as lift154 } from "../models/fig154.js";
 
 test("第 147 種:轉速越快,十字頭越落後、滾子沿斜面越往上,十字頭被抬得越高", () => {
   const rises = sweep(10, 20).map((s) => governor(s).rise);
@@ -290,6 +290,17 @@ test("第 154 種:凸柱撥動曲柄搖臂,繞過滑輪的繩把重物拉起;凸
   for (let i = 1; i < ys.length; i++) if (ys[i - 1] <= ys[0] + 1e-9 && ys[i] > ys[0] + 1e-6) ups++;
   assert.equal(ups, 4);
   assert.ok(Math.max(...ys) - Math.min(...ys) > 0.2, "重物明顯上下");
+  // 繩不伸長:搖臂端點固定在繩的起點,繩上的記號不相對起點滑動;滑輪邊緣跟著重物那側的繩走
+  const polylineLength = (pts) => pts.slice(1).reduce((sum, q, i) => sum + dist(q, pts[i]), 0);
+  const rest = fig154.pose(0);
+  const r = fig154.parts.find((p) => p.id === "pulley").radius;
+  for (const v of sweep(-Math.PI / 2, 90)) {
+    const s = fig154.pose(v);
+    near(polylineLength(s.paths.rope.points), polylineLength(rest.paths.rope.points), "繩長不變", 1e-3);
+    near(s.paths.rope.phase, 0, "繩記號跟著搖臂端點");
+    const rise = s.parts.weight.position[1] - rest.parts.weight.position[1];
+    near(s.parts.pulley.angle * r, rise, "重物升起時滑輪逆時針轉(右側的繩往上)", 1e-9);
+  }
 });
 
 test("第 137 種:兩個滾子貼著偏心輪滾動——曲柄軸轉一圈,滾子轉過的弧長等於偏心輪外形一圈,轉向和偏心輪相反", () => {

@@ -1,7 +1,7 @@
 // 第 154 種:旋轉圓盤上的四根凸柱依序撥動曲柄搖臂的下臂,使它往下擺;搖臂的上臂經一根繩繞過上方的滑輪,
 // 吊著一個重物。凸柱撥動時重物被拉起,凸柱滑過後重物把搖臂拉回原位——重物做交替的直線運動。
 // 主動件是圓盤(順時針:凸柱從上方壓下臂,實物才撥得動)。搖臂的擺角由凸柱與下臂的接觸算,滑脫後重物加速落回;繩長不變。
-import { Z, TAU, deg, polar, add, dist, routeRope } from "./kit.js";
+import { Z, TAU, deg, polar, add, routeRope } from "./kit.js";
 import { placeOutline, swingUntilContact, circlePolygon, withFall } from "./contact.js";
 import { shape, circle, stadium } from "./shapes.js";
 
@@ -22,13 +22,18 @@ const resting = (c) => {
 };
 const eased = withFall(resting, TAU / 4, deg(6));
 
+const SHEAVE = { center: PULLEY.center, axis: Z, radius: PULLEY.radius, sense: -1 };
+const DROP = [PULLEY.center[0] + PULLEY.radius, PULLEY.center[1], 0.3]; // 繩離開滑輪、垂直往下吊重物的那一點
+// 繩從上臂端點到滑輪右側離開點的長度(直段加上繞在輪上的弧)
+const armSide = (top) => routeRope([{ point: [top[0], top[1], 0.3] }, { circle: SHEAVE }, { point: DROP }]).length;
+
 /** 圓盤順時針轉過 c:搖臂的轉角、上臂端點與重物的高度。凸柱壓下臂時由接觸算,滑脫後重物加速落回 */
 export function lift(c) {
   const swing = eased(c);
   const top = add(CRANK.pivot, polar(CRANK.up, CRANK.upAt + swing));
   const top0 = add(CRANK.pivot, polar(CRANK.up, CRANK.upAt));
-  // 上臂端點離滑輪越遠,繩被拉走越多,重物就升得越高
-  const y = WEIGHT0 + (dist(top, PULLEY.center) - dist(top0, PULLEY.center));
+  // 繩長不變:上臂那一側的繩變長多少,吊重物那一段就縮短多少,重物升起同樣多
+  const y = WEIGHT0 + (armSide(top) - armSide(top0));
   return { swing, top, y };
 }
 
@@ -90,15 +95,17 @@ export default {
   pose(v) {
     const { swing, top, y } = lift(-v);
     const weightTop = [PULLEY.center[0] + PULLEY.radius, y + 0.48, 0.3];
-    const rope = routeRope([{ point: [top[0], top[1], 0.3] }, { circle: { center: PULLEY.center, axis: Z, radius: PULLEY.radius, sense: -1 } }, { point: weightTop }]);
+    const rope = routeRope([{ point: [top[0], top[1], 0.3] }, { circle: SHEAVE }, { point: weightTop }]);
     return {
       parts: {
         disc: { angle: v },
         crank: { angle: swing },
-        pulley: { angle: -(y - WEIGHT0) / PULLEY.radius },
+        // 重物升起時右側的繩往上走,滑輪逆時針轉
+        pulley: { angle: (y - WEIGHT0) / PULLEY.radius },
         weight: { position: [PULLEY.center[0] + PULLEY.radius, y, 0.3] },
       },
-      paths: { rope: { points: rope.points, closed: false, phase: y - WEIGHT0 } },
+      // 繩的起點綁在上臂端點上,繩長不變,所以繩上的記號相對起點不滑動(相位為 0);輪上那段跟著路徑變形移動
+      paths: { rope: { points: rope.points, closed: false, phase: 0 } },
       readouts: [],
     };
   },
