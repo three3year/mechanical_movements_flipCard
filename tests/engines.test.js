@@ -288,7 +288,7 @@ test("第 169 種:以短連桿取代溝槽,主曲柄半徑固定、轉一圈", (
   }
 });
 
-import { valveGear as valve171 } from "../models/fig171.js";
+import { valveGear as valve171, rockAngle as rock171, TRUNNION as TRUNNION171, ARC_R as ARC171 } from "../models/fig171.js";
 import fig175, { stroke as stroke175, ROD as ROD175, SLOT_X as SLOT_X175, HALF_STROKE as HALF175 } from "../models/fig175.js";
 import { reverser, ARC as ARC179, LUG as LUG179 } from "../models/fig179.js";
 import { gear as gear185 } from "../models/fig185.js";
@@ -311,9 +311,28 @@ test("第 185 種:滑塊在連桿一端得到偏心輪的全部行程;在中間�
 });
 
 test("第 171 種:連桿運動帶動閥桿,經曲面滑塊與搖臂軸傳給閥門;中位時幾乎不動", () => {
-  const fwd = travel((t) => valve171(t, "forward").armAngle);
-  const mid = travel((t) => valve171(t, "mid").armAngle);
-  assert.ok(fwd > 0.05 && mid < fwd * 0.2);
+  const fwd = travel((t) => valve171(t, "forward").valve);
+  const mid = travel((t) => valve171(t, "mid").valve);
+  assert.ok(fwd > 0.1 && mid < fwd * 0.3, `前進 ${fwd}、中位 ${mid}`);
+});
+
+test("第 171 種:溝槽是以樞軸中心為圓心的圓弧,汽缸擺動時不干擾閥門的行程", () => {
+  // 汽缸隨曲柄擺動(擺動式引擎)
+  const swing = travel((t) => valve171(t, "forward").phi);
+  assert.ok(swing > 0.3, `汽缸擺動 ${swing} rad`);
+  // 曲面滑塊在行程中點(溝槽圓心在樞軸中心):汽缸怎麼擺,搖臂軸都不轉
+  for (const phi of [-0.17, -0.08, 0.08, 0.17]) close(rock171(0, phi), rock171(0, 0), `擺 ${phi}`, 1e-9);
+  // 曲面滑塊離開中點時,擺動造成的閥門變化遠小於滑塊升降造成的
+  const byLift = Math.abs(rock171(0.2, 0) - rock171(-0.2, 0));
+  for (const d of [-0.2, 0.2]) {
+    const bySwing = Math.abs(rock171(d, 0.17) - rock171(d, -0.17));
+    assert.ok(bySwing < byLift * 0.05, `滑塊在 ${d}:擺動 ${bySwing}、升降 ${byLift}`);
+  }
+  // 銷始終在溝槽上(離溝槽圓心 ARC_R)
+  for (const t of sweep(TAU, 72)) {
+    const g = valve171(t, "forward");
+    close(Math.hypot(g.pin[0] - TRUNNION171[0], g.pin[1] - TRUNNION171[1] - g.d), ARC171, "銷在溝槽上", 1e-6);
+  }
 });
 
 test("第 175 種:原文是活塞帶動曲柄——主動件是長槽中的銷(活塞)、目標件是曲柄", () => {

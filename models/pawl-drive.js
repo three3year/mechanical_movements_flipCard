@@ -17,7 +17,8 @@ import { placeOutline, polygonsOverlap } from "./contact.js";
  * pawls:{ id: { outline(局部輪廓,原點在樞軸), into(±1,落下的轉向), angle(起始轉角), pushes?(布林或 (v) → 布林:這一步是不是在推), fixed?, limits?: [min, max],
  *          fall?(自靜止落下 0.3 弧度所花的主動量,預設週期的 4%), stops?(v) → 其他擋住它的多邊形,
  *          lift?(推的時候爪最多被抬起的弧度,預設 0.04;長的爪要小一點,免得爪尖被抬起的距離大過齒深。
- *          也可以給 [往下, 往上](往下是負值,往齒裡轉):拉爪的樞軸斜著動時,爪尖要跟著齒的直面走,爪可能得往齒裡轉一點) } }。
+ *          也可以給 [往下, 往上](往下是負值,往齒裡轉):拉爪的樞軸斜著動時,爪尖要跟著齒的直面走,爪可能得往齒裡轉一點),
+ *          ride?(真:推的時候先求讓得最少、再求轉得最少,見 push 的註解;拉爪的樞軸走直線、鉤得跟著齒繞輪心轉時用) } }。
  * 回傳 { at(v) → { wheel, angles: { id } }, step(被推的輪每週期前進的角度), shapes(v)(檢查用的外形) }。
  */
 export function pawlDrive({ period, samples = 480, warmup = 2, pins, angles, wheel, pawls, trace }) {
@@ -34,41 +35,56 @@ export function pawlDrive({ period, samples = 480, warmup = 2, pins, angles, whe
   // 推:輪往 dir 轉 d、爪同時往上讓 δ(爪尖卡在齒的直面與前一齒的齒背之間時,輪一轉就會把爪尖沿齒背抬起一點),
   // 取最小的 d 讓爪不碰任何東西;一步之內(d ≤ max、δ ≤ LIFT)做不到,就是爪壓在齒背上、推不動,回傳 null。
   // 固定在主動件上的推件不能讓(δ = 0)。
+  // ride(拉爪):改成先找讓得最少的 δ(往齒裡優先),再找這個 δ 下最小的 d——爪只在輪轉開也閃不掉時才被頂起
+  // (例如齒尖頂著鉤與桿之間的槽頂,輪一轉就把桿往上頂),不會為了少推一點而沿齒的直面滑出齒間;
+  // 只要讓開(d = 0)就不碰的 δ 不算推(那是爪壓在齒背上,交給落下的規則往回退)。
   const LIFT = 0.04;
   const push = (id, v, theta, angle, max) => {
     const p = pawls[id];
     const extra = p.stops?.(v) ?? [];
-    const clearAt = (d) => {
-      const obstacles = [...wheel.obstacles(theta + wheel.dir * d), ...extra];
-      const [down, up] = Array.isArray(p.lift) ? p.lift : [0, p.lift ?? LIFT];
-      const lifts = [0];
-      if (!p.fixed)
-        for (let k = 1; k <= 8; k++) {
-          if (up) lifts.push((up * k) / 8);
-          if (down) lifts.push((down * k) / 8);
-        }
-      for (const lift of lifts) if (!hits(placed(id, v, angle - (p.into ?? 0) * lift), obstacles)) return lift;
-      return null;
-    };
-    if (clearAt(0) === 0) return { theta, angle };
-    let prev = 0;
-    let found = null;
-    for (let k = 1; k <= 12; k++) {
-      const d = (max * k) / 12;
-      if (clearAt(d) !== null) {
-        found = d;
-        break;
+    const [down, up] = Array.isArray(p.lift) ? p.lift : [0, p.lift ?? LIFT];
+    const n = p.ride ? 16 : 8;
+    const lifts = [0];
+    if (!p.fixed)
+      for (let k = 1; k <= n; k++) {
+        if (p.ride && down) lifts.push((down * k) / n);
+        if (up) lifts.push((up * k) / n);
+        if (!p.ride && down) lifts.push((down * k) / n);
       }
-      prev = d;
+    const free = (d, lift) => !hits(placed(id, v, angle - (p.into ?? 0) * lift), [...wheel.obstacles(theta + wheel.dir * d), ...extra]);
+    // 最小的 d(0 < d ≤ max)讓 ok(d) 成立;做不到回傳 null
+    const least = (ok) => {
+      let prev = 0;
+      let found = null;
+      for (let k = 1; k <= 12; k++) {
+        const d = (max * k) / 12;
+        if (ok(d)) {
+          found = d;
+          break;
+        }
+        prev = d;
+      }
+      if (found === null) return null;
+      let [lo, hi] = [prev, found];
+      for (let k = 0; k < 24; k++) {
+        const mid = (lo + hi) / 2;
+        if (ok(mid)) hi = mid;
+        else lo = mid;
+      }
+      return hi;
+    };
+    if (free(0, 0)) return { theta, angle };
+    if (p.ride) {
+      for (const lift of lifts) {
+        if (lift !== 0 && free(0, lift)) continue;
+        const d = least((x) => free(x, lift));
+        if (d !== null) return { theta: theta + wheel.dir * d, angle: angle - (p.into ?? 0) * lift };
+      }
+      return null;
     }
-    if (found === null) return null;
-    let [lo, hi] = [prev, found];
-    for (let k = 0; k < 24; k++) {
-      const mid = (lo + hi) / 2;
-      if (clearAt(mid) !== null) hi = mid;
-      else lo = mid;
-    }
-    return { theta: theta + wheel.dir * hi, angle: angle - (p.into ?? 0) * clearAt(hi) };
+    const clearAt = (d) => lifts.find((lift) => free(d, lift)) ?? null;
+    const d = least((x) => clearAt(x) !== null);
+    return d === null ? null : { theta: theta + wheel.dir * d, angle: angle - (p.into ?? 0) * clearAt(d) };
   };
 
   // 爪落下或被頂開:回傳新的轉角與角速度(往 into 為正)

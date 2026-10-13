@@ -4,17 +4,23 @@
 // 滑塊上,框頂的環首用來轉螺絲。轉螺絲,滑塊沿槽移動,卡榫接點離 a 越遠,槓桿擺同樣的角度卡榫拉得越長,進料越快。
 // 連桿固定接在水平臂的末端,長度不變。
 // 主動件是曲柄;狀態按鈕切換滑塊在螺絲上的兩個位置(進料慢 / 快),原機構由人轉環首調螺絲,所以用按鈕。
+// 平台一直往同一方向走,齒條有長度,所以曲柄的轉動有範圍(FEED_TURNS 圈):自動播放到盡頭時曲柄倒轉、平台退回。
 //
 // 接觸(由接觸算,共用 pawl-drive.js):卡榫鉸在滑塊上,靠自重搭在棘輪右上方的齒上,末端的鉤朝輪心;
 // 垂直臂往左擺時把卡榫往回拉,鉤頂著齒的直面把棘輪往逆時針拖;垂直臂往右擺時卡榫被齒背頂起、越過齒尖後加速落進
 // 後面的齒間。棘輪左邊的止回爪靠自重搭在齒上,不讓棘輪倒轉。每程推過幾齒、停在哪裡都由爪與齒相碰算出:
 // 進料慢時一程一齒,進料快時一程兩齒。卡榫的桿在棘輪前面一層,只有末端的鉤往後伸到棘輪那一層,所以只有鉤會碰到齒。
+// 拉的時候卡榫的樞軸幾乎走水平線,被拉的齒卻繞輪心往左上轉,齒尖頂著鉤與桿之間的槽頂,把桿一路往上頂(進料快時一程約 15°)。
+// 所以卡榫用 ride:每一步先求桿被頂起得最少、再求輪轉得最少——只在輪轉開也閃不掉時才讓桿被頂起,
+// 不會沿齒的直面滑出齒間(2026-10-13 前不准往上讓,進料快時推不動就整個彈開 5.6° 再落回,一程跳七、八次)。
+// 狀態切換:兩個狀態的爪與齒的接觸是各自算的,卡榫、止回爪、棘輪、小齒輪標 posed,切換時以短動畫轉到新狀態的姿勢,
+// 不沿用舊狀態的轉角偏移(否則鉤與止回爪會畫歪、穿進齒裡);平台跟著移到新狀態的位置。
 // 推斷:各桿長與棘輪齒數(依原圖);每程推過的齒數(慢一齒、快兩齒;原文只說螺絲可調進料速度);
 // 止回爪(原圖棘輪左上的小爪)的支架;棘輪軸與曲柄軸的軸承座、平台的導軌、a 的座接到立柱的托板(原圖沒畫)。
 // 偏離插圖:原圖的齒條與平台畫在棘輪前面;這裡小齒輪與齒條在棘輪後面(平台的側面朝著讀者、棘輪在最前面),
 // 因為卡榫的鉤要伸到棘輪那一層——平台若在棘輪前面,會擋在鉤和齒之間(鉤只能繞到齒條下方約三點鐘處,
 // 從那裡拉的方向偏離齒的切線,試過推不出穩定的整數齒)。棘輪照原圖做成輪緣、四根輪輻與輪轂,小齒輪咬著齒條的地方
-// 從輪輻之間看得到。原圖的卡榫是一根長彎臂、末端捲成渦形,這裡是直桿加鉤。
+// 從輪輻之間看得到。原圖的卡榫是一根長彎臂、末端捲成渦形,這裡是往外拱的彎臂加鉤(沒有捲成渦形)。
 import { TAU, deg } from "./kit.js";
 import { crankPin, circleCircle, angleOf } from "./linkage.js";
 import { rackOffset, circularPitch } from "./gears.js";
@@ -35,6 +41,11 @@ const PITCH = TAU / WHEEL.teeth;
 const CATCH = 1.25; // 卡榫從樞軸到鉤
 const PINION = { center: [WHEEL.center[0], WHEEL.center[1], -0.35], teeth: 12, radius: 0.42 };
 const RACK = { origin: [WHEEL.center[0], WHEEL.center[1] + PINION.radius, -0.35], dir: [1, 0, 0], pitch: circularPitch(PINION) };
+// 進料的範圍:曲柄轉 FEED_TURNS 圈(主動量有範圍,自動播放到盡頭時曲柄倒轉、平台退回,不會一直往左跑出小齒輪)。
+// 平台一開始往右挪整數個齒距(齒的相位不變),讓進料快走完全程時小齒輪仍咬在齒條中段:兩個狀態的平台位置都在
+// 齒條齒段的兩端之內,各留約九個齒。
+const FEED_TURNS = 12;
+const FEED_SHIFT = 4 * RACK.pitch;
 // 層次(z):棘輪 −0.08..0.08;水平臂 0.1..0.2;垂直臂的框、螺絲、滑塊 0.1..0.32;卡榫的桿 0.38..0.46;連桿 0.39..0.45
 const Z = { arm: 0.15, frame: 0.21, frameT: 0.22, catchBar: 0.42, rod: 0.42 };
 // 卡榫的鉤(局部座標:原點在樞軸,沿 +x 伸向棘輪;−y 朝輪心):鉤的後面(朝樞軸)是直的、前面斜
@@ -48,6 +59,11 @@ export const CATCH_OUTLINE = [
   [CATCH + 0.02, -0.05],
   [CATCH + 0.02, 0.05],
 ];
+// 卡榫的臂照原圖往外拱(局部 +y,背離輪心)、再彎回來接到鉤:進料快時滑塊在槽底,樞軸離齒尖只有 0.33,
+// 直桿會斜躺在齒尖上(正面看像整根卡榫壓在輪面上、鉤被桿擋住);拱起 ARM_BOW 後,臂在兩個狀態全程都離齒尖 0.15 以上,
+// 只有末端的鉤伸進齒間。臂只是畫出來的形狀(在棘輪前面一層),和齒相碰的只有鉤(CATCH_OUTLINE)。
+const ARM_BOW = 0.25;
+export const CATCH_ARM = Array.from({ length: 17 }, (_, i) => [((CATCH - 0.08) * i) / 16, ARM_BOW * 4 * (i / 16) * (1 - i / 16)]);
 // 止回爪(局部座標:原點在樞軸,沿 +x 往下伸到棘輪的左上緣)
 const CLICK = { pivot: [-2.15, 0.84], length: 0.8 }; // 樞軸在棘輪左上方(平台的上方),爪略往左斜垂到齒上
 const CLICK_OUTLINE = [[-0.05, -0.05], [CLICK.length, -0.05], [CLICK.length, 0.03], [CLICK.length - 0.03, 0.14], [CLICK.length - 0.1, 0.05], [-0.05, 0.05]]; // 末端朝輪的一側凸出一個尖
@@ -68,7 +84,7 @@ function setup(d) {
     wheel: { obstacles: (w) => ratchetObstacles(WHEEL, w, WHEEL.center), dir: WHEEL.dir, pitch: PITCH },
     pawls: {
       // 垂直臂往左擺(V 的 x 變小)時卡榫在拉
-      catch: { outline: CATCH_OUTLINE, into: -1, angle: deg(-46), limits: [deg(-75), deg(-20)], lift: [-0.03, 0], pushes: (theta) => arm(theta + 1e-3, d).V[0] < arm(theta - 1e-3, d).V[0] },
+      catch: { outline: CATCH_OUTLINE, into: -1, angle: deg(-46), limits: [deg(-75), deg(-20)], lift: [-0.03, 0.02], ride: true, pushes: (theta) => arm(theta + 1e-3, d).V[0] < arm(theta - 1e-3, d).V[0] },
       click: { outline: CLICK_OUTLINE, into: 1, angle: deg(-105), limits: [deg(-140), deg(-85)] },
     },
   });
@@ -85,7 +101,7 @@ export function feed(theta, state = "slow") {
   const wheel = s.wheel - S.zero;
   return { ...a, wheel, catchAngle: s.angles.catch, clickAngle: s.angles.click, step: S.drive.step, carriage: rackOffset(PINION, RACK, wheel) };
 }
-export const geometry = { PITCH, A, ROD, H_ARM, SLIDER };
+export const geometry = { PITCH, A, ROD, H_ARM, SLIDER, FEED_TURNS };
 /** 檢查用:卡榫的鉤、止回爪與棘輪的齒(世界座標 2D) */
 export const contactAt = (theta, state = "slow") => {
   const s = SETUPS[state].drive.shapes(theta);
@@ -162,8 +178,9 @@ export default {
       id: "catch",
       kind: "group",
       arrow: false,
+      posed: true,
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0], [CATCH - 0.08, 0]], 0.1), [circle(0.04).reverse()]), thickness: 0.08, at: [0, 0, Z.catchBar] }, // 卡榫的桿在棘輪與框的前面
+        { kind: "plate", shape: shape(thickLine(CATCH_ARM, 0.1), [circle(0.04).reverse()]), thickness: 0.08, at: [0, 0, Z.catchBar] }, // 卡榫的彎臂在棘輪與框的前面
         { kind: "plate", shape: shape(CATCH_OUTLINE), thickness: Z.catchBar + 0.04 + 0.06, at: [0, 0, (Z.catchBar + 0.04 - 0.06) / 2] }, // 鉤往後伸到棘輪那一層
         { kind: "cylinder", radius: 0.04, length: Z.catchBar + 0.04 - (Z.frame + Z.frameT / 2 - 0.04), at: [0, 0, (Z.catchBar + 0.04 + Z.frame + Z.frameT / 2 - 0.04) / 2] }, // 鉸在滑塊前面的銷
       ],
@@ -173,12 +190,14 @@ export default {
       kind: "group",
       center: [...CLICK.pivot, 0],
       arrow: false,
+      posed: true,
       pieces: [{ kind: "plate", shape: shape(CLICK_OUTLINE, [circle(0.05).reverse()]), thickness: 0.12 }],
     },
     {
       id: "ratchet",
       kind: "plate",
       center: WHEEL.center,
+      posed: true,
       shape: { outline: ratchetShape(WHEEL).outline, holes: [circle(RIM).reverse()] }, // 輪緣
       thickness: 0.16,
       spin: WHEEL.outer,
@@ -186,7 +205,7 @@ export default {
       markSize: 0.07,
       pieces: [...spokes, { kind: "cylinder", radius: 0.22, length: 0.8, at: [0, 0, -0.2] }, { kind: "cylinder", radius: 0.1, length: 0.5, at: [0, 0, -0.75] }],
     },
-    { id: "pinion", kind: "gear", center: PINION.center, teeth: PINION.teeth, radius: PINION.radius, width: 0.2, arrow: false },
+    { id: "pinion", kind: "gear", center: PINION.center, teeth: PINION.teeth, radius: PINION.radius, width: 0.2, arrow: false, posed: true },
     {
       id: "carriage",
       kind: "rack",
@@ -209,7 +228,7 @@ export default {
       { at: 2 * TAU, part: "ratchet", label: "兩圈兩齒" },
     ],
   },
-  driver: { part: "crank", type: "rotation" },
+  driver: { part: "crank", type: "rotation", range: [0, FEED_TURNS * TAU], speed: 0.8 }, // 速度同沒有範圍時的預設(一圈約 8 秒)
   target: "carriage", // 一步一步前進的平台
   states: {
     initial: "slow",
@@ -232,7 +251,7 @@ export default {
         ratchet: { angle: f.wheel },
         pinion: { angle: f.wheel },
         // 齒條齒朝下,咬在小齒輪頂上:齒條零件轉 180°
-        carriage: { position: [RACK.origin[0] + f.carriage, RACK.origin[1], -0.35], angle: Math.PI },
+        carriage: { position: [RACK.origin[0] + FEED_SHIFT + f.carriage, RACK.origin[1], -0.35], angle: Math.PI },
       },
       readouts: [],
     };
