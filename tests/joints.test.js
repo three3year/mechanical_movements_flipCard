@@ -2820,6 +2820,18 @@ test("第 274 種:轉速越快,球 K 沿拋物線臂 B 升得越高,桿 F 把套
   }
 });
 
+test("第 274 種:抗摩擦輪 L 在臂 B 上滾動不打滑,轉過的弧長等於接觸點沿拋物線走的距離", () => {
+  const def = m274.default;
+  const ps = sweep(m274.PERIOD / 2, 60);
+  for (let i = 1; i < ps.length; i++) {
+    const [a, b] = [def.pose(ps[i - 1]).parts, def.pose(ps[i]).parts];
+    const [ca, cb] = [m274.governor(m274.speedAt(ps[i - 1])).contact, m274.governor(m274.speedAt(ps[i])).contact];
+    const along = m274.arcLength(ca, cb);
+    close((a.wheelR.angle - b.wheelR.angle) * m274.geometry.WHEEL_R, along, `進程 ${ps[i].toFixed(2)}:右輪往外滾時順時針轉,滾過的弧長`, 1e-6);
+    close(b.wheelL.angle, -b.wheelR.angle, "左輪和右輪對稱", 1e-12);
+  }
+});
+
 test("第 275 種:蝸桿的旋轉運動使齒條直線運動,每圈一個螺距", () => {
   close(m275.rack(2 * Math.PI) - m275.rack(0), m275.PITCH, "每圈一個螺距");
 });
@@ -3025,21 +3037,73 @@ function assertThrottle(def, values) {
 }
 
 test("第 274 種(推斷):套筒的環槽經叉形槓桿與閥桿拉節流閥,閥的開度跟著套筒高度變", () => {
-  assertThrottle(m274.default, sweep(10, 40));
+  assertThrottle(m274.default, sweep(m274.PERIOD, 96));
 });
 
-test("第 274 種:套筒高度對 (轉速/上限)² 線性,滑桿前段也看得出套筒升降", () => {
+test("第 274 種:套筒高度對 (轉速/上限)² 線性;轉速在一輪之內起伏,套筒跟著升降,滑桿每一段都看得出變化", () => {
+  const def = m274.default;
   const lo = m274.governor(0).sleeve;
   const travel = m274.governor(10).sleeve - lo;
   close((m274.governor(3).sleeve - lo) / travel, 0.09, "0→3 升 9%", 1e-6);
   close((m274.governor(5).sleeve - lo) / travel, 0.25, "0→5 升 25%", 1e-6);
+  const P = m274.PERIOD;
+  const speeds = sweep(P, 96).map(m274.speedAt);
+  close(speeds[speeds.length - 1], speeds[0], "一輪之後轉速回到原值", 1e-9);
+  assert.ok(Math.max(...speeds) - Math.min(...speeds) > 5, "一輪之內轉速有明顯起伏");
+  assert.ok(m274.speedAt(P / 4) > m274.speedAt(0) && m274.speedAt(P / 2) > m274.speedAt(P / 4) && m274.speedAt((3 * P) / 4) < m274.speedAt(P / 2), "前半輪漸快、後半輪漸慢");
+  for (let i = 0; i < 12; i++) {
+    const seg = sweep(((i + 1) * P) / 12, 10, (i * P) / 12).map((p) => def.pose(p).parts.sleeve.position[1]);
+    assert.ok(Math.max(...seg) - Math.min(...seg) > 0.08 * travel, `滑桿第 ${i + 1}/12 段:套筒有看得出的升降`);
+  }
+  for (const p of sweep(P, 48)) close(def.pose(p).parts.sleeve.position[1], m274.governor(m274.speedAt(p)).sleeve, "套筒高度由當下的轉速決定", 1e-9);
+});
+
+test("第 274 種(推斷):心軸的轉角是轉速的積分,一輪平均轉 12 圈;轉得快時套筒高", () => {
+  const def = m274.default;
+  const P = m274.PERIOD;
+  const n = 1200;
+  let integral = 0;
+  for (let i = 0; i < n; i++) {
+    const p = ((i + 0.5) * P) / n;
+    integral += m274.speedAt(p) * (P / n);
+    const [a, b] = [def.pose((i * P) / n).parts.spindle.angle, def.pose(((i + 1) * P) / n).parts.spindle.angle];
+    assert.ok(b > a, `進程 ${((i * P) / n).toFixed(2)}:心軸一直往同一個方向轉`);
+  }
+  const turns = (def.pose(P).parts.spindle.angle - def.pose(0).parts.spindle.angle) / (2 * Math.PI);
+  close(turns, P, "一輪之內心軸轉 12 圈(進程 1 是平均轉速下一圈)", 1e-9);
+  // 兩段轉角之比等於兩段轉速積分之比
+  const angleTo = (p) => def.pose(p).parts.spindle.angle - def.pose(0).parts.spindle.angle;
+  let partial = 0;
+  for (let i = 0; i < n / 4; i++) partial += m274.speedAt(((i + 0.5) * P) / n) * (P / n);
+  close(angleTo(P / 4) / angleTo(P), partial / integral, "心軸的轉角是轉速對進程的積分", 1e-4);
+  // 同樣的進程增量,快的時候心軸轉得多
+  const step = (p) => def.pose(p + 0.05).parts.spindle.angle - def.pose(p).parts.spindle.angle;
+  assert.ok(step(P / 2) > 2 * step(0), "最快時心軸轉得比最慢時快");
+  assert.ok(def.pose(P / 2).parts.sleeve.position[1] > def.pose(0).parts.sleeve.position[1], "最快時套筒最高");
+});
+
+test("第 274 種(推斷):心軸下端的傘齒輪由水平驅動軸帶著轉,咬合處兩輪節圓線速度相等、齒互相嵌入", () => {
+  const def = m274.default;
+  const { spindle: gs, drive: gd } = m274.bevels;
+  const contact = add(gs.heel, [gs.radius, 0, 0]); // 心軸齒輪大端節圓上、朝驅動軸那一側
+  close(Math.hypot(contact[1] - gd.heel[1], contact[2] - gd.heel[2]), gd.radius, "接觸點也在驅動軸齒輪的大端節圓上(兩輪錐頂重合)", 1e-9);
+  for (const p of sweep(m274.PERIOD, 48)) {
+    const [a, b] = [def.pose(p).parts, def.pose(p + 1e-4).parts];
+    const ws = (b.spindle.angle - a.spindle.angle) / 1e-4; // 繞 +Y
+    const wd = (b.driveShaft.angle - a.driveShaft.angle) / 1e-4; // 繞 +X
+    const vs = scale(cross([0, 1, 0], sub(contact, [0, contact[1], 0])), ws);
+    const vd = scale(cross([1, 0, 0], sub(contact, [contact[0], gd.center[1], 0])), wd);
+    close(len(sub(vs, vd)), 0, `進程 ${p.toFixed(2)}:兩輪在咬合處的節圓線速度相等`, 1e-4 * len(vs));
+    // 齒互相嵌入:心軸齒輪繞自己的軸(朝下)轉 −轉角,驅動軸齒輪繞自己的軸(朝 −X)轉 −轉角
+    close(-a.driveShaft.angle, meshAngle(gs, gd, -a.spindle.angle, contact), "齒的相位對得上", 1e-9);
+  }
 });
 
 test("第 274 種:兩支臂 B 的下段在心軸處接成一條弧,心軸上的方塊 a 壓在弧上;套筒升到頂也碰不到 a", () => {
   const def = m274.default;
-  const frame = part(def, "frame");
-  const arc = frame.pieces.find((p) => p.role === "arc");
-  const a = frame.pieces.find((p) => p.role === "hubA");
+  const arms = part(def, "arms");
+  const arc = arms.pieces.find((p) => p.role === "arc");
+  const a = arms.pieces.find((p) => p.role === "hubA");
   assert.ok(arc && a, "有接成一條的弧與方塊 a");
   for (const x of [-0.3, 0, 0.3]) assert.ok(pointInPolygon([x, m274.parabola(x) - 0.05], arc.shape.outline), `弧穿過 x = ${x}`);
   const [w, h, d] = a.size;
@@ -3047,7 +3111,7 @@ test("第 274 種:兩支臂 B 的下段在心軸處接成一條弧,心軸上的�
   assert.ok(w / 2 > 0.07, "方塊 a 套在心軸上");
   assert.ok(a.at[2] - d / 2 <= arc.at[2] - 0.05 && a.at[2] + d / 2 >= 0.07, "方塊 a 從心軸伸到臂那一層");
   const sleeveTop = Math.max(...part(def, "sleeve").pieces.map((p) => (p.at ?? [0, 0, 0])[1] + (p.kind === "box" ? p.size[1] : p.length) / 2));
-  for (const s of sweep(10, 20)) assert.ok(def.pose(s).parts.sleeve.position[1] + sleeveTop < a.at[1] - h / 2 - 0.02, `轉速 ${s}:套筒不碰方塊 a`);
+  for (const p of sweep(m274.PERIOD, 24)) assert.ok(def.pose(p).parts.sleeve.position[1] + sleeveTop < a.at[1] - h / 2 - 0.02, `進程 ${p}:套筒不碰方塊 a`);
 });
 
 test("第 287 種(推斷):塔輪由引擎的皮帶帶著轉,皮帶不打滑", () => {

@@ -253,16 +253,116 @@ test("第 151 種:蝸桿帶動螺桿軸,左右旋螺紋上的螺帽彼此靠近�
   near(Math.abs(b.right - a.right), 0.3, "蝸桿轉 N 圈,螺帽移動一個螺距");
 });
 
-import fig147, { governor } from "../models/fig147.js";
+import fig147, { governor as governor147, speedAt as speed147, spindleAngle as spindle147, PERIOD as PERIOD147, ROLLER as ROLLER147, leverGap as leverGap147, opening as open147 } from "../models/fig147.js";
 import { shuttle, stroke as stroke153, contactShapes as contactShapes153 } from "../models/fig153.js";
 import fig154, { lift as lift154 } from "../models/fig154.js";
 
-test("第 147 種:轉速越快,十字頭越落後、滾子沿斜面越往上,十字頭被抬得越高", () => {
-  const rises = sweep(10, 20).map((s) => governor(s).rise);
-  for (let i = 1; i < rises.length; i++) assert.ok(rises[i] > rises[i - 1], "轉速越大抬升越高");
-  near(governor(0).rise, 0, "靜止時在最低處");
-  near(governor(-5).rise, governor(0).rise, "超出範圍的轉速被夾住");
-  assert.equal(fig147.driver.label, "轉速");
+// 第 147 種:世界座標的點轉到心軸(斜面)的座標:繞 Y 轉回心軸的轉角
+const intoShaft147 = ([x, y, z], a) => [x * Math.cos(a) - z * Math.sin(a), y, x * Math.sin(a) + z * Math.cos(a)];
+// 點到折線(斜面圓管的中心線)的最短距離
+const polylineDistance147 = (p, pts) => {
+  let best = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const [a, b] = [pts[i - 1], pts[i]];
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1] + (p[2] - a[2]) * ab[2]) / (ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2)));
+    best = Math.min(best, dist(p, [a[0] + t * ab[0], a[1] + t * ab[1], a[2] + t * ab[2]]));
+  }
+  return best;
+};
+
+test("第 147 種(推斷):引擎帶心軸轉,轉速在一輪之內起伏、回到原值;心軸轉角是轉速的積分", () => {
+  near(speed147(0), speed147(PERIOD147), "一輪後轉速回到原值", 1e-12);
+  near(speed147(PERIOD147 / 2), 10, "半輪時最快(上限)", 1e-12);
+  const ps = sweep(PERIOD147, 240);
+  const speeds = ps.map(speed147);
+  assert.ok(Math.min(...speeds) >= speed147(0) - 1e-12 && speed147(0) < 4, "進程 0 最慢");
+  // 轉速的平方隨進程直線升降:滑桿每一段都有變化
+  for (let i = 1; i < ps.length; i++) near(Math.abs(speeds[i] ** 2 - speeds[i - 1] ** 2), Math.abs(speeds[1] ** 2 - speeds[0] ** 2), "轉速平方等量升降", 1e-9);
+  // 心軸轉角對進程的變化率和當下的轉速成正比(數值積分比對)
+  const k = (spindle147(0.001) - spindle147(0)) / 0.001 / speed147(0.0005);
+  let integral = 0;
+  for (let i = 1; i < ps.length; i++) {
+    const [a, b] = [ps[i - 1], ps[i]];
+    integral += ((b - a) / 6) * (speed147(a) + 4 * speed147((a + b) / 2) + speed147(b));
+    near(spindle147(b), k * integral, `進程 ${b.toFixed(2)}:心軸轉角 = 轉速的積分`, 1e-4);
+  }
+  near(spindle147(PERIOD147), PERIOD147 * TAU, "一輪平均每單位進程轉一圈", 1e-9);
+  for (const p of sweep(PERIOD147, 48)) {
+    const pose = fig147.pose(p);
+    near(pose.parts.shaft.angle, spindle147(p), "心軸照轉速的積分轉", 1e-12);
+    near(pose.parts.driveShaft.angle, -pose.parts.shaft.angle, "兩個一樣大的傘齒輪轉向相反、轉速相同", 1e-12);
+  }
+});
+
+test("第 147 種:十字頭由斜面帶著轉;軸越快扇葉越拖住十字頭,落後越多,滾子沿斜面往上滾,把十字頭與槓桿抬高", () => {
+  const def = fig147;
+  const ps = sweep(PERIOD147 / 2, 60); // 前半輪轉速一直升高
+  const poses = ps.map((p) => def.pose(p));
+  const lagOf = (pose) => pose.parts.shaft.angle - pose.parts.crosshead.angle;
+  for (let i = 1; i < ps.length; i++) {
+    const [a, b] = [poses[i - 1], poses[i]];
+    assert.ok(b.parts.crosshead.angle > a.parts.crosshead.angle, "十字頭跟著心軸往同一個方向轉");
+    assert.ok(lagOf(b) > lagOf(a), "轉速升高,十字頭落後更多");
+    assert.ok(b.parts.crosshead.position[1] > a.parts.crosshead.position[1], "轉速升高,十字頭被抬得更高");
+    assert.ok(b.parts.lever.angle < a.parts.lever.angle, "十字頭頂部把槓桿往上推");
+  }
+  for (const p of sweep(PERIOD147, 48)) {
+    const pose = def.pose(p);
+    const { lag, rise } = governor147(speed147(p));
+    near(lagOf(pose), lag, "落後量由當下的轉速決定", 1e-12);
+    near(pose.parts.crosshead.position[1], rise, "高度由當下的轉速決定", 1e-12);
+    near(leverGap147(rise, pose.parts.lever.angle), 0, "槓桿貼著十字頭頂端的圓頭", 1e-3);
+  }
+  near(governor147(speed147(PERIOD147)).lag, governor147(speed147(0)).lag, "一輪後十字頭回到原來的落後量", 1e-12);
+});
+
+test("第 147 種(推斷):槓桿經閥桿推節流閥的曲柄——轉速越快閥開越小;閥桿兩端接在銷上、長度不變", () => {
+  const def = fig147;
+  const lever = def.parts.find((p) => p.id === "lever");
+  const valve = def.parts.find((p) => p.id === "valve");
+  const rodPin = lever.pieces[2].at; // 槓桿短臂上的閥桿銷(槓桿局部)
+  const crankPin = valve.pieces[2].at; // 曲柄銷(閥的局部)
+  const place = (center, local, a) => [center[0] + local[0] * Math.cos(a) - local[1] * Math.sin(a), center[1] + local[0] * Math.sin(a) + local[1] * Math.cos(a)];
+  const ps = sweep(PERIOD147, 96);
+  const rest = def.pose(0).parts.valveRod;
+  const length = dist(rest.from, rest.to);
+  for (const p of ps) {
+    const pose = def.pose(p);
+    const { from, to } = pose.parts.valveRod;
+    near(dist(from, to), length, "閥桿長度不變", 1e-9);
+    const top = place(lever.center, rodPin, pose.parts.lever.angle);
+    const bottom = place(valve.center, crankPin, pose.parts.valve.angle);
+    near(Math.hypot(from[0] - top[0], from[1] - top[1]), 0, "閥桿上端接在槓桿的銷上", 1e-9);
+    near(Math.hypot(to[0] - bottom[0], to[1] - bottom[1]), 0, "閥桿下端接在曲柄銷上", 1e-9);
+  }
+  const half = sweep(PERIOD147 / 2, 48).map(open147);
+  for (let i = 1; i < half.length; i++) assert.ok(half[i] < half[i - 1], "轉速升高,節流閥開度變小");
+  near(open147(0), 1, "最慢時全開", 1e-9);
+  assert.ok(open147(PERIOD147 / 2) < 0.15, "最快時幾乎關上");
+  near(open147(PERIOD147), open147(0), "一輪後回到原開度", 1e-12);
+  // 方向:十字頭升高 → 槓桿右端往下 → 閥桿往下推
+  assert.ok(def.pose(PERIOD147 / 2).parts.valveRod.from[1] < def.pose(0).parts.valveRod.from[1], "十字頭升高時閥桿被往下推");
+});
+
+test("第 147 種:兩個摩擦滾子一直貼著心軸上的斜面,沿斜面滾動不打滑", () => {
+  const def = fig147;
+  const tubes = def.parts.find((p) => p.id === "shaft").pieces[0].pieces.filter((pc) => pc.kind === "tube");
+  assert.equal(tubes.length, 2, "兩個圓形斜面");
+  const reach = Math.hypot(tubes[0].points[0][0], tubes[0].points[0][2]);
+  const ps = sweep(PERIOD147, 96);
+  let prev = null;
+  for (const p of ps) {
+    const pose = def.pose(p);
+    const local = ["rollerR", "rollerL"].map((id) => intoShaft147(pose.parts[id].position, pose.parts.shaft.angle));
+    for (const c of local) {
+      near(Math.hypot(c[0], c[2]), reach, "滾子和斜面在同一圈上", 1e-9);
+      near(Math.min(...tubes.map((t) => polylineDistance147(c, t.points))), tubes[0].radius + ROLLER147, `進程 ${p.toFixed(2)}:滾子貼著斜面`, 2e-3);
+    }
+    // 滾過的角度 × 半徑 = 滾子中心沿斜面走過的路
+    if (prev) near((pose.parts.rollerR.angle - prev.angle) * ROLLER147, (Math.sign(pose.parts.rollerR.angle - prev.angle) || 1) * dist(local[0], prev.at), "滾子不打滑", 2e-3);
+    prev = { angle: pose.parts.rollerR.angle, at: local[0] };
+  }
 });
 
 test("第 153 種:凸柱把水平桿往右推,下一根凸柱經曲柄搖臂把它推回左邊(每半圈一個來回)", () => {

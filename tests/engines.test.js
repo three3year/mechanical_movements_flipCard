@@ -123,10 +123,13 @@ test("第 160 種:踩下踏板,繞在皮帶輪上的帶子使它轉動;放開時
   close(down.pulley - lathe160(0).pulley, -(down.pull - lathe160(0).pull) / 0.55, "轉過的弧長 = 帶子被拉下的長度");
 });
 
-import fig161, { governor as gov161 } from "../models/fig161.js";
+import fig161, { governor as gov161, speedAt as speed161, spindleAngle as spindle161, driveAngle as drive161, NORMAL as NORMAL161, SPINDLE_GEAR as SPINDLE_GEAR161, DRIVE_GEAR as DRIVE_GEAR161, opening as opening161, valveRodLength as rodLength161 } from "../models/fig161.js";
+import { bevelContact as bevelContact161 } from "../models/gears.js";
+import { cross as cross161, sub as sub161 } from "../models/kit.js";
 import fig162, { regulator as reg162, pinY as pin162, studs as studs162, gateOpening as opening162, spindleAngle as spindle162 } from "../models/fig162.js";
 import fig163, { regulator as reg163, pulleys as pulleys163, gateOpening as opening163, spindleAngle as spindle163 } from "../models/fig163.js";
-import { governor as gov170 } from "../models/fig170.js";
+import fig170, { governor as gov170, speedAt as speed170, spindleAngle as spindle170, driveAngle as drive170, opening as opening170, gears as gears170 } from "../models/fig170.js";
+import { cross as cross170, sub as sub170 } from "../models/kit.js";
 
 test("第 161 種:引擎速度增加,球向外飛出,把底部的滑塊抬升;速度降低時相反", () => {
   const s = sweep(10, 40).map((v) => gov161(v));
@@ -135,8 +138,68 @@ test("第 161 種:引擎速度增加,球向外飛出,把底部的滑塊抬升;�
     assert.ok(s[i].sleeve >= s[i - 1].sleeve - 1e-12, "滑塊越高");
   }
   assert.ok(gov161(10).sleeve > gov161(0).sleeve + 0.2);
-  assert.ok(gov161(3).alpha > gov161(0).alpha + 0.01, "滑桿的低段就有反應(不照真實圓錐擺的窄區間算)");
-  assert.equal(fig161.driver.label, "轉速");
+  assert.ok(gov161(3).alpha > gov161(0).alpha + 0.01, "低轉速就有反應(不照真實圓錐擺的窄區間算)");
+  // 進程型:引擎的轉速在一輪之內起伏,模型照當下的轉速擺球、滑塊與槓桿
+  assert.equal(fig161.driver.label, "進程");
+  const P = fig161.driver.range[1];
+  const ps = sweep(P, 240);
+  for (let i = 1; i < ps.length; i++) {
+    const [a, b] = [fig161.pose(ps[i - 1]).parts, fig161.pose(ps[i]).parts];
+    const faster = speed161(ps[i]) > speed161(ps[i - 1]);
+    assert.equal(b.sleeve.position[1] > a.sleeve.position[1], faster, "速度增加時滑塊升高、降低時滑塊下降");
+    assert.equal(b.ballR.position[0] > a.ballR.position[0], faster, "速度增加時球更向外飛出");
+    assert.equal(b.lever.angle > a.lever.angle, faster, "接在滑塊上的槓桿跟著滑塊升降");
+    assert.ok(Math.abs(b.sleeve.position[1] - a.sleeve.position[1]) > 1e-4, "滑桿每一段都看得出滑塊在動");
+  }
+});
+
+test("第 161 種:心軸由引擎經頂部的傘齒輪帶動,轉角是轉速的積分;轉速一輪之內起伏並回到原值", () => {
+  const P = fig161.driver.range[1];
+  const speeds = sweep(P, 480).map(speed161);
+  close(speed161(P), speed161(0), "一輪之後轉速回到原值");
+  assert.ok(Math.max(...speeds) - Math.min(...speeds) > 5, "一輪之內轉速有明顯的起伏");
+  close(spindle161(P), 2 * Math.PI * P, "一輪平均每單位進程轉一圈", 1e-9);
+  // 轉角 = ∫ 轉速(梯形法積分,比例常數是 2π / 平均轉速)
+  const n = 4000;
+  let integral = 0;
+  for (let i = 1; i <= n; i++) {
+    const [a, b] = [(P * 1.37 * (i - 1)) / n, (P * 1.37 * i) / n];
+    integral += ((speed161(a) + speed161(b)) / 2) * (b - a);
+    if (i % 500 === 0) close(spindle161(b) - spindle161(0), (2 * Math.PI * integral) / NORMAL161, `進程 ${b.toFixed(2)}:心軸轉角是轉速的積分`, 1e-4);
+  }
+  // 兩個傘齒輪咬合:接觸點上兩輪節圓的線速度相同(心軸繞 +Y、驅動軸繞 +Z)
+  const C = bevelContact161(SPINDLE_GEAR161, DRIVE_GEAR161);
+  for (const p of [0.4, 3.3, 6.1, 9.8]) {
+    const h = 1e-5;
+    const ws = (spindle161(p + h) - spindle161(p - h)) / (2 * h);
+    const wd = (drive161(p + h) - drive161(p - h)) / (2 * h);
+    const vs = cross161([0, ws, 0], sub161(C, SPINDLE_GEAR161.center));
+    const vd = cross161([0, 0, wd], sub161(C, DRIVE_GEAR161.center));
+    for (let k = 0; k < 3; k++) close(vs[k], vd[k], `進程 ${p}:兩個傘齒輪在接觸點的線速度相同`, 1e-6);
+    assert.ok(Math.abs(ws) > 1, "心軸真的在轉");
+  }
+  for (const p of [0, 2.5, 7]) {
+    const parts = fig161.pose(p).parts;
+    close(parts.spindle.angle, spindle161(p), "心軸的姿勢照轉速的積分");
+    close(parts.driveShaft.angle, drive161(p), "驅動軸的姿勢照咬合");
+  }
+});
+
+test("第 161 種:滑塊升高時減少調節閥的開度(調節閥經槓桿與閥桿和滑塊相連),速度降低時相反", () => {
+  const P = fig161.driver.range[1];
+  const ps = sweep(P, 240);
+  for (let i = 1; i < ps.length; i++) {
+    const [a, b] = [fig161.pose(ps[i - 1]).parts, fig161.pose(ps[i]).parts];
+    const rose = b.sleeve.position[1] > a.sleeve.position[1];
+    assert.equal(opening161(ps[i]) < opening161(ps[i - 1]), rose, "滑塊升高時閥開度變小、下降時變大");
+    assert.equal(speed161(ps[i]) > speed161(ps[i - 1]), opening161(ps[i]) < opening161(ps[i - 1]), "轉速越快閥開得越小");
+    const { from, to } = b.valveRod;
+    close(Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]), rodLength161(0), "閥桿是剛性的:兩端銷心的距離不變", 1e-9);
+  }
+  close(opening161(0), 1, "最慢時全開");
+  assert.ok(opening161(P / 2) < 0.1, "最快時幾乎關上");
+  assert.equal(fig161.target, "valve");
+  assert.ok(fig161.pose(P / 2).readouts.some((r) => r.label === "節流閥開度"));
 });
 
 test("第 162、163 種:閘門隨速度起伏升降,一輪之後回到原處;心軸一輪恰好轉 12 圈、過快時轉得快", () => {
@@ -203,11 +266,56 @@ test("第 163 種:皮帶在鬆動輪上時不傳動;過快時撥到下輪、過�
   }
 });
 
-test("第 170 種:交叉的兩臂隨轉速張開,經短連桿移動閥桿", () => {
+test("第 170 種:交叉的兩臂隨轉速張開,上端外張下降,經短連桿把閥桿往下拉", () => {
   const rods = sweep(10, 20, 7).map((v) => gov170(v).rod);
-  assert.ok(Math.abs(rods[rods.length - 1] - rods[0]) > 0.05, "閥桿隨轉速移動");
+  assert.ok(rods[0] - rods[rods.length - 1] > 0.3, "轉得越快閥桿越低(交叉的臂上端張開下降)");
   for (let i = 1; i < rods.length; i++) assert.ok(rods[i] <= rods[i - 1] + 1e-12, "單調");
   assert.ok(gov170(3).alpha > gov170(0).alpha + 0.01, "滑桿的低段就有反應");
+  // 臂向上延伸超過心軸頂部:臂的上端始終高過心軸的圓軸與扁頂頭
+  const head = part(fig170, "head").pieces[0];
+  for (const v of sweep(10, 20)) assert.ok(gov170(v).tip[1] > head.at[1] + head.size[1] / 2, "臂的上端超過心軸頂部");
+});
+
+test("第 170 種(進程型):轉速一輪之內起伏並回到原值,心軸照轉速的積分轉,水平軸經傘齒輪咬合帶動", () => {
+  assert.equal(fig170.driver.mode, "progress");
+  const P = fig170.driver.range[1];
+  const ps = sweep(P, 480);
+  const speeds = ps.map(speed170);
+  close(speed170(P), speed170(0), "一輪之後轉速回到原值", 1e-9);
+  assert.ok(Math.max(...speeds) > Math.min(...speeds) + 5, "轉速起伏看得出來");
+  close(spindle170(P), TAU * P, `一輪恰好轉 ${P} 圈`, 1e-9);
+  // 心軸轉角是轉速的積分:轉角對進程的導數和當下轉速成正比
+  const h = 1e-4;
+  const rate = (p) => (spindle170(p + h) - spindle170(p - h)) / (2 * h) / speed170(p);
+  for (const p of sweep(P, 37).slice(1, -1)) close(rate(p), rate(P / 3), `進程 ${p.toFixed(2)}:轉角的增量和轉速成正比`, 1e-5);
+  assert.ok(spindle170(P * 0.5) - spindle170(P * 0.4) > 2 * (spindle170(P * 0.1) - spindle170(P * 0)), "快時心軸轉得比慢時快");
+  // 傘齒輪咬合:兩輪在接觸點的線速度相同(心軸繞 +Y、水平軸繞 +X)
+  const r = sub170(gears170.contact, gears170.spindle.apex);
+  for (const p of sweep(P, 24)) {
+    const ds = spindle170(p + h) - spindle170(p);
+    const dd = drive170(p + h) - drive170(p);
+    const vs = cross170([0, ds, 0], r);
+    const vd = cross170([dd, 0, 0], r);
+    for (let i = 0; i < 3; i++) close(vs[i], vd[i], "接觸點的速度一致", 1e-9);
+    const pose = fig170.pose(p);
+    close(pose.parts.spindle.angle, spindle170(p), "心軸照轉角擺放", 1e-12);
+    close(pose.parts.driveShaft.angle, drive170(p), "水平軸照轉角擺放", 1e-12);
+  }
+});
+
+test("第 170 種:臂、短連桿長度不變;轉得太快時閥桿下降、關小節流閥,一輪之後回到原處", () => {
+  const P = fig170.driver.range[1];
+  const len = (seg) => dist(seg.from, seg.to);
+  const rest = fig170.pose(0).parts;
+  for (const p of sweep(P, 96)) {
+    const parts = fig170.pose(p).parts;
+    for (const id of ["armL", "armR", "linkL", "linkR"]) close(len(parts[id]), len(rest[id]), `${id} 長度不變`, 1e-9);
+    close(parts.linkL.to[1], parts.rod.position[1], "短連桿接在閥桿的轂上", 1e-12);
+  }
+  close(opening170(P), opening170(0), "一輪之後節流閥回到原處", 1e-9);
+  assert.ok(opening170(0) > 0.95 && opening170(P / 2) < 0.2, "最慢時全開、最快時幾乎關上");
+  for (let i = 1, ps = sweep(P / 2, 48); i < ps.length; i++) assert.ok(opening170(ps[i]) <= opening170(ps[i - 1]) + 1e-12, "轉速升高時開度變小");
+  assert.equal(fig170.target, "valve", "目標件是被調節的節流閥");
 });
 
 import fig164, { knee } from "../models/fig164.js";
