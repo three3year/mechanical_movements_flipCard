@@ -19,7 +19,7 @@
   <div class="book">
     <header>
       <h1>機構圖鑑</h1>
-      <p class="subtitle"><a href="https://ia803103.us.archive.org/12/items/Mechanical_Movements_507/Mechanical_Movements_507.pdf" target="_blank" rel="noopener">Mechanical Movements</a> · 圖文對照</p>
+      <p class="subtitle"><a href="https://ia803103.us.archive.org/12/items/Mechanical_Movements_507/Mechanical_Movements_507.pdf" target="_blank" rel="noopener">Mechanical Movements</a> · <a href="https://507movements.com/" target="_blank" rel="noopener">507movements.com</a> · 圖文對照</p>
     </header>
 
     <nav class="tabs" id="tabs"></nav>
@@ -189,6 +189,23 @@
       return p;
     }
 
+    // 卡片底部的原文出處:每個圖號連到 507movements.com 的那一頁(英文原文、勘誤註記、清晰原圖)
+    function buildSource(entry) {
+      const source = document.createElement("p");
+      source.className = "source";
+      source.appendChild(document.createTextNode("英文原文："));
+      entry.images.map(figureNo).forEach((n, i) => {
+        if (i) source.appendChild(document.createTextNode(" · "));
+        const a = document.createElement("a");
+        a.href = "https://507movements.com/mm_" + String(n).padStart(3, "0") + ".html";
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = entry.images.length > 1 ? "圖 " + n : "507movements.com";
+        source.appendChild(a);
+      });
+      return source;
+    }
+
     // 圖片區左右半邊的翻頁提示:平時只露淡箭頭,滑到哪半邊才亮起
     function makeHint(side, glyph) {
       const hint = document.createElement("span");
@@ -324,6 +341,7 @@
       for (const paragraph of entry.text) {
         body.appendChild(buildParagraph(paragraph));
       }
+      body.appendChild(buildSource(entry));
       fragment.appendChild(body);
 
       // 等所有圖片解碼完成才換上去,避免空白閃爍
