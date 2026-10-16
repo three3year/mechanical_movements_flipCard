@@ -1,12 +1,16 @@
 // 截圖:把頁面送給截圖服務排隊截圖(服務由主 session 用 tools/shot-service.mjs 開關;子代理不要自己開 Chrome)。
-// 用法:node tools/shot.mjs 頁面 輸出.png [頁面 輸出.png …] [--width=1800]
-//   一次最多 6 頁。頁面是專案內的相對路徑(tools/model-strip.html?fig=63&vs=0,1,2,3)。
+// 用法:node tools/shot.mjs 頁面 輸出.png [頁面 輸出.png …] [--width=1800] [--wait=5]
+//   一次最多 6 頁。頁面是專案內的相對路徑(tools/model-strip.html?fig=63&vs=0,1,2,3),等標題變成 ready 才截;
+//   或外部網址(https://…),載入後等 --wait 秒再截。
+//   寬度預設 1800(上限 16384),高度依內容;長邊超過 2000 時在小圖(img、canvas)之間切成多張:輸出.png 變成
+//   輸出-1.png、輸出-2.png…(一張小圖本身超過 2000 就自己成一張,那一行註明會被縮小)。
 //   服務一次只畫一頁、在各個呼叫之間輪流;等待時每隔幾秒印排隊狀態。
 //   等這次的頁面全部畫完才結束,一行印一個寫出的檔案與寬高,失敗的頁印原因;有頁面失敗時以非零結束。
 //   接近 10 分鐘(SHOT_TIMEOUT 秒,預設 570)還沒完成就報錯結束。連接埠用環境變數 SHOT_PORT(預設 8618)。
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { DEFAULT_PORT, MAX_PAGES, tooMany } from "./shot/service.js";
+import { DEFAULT_PORT, MAX_PAGES, tooMany, badWidth, isExternal } from "./shot/service.js";
+import { LONG_SIDE } from "./shot/cuts.js";
 
 const port = Number(process.env.SHOT_PORT) || DEFAULT_PORT;
 const args = process.argv.slice(2);
@@ -18,13 +22,17 @@ const fail = (message) => {
   process.exit(1);
 };
 
-if (!positional.length) fail("用法:node tools/shot.mjs 頁面 輸出.png [頁面 輸出.png …] [--width=1800]");
+if (!positional.length) fail("用法:node tools/shot.mjs 頁面 輸出.png [頁面 輸出.png …] [--width=1800] [--wait=5]");
+const width = flags.width === undefined ? undefined : Number(flags.width);
+if (width !== undefined && badWidth(width)) fail(badWidth(width));
+const wait = flags.wait === undefined ? undefined : Number(flags.wait);
+if (wait !== undefined && !(wait >= 0)) fail(`--wait 要是秒數(收到 ${flags.wait})`);
 if (positional.length % 2) fail(`每個頁面後面要給輸出路徑(.png):「${positional.at(-1)}」後面沒有輸出路徑`);
 const pages = [];
 for (let i = 0; i < positional.length; i += 2) {
   const [url, out] = positional.slice(i, i + 2);
   if (!/\.png$/i.test(out)) fail(`輸出路徑要以 .png 結尾:「${out}」(每個頁面後面接它的輸出路徑)`);
-  pages.push({ url, out, ...(flags.width ? { width: Number(flags.width) } : {}) });
+  pages.push({ url, out, width, ...(isExternal(url) ? { wait } : {}) });
 }
 
 if (pages.length > MAX_PAGES) fail(tooMany(pages.length));
@@ -59,7 +67,8 @@ const handle = (msg) => {
     const path = msg.files.length === 1 ? out : out.replace(/\.png$/i, `-${i + 1}.png`);
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, Buffer.from(f.data, "base64"));
-    console.log(`${path}  ${f.width}×${f.height}`);
+    const note = f.shrunk ? `(長邊 ${Math.max(f.width, f.height)} 超過 ${LONG_SIDE},讀圖時會被縮小)` : "";
+    console.log(`${path}  ${f.width}×${f.height}${note}`);
   });
 };
 

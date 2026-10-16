@@ -9,11 +9,16 @@ import { createReadStream, statSync } from "node:fs";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Queue } from "./queue.js";
+import { planCuts, LONG_SIDE } from "./cuts.js";
 
 export const DEFAULT_PORT = 8618;
 export const DEFAULT_WIDTH = 1800;
 export const MAX_PAGES = 6;
+export const MAX_WIDTH = 16384; // 再寬的部分顯示卡畫不出來(單張貼圖的上限)
+export const DEFAULT_WAIT = 5; // 外部網址載入後等幾秒再截
 export const tooMany = (n) => `一次最多送 ${MAX_PAGES} 頁(這次 ${n} 頁),請分批送`;
+// 寬度不對時的說明;對就回傳 undefined
+export const badWidth = (w) => (Number.isInteger(w) && w >= 1 && w <= MAX_WIDTH ? undefined : `寬度要是 1–${MAX_WIDTH} 的整數(收到 ${w})`);
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -47,18 +52,24 @@ export async function startService({ port = DEFAULT_PORT, renderer, root = ROOT,
   async function draw(job) {
     let page;
     try {
-      page = await renderer.open({ url: job.url, width: job.width, height: 2000 });
+      page = await renderer.open({ url: job.url, width: job.width, height: LONG_SIDE });
       const deadline = Date.now() + readyTimeout;
-      for (;;) {
+      // 外部網址不會把標題改成 ready:等指定的秒數
+      if (job.external) await sleep(job.wait * 1000);
+      else for (;;) {
         const title = await page.title();
         if (title === "ready") break;
         if (title === "error") return { ok: false, reason: `頁面回報 error:${(await page.message()).trim() || "(頁面上沒有訊息)"}` };
         if (Date.now() > deadline) return { ok: false, reason: `等了 ${Math.round(readyTimeout / 1000)} 秒還沒變成 ready(目前的標題:「${title}」)` };
         await sleep(100);
       }
-      const { height } = await page.layout();
-      const data = await page.capture({ x: 0, y: 0, width: job.width, height });
-      return { ok: true, files: [{ width: job.width, height, data: data.toString("base64") }] };
+      const { height, boxes } = await page.layout();
+      const files = [];
+      for (const { top, bottom, oversize } of planCuts(height, boxes)) {
+        const data = await page.capture({ x: 0, y: top, width: job.width, height: bottom - top });
+        files.push({ width: job.width, height: bottom - top, shrunk: oversize || job.width > LONG_SIDE, data: data.toString("base64") });
+      }
+      return { ok: true, files };
     } catch (e) {
       return { ok: false, reason: `載入失敗:${e.message}` };
     } finally {
@@ -76,6 +87,8 @@ export async function startService({ port = DEFAULT_PORT, renderer, root = ROOT,
     const pages = Array.isArray(body.pages) ? body.pages : [];
     if (!pages.length) return reply(res, 400, "沒有給頁面");
     if (pages.length > MAX_PAGES) return reply(res, 400, tooMany(pages.length));
+    const widthError = pages.map((p) => badWidth(p.width ?? DEFAULT_WIDTH)).find(Boolean);
+    if (widthError) return reply(res, 400, widthError);
     res.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
     const send = (obj) => !res.destroyed && res.write(JSON.stringify(obj) + "\n");
     const call = { pages: [] };
@@ -85,6 +98,8 @@ export async function startService({ port = DEFAULT_PORT, renderer, root = ROOT,
       gone = resolve;
       pages.forEach((p, index) => call.pages.push({
         url: absolute(p.url, base),
+        external: isExternal(p.url),
+        wait: p.wait ?? DEFAULT_WAIT,
         width: p.width ?? DEFAULT_WIDTH,
         done: (result) => {
           send({ type: "page", index, ...result });
