@@ -114,28 +114,30 @@ async function serve() {
   let chromeReady; // 先聽連接埠(被佔用就早點失敗),Chrome 開好之前來的頁等它
   const launched = new Promise((r) => (chromeReady = r));
   let stopping = false;
-  const shutdown = async () => {
+  const shutdown = async (code) => {
     if (stopping) return;
     stopping = true;
     await chrome?.close().catch(() => {});
+    // Chrome 還沒開好就失敗:清掉開到一半的那一個
+    if (!chrome && state.chrome) {
+      killTree(state.chrome.pid);
+      removeProfile(state.chrome.profile);
+    }
     await service?.close().catch(() => {});
     rmSync(STATE, { force: true });
-    process.exit(0);
+    process.exit(code);
   };
   let service;
   try {
-    service = await startService({ port, renderer: { open: async (o) => (await launched).renderer.open(o) }, onStop: shutdown });
+    service = await startService({ port, renderer: { open: async (o) => (await launched).renderer.open(o) }, onStop: () => shutdown(0) });
     chrome = await launchChrome({ cpu: rest.includes("--cpu"), onSpawn: (c) => ((state.chrome = c), save()) });
     chromeReady(chrome);
   } catch (e) {
     console.error(e.stack ?? e);
     process.send?.({ error: e.code === "EADDRINUSE" ? `連接埠 ${port} 已被別的程式佔用(可用 SHOT_PORT 換一個)` : e.message });
-    await chrome?.close().catch(() => {});
-    removeProfile(state.chrome?.profile);
-    rmSync(STATE, { force: true });
-    process.exit(1);
+    return shutdown(1);
   }
-  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(signal, shutdown);
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(signal, () => shutdown(0));
   console.log(`就緒:${chrome.mode} ${chrome.gpuName ?? ""}`);
   process.send?.({ mode: chrome.mode, gpuName: chrome.gpuName });
 }

@@ -18,7 +18,7 @@ export const MAX_WIDTH = 16384; // 再寬的部分顯示卡畫不出來(單張�
 export const DEFAULT_WAIT = 5; // 外部網址載入後等幾秒再截
 export const tooMany = (n) => `一次最多送 ${MAX_PAGES} 頁(這次 ${n} 頁),請分批送`;
 // 寬度不對時的說明;對就回傳 undefined
-export const badWidth = (w) => (Number.isInteger(w) && w >= 1 && w <= MAX_WIDTH ? undefined : `寬度要是 1–${MAX_WIDTH} 的整數(收到 ${w})`);
+export const widthError = (w) => (Number.isInteger(w) && w >= 1 && w <= MAX_WIDTH ? undefined : `寬度要是 1–${MAX_WIDTH} 的整數(收到 ${w})`);
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -87,8 +87,8 @@ export async function startService({ port = DEFAULT_PORT, renderer, root = ROOT,
     const pages = Array.isArray(body.pages) ? body.pages : [];
     if (!pages.length) return reply(res, 400, "沒有給頁面");
     if (pages.length > MAX_PAGES) return reply(res, 400, tooMany(pages.length));
-    const widthError = pages.map((p) => badWidth(p.width ?? DEFAULT_WIDTH)).find(Boolean);
-    if (widthError) return reply(res, 400, widthError);
+    const badWidth = pages.map((p) => widthError(p.width ?? DEFAULT_WIDTH)).find(Boolean);
+    if (badWidth) return reply(res, 400, badWidth);
     res.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
     const send = (obj) => !res.destroyed && res.write(JSON.stringify(obj) + "\n");
     const call = { pages: [] };
@@ -128,14 +128,18 @@ export async function startService({ port = DEFAULT_PORT, renderer, root = ROOT,
 
   const server = createServer(async (req, res) => {
     const base = `http://127.0.0.1:${server.address().port}`;
-    const path = decodeURIComponent(new URL(req.url, base).pathname);
+    let path;
+    try {
+      path = decodeURIComponent(new URL(req.url, base).pathname);
+    } catch {
+      return reply(res, 404, "找不到");
+    }
     try {
       if (req.method === "POST" && path === "/__shot/pages") return await handlePages(req, res, base);
       if (req.method === "POST" && path === "/__shot/stop") {
         reply(res, 200, "關閉中");
         return onStop?.();
       }
-      if (req.method === "GET" && path === "/__shot/ping") return reply(res, 200, "截圖服務");
       if (req.method === "GET" || req.method === "HEAD") return serveStatic(root, path, req, res);
       reply(res, 405, "不支援的方法");
     } catch (e) {

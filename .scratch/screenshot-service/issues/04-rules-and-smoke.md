@@ -25,3 +25,4 @@
   - `stop` 後 headless Chrome 行程 0 個,系統暫存資料夾裡沒有 `flipcard-shot-*`(設定檔、記錄檔、日誌都清掉)。
 - `npm test` 2973 過、`npm run test:verify` 46 過、`npm run test:shot` 15 過。
 - 規格 Status 改成 done,鏡像重新發布:https://claude.ai/artifact/Q7mhXW39K1AongyJW7GEBM
+- code review 後的修正(2026-10-16):網址編碼壞掉的要求(`/%E0`)會讓服務當掉 → 回 404;自己的最後一頁正在畫時排隊狀態把別人的頁算成「前面」→ 改成 0(兩者都先補了失敗的測試);每個 DevTools 指令最多等 60 秒,卡住的頁只讓那一頁失敗、不擋住整個排隊;開分頁後 attach 失敗時關掉分頁;client 沒收到結尾就當成服務中途斷線;服務的收尾併成一個(Chrome 開到一半失敗時也清掉);拿掉沒人用的 `/__shot/ping`;CLAUDE.md 那一條補上 `npm run test:shot`。真 Chrome 重跑:截圖、`error` 頁回報頁面上的訊息、`/%E0` 回 404 後服務照常、連接埠被佔用時啟動失敗且沒留下 Chrome。`npm run test:shot` 17 過。

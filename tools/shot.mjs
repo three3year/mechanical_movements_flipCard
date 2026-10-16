@@ -9,7 +9,7 @@
 //   接近 10 分鐘(SHOT_TIMEOUT 秒,預設 570)還沒完成就報錯結束。連接埠用環境變數 SHOT_PORT(預設 8618)。
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { DEFAULT_PORT, MAX_PAGES, tooMany, badWidth, isExternal } from "./shot/service.js";
+import { DEFAULT_PORT, MAX_PAGES, tooMany, widthError, isExternal } from "./shot/service.js";
 import { LONG_SIDE } from "./shot/cuts.js";
 
 const port = Number(process.env.SHOT_PORT) || DEFAULT_PORT;
@@ -24,7 +24,8 @@ const fail = (message) => {
 
 if (!positional.length) fail("用法:node tools/shot.mjs 頁面 輸出.png [頁面 輸出.png …] [--width=1800] [--wait=5]");
 const width = flags.width === undefined ? undefined : Number(flags.width);
-if (width !== undefined && badWidth(width)) fail(badWidth(width));
+const widthProblem = width === undefined ? undefined : widthError(width);
+if (widthProblem) fail(widthProblem);
 const wait = flags.wait === undefined ? undefined : Number(flags.wait);
 if (wait !== undefined && !(wait >= 0)) fail(`--wait 要是秒數(收到 ${flags.wait})`);
 if (positional.length % 2) fail(`每個頁面後面要給輸出路徑(.png):「${positional.at(-1)}」後面沒有輸出路徑`);
@@ -55,7 +56,9 @@ if (res.status === 404) fail(notRunning);
 if (!res.ok) fail(await res.text());
 
 let failed = 0;
+let done = false;
 const handle = (msg) => {
+  if (msg.type === "done") return (done = true);
   if (msg.type === "status") return console.log(`排隊中:前面還有 ${msg.ahead} 頁、這次還剩 ${msg.remaining} 頁,預估 ${msg.eta} 秒`);
   if (msg.type !== "page") return;
   const { url, out } = pages[msg.index];
@@ -82,4 +85,5 @@ for await (const chunk of res.body) {
     buffer = buffer.slice(nl + 1);
   }
 }
+if (!done) fail("截圖服務中途斷線,還沒畫完的頁沒有寫出;請回報主 session。");
 process.exit(failed ? 1 : 0);

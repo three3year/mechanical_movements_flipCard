@@ -243,3 +243,33 @@ test("外部網址不等 ready,等指定的秒數後截", async () => {
     await service.close();
   }
 });
+
+// ── code review 後補的 ──
+
+test("網址編碼壞掉的要求不會讓服務當掉", async () => {
+  const service = await startFake();
+  try {
+    const bad = await fetch(`http://127.0.0.1:${service.port}/%E0`);
+    assert.equal(bad.status, 404);
+    assert.equal((await fetch(`http://127.0.0.1:${service.port}/package.json`)).status, 200);
+  } finally {
+    await service.close();
+  }
+});
+
+test("自己的最後一頁正在畫時,排隊狀態是前面 0 頁", async () => {
+  const slow = Object.fromEntries(["h1", "i1", "i2"].map((k) => [`tools/model-strip.html?fig=${k}`, { delay: 400 }]));
+  const service = await startFake(slow, { statusInterval: 50 });
+  try {
+    const dir = outDir();
+    const a = runClient(["tools/model-strip.html?fig=h1", join(dir, "h1.png")], service);
+    await waitFor(() => service.log.length >= 1);
+    const b = runClient(many("i", 2, dir), service);
+    const ra = await a;
+    await b;
+    assert.match(ra.stdout, /前面還有 0 頁/);
+    assert.doesNotMatch(ra.stdout, /前面還有 [1-9]/);
+  } finally {
+    await service.close();
+  }
+});

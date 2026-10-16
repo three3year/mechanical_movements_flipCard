@@ -78,11 +78,12 @@ async function startBrowser(flags, onSpawn) {
 
   async function open({ url, width, height }) {
     const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" });
-    const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
+    const close = () => cdp.send("Target.closeTarget", { targetId });
+    let sessionId;
     const send = (method, params) => cdp.send(method, params, sessionId);
     const evaluate = async (expression) => (await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true })).result?.value;
-    const close = () => cdp.send("Target.closeTarget", { targetId });
     try {
+      ({ sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true }));
       await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
       await send("Emulation.setFocusEmulationEnabled", { enabled: true }).catch(() => {});
       const nav = await send("Page.navigate", { url });
@@ -160,26 +161,37 @@ async function connect(url) {
     ws.addEventListener("open", ok, { once: true });
     ws.addEventListener("error", () => fail(new Error(`連不上 Chrome 的除錯連接埠(${url})`)), { once: true });
   });
+  // 每個指令最多等 60 秒:頁面卡住(導覽不回、腳本不停)時只讓那一頁失敗,不擋住後面排隊的頁
+  const COMMAND_TIMEOUT = 60_000;
   let id = 0;
   const pending = new Map();
   ws.addEventListener("message", (event) => {
     const msg = JSON.parse(event.data);
     const p = msg.id != null && pending.get(msg.id);
     if (!p) return;
+    clearTimeout(p.timer);
     pending.delete(msg.id);
     if (msg.error) p.fail(new Error(`${p.method}:${msg.error.message}`));
     else p.ok(msg.result);
   });
   ws.addEventListener("close", () => {
-    for (const p of pending.values()) p.fail(new Error("Chrome 的連線斷了"));
+    for (const p of pending.values()) {
+      clearTimeout(p.timer);
+      p.fail(new Error("Chrome 的連線斷了"));
+    }
     pending.clear();
   });
   return {
     send(method, params = {}, sessionId) {
       if (ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Chrome 的連線斷了"));
       return new Promise((ok, fail) => {
-        pending.set(++id, { ok, fail, method });
-        ws.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+        const key = ++id;
+        const timer = setTimeout(() => {
+          pending.delete(key);
+          fail(new Error(`${method} 等了 ${COMMAND_TIMEOUT / 1000} 秒沒有回應`));
+        }, COMMAND_TIMEOUT);
+        pending.set(key, { ok, fail, method, timer });
+        ws.send(JSON.stringify({ id: key, method, params, ...(sessionId ? { sessionId } : {}) }));
       });
     },
     close: () => ws.close(),

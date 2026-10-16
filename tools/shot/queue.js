@@ -28,8 +28,9 @@ export class Queue {
     return { call, page };
   }
 
-  // 照輪流的順序,這個呼叫的最後一頁之前會先畫幾頁別人的
+  // 照輪流的順序,這個呼叫的最後一頁之前會先畫幾頁別人的(它的頁都已取走時是 0)
   ahead(call) {
+    if (!this.#calls.includes(call)) return 0;
     const left = this.#calls.map((c) => c.pages.length);
     let turn = this.#turn;
     let count = 0;
