@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test",
     "verify": "node --test \"verify/*.spec.js\" && node tools/verify.mjs",
-    "test:verify": "node --test \"verify/*.spec.js\""
+    "test:verify": "node --test \"verify/*.spec.js\"",
+    "test:shot": "node --test \"tools/shot/*.spec.js\""
   },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",
