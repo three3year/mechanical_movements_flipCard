@@ -1,6 +1,6 @@
 # 截圖服務:所有截圖共用一個瀏覽器
 
-Status: ready-for-agent
+Status: done
 
 **來源:** 2026-10-16 掃第 301–400 種時,12 個子代理各自截圖,CPU、記憶體、硬碟都衝到 100%。同日 grilling 定下的做法如下;量測(這台電腦,i5-11500、GTX 1650、16 GB)寫在 Further Notes。
 

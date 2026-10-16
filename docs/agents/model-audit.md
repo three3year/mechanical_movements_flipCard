@@ -8,7 +8,7 @@
 
 1. **讀原文與插圖**:`node tools/audit.mjs 圖號` 印出原文與各零件的動作摘要;看 `images/圖號.png`。把原文裡每一句可以驗證的敘述列出來(誰帶動誰、轉向、幾圈對幾程、順序、狀態切換時發生什麼)。
 2. **讀定義**:`models/figNNN.js` 與它 import 的共用模組;測試在 `tests/` 裡搜尋圖號。
-3. **看動作**:用不快取或任何靜態伺服器開 `tools/model-strip.html?fig=N&vs=…`,至少截四個相位(一圈或一個往復平均取點,再加上原文提到的關鍵時刻),每個狀態都截;再用 `dir=` 從斜後方截一張,用 `fit=` 放大接觸處。Playwright 不能用時,用 headless Chrome:`chrome --headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --window-size=W,H --virtual-time-budget=15000 --screenshot=out.png URL`(一次大約只來得及畫兩個相位,分幾次截)。
+3. **看動作**:經截圖服務截 `tools/model-strip.html?fig=N&vs=…`(規則見 `CLAUDE.md`「開發」):`node tools/shot.mjs "tools/model-strip.html?fig=N&vs=0,1.5,3,4.5" 輸出.png [下一頁 輸出.png …]`。一頁放齊這個狀態要看的相位,至少四個(一圈或一個往復平均取點,再加上原文提到的關鍵時刻);每個狀態一頁(`state=`),斜後方(`dir=`)與放大接觸處(`fit=`)各一頁,一次呼叫最多 6 頁。讀圖時長邊超過 2000 px 會被等比例縮小,所以寬度用預設、交給服務:相位多到換行超過 2000 時它在列與列之間切成 `輸出-1.png`、`輸出-2.png`…,每張都看。
 4. **逐類檢查**:下面八類都查,每一類都要有結論。
 5. **記錄**:寫進這次掃描的逐圖表格(見最後一節)。
 
