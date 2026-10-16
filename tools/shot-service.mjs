@@ -111,6 +111,8 @@ async function serve() {
   const save = () => writeFileSync(STATE, JSON.stringify(state));
   save();
   let chrome;
+  let chromeReady; // 先聽連接埠(被佔用就早點失敗),Chrome 開好之前來的頁等它
+  const launched = new Promise((r) => (chromeReady = r));
   let stopping = false;
   const shutdown = async () => {
     if (stopping) return;
@@ -122,8 +124,9 @@ async function serve() {
   };
   let service;
   try {
-    service = await startService({ port, renderer: { open: (o) => chrome.renderer.open(o) }, onStop: shutdown });
+    service = await startService({ port, renderer: { open: async (o) => (await launched).renderer.open(o) }, onStop: shutdown });
     chrome = await launchChrome({ cpu: rest.includes("--cpu"), onSpawn: (c) => ((state.chrome = c), save()) });
+    chromeReady(chrome);
   } catch (e) {
     console.error(e.stack ?? e);
     process.send?.({ error: e.code === "EADDRINUSE" ? `連接埠 ${port} 已被別的程式佔用(可用 SHOT_PORT 換一個)` : e.message });

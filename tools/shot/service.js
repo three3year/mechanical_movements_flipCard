@@ -2,14 +2,18 @@
 // 「畫一頁」的元件(renderer)由呼叫的人給:真的用 chrome.js,測試用 fake.js。renderer.open({ url, width, height })
 // 開一個分頁並回傳 page:title()、message()(頁面上的錯誤訊息)、layout()({ height, boxes:小圖的 [上緣, 下緣] })、
 // capture({ x, y, width, height })(PNG)、close()。
-// client 送 POST /__shot/pages,服務以 NDJSON 一行一行回:{ type: "page", index, ok, files | reason }、最後 { type: "done" }。
+// client 送 POST /__shot/pages,服務以 NDJSON 一行一行回:{ type: "page", index, ok, files | reason }、
+// 等待中每隔一段時間 { type: "status", ahead, remaining, eta }、最後 { type: "done" }。
 import { createServer } from "node:http";
 import { createReadStream, statSync } from "node:fs";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Queue } from "./queue.js";
 
 export const DEFAULT_PORT = 8618;
 export const DEFAULT_WIDTH = 1800;
+export const MAX_PAGES = 6;
+export const tooMany = (n) => `一次最多送 ${MAX_PAGES} 頁(這次 ${n} 頁),請分批送`;
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -21,19 +25,23 @@ const MIME = {
 };
 
 // options:port(0 = 任選)、renderer、root(靜態檔的根目錄,預設專案根目錄)、readyTimeout(毫秒,專案內的頁面等 ready 的上限)、
-// onStop(收到 POST /__shot/stop 時呼叫)。回傳 { port, close }。
-export async function startService({ port = DEFAULT_PORT, renderer, root = ROOT, readyTimeout = 90_000, onStop } = {}) {
-  const waiting = [];
-  let busy = false;
+// statusInterval(毫秒,每隔多久回報一次排隊狀態)、onStop(收到 POST /__shot/stop 時呼叫)。回傳 { port, close }。
+export async function startService({ port = DEFAULT_PORT, renderer, root = ROOT, readyTimeout = 90_000, statusInterval = 5000, onStop } = {}) {
+  const queue = new Queue();
+  let drawing = null; // 正在畫的頁屬於哪個呼叫
+  let secondsPerPage = 1.5; // 每頁花的秒數(移動平均),只用來估等待時間
 
   async function pump() {
-    if (busy) return;
-    busy = true;
-    while (waiting.length) {
-      const { job, done } = waiting.shift();
-      done(await draw(job));
+    if (drawing) return;
+    let next;
+    while ((next = queue.take())) {
+      drawing = next.call;
+      const started = Date.now();
+      const result = await draw(next.page);
+      secondsPerPage = 0.7 * secondsPerPage + 0.3 * ((Date.now() - started) / 1000);
+      drawing = null;
+      next.page.done(result);
     }
-    busy = false;
   }
 
   async function draw(job) {
@@ -58,13 +66,6 @@ export async function startService({ port = DEFAULT_PORT, renderer, root = ROOT,
     }
   }
 
-  function enqueue(job) {
-    return new Promise((done) => {
-      waiting.push({ job, done });
-      pump();
-    });
-  }
-
   async function handlePages(req, res, base) {
     let body;
     try {
@@ -74,12 +75,38 @@ export async function startService({ port = DEFAULT_PORT, renderer, root = ROOT,
     }
     const pages = Array.isArray(body.pages) ? body.pages : [];
     if (!pages.length) return reply(res, 400, "沒有給頁面");
+    if (pages.length > MAX_PAGES) return reply(res, 400, tooMany(pages.length));
     res.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
-    const send = (obj) => res.write(JSON.stringify(obj) + "\n");
-    await Promise.all(pages.map(async (p, index) => {
-      const job = { url: absolute(p.url, base), width: p.width ?? DEFAULT_WIDTH };
-      send({ type: "page", index, ...(await enqueue(job)) });
-    }));
+    const send = (obj) => !res.destroyed && res.write(JSON.stringify(obj) + "\n");
+    const call = { pages: [] };
+    let left = pages.length;
+    let gone;
+    const finished = new Promise((resolve) => {
+      gone = resolve;
+      pages.forEach((p, index) => call.pages.push({
+        url: absolute(p.url, base),
+        width: p.width ?? DEFAULT_WIDTH,
+        done: (result) => {
+          send({ type: "page", index, ...result });
+          if (--left === 0) resolve();
+        },
+      }));
+    });
+    const status = setInterval(() => {
+      const ahead = queue.ahead(call) + (drawing && drawing !== call ? 1 : 0);
+      const remaining = left;
+      send({ type: "status", ahead, remaining, eta: Math.ceil((ahead + remaining) * secondsPerPage) });
+    }, statusInterval);
+    // client 先走了(逾時或被中斷):還沒畫的頁不畫
+    res.on("close", () => {
+      clearInterval(status);
+      queue.remove(call);
+      gone();
+    });
+    queue.add(call);
+    pump();
+    await finished;
+    clearInterval(status);
     send({ type: "done" });
     res.end();
   }
