@@ -18,7 +18,7 @@ const M_AT = 0.68; // 連桿接在樑上(從右端量起的比例)
 const ROD = 2.55;
 const CR = 0.3;
 const PISTON_ROD = 1.55;
-const CYL = { x: C0[0], top: -0.25, length: 1.3, radius: 0.42 };
+const CYL = { x: C0[0], top: -0.25, length: 1.3, radius: 0.42, seat: -2.475, pipeZ: -0.25 };
 
 /** 立柱角 phi → 樑右端 R、中點、左端 C、連桿接點 M */
 function beamAt(phi) {
@@ -59,7 +59,7 @@ export default {
         ...pedestal({ at: [K[0], K[1]], z: -0.55, bore: 0.14, floor: -2.475 }),
       ],
     },
-    { id: "pipe", ...steamPipe(CYL), center: [0, 0, -0.45] }, // 蒸汽管走在後面一層(曲柄從它前方轉過)
+    { id: "pipe", ...steamPipe(CYL) }, // 蒸汽管走在汽缸後半(pipeZ;曲柄從它前方轉過)
     ...cylinderParts(CYL),
     { id: "pillarA", kind: "link", width: 0.24, thickness: 0.1, label: "A", labelOffset: [0.3, 1.6, 0.3] },
     { id: "beam", kind: "plate", shape: shape(thickLine([[0, 0], [2 * HALF, 0]], 0.36), [circle(0.12).reverse()]), thickness: 0.14, arrow: false },
@@ -83,7 +83,8 @@ export default {
         radiusB: { from: z(E, 0.3), to: z(g.mid, 0.3) },
         conRod: { from: z(g.pin, 0.25), to: z(g.M, 0.25) },
         crank: { angle: g.theta },
-        pistonRod: { position: [g.C[0], g.C[1] - PISTON_ROD / 2, 0.08] },
+        // 活塞桿走汽缸的中心線、和活塞一起動(樑端 C 偏離這條直線不到 0.001,鉸接處的間隙吃掉)
+        pistonRod: { position: [CYL.x, g.C[1] - PISTON_ROD / 2, 0.08] },
         ...cyl.parts,
       },
       flows: cyl.flows,
@@ -91,7 +92,6 @@ export default {
     };
   },
   waivers: [
-    { check: "interference", parts: ["pipe", "cylinder"], reason: "蒸汽管接在汽缸的側面:管端伸進汽缸壁 0.06" },
     { check: "interference", parts: ["beam", "pistonRod"], reason: "接合處的簡化畫法:活塞桿的頂端鉸接在樑端,桿端伸進樑的板 0.04" },
   ],
 };

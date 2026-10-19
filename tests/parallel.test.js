@@ -86,6 +86,65 @@ function steamPushes(def, values) {
   }
 }
 
+// 用 vertical-engine.js 汽缸的各圖:汽缸底下的座落到底座頂面、進汽管的支管接到汽缸留下的後半外壁
+const ENGINES = [m327, m328, m329, m330, m331, m332, m336, m339, m341, m343, m346].map((m) => m.default);
+
+// 不動的零件裡沒有轉角的方塊(世界座標的外框)
+function fixedBoxes(def) {
+  const posed = new Set(Object.keys(def.pose(0).parts));
+  return def.parts
+    .filter((p) => !posed.has(p.id))
+    .flatMap((p) => (p.pieces ?? []).filter((q) => q.kind === "box" && !q.angle && !q.axis).map((q) => ({ p, q })))
+    .map(({ p, q }) => {
+      const c = (p.center ?? [0, 0, 0]).map((v, k) => v + (q.at ?? [0, 0, 0])[k]);
+      return { lo: c.map((v, k) => v - q.size[k] / 2), hi: c.map((v, k) => v + q.size[k] / 2) };
+    });
+}
+
+test("直立引擎的汽缸(第 327–346 種):汽缸底下的座落到底座頂面", () => {
+  for (const def of ENGINES) {
+    const cyl = def.parts.find((p) => p.id === "cylinder");
+    const [x, y] = cyl.center;
+    const bottom = y + Math.min(...cyl.profile.map(([, h]) => h));
+    const under = fixedBoxes(def).filter((b) => b.lo[0] <= x && x <= b.hi[0] && b.lo[2] <= 0 && 0 <= b.hi[2] && b.hi[1] <= bottom + 1e-9);
+    const top = Math.max(...under.map((b) => b.hi[1]));
+    close(bottom, top, `圖 ${def.figure}:汽缸底與底座頂面相貼`, 1e-9);
+  }
+});
+
+test("直立引擎的汽缸(第 327–346 種):進汽管的支管在汽缸留下的後半,端面貼著外壁", () => {
+  for (const def of ENGINES) {
+    const cyl = def.parts.find((p) => p.id === "cylinder");
+    const wall = cyl.profile[1][0]; // 汽缸壁的外半徑(上蓋的外角;座的凸緣另算)
+    const pipe = def.parts.find((p) => p.id === "pipe");
+    const branches = pipe.pieces.filter((q) => q.size[0] > q.size[1]);
+    assert.equal(branches.length, 2, `圖 ${def.figure}:上下兩根支管`);
+    for (const q of branches) {
+      const z = (pipe.center?.[2] ?? 0) + q.at[2];
+      assert.ok(z < 0, `圖 ${def.figure}:支管在汽缸的後半(z ${z})`);
+      const end = (pipe.center?.[0] ?? 0) + q.at[0] - q.size[0] / 2;
+      close(end, cyl.center[0] + Math.sqrt(wall * wall - z * z), `圖 ${def.figure}:支管端面貼著汽缸外壁`, 1e-9);
+    }
+  }
+});
+
+test("第 327、328 種:十字頭的轂套住活塞桿頂端、往前接到橫桿(活塞桿與十字頭接成一件)", () => {
+  for (const m of [m327, m328]) {
+    const pieces = m.default.parts.find((p) => p.id === "crosshead").pieces;
+    const span = (q) => (q.kind === "box" ? [q.at[2] - q.size[2] / 2, q.at[2] + q.size[2] / 2] : [q.at[2] - q.length / 2, q.at[2] + q.length / 2]);
+    const rod = pieces.find((q) => q.kind === "box" && q.size[1] > 1);
+    const bar = pieces.find((q) => q.kind === "box" && q.size[0] > 1);
+    const hub = pieces.find((q) => q.kind === "cylinder" && q.at[0] === 0);
+    assert.ok(hub, "有轂");
+    const [h0, h1] = span(hub);
+    const [r0, r1] = span(rod);
+    const [b0] = span(bar);
+    assert.ok(h0 <= r0 && h1 >= r1, "轂蓋住活塞桿那一層");
+    assert.ok(h1 >= b0, "轂伸到橫桿的背面");
+    assert.ok(hub.radius > rod.size[0] / 2, "轂比活塞桿粗,套住桿頂");
+  }
+});
+
 test("第 326 種:滑塊 A 在框架的直溝槽中上下,飛輪曲柄經連桿帶動它", () => {
   const ys = sweep(2 * Math.PI, 72).map((t) => m326.slider(t).y);
   assert.ok(Math.max(...ys) - Math.min(...ys) > 0.85, "滑塊上下往復,行程等於曲柄直徑");

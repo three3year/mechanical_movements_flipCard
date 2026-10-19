@@ -14,7 +14,7 @@ const CRANK = [0, 2.75, 0];
 const CR = 0.4;
 const ROD = 2.25;
 const PISTON_ROD = 2.0;
-const CYL = { x: 0, top: -0.95, length: 1.15, radius: 0.42 };
+const CYL = { x: 0, top: -0.95, length: 1.15, radius: 0.42, seat: -2.91 };
 
 /** 進程 p → 曲柄角、曲柄銷、左半徑桿的角(使連桿長度不變)與連桿機構各點 */
 export function upright(p) {

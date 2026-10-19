@@ -10,7 +10,7 @@ const CRANK = [0, 2.65, 0];
 const R = 0.42;
 const ROD = 2.9; // 曲柄銷到十字頭(叉的下端)
 const PISTON_ROD = 1.25; // 十字頭到活塞
-const CYL = { x: 0, top: -0.85, length: 1.35, radius: 0.42 };
+const CYL = { x: 0, top: -0.85, length: 1.35, radius: 0.42, seat: -2.61, pipeZ: -0.075 };
 
 /** 進程 p → 曲柄角、曲柄銷、十字頭高度、活塞高度 */
 export function engine(p) {

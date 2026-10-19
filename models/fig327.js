@@ -5,14 +5,14 @@
 // 結構:飛輪軸架在頂上橫樑的軸承座上;導桿 A、A 上下兩端各以托架固定在兩側的立柱上(原圖導桿掛在立柱內側);
 // 十字頭兩端的滾子各自繞銷轉,貼著導桿滾(不打滑,轉角 = 十字頭位移 / 滾子半徑)。
 import { TAU, deg } from "./kit.js";
-import { crankSlider, cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
+import { crankSlider, cylinderParts, cylinderPose, steamPipe, rodHub } from "./vertical-engine.js";
 import { shape, circle, arcPoints } from "./shapes.js";
 
 const CRANK = [0, 2.5, 0];
 const R = 0.5;
 const ROD = 2.3;
 const PISTON_ROD = 2.0;
-const CYL = { x: 0, top: -1.1, length: 1.5, radius: 0.42 };
+const CYL = { x: 0, top: -1.1, length: 1.5, radius: 0.42, seat: -2.86, pipeZ: -0.25 };
 const GUIDE_X = 0.95;
 const ROLLER = { r: 0.16, x: GUIDE_X - 0.24 };
 
@@ -73,6 +73,7 @@ export default {
         { kind: "cylinder", radius: 0.05, length: 0.3, at: [-ROLLER.x, 0, 0.2] },
         { kind: "cylinder", radius: 0.05, length: 0.3, at: [ROLLER.x, 0, 0.2] },
         { kind: "box", size: [0.08, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] },
+        rodHub(0, 0.04, 0.15, 0.09), // 套住活塞桿頂端、往前接到橫桿背面的轂(推斷)
       ],
     },
     // 十字頭兩端的滾子:貼著導桿 A 滾

@@ -16,16 +16,27 @@ export function crankSlider(crank, r, rod, theta) {
   return { pin, y };
 }
 
-/** 汽缸零件(縱向,上端 top、內長 length、內半徑 radius;剖開前半看得到裡面)、兩室的蒸汽填色、活塞 */
-export function cylinderParts({ x, top, length, radius, prefix = "" }) {
+const WALL = 0.12; // 汽缸壁與上下蓋的厚度
+const FLANGE = 0.06; // 座底端的凸緣伸出汽缸外壁多少
+
+/**
+ * 汽缸零件(縱向,上端 top、內長 length、內半徑 radius;剖開前半看得到裡面)、兩室的蒸汽填色、活塞。
+ * seat 是底座頂面的高度:汽缸下蓋底下接一段同外徑、底端帶凸緣的座,落到底座上(推斷;原圖汽缸蓋下就是台座)
+ */
+export function cylinderParts({ x, top, length, radius, seat, prefix = "" }) {
   const bottom = top - length;
+  const outer = radius + WALL;
+  const drop = seat == null ? 0 : bottom - WALL - seat; // 座的高度
+  const base = drop > 1e-9
+    ? [[outer, -WALL - drop + FLANGE], [outer + FLANGE, -WALL - drop + FLANGE], [outer + FLANGE, -WALL - drop], [0, -WALL - drop]]
+    : [[outer, -WALL], [0, -WALL]];
   return [
     {
       id: `${prefix}cylinder`,
       kind: "lathe",
       axis: Y,
       center: [x, bottom, 0],
-      profile: [[0.12, length + 0.12], [radius + 0.12, length + 0.12], [radius + 0.12, -0.12], [0, -0.12], [0, 0], [radius, 0], [radius, length], [0.12, length]],
+      profile: [[0.12, length + WALL], [outer, length + WALL], ...base, [0, 0], [radius, 0], [radius, length], [0.12, length]],
       ...backHalf(Y),
     },
     { id: `${prefix}steamUp`, kind: "fill", fluid: "steam", shape: "cylinder", size: [2 * radius - 0.04, length, 0], level: 0 },
@@ -35,15 +46,26 @@ export function cylinderParts({ x, top, length, radius, prefix = "" }) {
 }
 
 /**
+ * 進汽管的位置:直管在汽缸右邊 0.7、深度 pipeZ(汽缸剖開前半,管走在留下的後半;各圖照機架的位置給,預設 −0.15),
+ * 上下兩根支管從直管往左接到汽缸後半的外壁(支管中心線的端點在外壁上)
+ */
+export function pipeLayout({ x, radius, pipeZ = -0.15 }) {
+  const outer = radius + WALL;
+  return { z: pipeZ, riser: x + radius + 0.7, wall: x + Math.sqrt(outer * outer - pipeZ * pipeZ) };
+}
+
+/**
  * 汽缸的姿勢:活塞高度 piston;downward 為活塞正往下走(上室進汽),否則下室進汽。
  * progress 讓進汽的點沿進汽管流動。
  */
-export function cylinderPose({ x, top, length, radius, prefix = "" }, piston, downward, progress) {
+export function cylinderPose(cyl, piston, downward, progress) {
+  const { x, top, length, prefix = "" } = cyl;
   const bottom = top - length;
   const pistonTop = piston + 0.11;
   const pistonBottom = piston - 0.11;
   const port = downward ? top - 0.15 : bottom + 0.15;
-  const pipe = [[x + radius + 0.7, top + 0.5, 0.2], [x + radius + 0.7, port, 0.2], [x, port, 0.2]];
+  const { z, riser } = pipeLayout(cyl);
+  const pipe = [[riser, top + 0.5, z], [riser, port, z], [x, port, z]];
   return {
     parts: {
       [`${prefix}piston`]: { position: [x, piston, 0] },
@@ -54,12 +76,19 @@ export function cylinderPose({ x, top, length, radius, prefix = "" }, piston, do
   };
 }
 
-/** 進汽管(固定在汽缸側面,流體示意的點沿著它走) */
-export const steamPipe = ({ x, top, length, radius }) => ({
-  kind: "group",
-  pieces: [
-    { kind: "box", size: [0.14, length + 0.5, 0.14], at: [x + radius + 0.7, top - length / 2 + 0.25, 0.2] },
-    { kind: "box", size: [0.7, 0.12, 0.12], at: [x + radius + 0.35, top - 0.15, 0.2] },
-    { kind: "box", size: [0.7, 0.12, 0.12], at: [x + radius + 0.35, top - length + 0.15, 0.2] },
-  ],
-});
+/** 進汽管(固定在汽缸後半的側面,流體示意的點沿著它走) */
+export function steamPipe(cyl) {
+  const { top, length } = cyl;
+  const { z, riser, wall } = pipeLayout(cyl);
+  const branch = (y) => ({ kind: "box", size: [riser - wall, 0.12, 0.12], at: [(riser + wall) / 2, y, z] });
+  return {
+    kind: "group",
+    pieces: [{ kind: "box", size: [0.14, length + 0.5, 0.14], at: [riser, top - length / 2 + 0.25, z] }, branch(top - 0.15), branch(top - length + 0.15)],
+  };
+}
+
+/** 十字頭上套住活塞桿頂端的轂:從活塞桿那一層(rodZ ± half)往前伸到橫桿的背面 barZ,讓活塞桿與十字頭接成一件 */
+export function rodHub(rodZ, half, barZ, radius) {
+  const from = rodZ - half - 0.02;
+  return { kind: "cylinder", radius, length: barZ + 0.02 - from, at: [0, 0, (from + barZ + 0.02) / 2] };
+}

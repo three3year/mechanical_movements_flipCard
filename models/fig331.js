@@ -10,7 +10,7 @@ import { pedestal } from "./supports.js";
 const CRANK = [0, 0.9, 0];
 const R = 0.5;
 const PISTON_ROD = 2.6; // 十字頭中心到活塞
-const CYL = { x: 0, top: -1.0, length: 1.45, radius: 0.42 };
+const CYL = { x: 0, top: -1.0, length: 1.45, radius: 0.42, seat: -2.76, pipeZ: -0.25 };
 
 /** 進程 p → 曲柄角、曲柄銷位置、十字頭高度(開槽十字頭:高度 = 曲柄銷高度) */
 export function yoke(p) {

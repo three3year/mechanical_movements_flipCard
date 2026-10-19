@@ -12,7 +12,7 @@ const CRANK = [0.55, 3.2, 0];
 const R = 0.35;
 const ROD = 2.75;
 const PISTON_ROD = 1.75;
-const CYL = { x: 0.55, top: -0.72, length: 1.2, radius: 0.5 };
+const CYL = { x: 0.55, top: -0.72, length: 1.2, radius: 0.5, seat: -2.075 };
 
 /** 進程 p → 曲柄角、曲柄銷、C(活塞桿上)、A(BC 中點)、B(在溝槽裡) */
 export function russell(p) {

@@ -11,7 +11,7 @@ const C0 = [0, 0.9, 0]; // 主軸
 const RB = 0.62; // 齒輪 B 的節圓半徑
 const NB = 14;
 const ND = 2 * NB;
-const CYL = { x: 0, top: -1.3, length: 2.85, radius: 0.42 };
+const CYL = { x: 0, top: -1.3, length: 2.85, radius: 0.42, seat: -4.28 };
 const PISTON_ROD = 3.6; // 腕銷到活塞
 
 const PHI0 = Math.PI / 2; // 進程 0 時曲柄朝上

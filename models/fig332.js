@@ -11,7 +11,7 @@ import { pedestal } from "./supports.js";
 const X = 1.3;
 export const motion = sideLever({ A: [-1.85, -2.0, 0], lever: 3.6, rod: 3.55, x: X, C: [-1.3, 0.85, 0], radius: 2.55, drop: 0.95, swing: deg(9), tilt: deg(3) });
 const PISTON_ROD = 2.3;
-const CYL = { x: X, top: 0.45, length: 1.85, radius: 0.55 };
+const CYL = { x: X, top: 0.45, length: 1.85, radius: 0.55, seat: -2.525 };
 
 export default {
   figure: 332,

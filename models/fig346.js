@@ -6,7 +6,7 @@ import { TAU } from "./kit.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
 import { shape, circle, thickLine, rect } from "./shapes.js";
 
-const CYL = { x: 0, top: 0.4, length: 1.6, radius: 0.55 };
+const CYL = { x: 0, top: 0.47, length: 1.6, radius: 0.55 }; // 下蓋底面落在桌面上(-1.25)
 const CRANK = [-0.15, -2.3, 0]; // 桌面下方的曲柄軸
 const R = 0.45;
 const SIDE = 0.65; // 側連桿在汽缸前後的距離
@@ -82,7 +82,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["table", "cylinder"], reason: "簡化畫法:汽缸的底座嵌在台面裡,重疊 0.07" },
-  ],
 };
