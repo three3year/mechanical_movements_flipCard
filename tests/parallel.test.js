@@ -21,7 +21,7 @@ import * as m332 from "../models/fig332.js";
 import * as m333 from "../models/fig333.js";
 import * as m334 from "../models/fig334.js";
 import * as m335 from "../models/fig335.js";
-import { rackShape, sectorShape, circle } from "../models/shapes.js";
+import { rackShape, sectorShape, circle, rect } from "../models/shapes.js";
 import * as m336 from "../models/fig336.js";
 import * as m337 from "../models/fig337.js";
 import { verticalDeviation } from "../models/parallel-motion.js";
@@ -62,6 +62,11 @@ function layerOf(def, pose, id) {
   }
   const z = (pose[id]?.position ?? p.center)[2];
   const layers = plateLayers(p);
+  if (!layers.length) {
+    // 沒有板件的方塊零件,或只含方塊的群組(活塞桿、滑塊):方塊沿 z 的範圍
+    const spans = [p, ...(p.pieces ?? [])].filter((q) => q.kind === "box").map((q) => zSpan(q));
+    return [z + Math.min(...spans.map((s) => s[0])), z + Math.max(...spans.map((s) => s[1]))];
+  }
   return [z + Math.min(...layers.map((l) => l.z0)), z + Math.max(...layers.map((l) => l.z1))];
 }
 
@@ -779,11 +784,83 @@ for (const [n, m, tol] of [[336, m336, 0.02]]) {
 
 test("第 336 種:側桿接平行桿,平行桿同時接在搖臂軸 F 的短半徑臂上:所有桿長不變,十字頭的直線由連桿造成", () => {
   const rows = sweep(1, 40).map((p) => m336.motion(p));
-  const lengths = (r) => [dist(r.P, m336.F), dist(r.P, r.E), dist(r.P, r.M), dist(r.S, r.E)];
+  const lengths = (r) => [dist(r.P, m336.F), dist(r.P, r.Q), dist(r.P, r.M), dist(r.S, r.E), dist(r.S, r.Q)];
   const first = lengths(rows[0]);
   for (const r of rows) lengths(r).forEach((l, i) => close(l, first[i], "桿長不變", 1e-6));
   close(first[0], m336.ARM, "短半徑臂", 1e-6);
   assert.ok(m336.ARM < first[1] / 2, "搖臂軸上的半徑臂比平行桿短");
+});
+
+test("第 336 種:平行桿接在側桿上(原圖在十字頭下方約 0.43),十字頭在側桿頂端;接點有銷穿過平行桿與側桿", () => {
+  const def = m336.default;
+  for (const p of sweep(1, 12)) {
+    const m = m336.motion(p);
+    const pose = def.pose(p).parts;
+    const flat = (q) => [q[0], q[1], 0];
+    close(dist(flat(pose.sideRod.to), m.E), 0, "側桿頂端是十字頭", 1e-9);
+    close(dist(flat(pose.crosshead.position), m.E), 0, "十字頭在側桿頂端", 1e-9);
+    close(dist(flat(pose.parallelBar.to), m.Q), 0, "平行桿的右端在 Q", 1e-9);
+    // Q 在側桿上:S、Q、E 共線,Q 在 S 與 E 之間、離十字頭 0.43
+    close(dist(m.S, m.Q) + dist(m.Q, m.E), dist(m.S, m.E), "Q 在側桿上", 1e-9);
+    close(dist(m.Q, m.E), 0.43, "Q 在十字頭下方 0.43", 1e-9);
+    assertPinned(def, p, m.Q, [["parallelBar"], ["sideRod"]], "平行桿與側桿的接點 Q ");
+  }
+});
+
+test("第 336 種:P 點三根桿相接——搖臂軸的短半徑臂、平行桿、從槓桿上來的直桿由一根銷穿過;直桿下端 M 也有銷接在槓桿上", () => {
+  const def = m336.default;
+  for (const p of sweep(1, 12)) {
+    const m = m336.motion(p);
+    assertPinned(def, p, m.P, [["rock"], ["parallelBar"], ["upright"]], "P 點");
+    assertPinned(def, p, m.M, [["lever"], ["upright"]], "M 點");
+  }
+});
+
+test("第 336 種:蒸汽推動汽缸的活塞:活塞走過汽缸可用長度的七成以上,全程在缸內", () => {
+  const def = m336.default;
+  const { top, length } = m336.CYL;
+  const piston = part(def, "piston");
+  const ys = sweep(1, 60).map((p) => def.pose(p).parts.piston.position[1]);
+  for (const y of ys) assert.ok(y + piston.length / 2 <= top + 1e-9 && y - piston.length / 2 >= top - length - 1e-9, `活塞在缸內(${y.toFixed(3)})`);
+  const stroke = Math.max(...ys) - Math.min(...ys);
+  assert.ok(stroke / (length - piston.length) >= 0.7, `活塞行程 ${stroke.toFixed(2)} 是可用長度 ${(length - piston.length).toFixed(2)} 的 ${(stroke / (length - piston.length)).toFixed(2)}`);
+});
+
+/**
+ * 固定件群組的各塊是否連成一件:兩塊的深度範圍相接、平面外形相接就算相連
+ * (板件用輪廓、方塊用矩形、沿 z 的圓柱用圓;方塊不轉)。回傳沒連上的塊的索引
+ */
+function unlinkedPieces(pieces) {
+  const foot = (q) => {
+    const [x, y] = q.at ?? [0, 0];
+    if (q.kind === "plate") return q.shape.outline.map(([u, v]) => [u + x, v + y]);
+    if (q.kind === "box") return (assert.ok(!q.angle && !q.axis, "方塊不轉"), rect(q.size[0], q.size[1], x, y));
+    assert.ok(q.kind === "cylinder" && !q.axis, `只認板件、方塊與沿 z 的圓柱(${q.kind})`);
+    return circle(q.radius, x, y);
+  };
+  const items = pieces.map((q) => ({ poly: foot(q), z: zSpan(q) }));
+  const touch = (a, b) => a.z[0] <= b.z[1] + 1e-9 && b.z[0] <= a.z[1] + 1e-9 && polyGap(a.poly, b.poly) < 1e-6;
+  const seen = new Set([0]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    items.forEach((b, i) => {
+      if (!seen.has(i) && [...seen].some((j) => touch(items[j], b))) (seen.add(i), (grew = true));
+    });
+  }
+  return items.map((_, i) => i).filter((i) => !seen.has(i));
+}
+
+test("第 336 種:機架是一件——斜撐從左上接到汽缸頂、往下有腳落到底座,搖臂軸 F 的軸承座立在斜撐上,軸穿在軸承環裡", () => {
+  const frame = part(m336.default, "frame").pieces;
+  assert.deepEqual(unlinkedPieces(frame), [], "機架的每一塊都連成一件");
+  const rock = part(m336.default, "rock");
+  const shaft = rock.pieces.find((q) => q.kind === "cylinder");
+  const at = (q) => Math.hypot(q.at[0] - m336.F[0], q.at[1] - m336.F[1]) < 1e-9;
+  const ring = frame.find((q) => q.kind === "cylinder" && q.inner === shaft.radius && at(q));
+  assert.ok(ring, "搖臂軸穿在軸承環裡(孔徑等於軸徑)");
+  const [r0, r1] = zSpan(ring);
+  const [s0, s1] = zSpan(shaft);
+  assert.ok(s0 <= r0 + 1e-9 && s1 >= r1 - 1e-9, "軸貫穿軸承環");
 });
 
 test("第 333 種:特殊的平行運動(依原圖):樑由兩根桿撐著,左上端 T 與吊桿中段 J1 都走近似直線", () => {
@@ -964,6 +1041,34 @@ test("第 337 種:半徑桿接在短擺動桿的下端,擺動桿中點(活塞桿
   assert.ok(verticalDeviation(ps) / (Math.max(...ys) - Math.min(...ys)) < 0.03, "偏離鉛直線不到行程的 3%");
 });
 
+test("第 337 種:活塞桿接在擺動桿的中點 P:有一根銷穿過擺動桿與活塞桿", () => {
+  const def = m337.default;
+  for (const v of sweep(m337.RANGE[1], 12, m337.RANGE[0])) assertPinned(def, v, m337.watt(v).P, [["vibrating"], ["pistonRod"]], "擺動桿中點 P ");
+});
+
+test("第 337 種:活塞桿從 P 往下經過擺動桿下端 R,和 R 的銷(半徑桿與擺動桿的接點)不在同一個深度,全程不穿入", () => {
+  const def = m337.default;
+  const rod = part(def, "pistonRod");
+  let passes = false;
+  for (const v of sweep(m337.RANGE[1], 24, m337.RANGE[0])) {
+    const { P, R } = m337.watt(v);
+    const pose = def.pose(v).parts;
+    const [r0, r1] = layerOf(def, pose, "pistonRod");
+    if (R[1] < P[1] && Math.abs(R[0] - P[0]) < rod.size[0] / 2 + 0.05) passes = true;
+    // R 的銷:各零件在 R 的銷,加上兩根連桿端頭自帶的銷頭(連桿厚度的 2.2 倍)
+    const spans = pinsOf(def, v).filter((q) => Math.hypot(q.at[0] - R[0], q.at[1] - R[1]) < 1e-6).map((q) => [q.z0, q.z1]);
+    for (const id of ["radiusBar", "vibrating"]) {
+      const l = part(def, id);
+      if (l.pins === false) continue;
+      const z = pose[id].to[2];
+      close(dist(pose[id].to, [R[0], R[1], z]), 0, `${id} 的一端在 R`, 1e-9);
+      spans.push([z - 1.1 * l.thickness, z + 1.1 * l.thickness], layerOf(def, pose, id));
+    }
+    for (const [z0, z1] of spans) assert.ok(z1 <= r0 + 1e-9 || z0 >= r1 - 1e-9, `主動量 ${v.toFixed(2)}:活塞桿(z ${r0.toFixed(3)}–${r1.toFixed(3)})碰到 R 的銷或連桿(z ${z0.toFixed(3)}–${z1.toFixed(3)})`);
+  }
+  assert.ok(passes, "活塞桿在行程中經過 R(這條斷言才有意義)");
+});
+
 /** 近似直線:偏離鉛直線不到行程的 tol */
 function straightish(points, tol) {
   const ys = points.map((p) => p[1]);
@@ -976,6 +1081,31 @@ test("第 338 種:半徑桿置於樑的上方,活塞桿接點的軌跡近似直�
   straightish(sweep(m338.RANGE[1], 30, m338.RANGE[0]).map((v) => m338.watt(v).P), 0.03);
 });
 
+test("第 338 種:半徑桿在樑的上方,樞軸照原圖往樑的中段挪(維護者決定的折衷):樞軸在樑長 0.25–0.4 倍處的上方,半徑桿約樑長的 0.6–0.8", () => {
+  const { O1, O2, b } = m338.watt;
+  const a = m338.BEAM;
+  const dx = O2[0] - O1[0];
+  assert.ok(dx > 0.25 * a && dx < 0.4 * a, `樞軸在樑樞軸右邊 ${(dx / a).toFixed(2)} 倍樑長`);
+  for (const v of sweep(m338.RANGE[1], 12, m338.RANGE[0])) {
+    const { B, R } = m338.watt(v);
+    const beamY = O1[1] + ((B[1] - O1[1]) * dx) / (B[0] - O1[0]);
+    assert.ok(O2[1] > beamY + 0.5, "樞軸在樑的上方");
+    assert.ok(R[1] > B[1], "半徑桿接在短連桿上端,在樑端上方");
+  }
+  assert.ok(b > 0.6 * a && b < 0.8 * a, `半徑桿長 ${(b / a).toFixed(2)} 倍樑長`);
+  const swing = m338.RANGE[1] - m338.RANGE[0];
+  close(swing, deg(16), "擺幅 16°", 1e-9);
+});
+
+test("第 338 種:樑端 B 是圓眼,有一根銷穿過樑與短連桿;活塞桿掛在短連桿下端 P 的銷上", () => {
+  const def = m338.default;
+  for (const v of sweep(m338.RANGE[1], 12, m338.RANGE[0])) {
+    const { B, P } = m338.watt(v);
+    assertPinned(def, v, B, [["beam"], ["short"]], "樑端 B ");
+    assertPinned(def, v, P, [["short"], ["pistonRod"]], "短連桿下端 P ");
+  }
+});
+
 test("第 339 種:B 端在固定溝槽 D 中滑動、C 端接活塞桿,半徑桿 F–A 接在 B–C 的中點:C 走直線", () => {
   for (const p of sweep(1, 30)) {
     const r = m339.russell(p);
@@ -984,6 +1114,51 @@ test("第 339 種:B 端在固定溝槽 D 中滑動、C 端接活塞桿,半徑桿
     close(r.C[0], 0.55, "C 走鉛直線", 1e-12);
   }
   steamPushes(m339.default, sweep(1, 8));
+});
+
+test("第 339 種:F、A、C、B 四個接點都有銷穿過相接的零件;F 的銷從機架伸出,BC 桿、活塞桿與連桿全程從 F 的銷前面經過", () => {
+  const def = m339.default;
+  let below = false;
+  let above = false;
+  for (const p of sweep(1, 24)) {
+    const r = m339.russell(p);
+    assertPinned(def, p, m339.F, [["radiusFA"]], "固定樞軸 F ");
+    assertPinned(def, p, r.A, [["radiusFA"], ["barBC"]], "BC 的中點 A ");
+    assertPinned(def, p, r.C, [["barBC"], ["pistonRod"], ["rod"]], "活塞桿頂 C ");
+    assertPinned(def, p, r.B, [["sliderB"], ["barBC"]], "B 端的滑塊 ");
+    below ||= r.C[1] < m339.F[1];
+    above ||= r.C[1] > m339.F[1];
+    const pose = def.pose(p).parts;
+    const fPin = pinsOf(def, p).find((q) => Math.hypot(q.at[0] - m339.F[0], q.at[1] - m339.F[1]) < 1e-6);
+    for (const id of ["barBC", "pistonRod", "rod"]) assert.ok(layerOf(def, pose, id)[0] >= fPin.z1 - 1e-9, `${id} 在 F 的銷前面`);
+  }
+  assert.ok(below && above, "C 在行程中經過 F 的高度(上面那條斷言才有意義)");
+});
+
+test("第 339 種:機架是一件——整塊鑄件的腹板托著 F 的銷,溝槽 D 的板貼在機架上,機架落在底座上;頂上的曲柄軸穿在軸承座的孔裡", () => {
+  const def = m339.default;
+  const frame = part(def, "frame").pieces;
+  assert.deepEqual(unlinkedPieces(frame), [], "機架的每一塊都連成一件");
+  const crank = part(def, "crank");
+  const shaft = crank.pieces.find((q) => q.kind === "cylinder" && !q.accent);
+  const at = (q) => Math.hypot(q.at[0] - crank.center[0], q.at[1] - crank.center[1]) < 1e-9;
+  const ring = frame.find((q) => q.kind === "cylinder" && q.inner === shaft.radius && at(q));
+  assert.ok(ring, "曲柄軸穿在軸承座的孔裡(孔徑等於軸徑)");
+  const [r0, r1] = zSpan(ring);
+  const [s0, s1] = zSpan(shaft, crank.center[2]);
+  assert.ok(s0 <= r0 + 1e-9 && s1 >= r1 - 1e-9, "軸貫穿軸承座");
+  // 滑塊 B 在溝槽 D 的板那一層、在溝槽裡
+  const slot = frame.find((q) => q.kind === "plate" && q.shape.holes.some((h) => h.every(([x]) => x + (q.at?.[0] ?? 0) < m339.F[0] - 1)));
+  const [d0, d1] = zSpan(slot);
+  for (const p of sweep(1, 12)) {
+    const pose = def.pose(p).parts;
+    const [b0, b1] = layerOf(def, pose, "sliderB");
+    assert.ok(b0 >= d0 - 1e-9 && b1 <= d1 + 1e-9, "滑塊在溝槽板那一層");
+    const box = part(def, "sliderB");
+    const [x, y] = pose.sliderB.position;
+    const hole = slot.shape.holes[0].map(([u, v]) => [u + (slot.at?.[0] ?? 0), v + (slot.at?.[1] ?? 0)]);
+    for (const c of rect(box.size[0], box.size[1], x, y)) assert.ok(pointInPolygon(c, hole), "滑塊在溝槽裡");
+  }
 });
 
 test("第 340 種:樑架在搖動立柱支座 B–F 上,支座繞中心 F 擺動,半徑桿 E–A 產生平行運動:C 近似直線", () => {
