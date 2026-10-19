@@ -3159,8 +3159,7 @@ function rung386Points(def, pose, id, n = 12) {
   loop.forEach((a, i) => {
     const b = loop[(i + 1) % loop.length];
     for (let k = 0; k < n; k++) {
-      const [x, y] = rot2(lerp2(a, b, k / n), angle);
-      for (const dz of [-p.thickness / 2, 0, p.thickness / 2]) pts.push([position[0] + x, position[1] + y, position[2] + dz]);
+      for (const dz of [-p.thickness / 2, 0, p.thickness / 2]) pts.push(partPoint(position, Z, angle, [...lerp2(a, b, k / n), dz]));
     }
   });
   return pts;
@@ -3213,13 +3212,9 @@ test("第 387 種:潮汐階梯:無論梯子在什麼位置,踏階皆保持水平
 });
 
 // 第 387 種:零件局部的點換到世界(群組零件繞 center 轉 angle、再平移 position)
-const world387 = (def, pose, id, [x, y, z]) => {
-  const p = part(def, id);
-  const c = p.center ?? [0, 0, 0];
+const world387 = (def, pose, id, local) => {
   const q = pose[id] ?? {};
-  const [u, v] = rot2([x, y], q.angle ?? 0);
-  const t = q.position ?? [0, 0, 0];
-  return [c[0] + u + t[0], c[1] + v + t[1], z + t[2]];
+  return partPoint(add(part(def, id).center ?? [0, 0, 0], q.position ?? [0, 0, 0]), Z, q.angle ?? 0, local);
 };
 
 test("第 387 種:梯子的下端以兩個銷鉸在小船的立柱上,扶手在梯幫正上方,小船浮在水面上", () => {
@@ -3280,34 +3275,47 @@ test("第 387 種:踏階的另一邊由懸掛於扶手上的桿件支撐:吊桿�
   }
 });
 
+// 第 388 種:滾子外形上各點離輪心的距離(帶齒的上滾子有齒根與齒尖,平滑的下滾子處處一樣)
+const radii388 = (def, id) => part(def, id).shape.outline.map(([x, y]) => Math.hypot(x, y));
+
 test("第 388 種:刨木機進料:帶齒的上滾子把木板往前送,平滑的下滾子被木板帶著轉", () => {
-  const f = m388.feed(1);
-  close(f.travel, m388.geometry.BITE_R, "木板前進 = 上滾子在木板表面那一圈轉過的弧長");
-  close(-f.low * m388.geometry.LOW.r, f.travel, "下滾子不打滑");
+  const def = m388.default;
+  assert.equal(def.driver.part, "top", "主動件是上滾子");
+  const [top, low] = [radii388(def, "top"), radii388(def, "low")];
+  assert.ok(Math.max(...top) - Math.min(...top) > 0.05, "上滾子帶齒");
+  assert.ok(Math.max(...low) - Math.min(...low) < 1e-9, "下滾子平滑");
+  const [a0, a1] = def.driver.range;
+  assert.ok(def.pose(a1).parts.board.position[0] - def.pose(a0).parts.board.position[0] > 1, "上滾子轉過整段,木板被送往前");
+  assert.ok(Math.abs(turned(def, "low", a0, a1)) > 1, "下滾子被木板帶著轉");
 });
 
 test("第 388 種:兩個滾子在接觸處和木板同向同速,木板照原圖箭頭往右送", () => {
   const def = m388.default;
-  const { TOP, LOW, BITE_R } = m388.geometry;
+  const [top, low, board] = ["top", "low", "board"].map((id) => part(def, id));
+  const teeth = radii388(def, "top");
+  const lowR = Math.max(...radii388(def, "low"));
   const [a0, a1] = def.driver.range;
   for (const a of sweep(a1, 20, a0).slice(0, -1)) {
     const da = (a1 - a0) / 2000;
     const [p, q] = [def.pose(a).parts, def.pose(a + da).parts];
-    const board = q.board.position[0] - p.board.position[0];
-    // 剛體轉動:點 (x, y) 相對輪心轉 dθ,速度 = dθ · (−(y − cy), x − cx)
-    const topBite = (q.top.angle - p.top.angle) * BITE_R; // 上滾子在木板表面那一圈的最低點(0, −BITE_R)
-    const lowTop = -(q.low.angle - p.low.angle) * LOW.r; // 下滾子的最高點
-    close(topBite / board, 1, `轉角 ${a.toFixed(2)}:上滾子咬進木板處和木板同向同速`, 1e-6);
-    close(lowTop / board, 1, `轉角 ${a.toFixed(2)}:下滾子頂點和木板同向同速(不打滑)`, 1e-6);
-    assert.ok(board > 0, `轉角 ${a.toFixed(2)}:主動量從初始值往範圍的另一端走,木板往右(原圖箭頭)`);
+    const dx = q.board.position[0] - p.board.position[0];
+    // 接觸半徑由幾何量:上滾子是輪心到木板頂面(齒咬進木板,在齒根與齒尖之間),下滾子是輪心到木板底面
+    const biteR = top.center[1] - (p.board.position[1] + board.size[1] / 2);
+    assert.ok(biteR > Math.min(...teeth) && biteR < Math.max(...teeth), `轉角 ${a.toFixed(2)}:木板頂面在齒根與齒尖之間(齒咬進木板)`);
+    close(p.board.position[1] - board.size[1] / 2 - low.center[1], lowR, `轉角 ${a.toFixed(2)}:下滾子的外緣托著木板底面`, 1e-9);
+    // 剛體轉動:輪心正下方 (0, −r) 的點轉 dθ(逆時針為正)往 +x 走 r·dθ,正上方 (0, +r) 的點往 −x 走 r·dθ
+    const topBite = (q.top.angle - p.top.angle) * biteR; // 上滾子咬進木板處(輪心正下方、木板頂面那一圈)
+    const lowTop = -(q.low.angle - p.low.angle) * lowR; // 下滾子的頂點
+    close(topBite / dx, 1, `轉角 ${a.toFixed(2)}:上滾子咬進木板處和木板同向同速`, 1e-6);
+    close(lowTop / dx, 1, `轉角 ${a.toFixed(2)}:下滾子頂點和木板同向同速(不打滑)`, 1e-6);
+    assert.ok(dx > 0, `轉角 ${a.toFixed(2)}:主動量從初始值往範圍的另一端走,木板往右(原圖箭頭)`);
   }
-  close(m388.default.parts.find((x) => x.id === "board").size[1] / 2 + def.pose(a0).parts.board.position[1], TOP.center[1] - BITE_R, "上滾子在木板表面那一圈的半徑 = 輪心到木板頂面", 1e-9);
 });
 
 test("第 388 種:整段行程木板都夾在兩個滾子之間(下滾子托著木板、上滾子的齒咬著)", () => {
   const def = m388.default;
   const { TOP, LOW } = m388.geometry;
-  const board = def.parts.find((x) => x.id === "board");
+  const board = part(def, "board");
   const [a0, a1] = def.driver.range;
   for (const a of sweep(a1, 60, a0)) {
     const b = def.pose(a).parts.board.position;
@@ -3332,19 +3340,21 @@ test("第 388 種:上、下滾子的軸承裝在同一個機架上(機架連成�
 
 test("第 389 種:升降千斤頂:偏心輪帶著棘爪推棘齒桿上升,上方的擋止扣住不讓它退下;爪與齒由接觸算", () => {
   const T = 2 * Math.PI;
-  close(m389.perTurn % m389.geometry.PITCH, 0, "每圈推上整數個齒", 1e-9);
   // 原文沒說每圈幾齒(由偏心距與爪的外形決定),只斷言至少一齒
-  assert.ok(m389.perTurn >= m389.geometry.PITCH - 1e-9, "偏心輪每轉一圈,棘齒桿至少升一齒");
+  assert.ok(m389.rack(T) - m389.rack(0) >= m389.geometry.PITCH - 1e-9, "偏心輪每轉一圈,棘齒桿至少升一齒");
   for (let k = 0; k < 3; k++) close(m389.rack((k + 1) * T) - m389.rack(k * T), m389.perTurn, `第 ${k + 1} 圈升的高度`, 1e-9);
   // 「上方的棘爪為一個擋止裝置」:下方的爪退下時,棘齒桿不會落到這一圈開始的高度以下
   for (const v of sweep(T, 120)) assert.ok(m389.rack(v) >= m389.rack(0) - 1e-9, `主動量 ${v.toFixed(2)}:擋止扣住`);
   // 推的那一段:偏心輪往上帶時棘齒桿跟著升(前半圈),後半圈不動
   assert.ok(m389.rack(T / 2) > m389.rack(0) + 0.1, "偏心輪往上帶時,棘爪把棘齒桿推上去");
   close(m389.rack(0.9 * T), m389.rack(T), "偏心輪往下退時棘齒桿停在擋止上", 1e-9);
-  // 爪與齒不穿入(爪尖頂著直面、或沿斜面滑過)
-  for (const v of sweep(T, 180)) {
+  // 爪與齒不穿入(爪尖頂著直面、或沿斜面滑過),而且棘齒桿任何時刻都由一根爪托著或推著(推上去時是下方的爪,
+  // 停下時是擋止):每圈推上去的高度若不是剛好讓直面落到爪尖上,棘齒桿會懸空或壓進爪裡
+  for (const v of sweep(T, 360)) {
     const c = m389.contactAt(v);
     for (const pawl of c.pawls) for (const tooth of c.teeth) assert.ok(penetrationDepth(pawl, tooth) < 2e-3, `主動量 ${v.toFixed(2)}:爪壓進齒裡`);
+    const gap = Math.min(...c.pawls.flatMap((pawl) => c.teeth.map((tooth) => polyGap(pawl, tooth))));
+    assert.ok(gap < 1e-4, `主動量 ${v.toFixed(2)}:棘齒桿懸空,離最近的爪 ${gap.toFixed(4)}`);
   }
 });
 
@@ -3401,7 +3411,6 @@ test("第 390 種:部件 A 往兩個方向擺時,開口皮帶 C 與交叉皮帶 
   const fs = sweep(8 * S, 800).map((v) => m390.oscillation(v).fly);
   assert.ok(fs.every((f, i) => i === 0 || f >= fs[i - 1] - 1e-9), "飛輪只朝一個方向轉");
   assert.ok(m390.oscillation(2 * S).fly > 0.5 && m390.oscillation(4 * S).fly - m390.oscillation(2 * S).fly > 0.5, "A 往兩個方向擺,飛輪都被推");
-  close(m390.perCycle % m390.PITCH, 0, "一個來回推過整數個齒", 1e-9);
   // 原文沒說幾齒(由擺幅、皮帶輪與棘輪的大小決定),只斷言兩個方向各推過至少一齒
   for (const [from, to] of [[0, 2 * S], [2 * S, 4 * S]]) {
     const n = (m390.oscillation(to).fly - m390.oscillation(from).fly) / m390.PITCH;
@@ -3410,11 +3419,17 @@ test("第 390 種:部件 A 往兩個方向擺時,開口皮帶 C 與交叉皮帶 
   close(m390.oscillation(4 * S).fly, m390.perCycle, "一個來回轉過的角度", 1e-9);
   const o = m390.oscillation(S);
   close(o.c, -o.d, "開口皮帶與交叉皮帶的皮帶輪反向轉");
-  for (const v of sweep(4 * S, 200)) for (const key of ["c", "d"]) assert.ok(m390.pawlGap(v, key) > -3e-3, `主動量 ${v.toFixed(3)}:${key} 的爪尖壓進棘輪`);
+  // 爪尖不壓進棘輪,而且飛輪往前轉的每一刻都有一根爪尖頂著棘輪(間隙接近 0,推的那根爪就是推著飛輪的東西):
+  // 每一程推過的若不是剛好讓爪尖落在齒間,攤平成週期之後爪尖會壓進棘輪,或飛輪在沒有爪碰到時自己往前轉
+  const vs = sweep(4 * S, 400);
+  vs.forEach((v, i) => {
+    const gaps = ["c", "d"].map((key) => m390.pawlGap(v, key));
+    gaps.forEach((g, k) => assert.ok(g > -3e-3, `主動量 ${v.toFixed(3)}:${"cd"[k]} 的爪尖壓進棘輪`));
+    if (i > 0 && m390.oscillation(v).fly - m390.oscillation(vs[i - 1]).fly > 1e-6) assert.ok(Math.min(...gaps) < 0.01, `主動量 ${v.toFixed(3)}:飛輪往前轉,但沒有爪尖頂著棘輪(最近 ${Math.min(...gaps).toFixed(4)})`);
+  });
 });
 
-// 第 390 種:皮帶(折線)的長度、離某圓心的距離
-const len390 = (pts) => pts.slice(1).reduce((sum, p, i) => sum + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1], p[2] - pts[i][2]), 0);
+// 第 390 種:皮帶上的點離某圓心的距離(平面上)
 const r390 = (p, c) => Math.hypot(p[0] - c[0], p[1] - c[1]);
 
 test("第 390 種:兩條皮帶繞在 A 的弧與皮帶輪的輪緣上、長度不變,兩端接在 A 上(連接於兩條皮帶 C 和 D 的末端)", () => {
@@ -3427,8 +3442,8 @@ test("第 390 種:兩條皮帶繞在 A 的弧與皮帶輪的輪緣上、長度�
     const pose = def.pose(v);
     for (const id of ["strapC", "strapD"]) {
       const pts = pose.paths[id].points;
-      lengths[id] ??= len390(pts);
-      close(len390(pts), lengths[id], `主動量 ${v.toFixed(3)}:${id} 長度不變`, 1e-3);
+      lengths[id] ??= pathLength(pts);
+      close(pathLength(pts), lengths[id], `主動量 ${v.toFixed(3)}:${id} 長度不變`, 1e-3);
       // 兩端在 A 的弧上(皮帶貼著弧面),而且跟著 A 轉:端點在 A 的局部座標裡不動
       for (const end of [pts[0], pts.at(-1)]) close(r390(end, A_PIVOT), ARC + BELT, `${id} 的端頭貼在 A 的弧上`, 1e-9);
       const local = (q, a) => Math.atan2(q[1] - A_PIVOT[1], q[0] - A_PIVOT[0]) - a;
@@ -3444,17 +3459,31 @@ test("第 390 種:兩條皮帶繞在 A 的弧與皮帶輪的輪緣上、長度�
   }
 });
 
-test("第 390 種:皮帶不在輪緣上打滑:A 擺過的弧長 = 皮帶輪轉過的弧長(C 同向、D 反向)", () => {
+test("第 390 種:皮帶不在輪緣上打滑:從 A 的弧上放出(收回)的皮帶長度 = 皮帶輪輪緣轉過的弧長(C 同向、D 反向)", () => {
   const def = m390.default;
-  const { ARC, PULLEY, BELT } = m390.geometry;
+  const wheel = part(def, "pulleyC").center;
   const S = m390.SWING;
+  // 皮帶繞在輪緣上的那一段:離輪心最近、距離都一樣的點(直線段只在切點碰到這個距離);回傳半徑、
+  // 起點到輪緣上第一點(切點)的皮帶長度、皮帶沿路徑繞輪心的轉向(逆時針 +1)
+  const onRim = (pts) => {
+    const r = Math.min(...pts.map((q) => r390(q, wheel)));
+    const i = pts.findIndex((q) => r390(q, wheel) < r + 1e-9);
+    const [a, b] = [sub(pts[i], wheel), sub(pts[i + 1], wheel)];
+    return { r, before: pathLength(pts.slice(0, i + 1)), sense: Math.sign(a[0] * b[1] - a[1] * b[0]) };
+  };
   for (const v of sweep(4 * S, 24).slice(1)) {
-    const dv = 1e-4;
-    const [p, q] = [def.pose(v - dv).parts, def.pose(v).parts];
-    const da = q.partA.angle - p.partA.angle;
-    if (Math.abs(da) < 1e-9) continue;
-    close(((q.pulleyC.angle - p.pulleyC.angle) * (PULLEY + BELT)) / (da * (ARC + BELT)), 1, `主動量 ${v.toFixed(3)}:開口皮帶 C 帶皮帶輪同向轉`, 1e-6);
-    close(((q.pulleyD.angle - p.pulleyD.angle) * (PULLEY + BELT)) / (da * (ARC + BELT)), -1, `主動量 ${v.toFixed(3)}:交叉皮帶 D 帶皮帶輪反向轉`, 1e-6);
+    const dv = 0.02;
+    const [p, q] = [def.pose(v - dv), def.pose(v)];
+    const da = q.parts.partA.angle - p.parts.partA.angle;
+    if (Math.abs(da) < 1e-6) continue;
+    for (const [id, pulley, sense, what] of [["strapC", "pulleyC", 1, "開口皮帶 C 帶皮帶輪和 A 同向轉"], ["strapD", "pulleyD", -1, "交叉皮帶 D 帶皮帶輪和 A 反向轉"]]) {
+      const [w0, w1] = [onRim(p.paths[id].points), onRim(q.paths[id].points)];
+      // 切點在空間裡不動:起點到切點的長度少了多少,就有多少皮帶越過切點、沿路徑方向走到輪緣上
+      const fed = w0.before - w1.before;
+      const rim = (q.parts[pulley].angle - p.parts[pulley].angle) * w1.r * w1.sense; // 輪緣沿同一方向走的弧長
+      close(rim / fed, 1, `主動量 ${v.toFixed(3)}:${id} 在輪緣上不打滑`, 2e-3); // 弧以折線取樣,誤差約 6e-4
+      assert.equal(Math.sign(q.parts[pulley].angle - p.parts[pulley].angle), sense * Math.sign(da), `主動量 ${v.toFixed(3)}:${what}`);
+    }
   }
 });
 
