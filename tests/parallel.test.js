@@ -1,7 +1,7 @@
 // 第十五章「平行運動與引擎」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, plateLayers, guidedBetween, assertMeshFree, polyGap, inSolid, pieceBox, assertOnePiece } from "./helpers.js";
+import { close, sweep, part, plateLayers, guidedBetween, assertMeshFree, polyGap, inSolid, pieceBox, assertOnePiece, assertShaftInBearings } from "./helpers.js";
 import { lineAngle } from "../models/ruler-lines.js";
 import { pointInPolygon, polygonsOverlap, edgeDistance, placeOutline } from "../models/contact.js";
 
@@ -309,29 +309,6 @@ function fixedBoxes(def) {
   return def.parts
     .filter((p) => !posed.has(p.id))
     .flatMap((p) => (p.pieces ?? []).filter((q) => q.kind === "box" && !q.angle && !q.axis).map((q) => pieceBox(q, p.center)));
-}
-
-/** 軸承環的孔比軸大的上限(各圖的孔不是等於軸徑,就是大 0.01) */
-const BEARING_FIT = 0.01;
-
-/**
- * 軸穿過 pieces 裡和它同軸的每個軸承環(有孔的圓柱):至少有一個環,環的孔套著軸(孔比軸大 0 到 BEARING_FIT),
- * 軸沿軸線蓋住整個環。軸與 pieces 都是世界座標:{ at, axis(省略為 z), radius, length },環另有 inner
- */
-function assertShaftInBearings(shaft, pieces, what) {
-  const axis = norm(shaft.axis ?? [0, 0, 1]);
-  const along = (q) => dot(sub(q, shaft.at), axis);
-  const onAxis = (q) => dist(q, add(shaft.at, scale(axis, along(q)))) < 1e-9;
-  const rings = pieces.filter((q) => q.kind === "cylinder" && q.inner && Math.abs(Math.abs(dot(norm(q.axis ?? [0, 0, 1]), axis)) - 1) < 1e-9 && onAxis(q.at ?? [0, 0, 0]));
-  assert.ok(rings.length > 0, `${what}有軸承環`);
-  const [s0, s1] = [-shaft.length / 2, shaft.length / 2];
-  for (const ring of rings) {
-    const c = along(ring.at ?? [0, 0, 0]);
-    const [r0, r1] = [c - ring.length / 2, c + ring.length / 2];
-    assert.ok(s0 <= r0 + 1e-9 && r1 - 1e-9 <= s1, `${what}(沿軸 ${s0.toFixed(3)}..${s1.toFixed(3)})穿過整個軸承環(${r0.toFixed(3)}..${r1.toFixed(3)})`);
-    const fit = ring.inner - shaft.radius;
-    assert.ok(fit >= -1e-9 && fit <= BEARING_FIT + 1e-9, `${what}(半徑 ${shaft.radius})套在軸承環的孔裡(孔 ${ring.inner})`);
-  }
 }
 
 test("直立引擎的汽缸(第 326–346 種):汽缸底下的座落到底座頂面", () => {
