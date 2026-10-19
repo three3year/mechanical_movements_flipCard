@@ -38,6 +38,7 @@ import * as m377 from "../models/fig377.js";
 import * as m378 from "../models/fig378.js";
 import fig379 from "../models/fig379.js";
 import fig380 from "../models/fig380.js";
+import * as cramp from "../models/cramp-drill.js";
 import * as m381 from "../models/fig381.js";
 import * as m382 from "../models/fig382.js";
 import * as m383 from "../models/fig383.js";
@@ -1733,24 +1734,209 @@ test("第 377 種:踏車:人踩在周邊的踏板上往上走,圓筒被人的重
   assert.ok(Math.max(...steps) > 0.9 && Math.min(...steps) < -0.9, "人原地踏步");
 });
 
-test("第 378 種:擺鋸:擺的運動帶著鋸框往復,鋸條一面鋸一面往下切進樹幹", () => {
-  const shifts = sweep(0.2, 200).map((p) => m378.sawing(p).shift);
-  assert.ok(Math.max(...shifts) > 0.5 && Math.min(...shifts) < -0.5, "鋸框往復");
-  close(m378.sawing(0).saw - m378.sawing(1).saw, m378.DEPTH, "一輪鋸進的深度");
-  const ys = sweep(1, 50).map((p) => m378.sawing(p).saw);
+test("第 378 種:擺鋸:擺的運動經連桿推拉弓鋸往復,弓鋸一面鋸一面往下切進樹幹", () => {
+  const d = m378.default;
+  const quarter = 1 / 48; // 擺擺到最右、最左的進程(一輪 12 次)
+  const right = d.pose(quarter).parts;
+  const left = d.pose(3 * quarter).parts;
+  assert.ok(right.pendulum.angle > 0 && left.pendulum.angle < 0, "擺左右擺");
+  assert.ok(right.saw.position[0] - left.saw.position[0] > 0.5, "擺往右,鋸跟著往右;擺往左,鋸跟著往左(行程看得出來)");
+  const ys = sweep(1 - 1e-9, 300).map((p) => d.pose(p).parts.saw.position[1]); // 進程 1 繞回 0(刻意的循環)
   assert.ok(ys.every((y, i) => i === 0 || y <= ys[i - 1] + 1e-12), "鋸的時候一路往下");
-  // 鋸框由兩條繩吊著,繞過滑輪吊著配重:鋸框降多少,配重升多少
-  close(m378.hang(-0.5).weightTop - m378.hang(-0.3).weightTop, 0.2, "配重與鋸框反向等量移動", 1e-9);
+  close(ys[0] - ys.at(-1), m378.DEPTH, "一輪鋸進的深度", 1e-6);
+  const blade = part(d, "saw").pieces.find((q) => q.role === "blade");
+  const tip = Math.min(...blade.shape.outline.map((v) => v[1]));
+  const log = part(d, "log");
+  close(ys[0] + tip, log.center[1] + log.radius, "進程 0 時鋸齒尖剛碰到樹幹頂", 1e-9);
 });
 
-test("第 379–380 種:可攜式夾鉗鑽:379 的進料螺桿與鑽頭相對、把工件往上頂;380 的鑽頭心軸穿過進料螺桿中心、往下送", () => {
-  const a = fig379.pose(0).parts;
-  const b = fig379.pose(20).parts;
-  assert.ok(b.screw.position[1] > a.screw.position[1], "379:下臂的螺桿往上頂");
-  close(b.drill.angle, 20, "鑽頭跟著曲柄轉");
-  const c = fig380.pose(0).parts;
-  const d = fig380.pose(20).parts;
-  assert.ok(d.drill.position[1] < c.drill.position[1], "380:鑽頭心軸往下送");
+test("第 378 種:連桿長度不變,兩端的眼套在擺桿中間那個孔的銷與鋸左把手的銷上", () => {
+  const d = m378.default;
+  const pend = part(d, "pendulum");
+  const rod = part(d, "rod");
+  assert.equal(rod.stretch, undefined, "連桿不會伸縮");
+  const plate = pend.pieces.find((q) => q.role === "rod");
+  assert.equal(plate.shape.holes.length, 3, "擺桿上三個孔(原圖)");
+  const holeY = plate.shape.holes.map((h) => h.reduce((s, v) => s + v[1], 0) / h.length).sort((a, b) => a - b);
+  const pPin = pend.pieces.find((q) => q.role === "pin");
+  close(pPin.at[0], 0, "銷在擺桿中線上", 1e-9);
+  close(pPin.at[1], holeY[1], "銷在中間那個孔裡", 1e-9);
+  const sPin = part(d, "saw").pieces.find((q) => q.role === "pin");
+  const lengths = sweep(1, 600).map((p) => {
+    const s = d.pose(p).parts;
+    const [hx, hy] = rot2(pPin.at, s.pendulum.angle);
+    close(Math.hypot(s.rod.from[0] - (pend.center[0] + hx), s.rod.from[1] - (pend.center[1] + hy)), 0, `進程 ${p.toFixed(3)}:連桿一端在擺桿的銷上`, 1e-9);
+    const z0 = pend.center[2] + pPin.at[2];
+    assert.ok(Math.abs(s.rod.from[2] - z0) < pPin.length / 2 - rod.thickness / 2, "擺桿的銷穿過連桿的眼(深度)");
+    close(Math.hypot(s.rod.to[0] - (s.saw.position[0] + sPin.at[0]), s.rod.to[1] - (s.saw.position[1] + sPin.at[1])), 0, `進程 ${p.toFixed(3)}:連桿另一端在鋸把手的銷上`, 1e-9);
+    assert.ok(Math.abs(s.rod.to[2] - (s.saw.position[2] + sPin.at[2])) < sPin.length / 2 - rod.thickness / 2, "鋸把手的銷穿過連桿的眼(深度)");
+    return dist(s.rod.from, s.rod.to);
+  });
+  for (const l of lengths) close(l, lengths[0], "連桿長度不變", 1e-9);
+});
+
+test("第 378 種:繩吊著倒 U 形托架,托架只往下降;弓鋸夾在托架的兩條橫導軌之間橫向滑", () => {
+  const d = m378.default;
+  const carriage = part(d, "carriage");
+  assertOnePiece(carriage, "托架是一件");
+  assertOnePiece(part(d, "saw"), "弓鋸是一件");
+  const rails = carriage.pieces.filter((q) => q.role === "rail").map((q) => pieceBox(q)).sort((a, b) => a.lo[1] - b.lo[1]);
+  const uprights = carriage.pieces.filter((q) => q.role === "upright").map((q) => pieceBox(q)).sort((a, b) => a.lo[0] - b.lo[0]);
+  assert.equal(rails.length, 2, "兩條橫導軌");
+  assert.equal(uprights.length, 2, "兩根立條(倒 U 形)");
+  const saw = part(d, "saw");
+  const slider = pieceBox(saw.pieces.find((q) => q.role === "slider"));
+  const sawX = saw.pieces.map((q) => pieceBox(q));
+  const sawLo = Math.min(...sawX.map((b) => b.lo[0]));
+  const sawHi = Math.max(...sawX.map((b) => b.hi[0]));
+  const poses = sweep(1 - 1e-9, 600).map((p) => d.pose(p).parts);
+  for (const s of poses) {
+    const [cx, cy, cz] = s.carriage.position;
+    close(cx, poses[0].carriage.position[0], "托架不橫移", 1e-9);
+    close(s.saw.position[1] - cy, poses[0].saw.position[1] - poses[0].carriage.position[1], "鋸跟著托架往下", 1e-9);
+    const sy = s.saw.position[1] - cy;
+    close(slider.lo[1] + sy, rails[0].hi[1], "鋸背後的橫條壓在下導軌上", 1e-9);
+    close(rails[1].lo[1], slider.hi[1] + sy, "上導軌壓著橫條", 1e-9);
+    const sz = s.saw.position[2] - cz;
+    assert.ok(slider.lo[2] + sz >= rails[0].lo[2] - 1e-9 && slider.hi[2] + sz <= rails[0].hi[2] + 1e-9, "橫條和導軌在同一個深度");
+    const sx = s.saw.position[0] - cx;
+    assert.ok(sawLo + sx > uprights[0].hi[0] && sawHi + sx < uprights[1].lo[0], `鋸在兩根立條之間來回(${(sawLo + sx).toFixed(3)}..${(sawHi + sx).toFixed(3)})`);
+  }
+  const ys = poses.map((s) => s.carriage.position[1]);
+  assert.ok(ys.every((y, i) => i === 0 || y <= ys[i - 1] + 1e-12), "托架只往下降");
+});
+
+test("第 378 種:繩長不變,繩的下端掛在托架的掛眼上、全程在滑輪下方、垂直往上接到滑輪;托架降多少配重升多少", () => {
+  const d = m378.default;
+  const carriage = part(d, "carriage");
+  const eyes = carriage.pieces.filter((q) => q.role === "eye").map((q) => pieceBox(q)).sort((a, b) => a.lo[0] - b.lo[0]);
+  const weight = part(d, "weightL");
+  const L0 = {};
+  for (const p of sweep(1, 300)) {
+    const s = d.pose(p);
+    ["L", "R"].forEach((side, i) => {
+      const pts = s.paths[`cord${side}`].points;
+      const sheave = part(d, `sheave${side}`);
+      const rope = part(d, `cord${side}`);
+      L0[side] ??= polyLength(pts);
+      close(polyLength(pts), L0[side], `進程 ${p.toFixed(3)}:繩長不變`, 1e-9);
+      const [x0, y0] = pts[0];
+      const c = s.parts.carriage.position;
+      close(x0, (eyes[i].lo[0] + eyes[i].hi[0]) / 2 + c[0], "繩的下端在掛眼上(x)", 1e-9);
+      close(y0, eyes[i].hi[1] + c[1], "繩的下端在掛眼上(y)", 1e-9);
+      assert.ok(y0 < sheave.center[1] - sheave.radius - 2 * sheave.radius, `進程 ${p.toFixed(3)}:掛眼在滑輪下方(${y0.toFixed(3)})`);
+      close(pts[1][0], x0, "繩從掛眼垂直往上", 1e-9);
+      close(Math.hypot(pts[1][0] - sheave.center[0], pts[1][1] - sheave.center[1]), sheave.radius + rope.radius, "繩接到滑輪的切點", 1e-9);
+      const w = s.parts[`weight${side}`].position;
+      close(pts.at(-1)[1], w[1] + weight.size[1] / 2, "繩的另一端吊著配重", 1e-9);
+      close(pts.at(-1)[0], w[0], "配重吊在繩的正下方", 1e-9);
+    });
+  }
+  const a = d.pose(0.1).parts;
+  const b = d.pose(0.6).parts;
+  const drop = a.carriage.position[1] - b.carriage.position[1];
+  close(b.weightL.position[1] - a.weightL.position[1], drop, "配重與托架反向等量移動", 1e-9);
+  const sheave = part(d, "sheaveL");
+  close(Math.abs(b.sheaveL.angle - a.sheaveL.angle) * (sheave.radius + part(d, "cordL").radius), drop, "滑輪跟著繩轉、不打滑", 1e-9);
+});
+
+// 第 379、380 種:drill、screw、feedScrew 的軸是 Y(局部 z 是世界的上下、局部 y 是深度)。零件 q 的一塊在世界裡的上下範圍
+const spanY = (q, y0) => {
+  if (q.kind === "lathe") return [y0 + Math.min(...q.profile.map((v) => v[1])), y0 + Math.max(...q.profile.map((v) => v[1]))];
+  const b = pieceBox(q);
+  return [y0 + b.lo[2], y0 + b.hi[2]];
+};
+const role = (p, r) => p.pieces.find((q) => q.role === r);
+const yOf = (def, pose, id) => (pose[id].position ?? part(def, id).center)[1];
+
+test("第 379 種:進料螺桿與鑽頭相對,把墊塊與工件往上頂向鑽頭:行程中段工件碰到鑽尖,之後鑽頭鑽進工件", () => {
+  const d = fig379;
+  assert.deepEqual(part(d, "drill").axis, Y);
+  assert.deepEqual(part(d, "screw").axis, Y);
+  const bit = role(part(d, "drill"), "bit");
+  const pad = role(part(d, "screw"), "pad");
+  const worm = role(part(d, "screw"), "worm");
+  const work = part(d, "work");
+  const padBox = pieceBox(pad);
+  assert.ok(padBox.hi[2] - padBox.lo[2] < 0.2 && padBox.hi[2] - padBox.lo[2] < padBox.hi[1] - padBox.lo[1], "墊塊是扁平的板(原圖)");
+  const rows = sweep(cramp.MAX, 200).map((t) => {
+    const s = d.pose(t).parts;
+    const tip = spanY(bit, yOf(d, s, "drill"))[0];
+    const workTop = s.work.position[1] + work.size[1] / 2;
+    const workBottom = s.work.position[1] - work.size[1] / 2;
+    const [padBottom, padTop] = spanY(pad, s.screw.position[1]);
+    close(workBottom, padTop, `曲柄轉 ${t.toFixed(2)}:工件擱在墊塊上`, 1e-9);
+    assert.ok(padBottom > cramp.ARMS.lower[1] + 1e-9, `曲柄轉 ${t.toFixed(2)}:墊塊在下臂上方`);
+    const [w0, w1] = spanY(worm, s.screw.position[1]);
+    assert.ok(w0 < cramp.ARMS.lower[0] && w1 > cramp.ARMS.lower[1], "進料螺桿一直旋在下臂裡");
+    return { t, gap: tip - workTop, screwY: s.screw.position[1], screwA: s.screw.angle };
+  });
+  assert.ok(rows.at(-1).screwY > rows[0].screwY, "下臂的進料螺桿往上頂");
+  assert.ok(rows[0].gap > 0 && rows[0].gap < 0.3, `開始時工件在鑽尖下方不遠(${rows[0].gap.toFixed(3)})`);
+  assert.ok(rows.at(-1).gap < -0.05, `行程結束時鑽尖低於工件頂面(鑽進去 ${(-rows.at(-1).gap).toFixed(3)})`);
+  const meet = rows.find((r) => r.gap <= 0).t;
+  assert.ok(meet > 0.2 * cramp.MAX && meet < 0.9 * cramp.MAX, "行程中段工件碰到鑽尖");
+  for (const r of rows) close(r.screwY - rows[0].screwY, ((r.screwA - rows[0].screwA) / TAU) * worm.pitch, "右旋螺桿旋在下臂的螺孔裡:從下面看順時針轉一圈往上一個螺距", 1e-9);
+});
+
+test("第 380 種:鑽頭心軸穿過進料螺桿中心,進料螺桿旋在上臂裡往下走、下端頂著心軸上的夾頭,把鑽頭送進工件", () => {
+  const d = fig380;
+  assert.deepEqual(part(d, "drill").axis, Y);
+  assert.deepEqual(part(d, "feedScrew").axis, Y);
+  const drill = part(d, "drill");
+  const fs = part(d, "feedScrew");
+  const worm = role(fs, "worm");
+  const chuck = role(drill, "chuck");
+  const spindle = role(drill, "spindle");
+  const arm = role(drill, "arm");
+  const bit = role(drill, "bit");
+  const work = part(d, "work");
+  assert.ok(spindle.radius < worm.radius - worm.thread, "心軸比螺桿的芯細(螺桿中空,心軸從中間穿過)");
+  const rows = sweep(cramp.MAX, 200).map((t) => {
+    const s = d.pose(t).parts;
+    close(s.feedScrew.position[0], s.drill.position[0], "心軸與進料螺桿同軸(x)", 1e-9);
+    close(s.feedScrew.position[2], s.drill.position[2], "心軸與進料螺桿同軸(z)", 1e-9);
+    const ys = s.drill.position[1];
+    const yf = s.feedScrew.position[1];
+    const [w0, w1] = spanY(worm, yf);
+    const [s0, s1] = spanY(spindle, ys);
+    assert.ok(s0 < w0 && s1 > w1, `曲柄轉 ${t.toFixed(2)}:心軸從螺桿的上下兩端穿出`);
+    close(w0, spanY(chuck, ys)[1], `曲柄轉 ${t.toFixed(2)}:螺桿下端頂著夾頭`, 1e-9);
+    assert.ok(w0 < cramp.ARMS.upper[0] && w1 > cramp.ARMS.upper[1], "進料螺桿一直旋在上臂裡");
+    const screwTop = Math.max(...fs.pieces.map((q) => spanY(q, yf)[1]));
+    assert.ok(spanY(arm, ys)[0] > screwTop + 0.05, `曲柄轉 ${t.toFixed(2)}:曲柄臂在螺桿與橫柄上方轉,不切進去`);
+    const workTop = work.center[1] + work.size[1] / 2;
+    return { gap: spanY(bit, ys)[0] - workTop, yf, a: s.feedScrew.angle, ys };
+  });
+  close(work.center[1] - work.size[1] / 2, cramp.ARMS.lower[1], "工件擱在下臂上", 1e-9);
+  assert.ok(rows.at(-1).yf < rows[0].yf, "進料螺桿往下走");
+  for (const r of rows) {
+    close(r.yf - rows[0].yf, ((r.a - rows[0].a) / TAU) * worm.pitch, "右旋螺桿旋在上臂的螺孔裡:從上面看順時針轉一圈往下一個螺距", 1e-9);
+    close(r.ys - rows[0].ys, r.yf - rows[0].yf, "螺桿推著心軸一起往下", 1e-9);
+  }
+  assert.ok(rows[0].gap > 0 && rows[0].gap < 0.3, `開始時鑽尖在工件上方不遠(${rows[0].gap.toFixed(3)})`);
+  assert.ok(rows.at(-1).gap < -0.05, `行程結束時鑽尖低於工件頂面(鑽進去 ${(-rows.at(-1).gap).toFixed(3)})`);
+});
+
+test("第 379、380 種:曲柄臂貼著心軸頂,握把直立在臂的外端上;379 的 T 形手柄接在螺桿下端", () => {
+  for (const d of [fig379, fig380]) {
+    const drill = part(d, "drill");
+    const arm = role(drill, "arm");
+    const grip = role(drill, "grip");
+    const spindle = role(drill, "spindle");
+    const a = pieceBox(arm);
+    const g = pieceBox(grip);
+    const sp = pieceBox(spindle);
+    close(a.lo[2], sp.hi[2], `第 ${d.figure} 種:曲柄臂的底面貼著心軸頂`, 1e-9);
+    assert.ok(a.lo[0] <= -spindle.radius && a.hi[0] >= spindle.radius, `第 ${d.figure} 種:曲柄臂蓋住心軸頂`);
+    assert.deepEqual(grip.axis ?? Z, Z, `第 ${d.figure} 種:握把沿心軸方向(直立,原圖)`);
+    close(g.lo[2], a.hi[2], `第 ${d.figure} 種:握把立在臂上`, 1e-9);
+    assert.ok(g.lo[0] >= a.lo[0] - 1e-9 && g.hi[0] <= a.hi[0] + 1e-9, `第 ${d.figure} 種:握把在臂的範圍內`);
+  }
+  const screw = part(fig379, "screw");
+  const worm = pieceBox(role(screw, "worm"));
+  const hub = pieceBox(role(screw, "hub"));
+  assert.ok(hub.hi[2] > worm.lo[2] && hub.lo[2] < worm.lo[2], "T 形手柄的轂套著螺桿下端");
 });
 
 test("第 381 種:Bowery 式夾具:楔塊順著燕尾形夾頰往裡推,內側夾緊木料", () => {
