@@ -14,7 +14,7 @@
 // - 皮帶輪往前(逆時針)轉時,爪尖頂著棘輪的陡面把飛輪帶著走;往回轉時爪尖沿斜背滑過,越過齒尖後被彈簧壓進下一齒
 //   (加速落下)。兩個皮帶輪一個往前、一個往回,所以飛輪一直被其中一個帶著;換向時爪尖要先落進齒裡才推得動,
 //   中間有一小段空程。飛輪轉多少全由爪尖與棘齒相碰決定;每個來回推過整數個齒。
-import { TAU, deg, swingPhase } from "./kit.js";
+import { TAU, deg, swingPhase, signedAngle } from "./kit.js";
 import { ratchetShape, shape, circle, arcPoints } from "./shapes.js";
 import { ratchetRadius } from "./ratchets.js";
 import { pedestal } from "./supports.js";
@@ -181,24 +181,23 @@ function tangent(s, side) {
 const TAN = { cLeft: tangent(1, -1), cRight: tangent(1, 1), dLeft: tangent(-1, -1), dRight: tangent(-1, 1) };
 // 皮帶的兩端在 A 局部的方位角:擺到兩頭,端頭到切點之間的弧上都還繞著一段(至少約 5°)
 const ENDS = { c: [deg(189), deg(359.5)], d: [deg(205), deg(340)] };
-const BELT_SAMPLES = { onA: 12, onPulley: 32 };
-const arcOf = (c, r, a0, a1, n, z) => Array.from({ length: n + 1 }, (_, i) => [c[0] + r * Math.cos(a0 + ((a1 - a0) * i) / n), c[1] + r * Math.sin(a0 + ((a1 - a0) * i) / n), z]);
-const norm2 = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+// 以平面上的點 c 為圓心、半徑 r,從 a0 繞到 a1 的弧(深度 z)
+const arcAt = (c, r, a0, a1, z) => arcPoints(r, a0, a1, c[0], c[1]).map(([x, y]) => [x, y, z]);
 /** A 轉到 a 時皮帶的路徑:A 上左端 → 左切點 →(直線)→ 皮帶輪 → 繞輪緣 →(直線)→ A 上右切點 → 右端 */
 function beltPath(key, a, z) {
   const [left, right] = key === "c" ? [TAN.cLeft, TAN.cRight] : [TAN.dLeft, TAN.dRight];
   const [e0, e1] = ENDS[key].map((e) => e + a);
-  const toLeft = e0 + norm2(left.onA - e0); // A 上從左端往逆時針繞到左切點
-  const fromRight = right.onA + norm2(e1 - right.onA);
+  const toLeft = e0 + signedAngle(left.onA - e0); // A 上從左端往逆時針繞到左切點
+  const fromRight = right.onA + signedAngle(e1 - right.onA);
   // 皮帶輪上:C 從左切點逆時針繞過下半到右切點;D 從右上的切點順時針繞過大半圈到左上的切點
   const p0 = left.onPulley;
   let p1 = right.onPulley;
   if (key === "c") while (p1 < p0) p1 += TAU;
   else while (p1 > p0) p1 -= TAU;
   return [
-    ...arcOf(A_PIVOT, RA, e0, toLeft, BELT_SAMPLES.onA, z),
-    ...arcOf(WHEEL.center, RP, p0, p1, BELT_SAMPLES.onPulley, z),
-    ...arcOf(A_PIVOT, RA, right.onA, fromRight, BELT_SAMPLES.onA, z),
+    ...arcAt(A_PIVOT, RA, e0, toLeft, z),
+    ...arcAt(WHEEL.center, RP, p0, p1, z),
+    ...arcAt(A_PIVOT, RA, right.onA, fromRight, z),
   ];
 }
 
