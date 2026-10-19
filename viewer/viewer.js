@@ -21,6 +21,7 @@ const ACCENT_MARK = "#7a2a10"; // 主動件上的轉動記號
 const MARK = "#2f6fb0"; // 從動件的轉動記號與轉向箭頭
 const TARGET = "#2a8f8a"; // 目標件(機構最終要帶動的零件)
 const TARGET_MARK = "#12504d";
+const BRASS = "#c9a24a"; // 零件標 metal: "brass" 時的黃銅色(補償擺的複合桿分得出兩種金屬)
 const GHOST_OPACITY = 0.3; // 姿勢標 ghost 的零件(例如沒在傳動的輪)畫成半透明
 const GHOST_PAPER = "#6b6b6b"; // 紙色的零件半透明時改用灰色,白底上才看得到
 const TRANSITION_MS = 450;
@@ -120,7 +121,9 @@ class Session {
     const target = toon(TARGET);
     const targetMark = toon(TARGET_MARK);
     const targetArrow = toon(TARGET_MARK, { side: THREE.DoubleSide });
-    this.materials = [base, accent, accentMark, mark, accentArrow, markArrow, target, targetMark, targetArrow];
+    const brass = toon(BRASS);
+    const plain = (part) => (part.metal === "brass" ? brass : base); // 不是主動件、目標件的零件的本色
+    this.materials = [base, accent, accentMark, mark, accentArrow, markArrow, target, targetMark, targetArrow, brass];
     // 半透明材質:每種實色各一份,零件標 ghost 時整個換過去,取消時換回來
     this.ghosts = new Map();
     this.ghostOf = (m) => {
@@ -149,7 +152,7 @@ class Session {
     for (const part of def.parts) {
       const isDriver = this.grips.includes(part.id);
       if (PATH_KINDS.has(part.kind)) {
-        const path = part.kind === "chain" ? new ChainPart(part, base) : new PathPart(part, base);
+        const path = part.kind === "chain" ? new ChainPart(part, base) : new PathPart(part, plain(part));
         this.paths.set(part.id, path);
         this.scene.add(path.mesh);
         continue;
@@ -160,7 +163,7 @@ class Session {
         object.traverse((o) => o.layers.set(FLUID_LAYER));
       } else {
         const isTarget = targets.includes(part.id);
-        object = buildPart(part, isDriver ? accent : isTarget ? target : base, isDriver ? accentMark : isTarget ? targetMark : mark);
+        object = buildPart(part, isDriver ? accent : isTarget ? target : plain(part), isDriver ? accentMark : isTarget ? targetMark : mark);
       }
       const baseQuat = new THREE.Quaternion().setFromUnitVectors(
         Z_AXIS,
