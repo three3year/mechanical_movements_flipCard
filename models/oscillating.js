@@ -7,10 +7,12 @@ import { backHalf } from "./section.js";
 /**
  * trunnion:汽缸樞軸;crank:曲柄心、r:曲柄半徑;cyl:{ length, radius, offset }(汽缸中心沿軸線離樞軸的距離,
  * 正值為朝曲柄的方向);rod:活塞到曲柄銷的距離(活塞桿長)。
+ * cylinderPieces:固定在汽缸上的附件(例如耳軸),座標是汽缸的局部座標:原點在汽缸中心、局部 Z 沿汽缸軸指向曲柄、
+ * 局部 +Y 朝世界的後方(−z);省略時汽缸沒有附件。
  */
-export function oscillating({ trunnion, crank, r, cyl, rod }) {
+export function oscillating({ trunnion, crank, r, cyl, rod, cylinderPieces }) {
   const parts = [
-    { id: "cylinder", kind: "lathe", axis: Y, profile: [[0.12, cyl.length / 2 + 0.12], [cyl.radius + 0.1, cyl.length / 2 + 0.12], [cyl.radius + 0.1, -cyl.length / 2 - 0.12], [0.12, -cyl.length / 2 - 0.12], [0.12, -cyl.length / 2], [cyl.radius, -cyl.length / 2], [cyl.radius, cyl.length / 2], [0.12, cyl.length / 2]], ...backHalf(Y), arrow: false },
+    { id: "cylinder", kind: "lathe", axis: Y, profile: [[0.12, cyl.length / 2 + 0.12], [cyl.radius + 0.1, cyl.length / 2 + 0.12], [cyl.radius + 0.1, -cyl.length / 2 - 0.12], [0.12, -cyl.length / 2 - 0.12], [0.12, -cyl.length / 2], [cyl.radius, -cyl.length / 2], [cyl.radius, cyl.length / 2], [0.12, cyl.length / 2]], ...backHalf(Y), arrow: false, ...(cylinderPieces ? { pieces: cylinderPieces } : {}) },
     { id: "steamNear", kind: "fill", fluid: "steam", shape: "cylinder", size: [2 * cyl.radius - 0.04, cyl.length, 0], level: 0 },
     { id: "steamFar", kind: "fill", fluid: "steam", shape: "cylinder", size: [2 * cyl.radius - 0.04, cyl.length, 0], level: 0 },
     { id: "piston", kind: "cylinder", axis: Y, radius: cyl.radius - 0.02, length: 0.2, arrow: false },

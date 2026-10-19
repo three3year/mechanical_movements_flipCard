@@ -1026,6 +1026,57 @@ for (const [n, m] of [[344, m344], [345, m345]]) {
       assert.ok(pose.steamFar.level === 0 || pose.steamNear.level === 0, "只有一側進汽");
     }
   });
+
+  test(`第 ${n} 種:活塞桿直接與曲柄相連:曲柄銷穿過活塞桿端的眼與曲柄臂,曲柄軸從臂伸進機架的軸承`, () => {
+    const def = m.default;
+    for (const v of sweep(1, 12)) {
+      const end = def.pose(v).parts.pistonRod.to;
+      assertPinned(def, v, end, [["pistonRod"], ["crank"]], "活塞桿端與曲柄臂");
+    }
+    crankShaft344(def, "frame");
+  });
+
+  test(`第 ${n} 種:汽缸的耳軸是汽缸的一部分,往後伸進機架橫樑上的軸承(於固定的軸承內作動)`, () => {
+    const def = m.default;
+    const T = m.TRUNNION;
+    const rings = part(def, "frame").pieces.filter((q) => q.kind === "cylinder" && q.inner && Math.hypot(q.at[0] - T[0], q.at[1] - T[1]) < 1e-9);
+    assert.ok(rings.length > 0, "樞軸處有軸承環");
+    const cyl = part(def, "cylinder");
+    for (const v of sweep(1, 8)) {
+      const s = def.pose(v).parts.cylinder;
+      const stubs = (cyl.pieces ?? [])
+        .filter((q) => q.kind === "cylinder")
+        .map((q) => ({ q, c: add(s.position, quatRotate(s.rotation, q.at ?? [0, 0, 0])), a: quatRotate(s.rotation, q.axis ?? [0, 0, 1]) }))
+        .filter(({ c, a }) => Math.abs(Math.abs(a[2]) - 1) < 1e-9 && Math.hypot(c[0] - T[0], c[1] - T[1]) < 1e-9);
+      assert.ok(stubs.length > 0, `主動量 ${v}:汽缸上有沿樞軸的耳軸`);
+      for (const ring of rings) {
+        const [r0, r1] = zSpan(ring);
+        const stub = stubs.find(({ q, c }) => c[2] - q.length / 2 <= r0 + 1e-9 && r1 - 1e-9 <= c[2] + q.length / 2);
+        assert.ok(stub, `主動量 ${v}:耳軸穿過整個軸承環`);
+        assert.ok(stub.q.radius <= ring.inner && ring.inner < stub.q.radius + 0.02, `耳軸(半徑 ${stub.q.radius})貼著軸承的孔(${ring.inner})`);
+      }
+    }
+  });
+}
+
+/** 第 344–346 種:曲柄軸是曲柄的一部分、穿過每片曲柄臂,並穿過機架上每個軸承環(環的孔比軸大不到 0.02) */
+function crankShaft344(def, frameId) {
+  const crank = part(def, "crank");
+  const c = crank.center;
+  const onAxis = (q) => q.kind === "cylinder" && !q.axis && !q.inner && Math.hypot(q.at?.[0] ?? 0, q.at?.[1] ?? 0) < 1e-9;
+  const shaft = crank.pieces.filter(onAxis).reduce((a, q) => (q.length > a.length ? q : a));
+  const [s0, s1] = zSpan(shaft, c[2]);
+  for (const arm of crank.pieces.filter((q) => q.kind === "plate")) {
+    const [a0, a1] = zSpan(arm, c[2]);
+    assert.ok(s0 <= a0 + 1e-9 && a1 - 1e-9 <= s1, `曲柄軸(z ${s0}..${s1})穿過曲柄臂(z ${a0}..${a1})`);
+  }
+  const rings = part(def, frameId).pieces.filter((q) => q.kind === "cylinder" && q.inner && Math.hypot(q.at[0] - c[0], q.at[1] - c[1]) < 1e-9);
+  assert.ok(rings.length > 0, "曲柄軸有軸承");
+  for (const ring of rings) {
+    const [r0, r1] = zSpan(ring);
+    assert.ok(s0 <= r0 + 1e-9 && r1 - 1e-9 <= s1, `曲柄軸(z ${s0}..${s1})穿過軸承環(z ${r0}..${r1})`);
+    assert.ok(shaft.radius <= ring.inner && ring.inner < shaft.radius + 0.02, `曲柄軸(半徑 ${shaft.radius})貼著軸承的孔(${ring.inner})`);
+  }
 }
 
 test("第 346 種:桌式引擎:十字頭在開槽導件裡直線上下,經兩根側連桿帶動桌下的兩個平行曲柄", () => {
@@ -1036,6 +1087,32 @@ test("第 346 種:桌式引擎:十字頭在開槽導件裡直線上下,經兩根
     close(Math.hypot(t.pin[0], t.head - t.pin[1]), 4.0, "側連桿長度不變", 1e-9);
   }
   steamPushes(m346.default, sweep(1, 8));
+});
+
+test("第 346 種:兩個平行曲柄裝在桌下的同一根軸上,兩根側連桿的下端都套在曲柄銷上、上端由十字頭的銷接起", () => {
+  const def = m346.default;
+  crankShaft344(def, "table");
+  for (const v of sweep(1, 12)) {
+    const pose = def.pose(v).parts;
+    assertPinned(def, v, pose.sideRod.from, [["sideRod"], ["crank", 0.1]], "前側連桿的下端");
+    assertPinned(def, v, pose.sideRodBack.from, [["sideRodBack"], ["crank", 0.1]], "後側連桿的下端");
+    assertPinned(def, v, pose.sideRod.to, [["sideRod"], ["sideRodBack"]], "十字頭兩端");
+  }
+});
+
+test("第 346 種:直線開槽導件固定在汽缸頂部(腳踩在上蓋頂面),十字頭貼著導件的兩側", () => {
+  const def = m346.default;
+  const cyl = part(def, "cylinder");
+  const capTop = cyl.center[1] + Math.max(...cyl.profile.map(([, h]) => h));
+  const outer = Math.max(...cyl.profile.map(([r]) => r));
+  const guide = part(def, "table").pieces.find((q) => q.kind === "plate" && Math.max(...q.shape.outline.map(([, y]) => y)) > capTop + 2);
+  const ys = guide.shape.outline.map(([, y]) => y);
+  close(Math.min(...ys), capTop, "導件的腳底貼著汽缸上蓋頂面", 1e-9);
+  const feet = guide.shape.outline.filter(([, y]) => Math.abs(y - capTop) < 1e-9);
+  for (const [x] of feet) assert.ok(Math.abs(x - cyl.center[0]) < outer, `腳(x ${x})踩在上蓋上`);
+  const inner = Math.min(...feet.map(([x]) => Math.abs(x))); // 腳的內側邊(兩腳直立)
+  const head = part(def, "crosshead").pieces.find((q) => q.kind === "plate");
+  close(Math.max(...head.shape.outline.map(([x]) => Math.abs(x))), inner, "十字頭的半寬等於導件內側", 1e-9);
 });
 
 test("第 347 種:碟形引擎:碟片像落下的硬幣般擺盪,活塞桿左端畫圓,帶動左側軸的曲柄", () => {
