@@ -14,7 +14,7 @@ const ROD = 2.3;
 const PISTON_ROD = 2.0;
 const CYL = { x: 0, top: -1.1, length: 1.5, radius: 0.42, seat: -2.86, pipeZ: -0.25 };
 const GUIDE_X = 0.95;
-const ROLLER = { r: 0.16, x: GUIDE_X - 0.24 };
+const ROLLER = { r: 0.16, x: GUIDE_X - 0.06 - 0.16 }; // 滾子外緣貼著導桿內面(導桿寬 0.12)
 
 /** 進程 p → 飛輪角、十字頭高度、活塞高度、活塞是否往下走 */
 export function engine(p) {

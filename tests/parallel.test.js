@@ -1,7 +1,7 @@
 // 第十五章「平行運動與引擎」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, plateLayers, guidedBetween } from "./helpers.js";
+import { close, sweep, part, plateLayers, guidedBetween, assertMeshFree } from "./helpers.js";
 import { lineAngle } from "../models/ruler-lines.js";
 import { pointInPolygon, polygonsOverlap, edgeDistance, placeOutline } from "../models/contact.js";
 
@@ -299,7 +299,7 @@ function steamPushes(def, values) {
 }
 
 // 用 vertical-engine.js 汽缸的各圖:汽缸底下的座落到底座頂面、進汽管的支管接到汽缸留下的後半外壁
-const ENGINES = [m327, m328, m329, m330, m331, m332, m336, m339, m341, m343, m346].map((m) => m.default);
+const ENGINES = [m326, m327, m328, m329, m330, m331, m332, m336, m339, m341, m343, m346].map((m) => m.default);
 
 // 不動的零件裡沒有轉角的方塊(世界座標的外框)
 function fixedBoxes(def) {
@@ -313,7 +313,7 @@ function fixedBoxes(def) {
     });
 }
 
-test("直立引擎的汽缸(第 327–346 種):汽缸底下的座落到底座頂面", () => {
+test("直立引擎的汽缸(第 326–346 種):汽缸底下的座落到底座頂面", () => {
   for (const def of ENGINES) {
     const cyl = def.parts.find((p) => p.id === "cylinder");
     const [x, y] = cyl.center;
@@ -324,7 +324,7 @@ test("直立引擎的汽缸(第 327–346 種):汽缸底下的座落到底座頂
   }
 });
 
-test("直立引擎的汽缸(第 327–346 種):進汽管的支管在汽缸留下的後半,端面貼著外壁", () => {
+test("直立引擎的汽缸(第 326–346 種):進汽管的支管在汽缸留下的後半,端面貼著外壁", () => {
   for (const def of ENGINES) {
     const cyl = def.parts.find((p) => p.id === "cylinder");
     const wall = cyl.profile[1][0]; // 汽缸壁的外半徑(上蓋的外角;座的凸緣另算)
@@ -357,9 +357,73 @@ test("第 327、328 種:十字頭的轂套住活塞桿頂端、往前接到橫�
   }
 });
 
-test("第 326 種:滑塊 A 在框架的直溝槽中上下,飛輪曲柄經連桿帶動它", () => {
-  const ys = sweep(2 * Math.PI, 72).map((t) => m326.slider(t).y);
-  assert.ok(Math.max(...ys) - Math.min(...ys) > 0.85, "滑塊上下往復,行程等於曲柄直徑");
+// 第 326 種立柱上開了直溝槽的那一層(世界座標的 z 範圍與溝槽的外框)
+function slotLayer326(def) {
+  const column = part(def, "column");
+  const dz = column.center?.[2] ?? 0;
+  const layer = plateLayers(column).find((l) => l.solid.holes.length);
+  const hole = layer.solid.holes[0];
+  const xs = hole.map((q) => q[0]);
+  const ys = hole.map((q) => q[1]);
+  return { z0: layer.z0 + dz, z1: layer.z1 + dz, solid: layer.solid, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+}
+
+test("第 326 種:「滑塊 A 由框架上的垂直溝槽所引導」:全程在溝槽裡、兩側貼著削平的溝面、不超出溝槽上下端", () => {
+  const def = m326.default;
+  const slot = slotLayer326(def);
+  const sliderA = part(def, "sliderA");
+  for (const p of sweep(1, 48)) {
+    const [x, y] = def.pose(p).parts.sliderA.position;
+    // 滑塊在溝槽那一層的塊
+    const blocks = (sliderA.pieces ?? []).filter((q) => q.kind === "box" && q.at[2] - q.size[2] / 2 < slot.z1 && q.at[2] + q.size[2] / 2 > slot.z0);
+    assert.ok(blocks.length, "滑塊伸進開溝槽的那一層");
+    for (const q of blocks) {
+      const [l, r] = [x + q.at[0] - q.size[0] / 2, x + q.at[0] + q.size[0] / 2];
+      assert.ok(l - slot.x0 >= 0 && l - slot.x0 < 0.02 && slot.x1 - r >= 0 && slot.x1 - r < 0.02, `進程 ${p.toFixed(2)}:滑塊兩側貼著溝面(${(l - slot.x0).toFixed(3)}、${(slot.x1 - r).toFixed(3)})`);
+      assert.ok(y + q.at[1] - q.size[1] / 2 >= slot.y0 && y + q.at[1] + q.size[1] / 2 <= slot.y1, `進程 ${p.toFixed(2)}:滑塊在溝槽上下端之內`);
+    }
+  }
+});
+
+test("第 326 種:由下方汽缸的蒸汽推動(同第 327 種):活塞桿從滑塊往下穿過底座,下端接在汽缸裡的活塞上", () => {
+  const def = m326.default;
+  steamPushes(def, sweep(1, 12));
+  const rod = part(def, "sliderA").pieces.find((q) => q.kind === "box" && q.size[1] > 2);
+  const piston = part(def, "piston");
+  for (const p of sweep(1, 24)) {
+    const pose = def.pose(p).parts;
+    const end = pose.sliderA.position[1] + rod.at[1] - rod.size[1] / 2;
+    const py = pose.piston.position[1];
+    assert.ok(end >= py - piston.length / 2 && end <= py + piston.length / 2, `進程 ${p.toFixed(2)}:活塞桿下端在活塞裡`);
+    close(pose.piston.position[0], pose.sliderA.position[0], "活塞與滑塊同一條鉛直線", 1e-9);
+  }
+});
+
+test("第 326 種:連桿從曲柄銷往下、上段藏在立柱頭裡(原圖畫成虛線),到溝槽才露出來;連桿長不變", () => {
+  const def = m326.default;
+  const slot = slotLayer326(def);
+  const rod = part(def, "rod");
+  const fly = part(def, "flywheel");
+  const top = Math.max(...slot.solid.outline.map((q) => q[1]));
+  const len0 = dist(def.pose(0).parts.rod.from, def.pose(0).parts.rod.to);
+  for (const p of sweep(1, 36)) {
+    const pose = def.pose(p).parts;
+    const { from, to } = pose.rod;
+    close(dist(from, to), len0, "連桿長不變", 1e-9);
+    assert.ok(from[2] + rod.thickness / 2 < slot.z0, "連桿在開溝槽那一層的後面(立柱的厚度裡)");
+    // 溝槽上端到立柱頂面之間,連桿被前面那一層擋住
+    for (let i = 0; i <= 40; i++) {
+      const q = [from[0] + ((to[0] - from[0]) * i) / 40, from[1] + ((to[1] - from[1]) * i) / 40];
+      if (q[1] > slot.y1 + 0.02 && q[1] < top - 0.02) assert.ok(pointInPolygon(q, slot.solid.outline) && !pointInPolygon(q, slot.solid.holes[0]), `進程 ${p.toFixed(2)}:立柱頭擋住連桿 (${q.map((v) => v.toFixed(2))})`);
+    }
+    // 連桿上端套在飛輪曲柄的曲柄銷上
+    const pin = fly.pieces.find((q) => {
+      if (q.kind !== "cylinder" || (q.at[0] === 0 && q.at[1] === 0)) return false;
+      const [x, y] = rot2([q.at[0], q.at[1]], pose.flywheel.angle);
+      return Math.hypot(fly.center[0] + x - from[0], fly.center[1] + y - from[1]) < 1e-9;
+    });
+    assert.ok(pin && pin.at[2] - pin.length / 2 <= from[2] - rod.thickness / 2 && pin.at[2] + pin.length / 2 >= from[2] + rod.thickness / 2, `進程 ${p.toFixed(2)}:曲柄銷穿過連桿上端的眼`);
+  }
 });
 
 test("第 327 種:十字頭上的滾子沿直線導桿 A、A 運行,蒸汽推動活塞、經連桿轉動飛輪", () => {
@@ -373,6 +437,23 @@ test("第 327 種:十字頭上的滾子沿直線導桿 A、A 運行,蒸汽推動
   close(b.rollerL.angle - a.rollerL.angle, -(b.rollerR.angle - a.rollerR.angle), "左右滾子反向轉", 1e-9);
 });
 
+test("第 327 種:滾子「抵著」導桿 A、A:全程外緣貼著導桿內面、同一深度、在導桿的長度之內", () => {
+  const def = m327.default;
+  const guides = part(def, "frame").pieces.filter((q) => q.kind === "box" && q.size[1] > 2 && q.size[0] < 0.2 && q.at[2] > 0);
+  assert.equal(guides.length, 2, "兩根導桿");
+  for (const p of sweep(1, 24)) {
+    for (const id of ["rollerL", "rollerR"]) {
+      const r = part(def, id);
+      const { position: [x, y, z] } = def.pose(p).parts[id];
+      const g = guides.find((q) => Math.sign(q.at[0]) === Math.sign(x));
+      const gap = Math.abs(g.at[0]) - g.size[0] / 2 - (Math.abs(x) + r.radius);
+      assert.ok(gap >= -1e-9 && gap < 0.002, `進程 ${p.toFixed(2)}:${id} 與導桿的間隙 ${gap.toFixed(4)}`);
+      assert.ok(z - r.length / 2 < g.at[2] + g.size[2] / 2 && z + r.length / 2 > g.at[2] - g.size[2] / 2, `${id} 與導桿同一深度`);
+      assert.ok(y - r.radius >= g.at[1] - g.size[1] / 2 && y + r.radius <= g.at[1] + g.size[1] / 2, `${id} 在導桿的長度之內`);
+    }
+  }
+});
+
 test("第 328 種:卡特萊特平行運動:兩個相等的齒輪 C、C 反向轉,曲柄 A、A 方向相反,兩連桿傾角相等,活塞桿沿直線運動", () => {
   for (const p of sweep(1, 36)) {
     const c = m328.cartwright(p);
@@ -381,10 +462,90 @@ test("第 328 種:卡特萊特平行運動:兩個相等的齒輪 C、C 反向轉
     close(c.b + c.a, m328.cartwright(0).b + m328.cartwright(0).a, "兩齒輪反向等速", 1e-9);
   }
   steamPushes(m328.default, sweep(1, 12));
-  // 後方的飛輪由右齒輪 C 經飛輪軸上的小齒輪帶動:與右齒輪反向,轉速是齒數比(16 / 8)倍
+  // 後方的飛輪由右齒輪 C 經飛輪軸上的小齒輪帶動:與右齒輪反向,轉速是齒數比倍(原圖約 36 齒對 12 齒)
   const [a, b] = [m328.default.pose(0.1).parts, m328.default.pose(0.15).parts];
-  close((b.flywheel.angle - a.flywheel.angle) / (b.gearR.angle - a.gearR.angle), -2, "飛輪對右齒輪的轉速比", 1e-6);
+  close((b.flywheel.angle - a.flywheel.angle) / (b.gearR.angle - a.gearR.angle), -3, "飛輪對右齒輪的轉速比", 1e-6);
   close(b.pinion.angle, b.flywheel.angle, "小齒輪與飛輪同軸", 1e-12);
+});
+
+// 第 328 種的零件裡,沿 z 的圓柱與方塊在零件局部座標的 z 範圍
+const ySpan = (q) => [q.at[1] - q.size[1] / 2, q.at[1] + q.size[1] / 2];
+
+test("第 328 種:橫樑在齒輪前面、擋住齒輪下半,兩端由立柱撐到底座;齒輪軸的軸承座立在樑頂", () => {
+  const def = m328.default;
+  const boxes = part(def, "frame").pieces.filter((q) => q.kind === "box");
+  const gear = part(def, "gearL");
+  const [, gy] = gear.center;
+  const beam = boxes.filter((q) => q.size[0] > 3).reduce((a, b) => (a.at[1] > b.at[1] ? a : b));
+  const base = boxes.filter((q) => q.size[0] > 2).reduce((a, b) => (a.at[1] < b.at[1] ? a : b));
+  const [b0, b1] = ySpan(beam);
+  assert.ok(zSpan(beam)[0] >= gear.width / 2, "樑在齒輪前面");
+  assert.ok(b1 < gy && b1 > gy - gear.radius, "樑頂在齒輪中心與齒輪底之間(擋住下半)");
+  const posts = boxes.filter((q) => q.size[1] > 3 && zSpan(q)[0] < zSpan(beam)[1] && zSpan(q)[1] > zSpan(beam)[0]);
+  assert.equal(posts.length, 2, "兩根立柱");
+  for (const q of posts) {
+    close(ySpan(q)[1], b0, "立柱頂貼著樑底", 1e-9);
+    close(ySpan(q)[0], ySpan(base)[1], "立柱底貼著底座頂面", 1e-9);
+    assert.ok(Math.abs(q.at[0]) + q.size[0] / 2 <= beam.size[0] / 2 + 1e-9, "立柱在樑的兩端底下");
+  }
+  for (const g of [part(def, "gearL"), part(def, "gearR")]) {
+    const ring = part(def, "frame").pieces.find((q) => q.kind === "cylinder" && q.inner && q.at[0] === g.center[0] && q.at[1] === g.center[1]);
+    assert.ok(ring, "齒輪軸的軸承環");
+    const [r0, r1] = zSpan(ring);
+    assert.ok(r0 >= zSpan(beam)[0] - 1e-9 && r1 <= zSpan(beam)[1] + 1e-9, "軸承和樑同一層");
+    const block = boxes.find((q) => q.at[0] === g.center[0] && Math.abs(ySpan(q)[0] - b1) < 1e-9);
+    assert.ok(block && ySpan(block)[1] >= g.center[1] - ring.radius, "軸承座立在樑頂、接到軸承環");
+  }
+});
+
+test("第 328 種:曲柄裝在齒輪軸上(軸穿過軸承到曲柄),曲柄端有曲柄銷、穿過連桿的眼", () => {
+  const def = m328.default;
+  const ring = (g) => part(def, "frame").pieces.find((q) => q.kind === "cylinder" && q.inner && q.at[0] === g.center[0] && q.at[1] === g.center[1]);
+  for (const [gid, rid] of [["gearL", "rodL"], ["gearR", "rodR"]]) {
+    const g = part(def, gid);
+    const cyl = g.pieces.filter((q) => q.kind === "cylinder");
+    const shaft = cyl.find((q) => q.at[0] === 0 && q.at[1] === 0);
+    const plate = g.pieces.find((q) => q.kind === "plate");
+    const [s0, s1] = zSpan(shaft);
+    assert.ok(s0 <= -g.width / 2 + 1e-9 && s1 >= plate.at[2] + plate.thickness / 2 - 1e-9, `${gid}:軸從齒輪穿到曲柄前面`);
+    const [r0, r1] = zSpan(ring(g));
+    assert.ok(s0 <= r0 && s1 >= r1 && shaft.radius <= ring(g).inner, `${gid}:軸穿過軸承環`);
+    const rod = part(def, rid);
+    for (const p of sweep(1, 12)) {
+      const pose = def.pose(p).parts;
+      const from = pose[rid].from;
+      const pin = cyl.find((q) => {
+        const [x, y] = rot2([q.at[0], q.at[1]], pose[gid].angle);
+        return Math.hypot(g.center[0] + x - from[0], g.center[1] + y - from[1]) < 1e-9;
+      });
+      assert.ok(pin, `進程 ${p}:${rid} 的上端在 ${gid} 的曲柄銷上`);
+      const [p0, p1] = zSpan(pin);
+      assert.ok(p0 <= from[2] - rod.thickness / 2 && p1 >= from[2] + rod.thickness / 2, `${gid}:曲柄銷穿過連桿眼`);
+      assert.ok(p0 <= plate.at[2] + plate.thickness / 2 && p0 >= plate.at[2] - plate.thickness / 2 - 1e-9, `${gid}:曲柄銷從曲柄板伸出`);
+    }
+  }
+});
+
+test("第 328 種:十字頭兩端在齒輪中心正下方,兩連桿從曲柄銷往下張開成原圖的梯形;連桿長不變;小齒輪在右齒輪正下方", () => {
+  const def = m328.default;
+  const len0 = dist(def.pose(0).parts.rodL.from, def.pose(0).parts.rodL.to);
+  let open = 0;
+  for (const p of sweep(1, 72)) {
+    const { rodL, rodR } = def.pose(p).parts;
+    close(rodL.to[0], m328.GL.center[0], "十字頭左端在左齒輪中心正下方", 1e-9);
+    close(rodR.to[0], m328.GR.center[0], "十字頭右端在右齒輪中心正下方", 1e-9);
+    close(dist(rodL.from, rodL.to), len0, "左連桿長不變", 1e-9);
+    close(dist(rodR.from, rodR.to), len0, "右連桿長不變", 1e-9);
+    open = Math.max(open, Math.atan2(rodL.from[0] - rodL.to[0], rodL.from[1] - rodL.to[1]));
+  }
+  assert.ok(open > (10 * Math.PI) / 180, `連桿往下張開(最大 ${((open * 180) / Math.PI).toFixed(1)}°)`);
+  const p0 = def.pose(0).parts.rodL;
+  assert.ok(p0.from[0] > p0.to[0], "起始姿勢(原圖)就是張開的梯形");
+  close(m328.PINION.center[0], m328.GR.center[0], "小齒輪在右齒輪正下方", 1e-9);
+  assert.ok(m328.PINION.center[1] < m328.GR.center[1], "小齒輪在右齒輪下方");
+  // 兩齒輪 C、C 互相咬合,右齒輪咬飛輪軸上的小齒輪:齒全程不互相穿入
+  assertMeshFree(def, "gearL", "gearR", sweep(1, 60));
+  assertMeshFree(def, "gearR", "pinion", sweep(1, 60));
 });
 
 test("第 329 種:B 在直徑兩倍的靜止內齒輪 D 裡滾動,B 上的腕銷走直線,活塞桿保持直立", () => {
