@@ -1,7 +1,7 @@
 // 第十四章「擺與鐘錶調節」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, assertWeightDrive } from "./helpers.js";
+import { close, sweep, part, assertWeightDrive, plateLayers } from "./helpers.js";
 
 import * as m315 from "../models/fig315.js";
 import * as m316 from "../models/fig316.js";
@@ -10,7 +10,8 @@ import * as m318 from "../models/fig318.js";
 import * as m319 from "../models/fig319.js";
 import * as m320 from "../models/fig320.js";
 import * as m321 from "../models/fig321.js";
-import { dist, add, quatRotate } from "../models/kit.js";
+import { dist, add, quatRotate, rot2 } from "../models/kit.js";
+import { pointInPolygon } from "../models/contact.js";
 
 test("第 315 種:錐形擺:擺錘作圓周運動,擺桿在旋轉時描繪出一個圓錐形", () => {
   const { TOP, L } = m315.geometry;
@@ -299,12 +300,231 @@ test("第 318 種:錶的調節器:槓桿往右(FAST)時游絲的作用長度變�
   assert.ok(m318.regulator(slow).active > m318.regulator(0).active, "往左:變長");
 });
 
+// 第 318 種:槓桿上的兩根制動插梢在世界中的位置(槓桿繞 z 轉)
+const rotZ = ([x, y, z], a) => [...rot2([x, y], a), z];
+function pins318(v) {
+  const def = m318.default;
+  const a = def.pose(v).parts.lever.angle;
+  return part(def, "lever")
+    .pieces.filter((q) => q.kind === "cylinder")
+    .map((q) => ({ c: rotZ(q.at, a), r: q.radius, z0: q.at[2] - q.length / 2, z1: q.at[2] + q.length / 2 }))
+    .sort((p, q) => Math.hypot(p.c[0], p.c[1]) - Math.hypot(q.c[0], q.c[1]));
+}
+/** 折線上離 p 最近的點(只看 xy 平面) */
+function nearest(pts, p) {
+  let best = { d: Infinity };
+  for (let i = 1; i < pts.length; i++) {
+    const [a, b] = [pts[i - 1], pts[i]];
+    const ab = [b[0] - a[0], b[1] - a[1]];
+    const l2 = ab[0] ** 2 + ab[1] ** 2 || 1;
+    const s = Math.max(0, Math.min(1, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / l2));
+    const q = [a[0] + s * ab[0], a[1] + s * ab[1], a[2] + s * (b[2] - a[2])];
+    const d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+    if (d < best.d) best = { d, p: q };
+  }
+  return best;
+}
+const polyLength = (pts) => pts.slice(1).reduce((s, p, i) => s + dist(p, pts[i]), 0);
+const readNumber = (pose, key) => Number.parseFloat(pose.readouts.find((r) => r.label.includes(key)).value.replace("−", "-"));
+
+test("第 318 種:游絲穿在槓桿的兩根制動插梢之間:一內一外夾著游絲(兩側都貼著、不穿入),槓桿走滿全程都夾得住", () => {
+  const def = m318.default;
+  const wire = part(def, "spring").radius;
+  for (const v of sweep(m318.RANGE[1], 12, m318.RANGE[0])) {
+    const spring = def.pose(v).paths.spring.points;
+    const pins = pins318(v);
+    assert.equal(pins.length, 2, "兩根制動插梢");
+    for (const pin of pins) {
+      const n = nearest(spring, pin.c);
+      close(n.d - wire - pin.r, 0, `槓桿 ${v.toFixed(2)}:插梢貼著游絲`, 0.002);
+      assert.ok(pin.z0 < n.p[2] - wire && pin.z1 > n.p[2] + wire, "插梢跨過游絲的整個粗細");
+    }
+    // 游絲從兩根插梢中間穿過:最近的那一段在內插梢的外側、外插梢的內側
+    const [inner, outer] = pins;
+    const r = Math.hypot(...nearest(spring, inner.c).p.slice(0, 2));
+    assert.ok(Math.hypot(inner.c[0], inner.c[1]) < r && r < Math.hypot(outer.c[0], outer.c[1]), `槓桿 ${v.toFixed(2)}:游絲在兩根插梢之間`);
+  }
+});
+
+test("第 318 種:游絲內端固定在擺輪軸上(軸上的套圈),外端固定在凸柱 R 上(穿進 R 的孔)", () => {
+  const def = m318.default;
+  const wire = part(def, "spring").radius;
+  const pts = def.pose(0).paths.spring.points;
+  const inner = pts.at(-1);
+  const collet = part(def, "balance").pieces.find((q) => q.kind === "cylinder" && Math.abs((q.at?.[2] ?? 0) - inner[2]) < q.length / 2);
+  assert.ok(collet, "擺輪軸上在游絲那一層有套圈");
+  close(Math.hypot(inner[0], inner[1]), collet.radius + wire, "內端貼著套圈", 1e-9);
+  // 外端:R 是一塊沿游絲走向(y)開了孔的板,游絲的末段沿孔的軸線穿進去
+  const stud = part(def, "studR");
+  const body = stud.pieces[0];
+  assert.deepEqual(body.axis, [0, 1, 0], "R 的孔沿 y");
+  const hole = body.shape.holes[0];
+  close(Math.max(...hole.map(([x, y]) => Math.hypot(x, y))), wire, "孔的半徑等於游絲的粗細", 1e-9);
+  const [y0, y1] = [stud.center[1] - body.thickness / 2, stud.center[1] + body.thickness / 2];
+  const inside = pts.filter((p) => p[1] >= y0 - 1e-9 && p[1] <= y1 + 1e-9 && Math.abs(p[0] - stud.center[0]) < Math.max(...body.shape.outline.map(([x]) => x)));
+  assert.ok(inside.length >= 2 && inside.includes(pts[0]), "外端在 R 裡面");
+  for (const p of inside) {
+    close(p[0], stud.center[0], "沿孔的軸線(x)", 1e-9);
+    close(p[2], stud.center[2], "沿孔的軸線(z)", 1e-9);
+  }
+});
+
+test("第 318 種:制動插梢 P 照原圖裝在指針那一支臂的根部(游絲外圈正下方),插梢頂露在槓桿正面,標籤 P 跟著插梢", () => {
+  const def = m318.default;
+  const leverFront = Math.max(...plateLayers(part(def, "lever")).map((l) => l.z1));
+  for (const v of sweep(m318.RANGE[1], 6, m318.RANGE[0])) {
+    const pose = def.pose(v);
+    const a = pose.parts.lever.angle; // 指針沿槓桿的局部 +x
+    const pins = pins318(v);
+    for (const pin of pins) {
+      close(Math.atan2(pin.c[1], pin.c[0]), Math.atan2(Math.sin(a), Math.cos(a)), "插梢在指針那一側", 1e-9);
+      assert.ok(pin.z1 > leverFront + 0.01, "插梢頂露出槓桿正面(正面看得到)");
+    }
+    const mid = pins[0].c.map((c, i) => (c + pins[1].c[i]) / 2);
+    const label = pose.parts.labelP.position;
+    assert.ok(Math.hypot(label[0] - mid[0], label[1] - mid[1]) < 0.3, `槓桿 ${v.toFixed(2)}:標籤 P 在插梢旁`);
+  }
+  close(Math.atan2(pins318(0)[0].c[1], pins318(0)[0].c[0]), -Math.PI / 2, "槓桿在中間時插梢在正下方", 1e-9);
+});
+
+test("第 318 種:槓桿往右推,游絲的實際作用長度縮短,擺輪擺得變快;紅線標出作用的一段(從內端到插梢),讀數跟著變", () => {
+  const def = m318.default;
+  const vs = sweep(m318.RANGE[1], 8, m318.RANGE[0]);
+  const lengths = vs.map((v) => readNumber(def.pose(v), "作用長度"));
+  const rates = vs.map((v) => readNumber(def.pose(v), "快慢"));
+  for (let i = 1; i < vs.length; i++) {
+    assert.ok(lengths[i] < lengths[i - 1], "往右:作用長度變短");
+    assert.ok(rates[i] > rates[i - 1], "往右:擺得變快");
+  }
+  close(readNumber(def.pose(0), "快慢"), 0, "中間時是基準", 1e-9);
+  const l0 = m318.regulator(0).active;
+  for (const v of vs) {
+    const pose = def.pose(v);
+    const mark = pose.paths.activeMark.points;
+    const spring = pose.paths.spring.points;
+    assert.deepEqual(mark[0], spring.at(-1), "紅線從游絲內端開始");
+    const pins = pins318(v);
+    const mid = pins[0].c.map((c, i) => (c + pins[1].c[i]) / 2);
+    assert.ok(Math.hypot(mark.at(-1)[0] - mid[0], mark.at(-1)[1] - mid[1]) < 0.005, "紅線停在兩根插梢之間");
+    close(readNumber(pose, "作用長度"), polyLength(mark), "讀數是紅線的長度", 0.006);
+    // 游絲的剛性與作用長度成反比,擺動的快慢與剛性的平方根成正比
+    close(1 + readNumber(pose, "快慢") / 100, Math.sqrt(l0 / m318.regulator(v).active), "快慢與作用長度的平方根成反比", 0.0006);
+  }
+});
+
+test("第 318 種:擺輪軸兩端進夾板的軸承;槓桿中央的轂套在與擺輪軸同心的固定環上;凸柱 R 立在夾板上", () => {
+  const def = m318.default;
+  const frame = plateLayers(part(def, "plate"));
+  const rmax = (loop) => Math.max(...loop.map(([x, y]) => Math.hypot(x, y)));
+  const rmin = (loop) => Math.min(...loop.map(([x, y]) => Math.hypot(x, y)));
+  const staff = part(def, "balance").pieces.filter((q) => q.kind === "cylinder").reduce((a, b) => (a.length >= b.length ? a : b));
+  const z0 = (staff.at?.[2] ?? 0) - staff.length / 2;
+  const z1 = (staff.at?.[2] ?? 0) + staff.length / 2;
+  // 軸承:夾板上以擺輪軸為中心、孔徑等於軸徑的孔
+  const bearings = frame.filter((l) => l.solid.holes.some((h) => Math.abs(rmax(h) - staff.radius) < 1e-9 && Math.abs(rmin(h) - staff.radius) < 1e-9));
+  assert.ok(bearings.some((b) => b.z0 <= z0 + 1e-9 && z0 < b.z1), "擺輪軸後端在後夾板的軸承裡");
+  assert.ok(bearings.some((b) => b.z0 < z1 && z1 <= b.z1 + 1e-9), "擺輪軸前端在前夾板(固定環)的軸承裡");
+  // 槓桿的轂:中央的孔套在固定環外圈上,同一個深度
+  const lever = plateLayers(part(def, "lever"));
+  const hub = lever.find((l) => l.solid.holes.length && rmax(l.solid.holes[0]) < 0.6);
+  assert.ok(hub, "槓桿中央有轂");
+  const ringR = rmax(hub.solid.holes[0]);
+  const ring = frame.find((l) => Math.abs(rmax(l.solid.outline) - ringR) < 1e-9 && Math.abs(rmin(l.solid.outline) - ringR) < 1e-9);
+  assert.ok(ring, "固定環的外圈等於轂的孔");
+  assert.ok(Math.min(ring.z1, hub.z1) - Math.max(ring.z0, hub.z0) > 0.03, "轂和固定環在同一個深度");
+  // R 穿過夾板上剛好容得下它的方孔(板的形狀座標 y 對到 −z)
+  const stud = part(def, "studR");
+  const body = stud.pieces[0];
+  const zs = body.shape.outline.map(([, y]) => stud.center[2] - y);
+  const xs = body.shape.outline.map(([x]) => stud.center[0] + x);
+  const ys = [stud.center[1] - body.thickness / 2, stud.center[1] + body.thickness / 2];
+  const holder = frame.find((l) => l.solid.holes.some((h) => pointInPolygon([stud.center[0], stud.center[1]], h)));
+  assert.ok(holder && Math.min(...zs) < holder.z0 && Math.max(...zs) > holder.z1, "R 穿過夾板");
+  const hole = holder.solid.holes.find((h) => pointInPolygon([stud.center[0], stud.center[1]], h));
+  close(Math.min(...hole.map(([x]) => x)), Math.min(...xs), "方孔貼著 R(x)", 1e-9);
+  close(Math.max(...hole.map(([x]) => x)), Math.max(...xs), "方孔貼著 R(x)", 1e-9);
+  close(Math.min(...hole.map(([, y]) => y)), ys[0], "方孔貼著 R(y)", 1e-9);
+  close(Math.max(...hole.map(([, y]) => y)), ys[1], "方孔貼著 R(y)", 1e-9);
+});
+
 test("第 319 種:補償擺輪:溫度升高時複合桿向內彎,配重往內移", () => {
   for (const s of [1, -1]) {
     const hot = m319.rim(40, s).weightRadius;
     const cold = m319.rim(-10, s).weightRadius;
     assert.ok(hot < cold, "升溫時配重較靠內");
   }
+});
+
+test("第 319 種:t 與 t' 是外側黃銅、內側鋼的複合弧桿:兩層貼在一起、一起彎,黃銅在外", () => {
+  const def = m319.default;
+  for (const side of ["L", "R"]) {
+    assert.equal(part(def, `brass${side}`).metal, "brass", "黃銅那一層畫成黃銅色");
+    assert.equal(part(def, `steel${side}`).metal, undefined, "鋼那一層是一般的顏色");
+  }
+  const rs = part(def, "steelR").radius + part(def, "brassR").radius;
+  for (const t of sweep(40, 10, -10)) {
+    const paths = def.pose(t).paths;
+    for (const side of ["L", "R"]) {
+      const steel = paths[`steel${side}`].points;
+      const brass = paths[`brass${side}`].points;
+      assert.equal(steel.length, brass.length);
+      steel.forEach((p, i) => {
+        const q = brass[i];
+        assert.ok(Math.hypot(q[0], q[1]) > Math.hypot(p[0], p[1]), `${t} °C:黃銅在外側`);
+        close(dist(p, q), rs, `${t} °C:兩層貼在一起`, 1e-9);
+      });
+    }
+  }
+});
+
+test("第 319 種:配重 b、b' 照原圖套在弧桿上:弧桿從配重的孔穿過、兩頭都伸出配重,外側的螺絲頂著弧桿把配重鎖住", () => {
+  const def = m319.default;
+  for (const t of sweep(40, 10, -10)) {
+    const pose = def.pose(t);
+    for (const [id, side] of [["weightB", "R"], ["weightB2", "L"]]) {
+      const w = part(def, id);
+      const body = w.pieces.find((q) => q.kind === "plate");
+      assert.deepEqual(body.axis, [0, 1, 0], "孔沿配重的局部 y(弧桿的走向)");
+      const hole = body.shape.holes[0];
+      const hc = [hole.reduce((s, p) => s + p[0], 0) / hole.length, hole.reduce((s, p) => s + p[1], 0) / hole.length];
+      const hr = Math.min(...hole.map(([x, y]) => Math.hypot(x - hc[0], y - hc[1])));
+      const half = body.thickness / 2;
+      const { position, angle } = pose.parts[id];
+      // 局部座標:x 往外(徑向)、y 沿弧桿、z;板的形狀座標 (x, y) 對到局部 (x, −z)
+      const local = (p) => [...rot2([p[0] - position[0], p[1] - position[1]], -angle), p[2] - position[2]];
+      let ends = 0;
+      for (const layer of ["steel", "brass"]) {
+        const r = part(def, `${layer}${side}`).radius;
+        const pts = pose.paths[`${layer}${side}`].points.map(local);
+        for (const [x, y, z] of pts) {
+          if (Math.abs(y) <= half) {
+            assert.ok(Math.hypot(x - hc[0], -z - hc[1]) + r <= hr + 1e-9, `${t} °C:${id} 裡的弧桿在孔裡、不碰孔壁`);
+          }
+        }
+        const near = pts.filter(([x]) => Math.abs(x - hc[0]) < 0.3);
+        if (near.some(([, y]) => y > half + 0.1) && near.some(([, y]) => y < -half - 0.1)) ends++;
+      }
+      assert.equal(ends, 2, `${t} °C:弧桿穿過 ${id}、兩頭都伸出去`);
+      // 螺絲:沿局部 x 從外側面伸進來,尖端頂著黃銅層的外緣
+      const screw = w.pieces.filter((q) => q.kind === "cylinder").reduce((a, b) => (a.at[0] - a.length / 2 <= b.at[0] - b.length / 2 ? a : b));
+      const tip = screw.at[0] - screw.length / 2;
+      const rb = part(def, `brass${side}`).radius;
+      const brass = pose.paths[`brass${side}`].points.map(local).reduce((a, b) => (Math.abs(a[1] - screw.at[1]) <= Math.abs(b[1] - screw.at[1]) ? a : b));
+      close(tip, brass[0] + rb, `${t} °C:螺絲頂著弧桿`, 0.002);
+      assert.ok(Math.max(...body.shape.outline.map(([x]) => x)) < screw.at[0] + screw.length / 2, "螺絲從配重外側面伸進來");
+    }
+  }
+});
+
+test("第 319 種:升溫時配重往內移,減少擺輪的轉動慣量:讀數「轉動慣量」升溫變小、降溫變大", () => {
+  const def = m319.default;
+  close(readNumber(def.pose(20), "轉動慣量"), 0, "以 20 °C 為基準", 1e-9);
+  const ts = sweep(40, 10, -10);
+  const values = ts.map((t) => readNumber(def.pose(t), "轉動慣量"));
+  for (let i = 1; i < ts.length; i++) assert.ok(values[i] < values[i - 1], `${ts[i]} °C:比 ${ts[i - 1]} °C 小`);
+  // 配重離中心的距離的平方和(配重對轉動慣量的貢獻)跟著變
+  const r2 = (t) => ["weightB", "weightB2"].reduce((s, id) => s + Math.hypot(...def.pose(t).parts[id].position.slice(0, 2)) ** 2, 0);
+  assert.ok(r2(40) < r2(20) && r2(20) < r2(-10), "配重升溫往內、降溫往外");
 });
 
 test("第 320 種:無端鏈:上發條(拉 b)的期間,動力輪 P 照樣被帶動;每一輪重物 W 回到原位", () => {
