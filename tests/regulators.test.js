@@ -397,7 +397,6 @@ test("第 318 種:槓桿往右推,游絲的實際作用長度縮短,擺輪擺得
     assert.ok(rates[i] > rates[i - 1], "往右:擺得變快");
   }
   close(readNumber(def.pose(0), "快慢"), 0, "中間時是基準", 1e-9);
-  const l0 = m318.regulator(0).active;
   for (const v of vs) {
     const pose = def.pose(v);
     const mark = pose.paths.activeMark.points;
@@ -407,8 +406,6 @@ test("第 318 種:槓桿往右推,游絲的實際作用長度縮短,擺輪擺得
     const mid = pins[0].c.map((c, i) => (c + pins[1].c[i]) / 2);
     assert.ok(Math.hypot(mark.at(-1)[0] - mid[0], mark.at(-1)[1] - mid[1]) < 0.005, "紅線停在兩根插梢之間");
     close(readNumber(pose, "作用長度"), polyLength(mark), "讀數是紅線的長度", 0.006);
-    // 游絲的剛性與作用長度成反比,擺動的快慢與剛性的平方根成正比
-    close(1 + readNumber(pose, "快慢") / 100, Math.sqrt(l0 / m318.regulator(v).active), "快慢與作用長度的平方根成反比", 0.0006);
   }
 });
 

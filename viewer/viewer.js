@@ -122,7 +122,7 @@ class Session {
     const targetMark = toon(TARGET_MARK);
     const targetArrow = toon(TARGET_MARK, { side: THREE.DoubleSide });
     const brass = toon(BRASS);
-    const plain = (part) => (part.metal === "brass" ? brass : base); // 不是主動件、目標件的零件的本色
+    const ownColor = (part) => (part.metal === "brass" ? brass : base); // 不是主動件、目標件的零件的本色
     this.materials = [base, accent, accentMark, mark, accentArrow, markArrow, target, targetMark, targetArrow, brass];
     // 半透明材質:每種實色各一份,零件標 ghost 時整個換過去,取消時換回來
     this.ghosts = new Map();
@@ -152,7 +152,7 @@ class Session {
     for (const part of def.parts) {
       const isDriver = this.grips.includes(part.id);
       if (PATH_KINDS.has(part.kind)) {
-        const path = part.kind === "chain" ? new ChainPart(part, base) : new PathPart(part, plain(part));
+        const path = part.kind === "chain" ? new ChainPart(part, base) : new PathPart(part, ownColor(part));
         this.paths.set(part.id, path);
         this.scene.add(path.mesh);
         continue;
@@ -163,7 +163,7 @@ class Session {
         object.traverse((o) => o.layers.set(FLUID_LAYER));
       } else {
         const isTarget = targets.includes(part.id);
-        object = buildPart(part, isDriver ? accent : isTarget ? target : plain(part), isDriver ? accentMark : isTarget ? targetMark : mark);
+        object = buildPart(part, isDriver ? accent : isTarget ? target : ownColor(part), isDriver ? accentMark : isTarget ? targetMark : mark);
       }
       const baseQuat = new THREE.Quaternion().setFromUnitVectors(
         Z_AXIS,
