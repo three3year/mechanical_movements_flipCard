@@ -51,8 +51,10 @@ export default {
         // 飛輪:輪緣與四根輪輻(記號在曲柄銷上)
         { kind: "plate", shape: shape([...arcPoints(3.2, 0, TAU).slice(0, -1)], [arcPoints(2.95, 0, TAU).slice(0, -1).reverse()]), thickness: 0.15, at: [0, 0, -0.7] },
         ...[0, 1].map((i) => ({ kind: "box", size: [6.0, 0.14, 0.1], at: [0, 0, -0.7], angle: (i * Math.PI) / 2 })),
-        { kind: "plate", shape: shape([[0, -0.15], [R, -0.1], [R, 0.1], [0, 0.15]], [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, -0.2] },
-        { kind: "cylinder", radius: 0.2, length: 0.35, at: [R, 0, 0.05], accent: true },
+        // 曲柄臂:從軸心到曲柄銷,銷端的凸台比銷粗
+        { kind: "plate", shape: shape([...arcPoints(0.26, -Math.PI / 2, Math.PI / 2, R, 0), ...arcPoints(0.2, Math.PI / 2, (3 * Math.PI) / 2)], [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, -0.2] },
+        // 曲柄銷軸頸 B:從曲柄臂的背面穿過臂,往前伸過十字頭的槽
+        { kind: "cylinder", radius: 0.2, length: 0.465, at: [R, 0, -0.0075], accent: true },
       ],
     },
     {

@@ -393,6 +393,79 @@ test("第 329 種:B 在直徑兩倍的靜止內齒輪 D 裡滾動,B 上的腕銷
   close(Math.max(...ys) - Math.min(...ys), 4 * 0.62, "行程等於 D 的直徑", 1e-3);
 });
 
+/** 附件沿 z 的範圍(零件中心深度 base;cylinder 沿 z 用 length、plate 用 thickness、box 用 size[2]) */
+function zSpan(q, base = 0) {
+  const z = base + (q.at?.[2] ?? 0);
+  const h = q.kind === "cylinder" ? q.length / 2 : q.kind === "plate" ? (q.thickness ?? 0.2) / 2 : q.size[2] / 2;
+  return [z - h, z + h];
+}
+
+/** 點在板件的實體裡(外形之內、孔之外) */
+const inSolid = (pt, s) => pointInPolygon(pt, s.outline) && !(s.holes ?? []).some((h) => pointInPolygon(pt, h));
+
+/** 板件是從軸心伸到銷的臂:兩者的中點在實體裡,外形沿銷的方向伸到銷心以外 */
+function armTo(q, [x, y]) {
+  const r = Math.hypot(x, y);
+  return q.kind === "plate" && inSolid([x / 2, y / 2], q.shape) && Math.max(...q.shape.outline.map(([u, v]) => (u * x + v * y) / r)) >= r - 1e-9;
+}
+
+test("第 329 種:B 與 D 咬滿齒寬(B 繞曲柄銷在 D 裡滾動,兩者同一層)", () => {
+  const def = m329.default;
+  const [B, D] = [part(def, "gearB"), part(def, "ringD")];
+  for (const p of sweep(1, 8)) {
+    const bz = def.pose(p).parts.gearB.position[2];
+    const dz = D.center[2];
+    const overlap = Math.min(bz + B.width / 2, dz + D.width / 2) - Math.max(bz - B.width / 2, dz - D.width / 2);
+    close(overlap, Math.min(B.width, D.width), "B 與 D 的齒寬全部重疊", 1e-9);
+  }
+});
+
+test("第 329 種:活塞桿 A 接在 B 上的腕銷:腕銷裝在 B 正面的臂上、整根在 D 的齒前面,A 套在腕銷上、下端穿進汽缸蓋的孔", () => {
+  const def = m329.default;
+  const [B, D, rod, cyl] = [part(def, "gearB"), part(def, "ringD"), part(def, "rodA"), part(def, "cylinder")];
+  const dFront = D.center[2] + D.width / 2;
+  for (const p of sweep(1, 8)) {
+    const pose = def.pose(p).parts;
+    const bz = pose.gearB.position[2];
+    const pin = B.pieces.find((q) => q.kind === "cylinder" && Math.hypot(q.at[0], q.at[1]) > B.radius / 2);
+    const arm = B.pieces.find((q) => armTo(q, pin.at));
+    assert.ok(arm, "B 正面有一支從輪轂伸到腕銷的臂");
+    const [p0, p1] = zSpan(pin, bz);
+    const [a0, a1] = zSpan(arm, bz);
+    assert.ok(a0 > dFront && p0 > dFront, "臂與腕銷都在 D 的齒寬前面(走到行程兩端時越過 D 的齒)");
+    assert.ok(a0 <= bz + B.width / 2 + 0.05 && p0 <= a0 + 1e-9 && p1 >= a1, "腕銷從臂的背面穿過臂,臂貼著 B 的正面(輪轂)");
+    const rz = pose.rodA.position[2];
+    assert.ok(rz - rod.size[2] / 2 >= p0 && rz + rod.size[2] / 2 <= p1, "活塞桿 A 的頂端在腕銷的長度之內");
+    assert.ok(Math.abs(rz - cyl.center[2]) + rod.size[2] / 2 <= cyl.profile[0][0], "活塞桿在汽缸軸線上,穿過上蓋的孔");
+  }
+});
+
+test("第 329 種:機架照原圖是兩支斜腳,下端站在底座上,上端接在 D 外緣水平直徑兩側的耳座", () => {
+  const def = m329.default;
+  const frame = part(def, "frame");
+  const D = part(def, "ringD");
+  const boxes = frame.pieces.filter((q) => q.kind === "box" && !q.angle);
+  const base = boxes.reduce((a, b) => (b.at[1] < a.at[1] ? b : a));
+  const top = base.at[1] + base.size[1] / 2;
+  const legs = frame.pieces.filter((q) => q.kind === "plate" && Math.max(...q.shape.outline.map((v) => v[1])) - Math.min(...q.shape.outline.map((v) => v[1])) > 3);
+  assert.equal(legs.length, 2, "兩支腳");
+  for (const leg of legs) {
+    const ys = leg.shape.outline.map((v) => v[1] + (leg.at?.[1] ?? 0));
+    const [low, high] = [Math.min(...ys), Math.max(...ys)];
+    close(low, top, "腳底站在底座頂面", 1e-9);
+    const xAt = (y) => leg.shape.outline.filter((_, i) => Math.abs(ys[i] - y) < 1e-9).map((v) => v[0]);
+    const footX = Math.max(...xAt(low).map(Math.abs));
+    const headX = Math.min(...xAt(high).map(Math.abs));
+    assert.ok(footX < base.size[0] / 2, "腳底在底座範圍內");
+    assert.ok(footX > headX + 0.4, "斜腳:下端比上端張得開");
+    assert.ok(Math.abs(high - D.center[1]) < 0.3, "上端到 D 的水平直徑");
+    const side = Math.sign(xAt(low)[0]);
+    const lug = boxes.find((q) => Math.abs(q.at[1] - D.center[1]) < 1e-9 && Math.abs(side * q.at[0] - q.size[0] / 2 - D.rim) < 1e-9);
+    assert.ok(lug, "D 外緣在水平直徑上有耳座");
+    assert.ok(side * lug.at[0] + lug.size[0] / 2 >= headX, "耳座伸到腳的上端");
+  }
+});
+
 test("第 330 種:延長的活塞桿在與汽缸同中心線的導引件 A 中作動,叉形連桿帶動曲柄", () => {
   for (const p of sweep(1, 24)) {
     const e = m330.engine(p);
@@ -407,6 +480,20 @@ test("第 331 種:曲柄銷軸頸 B 在開槽十字頭 A 內作動,十字頭在�
     close(y.head, y.wrist[1], "十字頭高度等於曲柄銷高度(開槽十字頭)", 1e-12);
   }
   steamPushes(m331.default, sweep(1, 12));
+});
+
+test("第 331 種:曲柄銷軸頸 B 從曲柄臂穿出、伸過開槽十字頭 A 的槽", () => {
+  const def = m331.default;
+  const crank = part(def, "crank");
+  const pin = crank.pieces.find((q) => q.kind === "cylinder" && q.at[0] > 0.3);
+  const arm = crank.pieces.find((q) => armTo(q, pin.at));
+  assert.ok(arm, "曲柄臂從軸心伸到曲柄銷");
+  const [p0, p1] = zSpan(pin);
+  const [a0, a1] = zSpan(arm);
+  assert.ok(p0 <= a0 + 1e-9 && p1 >= a1, "曲柄銷穿過整個曲柄臂");
+  const yoke = part(def, "yokeA").pieces.find((q) => q.kind === "plate");
+  const [y0, y1] = zSpan(yoke);
+  assert.ok(p0 <= y0 && p1 >= y1, "曲柄銷貫穿十字頭的槽");
 });
 
 /** 一串點離它們的最佳直線(首尾連線)的最大偏差 */
