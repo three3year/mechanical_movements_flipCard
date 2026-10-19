@@ -865,12 +865,109 @@ test("第 304 種:銷輪式擒縱:兩個叉瓦夾著銷,擺每擺一次輪轉過
   noPenetration(m304.escapement);
 });
 
-test("第 305 種:單銷式擒縱:擺每擺動一次,擒縱輪(帶一根偏心銷的小圓盤)旋轉半圈", () => {
+test("第 305 種:單銷式擒縱:擺每擺動一次,擒縱輪(帶一根偏心銷的小圓盤)旋轉半圈;圓盤照原圖箭頭順時針轉", () => {
   const e = m305.escapement;
-  close(e.step, 2 * Math.PI, "擺一個來回,圓盤轉一圈", 1e-9);
-  const half = m305.singlePin(2.5 * e.period + e.period / 2).disc - m305.singlePin(2.5 * e.period).disc;
-  assert.ok(Math.abs(half - Math.PI) < 0.3, `擺一次約半圈(實際 ${(half / Math.PI).toFixed(2)} 圈的一半)`);
+  escapes(e, 2 * Math.PI, -1);
   noPenetration(e);
+});
+
+// 第 305 種的量測:銷心在擺的座標(原點在樞軸、擺居中時的方向)裡的位置
+function pin305(v) {
+  const { PIVOT, DISC, PIN } = m305.geometry;
+  const g = m305.escapement.angle(v);
+  const world = [DISC[0] + PIN.r * Math.cos(g), DISC[1] + PIN.r * Math.sin(g)];
+  const a = -m305.pendulumAngle(v);
+  const [x, y] = [world[0] - PIVOT[0], world[1] - PIVOT[1]];
+  return { world, plate: [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)], angle: g };
+}
+
+test("第 305 種:「水平面則為靜擊面」——圓盤停住時銷都靠在叉瓦的水平面上,圓盤完全不動、不回退", () => {
+  const e = m305.escapement;
+  const { PIVOT, DISC, PIN, FACE } = m305.geometry;
+  const L = Math.hypot(DISC[0] - PIVOT[0], DISC[1] - PIVOT[1]);
+  const vs = sweep(2 * e.period, 720);
+  const pins = vs.map(pin305);
+  assert.ok(pins.every((p, i) => i === 0 || p.angle <= pins[i - 1].angle + 1e-4), "從不回退(順時針)");
+  let still = 0;
+  for (let i = 1; i < pins.length; i++) {
+    if (Math.abs(pins[i].angle - pins[i - 1].angle) > 1e-4) continue;
+    still++;
+    const [u, w] = pins[i].plate;
+    const rho = Math.hypot(u, w);
+    const onLower = Math.abs(rho - (L + FACE.b - PIN.size)) < 3e-3 && u < -FACE.a + 3e-3; // 銷壓在下面那道水平面上(放開的那一刻在面的角上)
+    const onUpper = Math.abs(rho - (L - FACE.b + PIN.size)) < 3e-3 && u > FACE.a - 3e-3; // 銷頂在上面那道水平面下
+    assert.ok(onLower || onUpper, `主動量 ${vs[i].toFixed(3)}:圓盤停住,但銷沒靠在水平面上(離樞軸 ${rho.toFixed(4)}、橫向 ${u.toFixed(3)})`);
+  }
+  assert.ok(still > 0.15 * vs.length, `鎖住的時間夠長(靜止的取樣 ${still} / ${vs.length})`);
+});
+
+test("第 305 種:「將衝量傳遞到擒縱叉瓦的垂直面上」——擺與銷同向走的那一段,銷推著直緣走,每擺一次推過大半個半圈", () => {
+  const e = m305.escapement;
+  const { PIVOT, DISC, PIN, FACE } = m305.geometry;
+  const L = Math.hypot(DISC[0] - PIVOT[0], DISC[1] - PIVOT[1]);
+  const vs = sweep(2 * e.period, 1440);
+  const pins = vs.map(pin305);
+  let impulse = 0;
+  for (let i = 1; i < pins.length; i++) {
+    const turn = Math.abs(pins[i].angle - pins[i - 1].angle);
+    if (turn < 1e-6) continue;
+    const [u] = pins[i].plate;
+    const onUpright = Math.abs(u - (-FACE.a + PIN.size)) < 3e-3 || Math.abs(u - (FACE.a - PIN.size)) < 3e-3;
+    const swingDx = L * (Math.sin(m305.pendulumAngle(vs[i])) - Math.sin(m305.pendulumAngle(vs[i - 1])));
+    const pinDx = pins[i].world[0] - pins[i - 1].world[0];
+    if (onUpright && swingDx * pinDx > 0) impulse += turn;
+  }
+  const perBeat = impulse / 4;
+  assert.ok(perBeat > Math.PI / 2, `每擺一次,銷推著垂直面轉過 ${((perBeat * 180) / Math.PI).toFixed(0)}°(半圈 180°)`);
+});
+
+test("第 305 種:叉瓦照原圖是同一層的 Z 形一塊——擺上的板開著 Z 形的窗(左上、右下開、盤心的右上、左下是實心),銷伸進這一層、全程在窗裡", () => {
+  const def = m305.default;
+  const { PIVOT, DISC } = m305.geometry;
+  const sheet = part(def, "pendulum").pieces.find((p) => p.kind === "plate" && p.shape.holes?.length);
+  assert.ok(sheet, "擺上有一塊開窗的板");
+  assert.equal(sheet.shape.holes.length, 1, "叉瓦是一個窗(一塊)");
+  const hole = sheet.shape.holes[0];
+  const c = [DISC[0] - PIVOT[0], DISC[1] - PIVOT[1]];
+  const inHole = (dx, dy) => pointInPolygon([c[0] + dx, c[1] + dy], hole);
+  assert.ok(inHole(-0.3, 0.15) && inHole(0.3, -0.15), "左上、右下是窗");
+  assert.ok(!inHole(-0.3, -0.2) && !inHole(0.3, 0.2), "盤心的左下、右上是實心(兩道水平面、兩道垂直面)");
+  const disc = part(def, "disc");
+  const pin = disc.pieces.find((p) => p.accent);
+  const pz = [disc.center[2] + pin.at[2] - pin.length / 2, disc.center[2] + pin.at[2] + pin.length / 2];
+  const sz = [(sheet.at?.[2] ?? 0) - sheet.thickness / 2, (sheet.at?.[2] ?? 0) + sheet.thickness / 2];
+  assert.ok(pz[0] <= sz[0] && pz[1] >= sz[1], `銷(z ${pz.map((z) => z.toFixed(2)).join("–")})穿過叉瓦板的整個厚度(z ${sz.map((z) => z.toFixed(2)).join("–")})`);
+  const { PIN } = m305.geometry;
+  for (const v of sweep(2 * m305.escapement.period, 240)) {
+    const { plate } = pin305(v);
+    for (let k = 0; k < 24; k++) {
+      const q = [plate[0] + PIN.size * Math.cos((k * Math.PI) / 12), plate[1] + PIN.size * Math.sin((k * Math.PI) / 12)];
+      assert.ok(pointInPolygon(q, hole) || edgeDistance(q, hole) < 2e-3, `主動量 ${v.toFixed(3)}:銷伸出窗外`);
+    }
+  }
+});
+
+test("第 305 種:從正面看得到銷——圓盤、機架都沒有擋在銷的前面(原圖的銷畫在最前面)", () => {
+  const def = m305.default;
+  const disc = part(def, "disc");
+  const pin = disc.pieces.find((p) => p.accent);
+  const front = disc.center[2] + pin.at[2] + pin.length / 2;
+  const zmax = (piece, center) => center[2] + (piece.at?.[2] ?? 0) + (piece.kind === "box" ? piece.size[2] : piece.kind === "plate" ? piece.thickness : piece.length ?? 2 * piece.radius) / 2;
+  for (const v of sweep(m305.escapement.period, 16)) {
+    const { world } = pin305(v);
+    const g = def.pose(v).parts.disc.angle;
+    const covers = [
+      ...part(def, "frame").pieces.map((p) => ({ c: cover299(p), z: zmax(p, [0, 0, 0]) })),
+      ...disc.pieces.filter((p) => p !== pin).map((p) => ({ c: cover299(p, disc.center, g), z: zmax(p, disc.center) })),
+    ];
+    const over = covers.filter(({ c, z }) => z > front + 1e-9 && c.has(world[0], world[1]));
+    assert.equal(over.length, 0, `主動量 ${v.toFixed(3)}:銷被前面的零件蓋住`);
+  }
+});
+
+test("第 305 種:推斷的重錘驅動——圓盤軸上的鼓放出繩、經滑輪吊著重錘,重錘隨圓盤下降", () => {
+  const { DRUM, REWIND } = m305.geometry;
+  assertWeightDrive(m305.default, { drum: DRUM, wheel: m305.escapement.angle, period: m305.escapement.period, every: REWIND });
 });
 
 test("第 306 種:三腳式擺式擒縱:三腳輪的齒交替作用於上、下叉瓦,擺每擺一次轉六分之一圈", () => {
