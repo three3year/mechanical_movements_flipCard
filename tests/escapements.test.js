@@ -997,6 +997,101 @@ test("第 308 種:分離式擒縱:只在擺向左擺時由槓桿 Q 解鎖並接�
   apart(m308.escapement, "lever", "click");
 });
 
+/** 兩個多邊形的平面間隙(不相交時;相交回傳 0) */
+const gap308 = (a, b) => (polygonsOverlap(a, b) ? 0 : Math.min(...a.map((p) => edgeDistance(p, b)), ...b.map((p) => edgeDistance(p, a))));
+const zOf308 = (def, id, piece) => depth309(piece, part(def, id).center?.[2] ?? 0);
+
+test("第 308 種:槓桿 Q 照原圖是曲柄形的長槓桿——樞軸在輪的右上方,上臂末端從上方擋住輪頂的齒,長臂斜過輪的前面往下到 C", () => {
+  const def = m308.default;
+  const { W, R, QP } = m308.geometry;
+  assert.ok(QP[0] > W[0] + 0.5 * R && QP[1] > W[1] + 0.9 * R, `Q 的樞軸(${QP})在輪(${W})的右上方`);
+  // 輪被鎖住時(擺往右那一程),擋住輪的是輪頂的齒尖頂著 Q 上臂末端:間隙接近 0,輪再往前轉一點就撞進去
+  const T = m308.geometry.TRAVEL;
+  for (const v of sweep(2 * T, 8)) {
+    const { teeth, stops } = m308.escapement.at(v);
+    const lock = stops[0];
+    const k = teeth.findIndex((t) => gap308(t, lock) < 2e-3);
+    assert.ok(k >= 0, `主動量 ${v.toFixed(3)}:有一齒頂著 Q 的上臂`);
+    const tip = teeth[k].reduce((m, p) => (Math.hypot(p[0] - W[0], p[1] - W[1]) > Math.hypot(m[0] - W[0], m[1] - W[1]) ? p : m));
+    assert.ok(tip[1] > W[1] + 0.9 * R, `頂著 Q 的是輪頂的齒尖(y ${tip[1].toFixed(3)})`);
+    const w = m308.escapement.angle(v);
+    const ahead = placePoly(m308.default.parts[0].pieces[0].shape.outline, W, w - 0.01);
+    assert.ok(polygonsOverlap(ahead, lock), `主動量 ${v.toFixed(3)}:輪再往前(順時針)轉 0.01 就撞進 Q 的上臂`);
+  }
+  // 長臂在輪的前面一層,從樞軸斜下到輪的下方
+  const q = part(def, "leverQ");
+  const wheelFront = Math.max(...part(def, "wheel").pieces.filter((p) => p.kind === "plate").map((p) => zOf308(def, "wheel", p)[1]));
+  const long = q.pieces.find((p) => p.kind === "plate" && zOf308(def, "leverQ", p)[0] > wheelFront);
+  assert.ok(long, "Q 有一塊在輪的前面(長臂)");
+  const lowest = Math.min(...long.shape.outline.map((p) => q.center[1] + p[1]));
+  assert.ok(lowest < W[1] - R, `長臂(最低 y ${lowest.toFixed(2)})伸到輪的下方`);
+});
+
+test("第 308 種:Q 上臂末端的端面是以樞軸為圓心的弧、樞軸和齒尖一樣高,解鎖時端面沿自己抬起、不把輪推回——整個來回輪從不倒轉(轉向箭頭不反過來)", () => {
+  const ws = sweep(2 * m308.escapement.period, 2000).map(m308.escapement.angle);
+  const back = Math.max(...ws.slice(1).map((w, i) => w - ws[i]));
+  assert.ok(back <= 0, `輪倒轉了 ${back.toExponential(2)} rad`);
+});
+
+test("第 308 種:槓桿 Q 被彈簧壓回時靠在擋銷上——擋銷貼著上臂、在 Q 鎖住的那一側,和上臂同一層並往後伸到托架", () => {
+  const def = m308.default;
+  const { QP, Q_BANK } = m308.geometry;
+  const q = part(def, "leverQ");
+  const upper = q.pieces[0];
+  const at = (a) => placePoly(upper.shape.outline, QP, a);
+  const pin = disc309(Q_BANK.at, Q_BANK.r);
+  assert.ok(gap308(pin, at(0)) < 2e-3, `Q 靠在擋銷上時貼著(間隙 ${gap308(pin, at(0)).toFixed(4)})`);
+  assert.ok(polygonsOverlap(pin, at(0.01)), "Q 再往鎖住的方向(逆時針)轉就碰到擋銷");
+  assert.ok(!polygonsOverlap(pin, at(-0.01)), "Q 解鎖(順時針)時離開擋銷");
+  const frame = part(def, "frame").pieces;
+  const post = frame.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - Q_BANK.at[0], p.at[1] - Q_BANK.at[1]) < 1e-9);
+  assert.ok(post && meet309(depth309(post), zOf308(def, "leverQ", upper)), "擋銷和上臂在同一層");
+  assert.ok(frame.some((p) => p !== post && meet309(depth309(p), depth309(post)) && p.kind === "box" && Math.abs(p.at[0] - Q_BANK.at[0]) < 1e-9), "擋銷往後接到托架的臂");
+  // 整個來回 Q 都不穿進擋銷
+  for (const v of sweep(2 * m308.escapement.period, 240)) assert.ok(penetrationDepth(pin, at(def.pose(v).parts.leverQ.angle)) < 2e-3, `主動量 ${v.toFixed(3)}:Q 穿進擋銷`);
+});
+
+test("第 308 種:制動爪 C 兩側的擋銷——彈簧把尾巴壓在右邊的擋銷上(往左擺時頂著它推 Q),往一旁倒時倒到左邊的擋銷為止;擋銷立在橫桿上、和 C 同一層", () => {
+  const def = m308.default;
+  const { CP, C_BANK, C_STOP, C_YIELD, TRAVEL: T } = m308.geometry;
+  const click = part(def, "click");
+  const at = (c) => click.pieces.map((p) => placePoly(p.shape.outline, CP, c));
+  const near = (b, c) => Math.min(...at(c).map((p) => gap308(disc309([CP[0] + b.at[0], CP[1] + b.at[1]], b.r), p)));
+  assert.ok(near(C_BANK, 0) < 2e-3, `C 靠在右邊的擋銷上(間隙 ${near(C_BANK, 0).toFixed(4)})`);
+  assert.ok(near(C_BANK, -0.01) === 0, "C 再往推 Q 的反作用方向(順時針)轉就碰到右邊的擋銷");
+  assert.ok(near(C_STOP, C_YIELD) < 2e-3 && near(C_STOP, C_YIELD - 0.02) > 0, "C 倒到左邊的擋銷才停");
+  const yielded = Math.max(...sweep(2 * T, 200).map((v) => -m308.detached(v).click));
+  assert.ok(yielded > 0.1 && yielded < C_YIELD, `擺往右時 C 倒下 ${yielded.toFixed(3)}(碰不到左邊的擋銷 ${C_YIELD.toFixed(3)})`);
+  const pend = part(def, "pendulum");
+  const zc = zOf308(def, "click", click.pieces[0]);
+  for (const b of [C_BANK, C_STOP]) {
+    const pin = pend.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - CP[0] - b.at[0], p.at[1] - CP[1] - b.at[1]) < 1e-9);
+    const zb = depth309(pin);
+    assert.ok(pin && meet309(zb, zc), "擋銷和 C 在同一層");
+    assert.ok(meet309(zb, depth309(pend.pieces[0])), "擋銷往後立在橫桿上");
+  }
+});
+
+test("第 308 種:往左擺時是 C 的鉤尖推著 Q 的長臂末端——Q 被撥開的每一刻兩者間隙接近 0", () => {
+  const T = m308.geometry.TRAVEL;
+  const base = 2 * m308.escapement.period;
+  let pushed = 0;
+  for (const v of sweep(base + 4 * T, 600, base + 2 * T)) {
+    const before = m308.detached(v - 1e-3).lever;
+    if (m308.detached(v).lever <= before + 1e-6) continue;
+    const { lever, click } = m308.escapement.at(v);
+    const d = Math.min(...lever.flatMap((a) => click.map((b) => gap308(a, b))));
+    assert.ok(d < 3e-3, `主動量 ${v.toFixed(3)}:Q 被撥開時離 C ${d.toFixed(4)}`);
+    pushed++;
+  }
+  assert.ok(pushed > 10, "往左那一程 Q 有被撥開");
+});
+
+test("第 308 種:推斷的重錘驅動——擒縱輪軸上的鼓放出繩、經滑輪吊著重錘,重錘的拉力讓輪順時針轉", () => {
+  const { DRUM, REWIND } = m308.geometry;
+  assertWeightDrive(m308.default, { drum: DRUM, wheel: m308.escapement.angle, period: m308.escapement.period, every: REWIND, dir: -1 });
+});
+
 test("第 309 種:馬奇重力擒縱:擺每次擺動把其中一個加重的叉瓦抬起,返回時叉瓦落下", () => {
   const S = m309.SWING;
   const base = 2 * m309.escapement.period;
