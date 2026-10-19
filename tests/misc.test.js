@@ -1274,13 +1274,162 @@ test("第 372 種:懷特氏測功計:框架靜止時運動經水平齒輪傳到�
   close(free.carrier, 0.5, "框架跟著轉(負載擋住另一個齒輪時,轉一半)");
 });
 
+const d373 = m373.default;
+const STATES373 = ["light", "heavy"];
+// 零件局部座標的點換到世界座標(零件繞自己的 z 軸轉;沒給姿勢的零件在定義的位置)
+function at373(pose, id, local) {
+  const q = pose[id] ?? {};
+  const c = q.position ?? part(d373, id).center ?? [0, 0, 0];
+  const [x, y] = rot2(local, q.angle ?? 0);
+  return [c[0] + x, c[1] + y, c[2] + (local[2] ?? 0)];
+}
+const role373 = (id, role) => part(d373, id).pieces.filter((q) => q.role === role);
+const flat373 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
 test("第 373 種:羅伯特氏裝置:指示器的讀數不隨大輪轉速改變,只隨載重改變", () => {
-  const def = m373.default;
-  close(def.pose(0.5, "light").parts.needle.angle, def.pose(5, "light").parts.needle.angle, "速度不同,指示器不變");
-  assert.notEqual(def.pose(1, "light").parts.needle.angle, def.pose(1, "heavy").parts.needle.angle, "重量不同,指示器改變");
-  // 帶動大輪的皮帶輪(原圖伸出圖外,補上):皮帶不打滑,皮帶輪與大輪軸上的輪轂表面速度相同
-  const [p0, p1] = [def.pose(0).parts, def.pose(1).parts];
-  close((p1.pulley.angle - p0.pulley.angle) * 0.5, (p1.wheel.angle - p0.wheel.angle) * 0.55, "皮帶不打滑", 1e-9);
+  close(d373.pose(0.5, "light").parts.needle.angle, d373.pose(5, "light").parts.needle.angle, "速度不同,指示器不變");
+  assert.notEqual(d373.pose(1, "light").parts.needle.angle, d373.pose(1, "heavy").parts.needle.angle, "重量不同,指示器改變");
+});
+
+// #373-1:原圖小車底盤伸出一根直桿到刻度盤左側,盤裡是渦卷彈簧(英文 spiral spring)、指針在盤心
+test("第 373 種:直桿一端以銷接在小車上,另一端經繞在捲筒上的繩拉動與指針同軸的捲筒;桿長、繩長不變", () => {
+  assert.equal(part(d373, "rod")?.kind, "link", "小車到刻度盤是一根直桿");
+  const [lug] = role373("cart", "lug");
+  const [drum] = role373("needle", "drum");
+  const axis = part(d373, "needle").center;
+  const cordR = part(d373, "cord").radius;
+  const rows = STATES373.map((s) => {
+    const pose = d373.pose(1.3, s);
+    const { from, to } = pose.parts.rod;
+    close(dist(from, at373(pose.parts, "cart", lug.pin)), 0, `${s}:直桿以銷接在小車的耳上`, 1e-9);
+    const cord = pose.paths.cord.points;
+    close(dist(cord[0], to), 0, `${s}:繩接在直桿的另一端`, 1e-9);
+    // 繩從切點離開捲筒:切點之後每一點都貼在捲筒上,直段和半徑垂直,而且和直桿成一直線(拉力沿著桿)
+    for (const p of cord.slice(1)) close(flat373(p, axis), drum.radius + cordR, `${s}:繩繞在捲筒上`, 1e-9);
+    const straight = sub(cord[1], cord[0]);
+    close(dot(norm(straight), norm(sub(cord[1], axis))), 0, `${s}:繩沿切線離開捲筒`, 1e-9);
+    close(len(cross(norm(straight), norm(sub(to, from)))), 0, `${s}:繩與直桿成一直線`, 1e-9);
+    const end = cord[cord.length - 1];
+    return { rod: dist(from, to), cord: polyLength(cord), x: from[0], needle: pose.parts.needle.angle, anchor: Math.atan2(end[1] - axis[1], end[0] - axis[0]) };
+  });
+  const [light, heavy] = rows;
+  close(heavy.rod, light.rod, "桿長不變", 1e-9);
+  close(heavy.cord, light.cord, "繩長不變", 2e-3);
+  // 繩的固定端在捲筒上,跟著指針轉
+  close(heavy.anchor - light.anchor, heavy.needle - light.needle, "繩的固定端跟著捲筒與指針轉", 1e-9);
+  // 「重量的差異則會立即造成變化」:載重重時摩擦力大,小車與直桿被輪面往左帶得多,拉出的繩多,指針順時針多轉
+  assert.ok(heavy.x < light.x - 0.05, `載重重時小車往左多移(輕 ${light.x.toFixed(3)}、重 ${heavy.x.toFixed(3)})`);
+  assert.ok(heavy.needle < light.needle - 0.3, "指針順時針多轉");
+});
+
+test("第 373 種:載重改變時刻度盤與渦卷彈簧的外端不動,彈簧內端跟著指針的軸轉", () => {
+  const axis = part(d373, "needle").center;
+  const [stud] = role373("dial", "stud");
+  const wire = part(d373, "spring").radius;
+  const rows = STATES373.map((s) => {
+    const pose = d373.pose(0.4, s);
+    assert.equal(pose.parts.dial, undefined, `${s}:刻度盤固定,沒有姿勢`);
+    assert.ok(pose.paths.spring, "彈簧是盤裡的渦卷彈簧(路徑)");
+    const pts = pose.paths.spring.points;
+    const [inner, outer] = [pts[0], pts[pts.length - 1]];
+    close(flat373(outer, at373(pose.parts, "dial", stud.at)) - wire - stud.radius, 0, `${s}:彈簧外端靠在盤上的柱`, 1e-9);
+    return { outer, inner: Math.atan2(inner[1] - axis[1], inner[0] - axis[0]), needle: pose.parts.needle.angle };
+  });
+  const [light, heavy] = rows;
+  close(dist(heavy.outer, light.outer), 0, "彈簧外端(固定端)不動", 1e-9);
+  close(heavy.inner - light.inner, heavy.needle - light.needle, "彈簧內端跟著指針的軸轉", 1e-9);
+});
+
+test("第 373 種:盤右側的螺桿穿過右立柱上的孔,軸環與螺帽夾住立柱;盤底坐在立柱伸出的架子上", () => {
+  const dial = part(d373, "dial");
+  const frame = part(d373, "frame");
+  const [screw, collar, nut] = ["screw", "collar", "nut"].map((r) => pieceBox(role373("dial", r)[0], dial.center));
+  const posts = frame.pieces.filter((q) => q.role === "post").map((q) => pieceBox(q));
+  assert.ok(posts.length > 0, "右立柱");
+  const [x0, x1] = [Math.min(...posts.map((b) => b.lo[0])), Math.max(...posts.map((b) => b.hi[0]))];
+  assert.ok(screw.lo[0] < x0 && screw.hi[0] > x1, "螺桿穿過立柱");
+  close(collar.hi[0], x0, "軸環貼著立柱左面", 1e-9);
+  close(nut.lo[0], x1, "螺帽貼著立柱右面", 1e-9);
+  const apart = (a, b) => [0, 1, 2].some((k) => a.hi[k] <= b.lo[k] + 1e-9 || b.hi[k] <= a.lo[k] + 1e-9);
+  for (const b of posts) assert.ok(apart(b, screw), "螺桿從立柱的孔穿過,不碰立柱");
+  const [rim] = role373("dial", "rim");
+  const R = Math.max(...rim.shape.outline.map((p) => Math.hypot(p[0], p[1])));
+  const shelf = pieceBox(frame.pieces.find((q) => q.role === "shelf"));
+  close(shelf.hi[1], dial.center[1] - R, "盤底坐在架子上", 1e-9);
+  assert.ok(shelf.lo[0] < dial.center[0] && shelf.hi[0] >= x0 - 1e-9, "架子在盤底下、接到立柱");
+});
+
+// #373-3:原圖皮帶從大輪軸上四根彎輪輻的小輪往左上伸出圖外
+test("第 373 種:皮帶往左上接到天軸上的主動皮帶輪(推斷,原圖伸出圖外),天軸在吊架的軸承裡;皮帶不打滑,大輪逆時針轉", () => {
+  assert.equal(d373.driver.part, "drivePulley", "主動件是帶動皮帶的皮帶輪");
+  const drive = part(d373, "drivePulley");
+  const wheel = part(d373, "wheel");
+  assert.ok(drive.center[0] < wheel.center[0] - 2 && drive.center[1] > wheel.center[1] + 1, "主動皮帶輪在大輪的左上方");
+  close(turned(d373, "wheel", 0, 1) * m373.HUB, turned(d373, "drivePulley", 0, 1) * drive.radius, "皮帶不打滑", 1e-9);
+  assert.ok(turned(d373, "wheel", 0, 1) > 0, "大輪逆時針轉:輪頂往左,把小車往指示器的反方向帶");
+  const [shaft] = role373("drivePulley", "shaft");
+  const hanger = part(d373, "hanger");
+  const [bearing] = role373("hanger", "bearing");
+  const sb = pieceBox(shaft, drive.center);
+  const bb = pieceBox(bearing, hanger.center);
+  close(flat373(add(hanger.center, bearing.at), drive.center), 0, "軸承環和天軸同心", 1e-9);
+  assert.ok(shaft.radius < bearing.inner, "天軸在軸承環的孔裡");
+  assert.ok(sb.lo[2] <= bb.lo[2] && sb.hi[2] >= bb.hi[2], "天軸穿過軸承環");
+});
+
+test("第 373 種:大輪軸上皮帶繞的小輪以四根彎輪輻接到輪轂(原圖)", () => {
+  const [ring] = role373("wheel", "beltRing");
+  const [hub] = role373("wheel", "beltHub");
+  const [main] = role373("wheel", "hub");
+  const spokes = role373("wheel", "spoke");
+  assert.equal(spokes.length, 4, "四根輪輻");
+  const outer = Math.max(...ring.shape.outline.map((p) => Math.hypot(p[0], p[1])));
+  const inner = Math.min(...ring.shape.holes[0].map((p) => Math.hypot(p[0], p[1])));
+  close(outer, m373.HUB, "皮帶繞在小輪上", 1e-6);
+  const zs = (q) => {
+    const b = pieceBox(q);
+    return [b.lo[2], b.hi[2]];
+  };
+  const zTouch = (a, b) => a[0] <= b[1] + 1e-9 && b[0] <= a[1] + 1e-9;
+  assert.ok(zTouch(zs(hub), zs(main)), "小輪的輪轂接在大輪的輪轂上");
+  for (const s of spokes) {
+    const rs = s.shape.outline.map((p) => Math.hypot(p[0], p[1]));
+    assert.ok(Math.min(...rs) <= hub.radius && Math.max(...rs) >= inner, "輪輻從輪轂伸進輪環");
+    assert.ok(zTouch(zs(s), zs(hub)) && zTouch(zs(s), zs(ring)), "輪輻和輪轂、輪環在同一層");
+    // 彎輪輻:中心線的中點偏離兩端的連線
+    const [a, m, b] = s.line;
+    const off = Math.abs((b[0] - a[0]) * (m[1] - a[1]) - (b[1] - a[1]) * (m[0] - a[0])) / Math.hypot(b[0] - a[0], b[1] - a[1]);
+    assert.ok(off > 0.03, `輪輻是彎的(中點偏離 ${off.toFixed(3)})`);
+  }
+});
+
+// #373-4:原圖小車輪中心有軸頭
+test("第 373 種:小車輪有輪軸,軸穿過車斗下兩片軸架的孔;輪頂和底板留間隙;兩個狀態都壓在大輪輪面上", () => {
+  const wheel = part(d373, "wheel");
+  const [board] = role373("cart", "board");
+  assert.ok(board, "車斗的底板");
+  const boardBottom = board.at[1] - board.size[1] / 2;
+  for (const s of STATES373) {
+    const pose = d373.pose(0.7, s).parts;
+    for (const id of ["cartWheelL", "cartWheelR"]) {
+      const w = part(d373, id);
+      const c = pose[id].position;
+      close(flat373(c, wheel.center), m373.WHEEL.r + w.radius, `${s} ${id}:壓在大輪的輪面上`, 1e-9);
+      const [axle] = (w.pieces ?? []).filter((q) => q.role === "axle");
+      assert.ok(axle, `${id} 有輪軸`);
+      const ab = pieceBox(axle, c);
+      const hangers = role373("cart", "hanger").filter((q) => q.wheel === id);
+      assert.equal(hangers.length, 2, `${id} 兩側各一片軸架`);
+      for (const h of hangers) {
+        close(flat373(at373(pose, "cart", h.hole), c), 0, `${s} ${id}:軸架的孔和輪心同心`, 1e-9);
+        assert.ok(h.holeRadius > axle.radius, "軸在孔裡");
+        const z = pose.cart.position[2] + h.at[2];
+        assert.ok(ab.lo[2] < z - h.thickness / 2 && ab.hi[2] > z + h.thickness / 2, `${id}:輪軸穿過軸架`);
+      }
+      const local = toLocal(pose.cart, c);
+      assert.ok(boardBottom - (local[1] + w.radius) >= 0.03, `${s} ${id}:輪頂和底板留間隙`);
+    }
+  }
 });
 
 test("第 374 種:踏板上的滾子經無端皮帶帶動軸上的偏心輪:踏板上下一次,軸轉一圈", () => {
