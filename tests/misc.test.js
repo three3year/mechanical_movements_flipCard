@@ -63,6 +63,18 @@ import * as m401 from "../models/fig401.js";
 import * as m402 from "../models/fig402.js";
 import { penetrationDepth, polygonsOverlap, pointInPolygon, circlePolygon, edgeDistance, placeOutline } from "../models/contact.js";
 
+/**
+ * 螺紋的物理定義(viewer/parts.js 的 worm:hand +1 是右旋——螺紋沿局部 +z 往前時繞 +z 正轉):螺桿在固定的螺孔裡
+ * 繞自己的 +z 轉 dθ(右手定則),就沿 +z 前進 hand · 螺距 · dθ / 2π;左旋(hand −1)反過來。螺帽在固定的螺桿上
+ * 繞螺紋的 +z 轉 dθ 也一樣(兩者相對的螺旋運動)。
+ */
+const screwLead = (worm, turn) => ((worm.hand ?? 1) * worm.pitch * turn) / TAU;
+/** 群組零件 group 轉 dAngle(繞 group.axis)時,它的螺紋塊 worm(局部軸 worm.axis,省略為 z)在固定的螺孔裡往世界的哪裡前進 */
+const screwTravel = (group, worm, dAngle) => {
+  const w = partPoint([0, 0, 0], group.axis, 0, worm.axis ?? Z); // 螺紋的 +z 在世界裡的方向
+  return scale(w, screwLead(worm, dAngle * dot(w, norm(group.axis))));
+};
+
 test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓桿把橫移運動傳給導件 a、a 內的桿", () => {
   const xs = sweep(m350.RANGE[1], 20, m350.RANGE[0]).map((x) => m350.traverse(x).rod);
   assert.ok(xs.every((x, i) => i === 0 || x > xs[i - 1]), "下銷往右,桿也往右");
@@ -1628,13 +1640,25 @@ test("第 384 種:小輪在紙上純滾動——接觸紙面的那一點沿滾�
   }
 });
 
-test("第 384 種:小輪旋在螺紋軸上——沿軸前進的量 = 相對軸的自轉 × 螺距 / 2π,方向照螺紋的旋向", () => {
-  const worm = part(m384.default, "arm").pieces.find((q) => q.kind === "worm");
-  const hand = worm.hand ?? 1;
-  for (const [a, b] of [[0, 1], [3, 9], [9, 15]]) {
-    const h0 = m384.helicograph(a);
-    const h1 = m384.helicograph(b);
-    close(h1.d - h0.d, (hand * worm.pitch * (h1.spin - h0.spin)) / TAU, `ψ ${a} → ${b}:前進量對得上螺紋`, 1e-9);
+test("第 384 種:小輪旋在螺紋軸上——照小輪實際的轉動(轉向由上一條的純滾動鎖住)與螺紋的旋向(零件的 hand),螺紋把小輪沿臂往外推,渦線由內往外", () => {
+  const def = m384.default;
+  const arm = part(def, "arm");
+  const worm = arm.pieces.find((q) => q.kind === "worm");
+  const conj = ([x, y, z, w]) => [-x, -y, -z, w];
+  for (const psi of [1, 5, 10]) {
+    const e = 1e-5;
+    const a = def.pose(psi).parts.wheel;
+    const b = def.pose(psi + e).parts.wheel;
+    // 小輪這一步的轉動(世界座標的轉動向量):dq = q_b · q_a⁻¹,小角度時 ≈ 2·(x, y, z)
+    const dq = quatMul(b.rotation, conj(a.rotation));
+    const omega = scale([dq[0], dq[1], dq[2]], 2 * Math.sign(dq[3]));
+    // 螺紋的 +z 在世界裡的方向(臂的局部 → 世界);臂繞 +Y 轉,在這個水平方向上沒有分量,所以 omega 沿它的分量就是小輪相對螺紋軸的自轉
+    const u = partPoint([0, 0, 0], arm.axis, psi, worm.axis ?? Z);
+    const turn = dot(omega, u);
+    const along = dot(sub(b.position, a.position), u); // 小輪沿螺紋軸實際走的量
+    const lead = screwLead(worm, turn); // 螺帽照這個旋向轉這個角度,螺紋把它推的量
+    assert.ok(Math.abs(along - lead) < 1e-3 * Math.abs(lead), `ψ = ${psi}:小輪沿螺紋軸走 ${along.toExponential(3)},螺紋推 ${lead.toExponential(3)}`);
+    assert.ok(lead > 0, `ψ = ${psi}:照這個旋向與自轉,螺紋把小輪往外推(渦線由內往外)`);
   }
 });
 
@@ -2232,22 +2256,40 @@ const treads377 = (angle) => {
 };
 const psi = (p) => Math.atan2(p[2], p[1]);
 
-test("第 377 種:人在圓筒朝讀者那一側往上爬,重量對軸的力矩和圓筒的轉向同號(原文:藉由人們踩踏於周邊踏板上的重量而轉動),人那一側往下走", () => {
+test("第 377 種:人在圓筒朝讀者那一側往上爬,重量經支撐腳壓在踏板上,對軸的力矩和圓筒的轉向同號(原文:藉由人們踩踏於周邊踏板上的重量而轉動),人那一側往下走;重心在支撐腳上方", () => {
   const def = m377.default;
   const spin = turned(def, "drum", 0, 0.01);
   assert.ok(spin > 0, "圓筒繞 +x 轉:朝讀者(+z)那一側往下走");
+  const treadOuter = Math.max(...treads377(0).map((t) => Math.hypot(t.at[1], t.at[2]) + t.q.size[0] / 2));
+  // 重量經支撐腳傳到踏板:在腳和踏板的接觸點,重量 (0, −mg, 0) 對 x 軸的力矩 = −z · (−mg) = z · mg
+  const contacts = [];
+  for (const p of sweep(0.25, 200)) {
+    const pose = def.pose(p).parts;
+    for (const k of ["A", "B"]) {
+      const foot = pose[`shin${k}`].to;
+      const r = Math.hypot(foot[1], foot[2]);
+      if (r - part(def, `shin${k}`).width / 2 - treadOuter > 1e-9) continue; // 抬起的腳
+      const c = [foot[0], (foot[1] * treadOuter) / r, (foot[2] * treadOuter) / r]; // 腳底貼著踏板外緣的那一點
+      contacts.push(c);
+      assert.ok(c[2] > 0.3, `進程 ${p.toFixed(3)}:腳 ${k} 踩在 +z 那一側、離軸夠遠(z ${c[2].toFixed(2)})`);
+      assert.equal(Math.sign(c[2]), Math.sign(spin), "力矩和轉向同號");
+    }
+  }
+  // 重心(軀幹的中心)在支撐腳上方:支撐腳的接觸點從重心前面(圓筒那一側,z 小)被帶到重心後面,重心不在腳的外側
+  // (在腳外側就是往後仰、吊在橫桿上);而且不比接觸點的平均位置更往外(在支撐腳上方或略往圓筒那側)
   const person = part(def, "person");
   const torso = person.pieces.find((q) => q.role === "torso");
-  const z = person.center[2] + torso.at[2];
-  // 重量 (0, −mg, 0) 對 x 軸的力矩 = −z · (−mg) = z · mg
-  assert.ok(z > 0.6, `人的重心在 +z 那一側、離軸夠遠(z ${z.toFixed(2)})`);
-  assert.equal(Math.sign(z), Math.sign(spin), "力矩和轉向同號");
+  const com = person.center[2] + torso.at[2];
+  const zs = contacts.map((c) => c[2]);
+  const mean = zs.reduce((a, b) => a + b, 0) / zs.length;
+  assert.ok(com > Math.min(...zs) && com < Math.max(...zs), `重心 z ${com.toFixed(2)} 在支撐腳走過的範圍 ${Math.min(...zs).toFixed(2)}–${Math.max(...zs).toFixed(2)} 之內`);
+  assert.ok(com <= mean + 1e-9, `重心 z ${com.toFixed(2)} 不比支撐腳的平均位置(${mean.toFixed(2)})更往外`);
   const before = treads377(0).map((t) => psi(t.at));
   const after = treads377(0.01).map((t) => psi(t.at));
   assert.ok(after.every((a, i) => Math.sin(a - before[i]) > 0), "踏板往 ψ 增加的方向走:人那一側往下");
 });
 
-test("第 377 種:腳輪流踩在踏板上、跟著踏板往下走,抬起的腳往上邁;手扶著前上方的橫桿;腿的兩節長度不變", () => {
+test("第 377 種:腳輪流踩在踏板上、跟著踏板往下走,抬起的腳往上邁;手扶著前面的橫桿;腿的兩節長度不變", () => {
   const def = m377.default;
   const frame = part(def, "frame");
   const rail = frame.pieces.find((q) => q.role === "rail");
@@ -2450,7 +2492,7 @@ test("第 379 種:進料螺桿與鑽頭相對,把墊塊與工件往上頂向鑽�
   const padBox = pieceBox(pad);
   assert.ok(padBox.hi[2] - padBox.lo[2] < 0.2 && padBox.hi[2] - padBox.lo[2] < padBox.hi[1] - padBox.lo[1], "墊塊是扁平的板(原圖)");
   const rows = sweep(cramp.MAX, 200).map((t) => {
-    const s = d.pose(t).parts;
+    const s = d.pose(-t).parts; // 主動量是鑽頭的轉角,曲柄從上看順時針轉 t 是 −t
     const tip = spanY(bit, yOf(d, s, "drill"))[0];
     const workTop = s.work.position[1] + work.size[1] / 2;
     const workBottom = s.work.position[1] - work.size[1] / 2;
@@ -2459,14 +2501,20 @@ test("第 379 種:進料螺桿與鑽頭相對,把墊塊與工件往上頂向鑽�
     assert.ok(padBottom > cramp.ARMS.lower[1] + 1e-9, `曲柄轉 ${t.toFixed(2)}:墊塊在下臂上方`);
     const [w0, w1] = spanY(worm, s.screw.position[1]);
     assert.ok(w0 < cramp.ARMS.lower[0] && w1 > cramp.ARMS.lower[1], "進料螺桿一直旋在下臂裡");
-    return { t, gap: tip - workTop, screwY: s.screw.position[1], screwA: s.screw.angle };
+    return { t, gap: tip - workTop, screwY: s.screw.position[1], screwA: s.screw.angle, drillA: s.drill.angle };
   });
   assert.ok(rows.at(-1).screwY > rows[0].screwY, "下臂的進料螺桿往上頂");
+  assert.ok(rows.at(-1).drillA < rows[0].drillA, "鑽頭從上往下看順時針轉(繞 +Y 負轉):右旋鑽頭要這樣轉才切削");
   assert.ok(rows[0].gap > 0 && rows[0].gap < 0.3, `開始時工件在鑽尖下方不遠(${rows[0].gap.toFixed(3)})`);
   assert.ok(rows.at(-1).gap < -0.05, `行程結束時鑽尖低於工件頂面(鑽進去 ${(-rows.at(-1).gap).toFixed(3)})`);
   const meet = rows.find((r) => r.gap <= 0).t;
   assert.ok(meet > 0.2 * cramp.MAX && meet < 0.9 * cramp.MAX, "行程中段工件碰到鑽尖");
-  for (const r of rows) close(r.screwY - rows[0].screwY, ((r.screwA - rows[0].screwA) / TAU) * worm.pitch, "右旋螺桿旋在下臂的螺孔裡:從下面看順時針轉一圈往上一個螺距", 1e-9);
+  // 螺桿照它實際的轉角與螺紋的旋向(讀零件的 hand)在固定的螺孔裡前進,前進的方向是往上(頂向鑽頭)
+  for (const r of rows.slice(1)) {
+    const move = screwTravel(part(d, "screw"), worm, r.screwA - rows[0].screwA);
+    close(r.screwY - rows[0].screwY, move[1], `曲柄轉 ${r.t.toFixed(2)}:螺桿照螺紋的旋向在下臂的螺孔裡前進`, 1e-9);
+    assert.ok(move[1] > 0, "照這個旋向與轉向,螺桿往上走");
+  }
 });
 
 test("第 380 種:鑽頭心軸穿過進料螺桿中心,進料螺桿旋在上臂裡往下走、下端頂著心軸上的夾頭,把鑽頭送進工件", () => {
@@ -2482,8 +2530,9 @@ test("第 380 種:鑽頭心軸穿過進料螺桿中心,進料螺桿旋在上臂�
   const bit = role(drill, "bit");
   const work = part(d, "work");
   assert.ok(spindle.radius < worm.radius - worm.thread, "心軸比螺桿的芯細(螺桿中空,心軸從中間穿過)");
+  assert.ok((d.powered ?? []).includes("feedScrew"), "進料螺桿是外力來源:人另外轉它,它只靠下端面推著夾頭往下,傳不了轉動給心軸");
   const rows = sweep(cramp.MAX, 200).map((t) => {
-    const s = d.pose(t).parts;
+    const s = d.pose(-t).parts; // 主動量是鑽頭的轉角,曲柄從上看順時針轉 t 是 −t
     close(s.feedScrew.position[0], s.drill.position[0], "心軸與進料螺桿同軸(x)", 1e-9);
     close(s.feedScrew.position[2], s.drill.position[2], "心軸與進料螺桿同軸(z)", 1e-9);
     const ys = s.drill.position[1];
@@ -2496,12 +2545,16 @@ test("第 380 種:鑽頭心軸穿過進料螺桿中心,進料螺桿旋在上臂�
     const screwTop = Math.max(...fs.pieces.map((q) => spanY(q, yf)[1]));
     assert.ok(spanY(arm, ys)[0] > screwTop + 0.05, `曲柄轉 ${t.toFixed(2)}:曲柄臂在螺桿與橫柄上方轉,不切進去`);
     const workTop = work.center[1] + work.size[1] / 2;
-    return { gap: spanY(bit, ys)[0] - workTop, yf, a: s.feedScrew.angle, ys };
+    return { t, gap: spanY(bit, ys)[0] - workTop, yf, a: s.feedScrew.angle, ys, drillA: s.drill.angle };
   });
   close(work.center[1] - work.size[1] / 2, cramp.ARMS.lower[1], "工件擱在下臂上", 1e-9);
   assert.ok(rows.at(-1).yf < rows[0].yf, "進料螺桿往下走");
-  for (const r of rows) {
-    close(r.yf - rows[0].yf, ((r.a - rows[0].a) / TAU) * worm.pitch, "右旋螺桿旋在上臂的螺孔裡:從上面看順時針轉一圈往下一個螺距", 1e-9);
+  assert.ok(rows.at(-1).drillA < rows[0].drillA, "鑽頭從上往下看順時針轉(繞 +Y 負轉):右旋鑽頭要這樣轉才切削");
+  // 螺桿照它實際的轉角與螺紋的旋向(讀零件的 hand)在固定的螺孔裡前進,前進的方向是往下(把心軸送向工件)
+  for (const r of rows.slice(1)) {
+    const move = screwTravel(fs, worm, r.a - rows[0].a);
+    close(r.yf - rows[0].yf, move[1], `曲柄轉 ${r.t.toFixed(2)}:螺桿照螺紋的旋向在上臂的螺孔裡前進`, 1e-9);
+    assert.ok(move[1] < 0, "照這個旋向與轉向,螺桿往下走");
     close(r.ys - rows[0].ys, r.yf - rows[0].yf, "螺桿推著心軸一起往下", 1e-9);
   }
   assert.ok(rows[0].gap > 0 && rows[0].gap < 0.3, `開始時鑽尖在工件上方不遠(${rows[0].gap.toFixed(3)})`);
