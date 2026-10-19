@@ -120,6 +120,15 @@ function rightRope(psi, drum) {
 // 左繩:繩頭在左弧頭上端,貼著弧頭外緣繞到最左邊,鉛直垂下穿過球,球下還垂著 TAIL
 const TAIL = 1.05; // 球心以下的繩長
 const BALL_R = 0.22;
+const BALL_HOLE = ROPE_R + 0.005; // 球心鉛直的孔(繩從孔裡穿過)
+// 球的剖面:從孔的下緣沿球面繞到孔的上緣,孔壁(r = BALL_HOLE)把剖面封起來
+const BALL_PROFILE = (() => {
+  const top = Math.acos(BALL_HOLE / BALL_R);
+  return Array.from({ length: 25 }, (_, i) => {
+    const a = -top + (2 * top * i) / 24;
+    return [BALL_R * Math.cos(a), BALL_R * Math.sin(a)];
+  });
+})();
 const HANG0 = 2.0; // 樑在中間(psi = 0)時從弧頭最左邊到球心的距離
 function leftRope(psi) {
   const top = Math.PI - TIE + psi; // 繩頭的世界角
@@ -152,11 +161,12 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        // A 形架在飛輪後面,頂上的凸台托著樑的樞銷
+        // A 形架在飛輪後面,頂上的凸台(推斷)托著樑的樞銷
         { kind: "plate", shape: shape(thickLine([[-2.3, -2.6], [-0.6, 2.3], [1.1, -2.6]], 0.2)), thickness: 0.2, at: [0, 0, -0.65] },
         { kind: "plate", shape: shape(circle(0.22, PIVOT[0], PIVOT[1])), thickness: 0.2, at: [0, 0, -0.65] },
         spanBox(-2.3, 2.6, BASE_TOP - 0.2, BASE_TOP, -0.8, 0.2),
         // 樑的樞銷:從 A 形架穿過樑的輪轂,前端有銷頭擋住;銷上套一段隔套,讓樑貼著銷頭轉、不往後滑
+        // (凸台、隔套與銷頭都是推斷:原圖只畫出架頂的一個圓)
         { kind: "cylinder", radius: 0.08, length: 0.95, at: [PIVOT[0], PIVOT[1], -0.275] },
         { kind: "cylinder", radius: 0.13, length: 0.05, at: [PIVOT[0], PIVOT[1], 0.18] },
         { kind: "cylinder", radius: 0.14, inner: 0.08, length: 0.395, at: [PIVOT[0], PIVOT[1], -0.3525] },
@@ -212,7 +222,8 @@ export default {
     { id: "spring", kind: "rod", radius: SPRING.wire },
     { id: "ropeR", kind: "rope", radius: ROPE_R },
     { id: "ropeL", kind: "rope", radius: ROPE_R },
-    { id: "ball", kind: "sphere", radius: BALL_R },
+    // 球串在左繩上當握把:球心開了鉛直的孔,繩從孔裡穿過
+    { id: "ball", kind: "lathe", axis: [0, 1, 0], profile: BALL_PROFILE },
   ],
   // 動力重演:只推樑;飛輪靠摩擦定位,由棘爪推動(重演不比快慢,飛輪沒有動量、不會滑行)。
   // 每一程推完時,飛輪的位置和模型一樣:模型裡飛輪先滑行、被追上才推,重演裡沒有滑行、棘爪一開始就推,兩者推完都正好前進一程。
@@ -228,8 +239,6 @@ export default {
     // 就不再對得上重演裡棘輪的齒(下一程的比較沒有意義)
     expect: [{ at: 2 * SWING, part: "flywheel", label: "樑往一邊擺完:棘爪推著棘輪,飛輪前進一程", quote: "連接繩索的鼓輪會透過棘爪與棘輪將運動傳遞給該軸" }],
   },
-  // 球串在左繩上當握把:繩從球心的孔穿過(孔沒有畫出來),球下還垂著一段
-  waivers: [{ check: "interference", parts: ["ball", "ropeL"], reason: "左繩穿過球心的孔(孔沒有畫出來):球串在拉繩上當握把,球下還垂著一段繩(原圖)" }],
   driver: { part: "beam", type: "rotation", cycle: [-SWING, SWING] },
   target: "flywheel",
   view: { direction: [0.03, 0.05, 1] },

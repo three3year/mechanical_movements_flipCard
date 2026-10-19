@@ -323,9 +323,15 @@ class Session {
     if (id === this.state) return;
     const next = this.def.pose(this.value, id);
     // 轉角與皮帶相位以偏移量接續,切換瞬間不跳動;之後的轉向與比例仍完全依 pose。
-    // 定義標 posed 的零件(離合器的從動半、撥桿……)不接續,而是以短動畫轉到新狀態的姿勢
+    // 定義標 posed 的零件(離合器的從動半、撥桿……)不接續,而是以短動畫轉到新狀態的姿勢;
+    // posed 也可以是狀態 id 的陣列:只有切換進這些狀態時不接續(偏移歸零),切換進其他狀態時照樣接續
+    // (第 361 種的下方軸:脫開時停在原處,再接合時回到銷相碰的相位)
     for (const [pid, p] of Object.entries(next.parts)) {
-      if (this.objects.get(pid)?.part.posed) continue;
+      const posed = this.objects.get(pid)?.part.posed;
+      if (posed === true || (Array.isArray(posed) && posed.includes(id))) {
+        delete this.angleOffsets[pid];
+        continue;
+      }
       if (p.angle != null && this.lastAngles[pid] != null) this.angleOffsets[pid] = this.lastAngles[pid] - p.angle;
     }
     for (const [pid, p] of Object.entries(next.paths ?? {})) {
