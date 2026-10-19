@@ -3229,15 +3229,94 @@ test("第 393 種:拋光透鏡:杯子繞共同的軸轉,同時繞自己的軸轉
 });
 
 test("第 394 種:Parsons 無端齒條:框往復,小齒輪連續朝同一方向轉(把往復運動轉成旋轉)", () => {
-  const span = m394.RANGE[1] - m394.RANGE[0];
-  const ps = sweep(4 * span, 800).map((v) => m394.parsons(v));
+  const d = m394.default.driver;
+  const stroke = Math.abs(d.cycle[1] - d.cycle[0]); // 一程
+  const ps = sweep(8 * stroke, 800).map((v) => m394.parsons(v));
   assert.ok(ps.every((p, i) => i === 0 || p.pinion >= ps[i - 1].pinion - 1e-9), "小齒輪只朝一個方向轉");
   const xs = ps.map((p) => p.frame[0]);
-  close(Math.max(...xs) - Math.min(...xs), span, "框往復", 1e-6);
+  close(Math.max(...xs) - Math.min(...xs), m394.RANGE[1] - m394.RANGE[0], "框往復", 1e-6);
   const { LEN, C, RP } = m394.geometry;
-  close(m394.parsons(2 * span).pinion - m394.parsons(0).pinion, (2 * LEN + 2 * Math.PI * C) / RP, "框來回一次,小齒輪沿跑道滾一圈", 1e-6);
+  close(m394.parsons(2 * stroke).pinion - m394.parsons(0).pinion, (2 * LEN + 2 * Math.PI * C) / RP, "框來回一次,小齒輪沿跑道滾一圈", 1e-6);
+  close(m394.parsons(stroke).frame[0], m394.RANGE[1], "一程走完,框從一端到另一端", 1e-9);
   // 往一個方向時咬一排、往回時咬另一排:框跟著上下換位
-  assert.ok(m394.parsons(span / 2).frame[1] * m394.parsons(1.5 * span).frame[1] < 0, "兩個方向咬不同排的齒");
+  assert.ok(m394.parsons(stroke / 2).frame[1] * m394.parsons(1.5 * stroke).frame[1] < 0, "兩個方向咬不同排的齒");
+  // 原圖的箭頭:框往左走時咬上排的齒(小齒輪在框中線上方),小齒輪逆時針
+  const left = m394.parsons(1.5 * stroke);
+  assert.ok(left.frame[0] < m394.parsons(1.5 * stroke - 0.01).frame[0] && -left.frame[1] > 0, "框往左走時咬上排");
+});
+
+test("第 394 種:可作為擺動汽缸引擎中曲柄的替代——小齒輪(帶飛輪的輸出)等速轉時,框像曲柄帶的活塞一樣在兩端慢下來換向", () => {
+  const d = m394.default.driver;
+  const stroke = Math.abs(d.cycle[1] - d.cycle[0]);
+  const n = 2000;
+  const vs = sweep(2 * stroke, n);
+  const ps = vs.map((v) => m394.parsons(v));
+  const rates = ps.slice(1).map((p, i) => (p.pinion - ps[i].pinion) / (vs[i + 1] - vs[i]));
+  assert.ok(Math.max(...rates) / Math.min(...rates) < 1.02, `主動量等速時小齒輪轉速均勻(最大 / 最小 ${(Math.max(...rates) / Math.min(...rates)).toFixed(2)})`);
+  const speed = ps.slice(1).map((p, i) => Math.abs(p.frame[0] - ps[i].frame[0]) / (vs[i + 1] - vs[i]));
+  const mid = speed[Math.round(n / 4)];
+  close(speed[0] / mid, 0, "框在一端換向時速度接近 0", 0.05);
+  close(speed[Math.round(n / 2) - 1] / mid, 0, "框在另一端換向時速度接近 0", 0.05);
+});
+
+test("第 394 種:框上的齒與小齒輪全程咬合、不穿入(框的齒是框板內緣的一部分)", async () => {
+  const { gearProfile } = await import("../models/shapes.js");
+  const frame = part(m394.default, "frame");
+  const pinion = part(m394.default, "pinion");
+  const front = frame.pieces[0];
+  assert.equal(front.kind, "plate");
+  const hole = front.shape.holes[0];
+  const prof = gearProfile({ teeth: pinion.teeth, radius: pinion.radius });
+  const d = m394.default.driver;
+  const stroke = Math.abs(d.cycle[1] - d.cycle[0]);
+  // 簡化的梯形齒(齒側是直線)在直線段咬合時,框的齒尖擦進小齒輪約 0.008
+  let nearest = Infinity;
+  for (const v of sweep(2 * stroke, 400)) {
+    const pose = m394.default.pose(v).parts;
+    const [fx, fy] = pose.frame.position;
+    const placed = placeOutline(prof, [-fx, -fy], pose.pinion.angle); // 框的座標
+    for (const p of placed) {
+      const gap = edgeDistance(p, hole);
+      if (!pointInPolygon(p, hole)) assert.ok(gap < 0.01, `主動量 ${v.toFixed(3)}:小齒輪的齒穿進框 ${gap.toFixed(4)}`);
+      else nearest = Math.min(nearest, gap);
+    }
+    for (const q of hole) if (Math.hypot(q[0] + fx, q[1] + fy) < 0.6 && pointInPolygon(q, placed)) assert.ok(edgeDistance(q, placed) < 0.01, `主動量 ${v.toFixed(3)}:框的齒穿進小齒輪`);
+  }
+  assert.ok(nearest < 0.02, "小齒輪的齒碰得到框的齒");
+  assertOnePiece({ pieces: frame.pieces.filter((q) => q.kind === "plate") }, "框板、齒與溝的台階是同一件");
+});
+
+test("第 394 種:小齒輪兩個直徑不同的同心凸緣比小齒輪大,各沿框側邊的一道溝走(凸緣貼著溝壁、不穿入)", () => {
+  const frame = part(m394.default, "frame");
+  const pinion = part(m394.default, "pinion");
+  const tip = pinion.radius + (2 * pinion.radius) / pinion.teeth;
+  const flanges = pinion.pieces.filter((q) => q.kind === "cylinder" && q.radius > tip);
+  assert.equal(flanges.length, 2, "兩個比小齒輪齒尖大的凸緣");
+  assert.ok(Math.abs(flanges[0].radius - flanges[1].radius) > 0.1, "兩個凸緣直徑不同");
+  const layers = plateLayers(frame);
+  const front = layers[0];
+  const d = m394.default.driver;
+  const stroke = Math.abs(d.cycle[1] - d.cycle[0]);
+  for (const f of flanges) {
+    const [z0, z1] = [f.at[2] - f.length / 2, f.at[2] + f.length / 2];
+    assert.ok(z1 <= front.z0 + 1e-9, "凸緣在齒的後面(原圖上排齒後面的虛線)");
+    const groove = layers.filter((l) => l.z0 < z1 - 1e-9 && z0 < l.z1 - 1e-9);
+    assert.ok(groove.length > 0, "凸緣那一層有框的溝");
+    for (const v of sweep(2 * stroke, 120)) {
+      const [fx, fy] = m394.default.pose(v).parts.frame.position;
+      const c = [-fx, -fy];
+      const disc = circlePolygon(c, f.radius, 96);
+      let gap = Infinity;
+      for (const l of groove) {
+        assert.ok(penetrationDepth(disc, l.solid) < 2e-3, `主動量 ${v.toFixed(2)}:凸緣(半徑 ${f.radius})穿進溝壁`);
+        gap = Math.min(gap, ...l.solid.holes.map((h) => Math.min(...disc.map((p) => edgeDistance(p, h)))));
+      }
+      assert.ok(gap < 0.012, `主動量 ${v.toFixed(2)}:凸緣貼著溝壁(間隙 ${gap.toFixed(4)})`);
+      // 凸緣伸進齒條側邊:凸緣最外的那一點在齒根之外,躲在框板後面
+      const far = [c[0], c[1] + Math.sign(c[1] || 1) * f.radius];
+      if (Math.abs(c[1]) > 0.99 * m394.geometry.C) assert.ok(inSolid(far, front.solid), `主動量 ${v.toFixed(2)}:凸緣伸到齒根外的框板後面`);
+    }
+  }
 });
 
 test("第 395 種:四通旋塞:閥塞轉 1/4 圈,進汽與排汽的端互換", () => {
@@ -3250,6 +3329,59 @@ test("第 395 種:四通旋塞:閥塞轉 1/4 圈,進汽與排汽的端互換", (
   const flows1 = m395.default.pose(0.7).flows;
   assert.ok(flows0.length === 2 && flows1.length === 2, "兩個位置都有進汽與排汽");
   assert.equal(m395.default.pose(0.45).flows.length, 0, "轉換時不流動");
+});
+
+test("第 395 種:假設蒸汽從頂端進入,上方的圖中廢汽從汽缸的右端排出,下方的圖中從左端排出(蒸汽從相反的一端進入)", () => {
+  const { R, CYLINDER } = m395.geometry;
+  const atEnd = (p, side) => Math.abs(p[1] - CYLINDER.y) < CYLINDER.radius && Math.sign(p[0]) === side && Math.abs(p[0]) > CYLINDER.half - 0.6;
+  for (const [pos, exhaustEnd] of [[0, 1], [1, -1]]) {
+    const routes = m395.routes(pos);
+    const steam = routes.find((r) => r[0][1] > R);
+    const exhaust = routes.find((r) => r[r.length - 1][1] < -R && Math.abs(r[r.length - 1][0]) < 1e-9); // 從下方的管口出去
+    assert.ok(steam && exhaust, `位置 ${pos}:一道從上方進汽、一道從下方排汽`);
+    assert.ok(atEnd(exhaust[0], exhaustEnd), `位置 ${pos}:廢汽從汽缸的${exhaustEnd > 0 ? "右" : "左"}端出來`);
+    assert.ok(atEnd(steam[steam.length - 1], -exhaustEnd), `位置 ${pos}:蒸汽進到汽缸的另一端`);
+  }
+  // 蒸汽進入的那一端推活塞:位置 0 的時候蒸汽進左端,活塞往右走;位置 1 往左走
+  const piston = (p) => m395.default.pose(p).parts.piston.position[0];
+  assert.ok(piston(0.35) > piston(0.05), "位置 0:蒸汽進左端,活塞往右");
+  assert.ok(piston(0.85) < piston(0.55), "位置 1:蒸汽進右端,活塞往左");
+  close(piston(0.42), piston(0.48), "旋塞轉換時活塞停在一端", 1e-9);
+});
+
+test("第 395 種:閥塞的兩道通道各從一個口彎到相鄰的口;通道壁畫在閥塞盤面上,流動沿著通道走", () => {
+  const { R, PLUG_R, HALF_W } = m395.geometry;
+  const plug = part(m395.default, "plug");
+  const layers = plateLayers(plug);
+  const disc = layers[0];
+  // 通道壁坐在盤面上、在盤之內
+  for (const l of layers.slice(1)) {
+    assert.ok(l.solid.outline.every(([x, y]) => Math.hypot(x, y) <= PLUG_R + 1e-9), "通道壁在閥塞盤之內");
+  }
+  assertOnePiece(plug, "閥塞盤、通道壁與中央的方塊是同一件");
+  for (const pos of [0, 1]) {
+    const a = pos * Math.PI / 2;
+    for (const route of m395.routes(pos)) {
+      const inside = route.filter(([x, y]) => Math.hypot(x, y) < R - 0.05);
+      assert.ok(inside.length > 4, "流動經過閥塞");
+      // 閥塞局部座標下,通道的中心弧以閥殼外的角為圓心、半徑 R(從一個口彎到相鄰的口)
+      const local = inside.map((p) => rot2(p, -a));
+      const corner = local[Math.floor(local.length / 2)][0] < 0 ? [-R, R] : [R, -R];
+      for (const p of local) close(Math.hypot(p[0] - corner[0], p[1] - corner[1]), R, `位置 ${pos}:流動沿通道的中心弧`, 0.02);
+      // 流動在通道的兩道壁之間(壁的內緣到中心弧各 HALF_W)
+      for (const p of local) {
+        const onWall = layers.slice(1).some((l) => inSolid([p[0], p[1]], l.solid));
+        assert.ok(!onWall, `位置 ${pos}:流動穿過通道壁`);
+      }
+      // 通道的兩端對準口:進出閥塞的點在口的中心(上、下、左、右)
+      const ends = [route.find(([x, y]) => Math.hypot(x, y) <= R + 1e-9), [...route].reverse().find(([x, y]) => Math.hypot(x, y) <= R + 1e-9)];
+      for (const e of ends) {
+        const ang = Math.atan2(e[1], e[0]) / (Math.PI / 2);
+        close(ang, Math.round(ang), `位置 ${pos}:通道的一端對準口`, 0.02);
+      }
+    }
+  }
+  assert.ok(HALF_W > 0 && disc.z1 <= Math.min(...layers.slice(1).map((l) => l.z0)) + 1e-9, "通道壁在盤面前面");
 });
 
 test("第 396 種:Reed 擒縱:圓盤銷撥槓桿換邊;擺輪一個來回,叉瓦放走擒縱輪一齒(由接觸算)", () => {
@@ -3271,21 +3403,78 @@ test("第 396 種:Reed 擒縱:圓盤銷撥槓桿換邊;擺輪一個來回,叉瓦
 
 test("第 397 種:連續圓周運動 → 間歇的直線往復運動;擺桿的角度由曲柄銷在槽裡的位置決定", () => {
   const T = 2 * Math.PI;
-  const angles = sweep(T, 360).map((t) => m397.lever(t).angle);
-  const still = angles.slice(1).filter((a, i) => Math.abs(a - angles[i]) < 1e-9).length;
-  assert.ok(still > 150, "曲柄轉半圈時擺桿停住(間歇)");
-  close(Math.max(...angles.map(Math.abs)), m397.SWING, "擺幅 = 2·asin(曲柄半徑 / 樞軸到曲柄軸的距離)", 1e-3);
+  const n = 720;
+  const angles = sweep(T, n).map((t) => m397.lever(t).angle);
+  // 間歇:有一段擺桿停住(銷走過和曲柄圓同心的那段槽),其餘時候擺出去再擺回來
+  const still = angles.slice(1).map((a, i) => Math.abs(a - angles[i]) < 1e-9);
+  const dwell = still.filter(Boolean).length / n;
+  assert.ok(dwell > 0.2 && dwell < 0.6, `每圈有一段停住(停 ${(dwell * 360).toFixed(0)}°)`);
+  let runs = 0;
+  for (let i = 0; i < still.length; i++) if (still[i] && !still[(i - 1 + still.length) % still.length]) runs++;
+  assert.equal(runs, 1, "每圈停一次、擺一個來回");
   const xs = angles.map((a) => m397.slide(a).x);
-  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.5, "滑桿往復");
-  // 銷始終在槽的中心線上(擺桿局部座標)
-  const { PIVOT, L, CRANK } = m397.geometry;
-  for (const t of sweep(T, 72)) {
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 1, "滑桿往復");
+  const { PIVOT } = m397.geometry;
+  const pinLocal = (t) => {
     const { angle } = m397.lever(t);
     const [px, py] = m397.pinAt(t);
-    const [dx, dy] = [px - PIVOT[0], py - PIVOT[1]];
-    const [qx, qy] = [dx * Math.cos(-angle) - dy * Math.sin(-angle), dx * Math.sin(-angle) + dy * Math.cos(-angle)];
-    close(Math.hypot(qx, qy - L), CRANK.r, `曲柄 ${t.toFixed(2)}:銷在槽上`, 1e-9);
-    assert.ok(qx <= 1e-9, "銷在槽的那半圈(左半圈)");
+    return rot2([px - PIVOT[0], py - PIVOT[1]], -angle);
+  };
+  // 銷始終在槽的中心線上(擺桿局部座標);停住的時候銷沿槽走
+  const slot = m397.SLOT;
+  const onSlot = (q) => Math.min(...slot.slice(1).map((b, i) => {
+    const a = slot[i];
+    const ab = [b[0] - a[0], b[1] - a[1]];
+    const u = Math.max(0, Math.min(1, ((q[0] - a[0]) * ab[0] + (q[1] - a[1]) * ab[1]) / (ab[0] ** 2 + ab[1] ** 2)));
+    return Math.hypot(q[0] - a[0] - u * ab[0], q[1] - a[1] - u * ab[1]);
+  }));
+  for (const t of sweep(T, 144)) assert.ok(onSlot(pinLocal(t)) < 1e-4, `曲柄 ${t.toFixed(2)}:銷在槽上`); // SLOT 是折線,弦離圓弧約 1e-5
+  // 銷全程在槽孔裡,不穿進擺桿的任何一塊(槽的兩端也容得下銷)
+  const plates = part(m397.default, "lever").pieces.filter((q) => q.kind === "plate").map((q) => q.shape);
+  for (const t of sweep(T, 720)) {
+    const disc = circlePolygon(pinLocal(t), m397.PIN_R, 24);
+    for (const sh of plates) assert.ok(penetrationDepth(disc, sh) < 1e-6, `曲柄 ${t.toFixed(3)}:銷穿進擺桿`);
+  }
+  const dwellAt = sweep(T, n).filter((_, i) => i < n && still[i]);
+  const moved = Math.hypot(...[0, 1].map((k) => pinLocal(dwellAt[0])[k] - pinLocal(dwellAt[dwellAt.length - 1])[k]));
+  assert.ok(moved > 1, "停住時銷沿槽走");
+  // 連桿長度不變
+  for (const t of sweep(T, 36)) {
+    const r = m397.default.pose(t).parts.rod;
+    close(Math.hypot(r.to[0] - r.from[0], r.to[1] - r.from[1]), m397.geometry.ROD, "連桿長度不變", 1e-9);
+  }
+});
+
+test("第 397 種:照原圖的比例:曲柄半徑約擺桿長的 0.3,曲柄軸在擺桿中心線的右邊", () => {
+  const { PIVOT, CRANK, ARM } = m397.geometry;
+  close(CRANK.r / ARM, 0.31, "曲柄半徑 ÷ 擺桿長(原圖 94 ÷ 305)", 0.03);
+  assert.ok(CRANK.center[0] - PIVOT[0] > 0.12 * ARM, "曲柄軸在擺桿停住時的中心線右邊(原圖右邊 55 px,擺桿長 305 px)");
+  // 停住時槽和曲柄銷的圓同心:槽的中段離曲柄軸都是曲柄半徑
+  const mid = m397.SLOT.filter(([x, y]) => Math.hypot(x - (CRANK.center[0] - PIVOT[0]), y - (CRANK.center[1] - PIVOT[1])) < CRANK.r + 1e-6 && Math.hypot(x - (CRANK.center[0] - PIVOT[0]), y - (CRANK.center[1] - PIVOT[1])) > CRANK.r - 1e-6);
+  assert.ok(mid.length > 10, "槽的一段是曲柄銷的圓");
+});
+
+test("第 397 種:機架是一件:滑桿的導軌與曲柄的軸承柱都站在底座上;滑桿全程在導套裡", () => {
+  const frame = part(m397.default, "frame");
+  assertOnePiece(frame, "機架");
+  const base = frame.pieces[0];
+  const floor = base.at[1] - base.size[1] / 2;
+  assert.ok(frame.pieces.every((q) => pieceBox(q).lo[1] >= floor - 1e-9), "底座是最低的一塊(落地)");
+  const bar = part(m397.default, "bar");
+  const body = bar.pieces[0];
+  const guides = frame.pieces.filter((q) => q.role === "guide");
+  assert.ok(guides.length >= 2, "滑桿有導套");
+  for (const t of sweep(2 * Math.PI, 72)) {
+    const [bx, by] = m397.default.pose(t).parts.bar.position;
+    const b = pieceBox(body, [bx, by, 0]);
+    for (const g of guides) {
+      const gb = pieceBox(g);
+      assert.ok(b.lo[0] <= gb.lo[0] && gb.hi[0] <= b.hi[0], `曲柄 ${t.toFixed(2)}:滑桿穿過導套`);
+    }
+    const ys = guides.map((g) => pieceBox(g));
+    const above = Math.min(...ys.filter((g) => g.lo[1] >= b.hi[1] - 1e-9).map((g) => g.lo[1] - b.hi[1]));
+    const below = Math.min(...ys.filter((g) => g.hi[1] <= b.lo[1] + 1e-9).map((g) => b.lo[1] - g.hi[1]));
+    assert.ok(above < 0.01 && below < 0.01, `曲柄 ${t.toFixed(2)}:導套上下夾著滑桿`);
   }
 });
 
