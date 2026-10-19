@@ -32,6 +32,19 @@ const PROXY_MATERIAL = new THREE.MeshBasicMaterial();
 let shared = null;
 let active = null;
 
+const tmpTwist = new THREE.Quaternion();
+
+// 只給 rotation(四元數)、沒給 angle 的零件:由前後兩次的朝向算繞零件自己的軸(局部 Z)轉了多少
+// (前後朝向之差在局部座標裡的 swing-twist 分解取 twist),累加起來當轉角,給轉向箭頭用
+function spun(entry, quaternion) {
+  if (!entry.spin) entry.spin = { angle: 0, last: quaternion.clone() };
+  const d = tmpTwist.copy(entry.spin.last).invert().multiply(quaternion);
+  if (d.w < 0) d.set(-d.x, -d.y, -d.z, -d.w);
+  entry.spin.angle += 2 * Math.atan2(d.z, d.w);
+  entry.spin.last.copy(quaternion);
+  return entry.spin.angle;
+}
+
 function getShared() {
   if (shared) return shared;
   const canvas = document.createElement("canvas");
@@ -394,6 +407,8 @@ class Session {
       const angle = (p.angle ?? 0) + (this.angleOffsets[id] ?? 0);
       this.lastAngles[id] = angle;
       placement(part, baseQuat, p, angle, place);
+      if (p.rotation && p.angle == null) this.lastAngles[id] = spun(entry, place.quaternion);
+      else entry.spin = null;
       const from = tr && t < 1 ? tr.objects[id] : null;
       if (from) {
         object.position.lerpVectors(from.position, place.position, t);
@@ -488,7 +503,9 @@ class Session {
     const q = new THREE.Quaternion();
     const local = new THREE.Vector3();
     for (const a of this.arrows) {
-      const { object, baseQuat } = this.objects.get(a.id);
+      const { object, baseQuat: base, spin } = this.objects.get(a.id);
+      // 以 rotation 擺放的零件,軸(局部 Z)跟著朝向走:箭頭照零件現在的朝向擺(繞軸的轉角由下面朝鏡頭的轉角抵掉)
+      const baseQuat = spin ? object.quaternion : base;
       if (driverMoved) {
         const turned = this.lastAngles[a.id] - (prevAngles[a.id] ?? this.lastAngles[a.id]);
         a.holder.visible = Math.abs(turned) > 1e-7 && object.visible;

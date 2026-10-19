@@ -6,9 +6,15 @@ import { X, Y, Z, TAU, quatMul, quatAxisAngle, quatFromZ } from "./kit.js";
 import { shape, circle, thickLine } from "./shapes.js";
 
 const F = [-1.3, 0.75, 0]; // 樞軸 F(立柱 G 頂端)
-const ARM = 1.55; // F 到碟片中心
+export const ARM = 1.55; // F 到碟片中心
 export const SPIN_PER_TURN = 24; // 進動一圈,碟片自轉的圈數
 const R = 1.05;
+export const RING_OUTER = 1.3; // 環 A 的外半徑、內半徑與寬度(沿鉛直方向)
+export const RING_INNER = 1.2;
+export const RING_WIDTH = 0.12;
+export const F_BALL = 0.09; // F 的球
+// F 臂(環 A 的局部座標,F 在原點):從 F 的球往上彎、再彎下來接到環的左側(照原圖)
+export const F_ARM = [[0, 0.05], [0.12, 0.25], [0.3, 0.25], [0.3, 0]];
 
 /** 進程 p → 進動角、碟片中心、碟片的自轉角 */
 export function gyro(p) {
@@ -19,11 +25,11 @@ export function gyro(p) {
 
 // 環 A 與 F 臂(局部座標:F 在原點,碟片軸沿 +x)
 const ringA = [
-  { kind: "cylinder", axis: Y, radius: 1.3, inner: 1.2, length: 0.12, at: [ARM, 0, 0] },
+  { kind: "cylinder", axis: Y, radius: RING_OUTER, inner: RING_INNER, length: RING_WIDTH, at: [ARM, 0, 0] },
   { kind: "cylinder", axis: X, radius: 0.12, length: 0.3, at: [ARM - 1.25, 0, 0] },
   { kind: "cylinder", axis: X, radius: 0.12, length: 0.3, at: [ARM + 1.25, 0, 0] },
-  { kind: "plate", shape: shape(thickLine([[0, 0.05], [0.12, 0.25], [0.3, 0.25]], 0.08)), thickness: 0.08 },
-  { kind: "sphere", radius: 0.09 },
+  { kind: "plate", shape: shape(thickLine(F_ARM, 0.08)), thickness: 0.08 },
+  { kind: "sphere", radius: F_BALL },
 ];
 
 export default {

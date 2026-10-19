@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep } from "./helpers.js";
+import { deg, quatMul, quatRotate } from "../models/kit.js";
 
 import * as m350 from "../models/fig350.js";
 import * as m351 from "../models/fig351.js";
@@ -127,10 +128,35 @@ test("第 355 種:陀螺儀:碟片高速旋轉時不掉落,而是繞鉛直軸轉
   close(m355.gyro(1).spin, 2 * Math.PI * m355.SPIN_PER_TURN, "碟片自轉遠快於進動");
 });
 
-test("第 356 種:Bohnenberger 陀螺儀:不論環的位置怎麼改變,球的軸始終朝同一方向", () => {
-  for (const a of sweep(2 * Math.PI, 24)) {
-    const { axis } = m356.gimbal(a);
-    for (let k = 0; k < 3; k++) close(axis[k], m356.AXIS[k], "球軸方向不變", 1e-9);
+test("第 355 種:環 A 的樞軸 F 以臂接在環上:臂從 F 的球出發,末端落在環的寬度與厚度裡", () => {
+  const arm = m355.F_ARM;
+  assert.ok(Math.hypot(...arm[0]) < m355.F_BALL, "臂的起點在 F 的球裡");
+  const [x, y] = arm.at(-1);
+  const r = Math.abs(x - m355.ARM);
+  assert.ok(r >= m355.RING_INNER && r <= m355.RING_OUTER, `末端到環心 ${r}`);
+  assert.ok(Math.abs(y) <= m355.RING_WIDTH / 2, `末端在環的寬度裡 ${y}`);
+});
+
+test("第 356 種:Bohnenberger 陀螺儀:整台儀器傾斜時三個環的位置跟著改變,球的軸始終朝同一方向", () => {
+  const tilts = sweep(m356.TILT, 24, -m356.TILT);
+  const rel = (a, b) => quatMul([-a[0], -a[1], -a[2], a[3]], b);
+  const same = (u, v, msg) => u.forEach((c, k) => close(c, v[k], msg, 1e-9));
+  for (const t of tilts) {
+    const g = m356.instrument(t);
+    same(quatRotate(g.qBall, [0, 0, 1]), m356.AXIS, "球軸方向不變");
+    same(quatRotate(g.qA, [0, 0, 1]), [0, 0, 1], "A 隨座繞水平的耳軸傾斜");
+    same(quatRotate(rel(g.qA, g.qA1), [0, 1, 0]), [0, 1, 0], "A¹ 只繞 A 頂端與底端的樞軸(A 的局部 Y)轉");
+    same(quatRotate(rel(g.qA1, g.qA2), [0, 0, 1]), [0, 0, 1], "A² 只繞 A¹ 側面的樞軸(A¹ 的局部 Z)轉");
+    same(quatRotate(rel(g.qA2, g.qBall), [0, 0, 1]), [1, 0, 0], "球軸在 A² 的局部 X(兩端進 A² 的軸承)");
+  }
+  const span = (key) => Math.max(...tilts.map((t) => m356.instrument(t)[key])) - Math.min(...tilts.map((t) => m356.instrument(t)[key]));
+  assert.ok(span("beta") > deg(3) && span("gamma") > deg(20), "A¹、A² 各自真的轉了,不是跟著座一起傾斜");
+});
+
+test("第 356 種:三個環之間的樞銷都伸進相接的兩個環(樞銷的徑向範圍蓋住外環的內緣與內環的外緣)", () => {
+  for (const { from, to, outer, inner } of m356.PIVOTS) {
+    assert.ok(from < inner.outer && from >= inner.inner - 1e-9, `樞銷伸進內環 ${from}`);
+    assert.ok(to > outer.inner, `樞銷伸進外環 ${to}`);
   }
 });
 
