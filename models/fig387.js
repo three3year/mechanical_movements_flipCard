@@ -1,27 +1,44 @@
-// 第 387 種:有潮汐漲落的碼頭用的自動調整階梯。梯子的上端以樞軸接在碼頭上,下端放在浮在水面的小船上;踏階的一邊以樞軸接在
-// 梯幫上,另一邊由吊在扶手木條上的桿件撐著(平行四邊形),所以不論梯子擺到什麼角度,踏階都保持水平。
+// 第 387 種:有潮汐漲落的碼頭用的自動調整階梯。梯子的上端以樞軸接在碼頭上,下端鉸在浮在水面的小船的立柱上;踏階的一邊以樞軸
+// 接在梯幫上,另一邊由吊在扶手木條上的桿件撐著(平行四邊形),所以不論梯子擺到什麼角度,踏階都保持水平。
 // 主動件是虛擬的「水位」(平衡型):水位越低,梯子越陡。
-// 推斷:梯子的長度與水位的範圍;小船以填色的水托著。
-// 梯子的下端只是擱在小船的甲板上(靠梯子的自重),水位升降時小船把梯子頂起、或梯子跟著小船落下(動力重演:梯幫是繞上端樞軸
-// 自由擺動的零件,只受重力與小船的支撐)。扶手的上端以銷接在岸上欄杆的立柱上(推斷;原圖只畫到扶手貼著立柱)。
-import { clamp } from "./kit.js";
+//
+// 照原圖(2026-10-20 改):小船上立著一根帶圓頭的立柱,梯幫與扶手的下端各以一個銷鉸在這根立柱上;岸邊那一端同樣由兩個銷
+// 接在碼頭上(下銷在岸邊伸出的兩片耳板上、上銷在耳板上立的一根柱上)。兩個銷的間距都是 RAIL_UP、上下對齊,所以扶手在梯幫的
+// 正上方,梯幫、扶手、兩根立柱構成平行四邊形,小船怎麼升降,扶手都和梯幫平行。踏階照原圖右端鉸在梯幫上、往左伸,
+// 左端由斜吊桿吊到扶手上踏階樞軸的正上方(吊桿、踏階、梯幫、扶手又是一個平行四邊形,踏階保持水平)。
+// 水位最高時梯子水平(原圖上圖),最低時斜 40°(原圖下圖約 25–30°,取大一點讓變化看得清楚)。
+// 推斷:梯子的長度與水位的範圍;小船以填色的水托著;背面那根梯幫的下端由小船背面的短柱托著(原圖是側視,看不到);
+// 原圖的扶手只畫一根(在前面那根梯幫的上方),吊桿也只有前面一排,模型照畫;耳板、上銷的柱是推斷。
+// 吊桿的下端夾在踏階端頭的槽裡(踏階分三層,中間一層在端頭讓出吊桿的眼),銷穿過上下兩層。
+import { clamp, deg } from "./kit.js";
 import { shape, rect } from "./shapes.js";
 
 const PIVOT = [2.0, 1.6, 0]; // 梯幫上端的樞軸(碼頭邊)
-const LEN = 4.4; // 梯幫長
-const RAIL_UP = 1.0; // 扶手在梯幫正上方的距離
+const LEN = 4.4; // 梯幫長(兩端樞軸的距離)
+const RAIL_UP = 1.0; // 扶手在梯幫正上方的距離(兩根立柱上兩個銷的間距)
 const STEPS = 8;
-const STEP_W = 0.45;
-export const RANGE = [-2.2, 1.0]; // 水位
-const BOAT_DROP = 0.15; // 梯子下端在水面上方的高度
+const STEP_W = 0.45; // 踏階從樞軸往左伸到吊桿的距離
+const STEP_AT = (i) => 0.15 + i * 0.52; // 第 i 階的樞軸離梯幫上端的距離
+const FOOT_PIN = 0.12; // 小船立柱上的下銷離甲板的高度
+const DECK = 0.12; // 甲板在水面上方的高度
+const BOAT_DROP = DECK + FOOT_PIN; // 梯幫下端的銷在水面上方的高度
+const STEEPEST = deg(40);
+export const RANGE = [PIVOT[1] - BOAT_DROP - LEN * Math.sin(STEEPEST), PIVOT[1] - BOAT_DROP]; // 水位:最高時梯子水平
+const Z = { stringer: 0.4, rail: 0.3, hanger: 0.23, post: 0.5 }; // 前面那根梯幫、扶手、吊桿、立柱的深度
+const WATER = { bottom: -2.6, top: 1.6 };
 
-/** 水位 h → 梯幫的角度(從樞軸往下斜到小船) */
+/** 水位 h → 梯幫的角度(從樞軸往下斜到小船)與下端的銷 */
 export function ladder(h0) {
   const h = clamp(h0, ...RANGE);
-  const drop = PIVOT[1] - (h + BOAT_DROP);
+  const drop = Math.max(0, PIVOT[1] - (h + BOAT_DROP));
   const angle = Math.PI + Math.asin(drop / LEN); // 從樞軸指向左下
   return { h, angle, foot: [PIVOT[0] + LEN * Math.cos(angle), PIVOT[1] + LEN * Math.sin(angle), 0] };
 }
+
+const pin = (x, y, z0, z1, r = 0.035) => ({ kind: "cylinder", role: "pin", radius: r, length: z1 - z0, at: [x, y, (z0 + z1) / 2] });
+// 踏階:樞軸在右端(局部原點),往左伸;沿深度夾在兩根梯幫之間(|z| ≤ 0.35)。分三層:中間一層在左端讓出吊桿的眼
+const tread = (z0, z1, x0) => ({ kind: "plate", shape: shape(rect(0.03 - x0, 0.06, (x0 + 0.03) / 2, 0)), thickness: z1 - z0, at: [0, 0, (z0 + z1) / 2] });
+const SLOT = [Z.hanger - 0.04, Z.hanger + 0.04];
 
 export default {
   figure: 387,
@@ -34,38 +51,58 @@ export default {
         { kind: "plate", shape: shape(rect(2.4, 4.2, 3.7, -0.5)), thickness: 1.2 },
         { kind: "box", size: [0.62, 0.1, 0.08], at: [2.22, 1.55, 0.5] },
         { kind: "box", size: [0.62, 0.1, 0.08], at: [2.22, 1.55, -0.5] },
-        { kind: "cylinder", radius: 0.05, length: 0.15, at: [PIVOT[0], PIVOT[1], 0.475] },
-        { kind: "cylinder", radius: 0.05, length: 0.15, at: [PIVOT[0], PIVOT[1], -0.475] },
-        // 岸上的欄杆(在扶手的前面一層:扶手的上端貼在立柱的側面)
+        pin(PIVOT[0], PIVOT[1], 0.4, 0.55, 0.05),
+        pin(PIVOT[0], PIVOT[1], -0.55, -0.4, 0.05),
+        // 扶手上端的銷:耳板上立一根帶圓頭的柱(推斷;原圖梯子上端接在岸上欄杆的立柱上),銷從柱往後伸進扶手
+        { kind: "box", size: [0.12, RAIL_UP + 0.25, 0.08], at: [PIVOT[0], PIVOT[1] + (RAIL_UP + 0.25) / 2, Z.post] },
+        { kind: "sphere", radius: 0.09, at: [PIVOT[0], PIVOT[1] + RAIL_UP + 0.32, Z.post] },
+        pin(PIVOT[0], PIVOT[1] + RAIL_UP, Z.rail - 0.04, Z.post - 0.04),
+        // 岸上的欄杆
         { kind: "box", size: [0.12, 1.6, 0.12], at: [2.5, 2.4, 0.5] },
-        { kind: "cylinder", radius: 0.035, length: 0.16, at: [PIVOT[0] + STEP_W, PIVOT[1] + RAIL_UP, 0.44] }, // 扶手上端的樞軸銷(從立柱伸出)
         { kind: "box", size: [0.12, 1.6, 0.12], at: [4.7, 2.4, 0.5] },
         { kind: "box", size: [2.3, 0.1, 0.1], at: [3.6, 3.15, 0.5] },
         { kind: "box", size: [2.4, 0.08, 0.08], at: [3.6, 2.4, 0.5], angle: 0.6 },
         { kind: "box", size: [2.4, 0.08, 0.08], at: [3.6, 2.4, 0.5], angle: -0.6 },
       ],
     },
-    { id: "water", kind: "fill", fluid: "water", center: [-1.5, -2.6, -1.0], size: [5.8, 3.8, 0.6], level: 0.5 }, // 水在梯子後方,看得到梯子
-    { id: "boat", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: shape([[-0.7, 0], [0.7, 0], [0.5, -0.3], [-0.5, -0.3]]), thickness: 1.2 }] },
-    { id: "stringer", kind: "group", center: PIVOT, arrow: false, pieces: [{ kind: "box", size: [LEN, 0.12, 0.1], at: [LEN / 2, 0, 0.4] }, { kind: "box", size: [LEN, 0.12, 0.1], at: [LEN / 2, 0, -0.4] }] },
-    { id: "rail", kind: "group", arrow: false, pieces: [{ kind: "box", size: [LEN + 0.08, 0.1, 0.08], at: [LEN / 2 - 0.04, 0, 0.4] }] },
-    ...Array.from({ length: STEPS }, (_, i) => ({ id: `step${i}`, kind: "plate", shape: shape(rect(STEP_W, 0.06, STEP_W / 2, 0)), thickness: 0.8, arrow: false })),
+    { id: "water", kind: "fill", fluid: "water", center: [-1.5, (WATER.bottom + WATER.top) / 2, -1.0], size: [5.8, WATER.top - WATER.bottom, 0.6], level: 0.5 }, // 水在梯子後方,看得到梯子
+    {
+      id: "boat",
+      kind: "group",
+      arrow: false,
+      pieces: [
+        { kind: "plate", shape: shape([[-0.7, 0], [0.7, 0], [0.5, -0.3], [-0.5, -0.3]]), thickness: 1.2 },
+        // 立柱(原圖:帶圓頭)與兩個銷:下銷穿過兩根梯幫的下端,上銷伸進扶手的下端
+        { kind: "box", role: "post", size: [0.12, FOOT_PIN + RAIL_UP + 0.2, 0.08], at: [0, (FOOT_PIN + RAIL_UP + 0.2) / 2, Z.post] },
+        { kind: "sphere", radius: 0.09, at: [0, FOOT_PIN + RAIL_UP + 0.27, Z.post] },
+        { kind: "box", size: [0.12, FOOT_PIN + 0.12, 0.08], at: [0, (FOOT_PIN + 0.12) / 2, -Z.post] }, // 背面的短柱(推斷)
+        pin(0, FOOT_PIN, -Z.post - 0.04, Z.post + 0.04, 0.04),
+        pin(0, FOOT_PIN + RAIL_UP, Z.rail - 0.04, Z.post - 0.04),
+      ],
+    },
+    // 兩根梯幫在下緣由一根橫撐連成一件(推斷;踏階是鉸接的,撐不住梯幫的間距),橫撐在踏階底下、不碰踏階
+    {
+      id: "stringer",
+      kind: "group",
+      center: PIVOT,
+      arrow: false,
+      pieces: [
+        { kind: "box", size: [LEN + 0.16, 0.12, 0.1], at: [LEN / 2, 0, Z.stringer] },
+        { kind: "box", size: [LEN + 0.16, 0.12, 0.1], at: [LEN / 2, 0, -Z.stringer] },
+        { kind: "box", size: [0.1, 0.06, 2 * Z.stringer + 0.1], at: [LEN / 2, 0.09, 0] }, // 局部 +y 是世界的下方(梯幫從樞軸指向左下)
+      ],
+    },
+    { id: "rail", kind: "group", arrow: false, pieces: [{ kind: "box", size: [LEN + 0.16, 0.1, 0.08], at: [LEN / 2, 0, Z.rail] }] },
+    ...Array.from({ length: STEPS }, (_, i) => ({
+      id: `step${i}`,
+      kind: "group",
+      arrow: false,
+      pieces: [tread(-0.35, SLOT[0], -0.48), tread(SLOT[0], SLOT[1], -STEP_W + 0.06), tread(SLOT[1], 0.35, -0.48), { kind: "cylinder", radius: 0.03, length: 0.9 }],
+    })),
     ...Array.from({ length: STEPS }, (_, i) => ({ id: `hanger${i}`, kind: "link", width: 0.04, thickness: 0.04 })),
   ],
-  // 動力重演:水位從最高退到最低,梯子只靠自重擱在船上,要跟著小船一路落下
-  replay: {
-    from: RANGE[1],
-    to: RANGE[0],
-    free: { stringer: {} },
-    // 踏階、吊桿、扶手照模型走;只留小船托著梯幫,才看得出是小船在撐
-    ignore: [["stringer", "quay"], ["stringer", "rail"], ...Array.from({ length: STEPS }, (_, i) => [["stringer", `step${i}`], ["stringer", `hanger${i}`]]).flat()],
-    expect: [
-      { at: -0.6, part: "stringer", label: "退潮到一半,梯子跟著小船落下", quote: "無論梯子呈現任何位置" },
-      { part: "stringer", label: "退到最低,梯子擱在小船上最陡" },
-    ],
-  },
   powered: ["boat"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
-  driver: { type: "virtual", label: "水位", mode: "balance", range: RANGE, initial: 0.5 },
+  driver: { type: "virtual", label: "水位", mode: "balance", range: RANGE, initial: (RANGE[0] + RANGE[1]) / 2 },
   target: "step3", // 踏階:梯子隨水位擺到什麼角度都保持水平(取中間一階代表)
   view: { direction: [0.15, 0.12, 1] },
   pose(h0) {
@@ -74,36 +111,20 @@ export default {
     const s = Math.sin(l.angle);
     const parts = {
       stringer: { angle: l.angle },
-      // 扶手:與梯幫平行,樞軸在梯幫樞軸的右上方 (STEP_W, RAIL_UP)——吊桿、踏階、梯幫、扶手構成平行四邊形
-      rail: { position: [PIVOT[0] + STEP_W, PIVOT[1] + RAIL_UP, 0], angle: l.angle },
-      boat: { position: [l.foot[0], l.foot[1] - 0.05, 0] }, // 梯的下端擱在甲板上
-      water: { level: (l.h - (-2.6 - 1.9)) / 3.8 },
+      rail: { position: [PIVOT[0], PIVOT[1] + RAIL_UP, 0], angle: l.angle }, // 扶手:樞軸在梯幫樞軸正上方,與梯幫平行
+      boat: { position: [l.foot[0], l.foot[1] - FOOT_PIN, 0] }, // 梯幫下端的銷在立柱上;小船浮在水面(甲板高出水面 DECK)
+      water: { level: (l.h - WATER.bottom) / (WATER.top - WATER.bottom) },
     };
     for (let i = 0; i < STEPS; i++) {
-      const t = ((i + 0.5) / STEPS) * LEN;
+      const t = STEP_AT(i);
       const at = [PIVOT[0] + t * c, PIVOT[1] + t * s, 0];
-      // 踏階:一邊以樞軸接在梯幫上,保持水平,往右伸 STEP_W;另一邊由吊桿吊在扶手上
+      // 踏階:右端以樞軸接在梯幫上,保持水平,往左伸 STEP_W;左端由斜吊桿吊在扶手上、樞軸正上方的那一點
       parts[`step${i}`] = { position: at, angle: 0 };
-      const edge = [at[0] + STEP_W, at[1], 0.3];
-      parts[`hanger${i}`] = { from: edge, to: [edge[0], edge[1] + RAIL_UP, 0.3] };
+      parts[`hanger${i}`] = { from: [at[0] - STEP_W, at[1], Z.hanger], to: [at[0], at[1] + RAIL_UP, Z.hanger] };
     }
     return { parts, readouts: [] };
   },
-  waivers: [
-    { check: "interference", parts: ["step6", "hanger7"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
-    { check: "interference", parts: ["step5", "hanger6"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
-    { check: "interference", parts: ["step4", "hanger5"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
-    { check: "interference", parts: ["step3", "hanger4"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
-    { check: "interference", parts: ["step2", "hanger3"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
-    { check: "interference", parts: ["step1", "hanger2"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
-    { check: "interference", parts: ["step0", "hanger1"], reason: "接合處的簡化畫法:吊桿的下端鉸接在踏板上,桿端伸進踏板 0.12(96 個取樣中 30 個)" },
-    { check: "interference", parts: ["stringer", "step7"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
-    { check: "interference", parts: ["stringer", "step6"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
-    { check: "interference", parts: ["stringer", "step5"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
-    { check: "interference", parts: ["stringer", "step4"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
-    { check: "interference", parts: ["stringer", "step3"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
-    { check: "interference", parts: ["stringer", "step2"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
-    { check: "interference", parts: ["stringer", "step1"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
-    { check: "interference", parts: ["stringer", "step0"], reason: "接合處的簡化畫法:踏板的兩端鉸接在兩側的梯樑上,踏板端與梯樑重疊 0.05" },
-  ],
 };
+
+// 測試用
+export const geometry = { LEN, RAIL_UP };

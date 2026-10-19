@@ -5,28 +5,30 @@
 //
 // 由接觸算(2026-10-07 複查,原本棘齒桿的高度照進度表每圈升一齒,棘爪固定在偏心環上、擋止固定在柱身上):
 // - 棘齒做成鋸齒:每齒的下面是水平的直面(棘爪頂著它),上面是斜面(棘齒桿上升時,擋止的爪尖沿斜面被推開)。
-// - 兩個棘爪都是鉸接的:下方的棘爪鉸在偏心環吊臂下端的銷上,上方的擋止鉸在柱身伸出的耳上;兩個爪尖都朝左上,
-//   靠自重往左擺、搭在齒上(爪身像一根斜撐:棘齒桿壓在爪尖上時,爪只會被壓得更緊)。
+// - 下方的棘爪照原圖和偏心環是一件(2026-10-14 決定 (a);2026-10-20 改):偏心環套在偏心輪外、不跟著轉,爪從環的上方
+//   伸出、爪尖朝左上搭在齒上;整件繞偏心輪的中心自由轉,靠自重(爪在偏心輪中心的左上方)往左擺、搭在齒上。上方的擋止
+//   鉸在柱身伸出的耳上,爪尖也朝左上。兩個爪身都像一根斜撐:棘齒桿壓在爪尖上時,爪只會被壓得更緊。
 // - 偏心輪往上帶時,下方的爪尖頂著齒的直面把棘齒桿推上去;往下時爪尖沿斜面滑過一齒、越過齒尖後靠自重落進下一齒。
 //   棘齒桿被推上去時,擋止的爪尖被斜面推開,越過齒尖後落進下一齒;下方的爪退下時,棘齒桿靠自重落一點點,坐在擋止上。
 // - 推多遠、爪何時滑過齒尖、棘齒桿停在哪裡,都由爪與齒的外形相碰決定;爪落進齒間、棘齒桿落到擋止上都是加速落下。
-//   偏心距 0.25(行程 0.5)時,每圈推上兩齒(原文沒說每圈幾齒;行程要比一齒多出一截,爪才越得過齒尖)。
-// 偏心環與吊臂、擋止的耳、偏心輪軸的托架是推斷(原圖只畫出偏心輪與兩個棘爪)。
+//   每圈推上幾齒由偏心距與爪的外形決定(原文沒說);行程要比一齒多出一截,爪才越得過齒尖。
+// 偏離插圖:原圖偏心環的左緣幾乎貼著齒尖,但偏心輪一轉偏心環會左右各走一個偏心距、碰上齒尖,所以偏心輪軸往右移,
+// 偏心環最靠左時離齒尖還有一點間隙;爪跟著加長(爪尖仍在偏心環中心的左上方約 115–150°)。擋止的爪身斜約 115°,
+// 比原圖(約 135°)陡:再斜的話,棘齒桿上升時爪尖被斜面推開會跟著升高,一程推不過一齒;再陡則被推開時越過鉛直、翻落。
+// 擋止的耳、偏心輪軸的托架是推斷(原圖只畫出偏心輪、偏心環與兩個棘爪)。
 import { TAU } from "./kit.js";
 import { shape, circle, rect, thickLine } from "./shapes.js";
 import { placeOutline, pointInPolygon, edgeDistance, polygonsOverlap } from "./contact.js";
 
 export const PITCH = 0.22;
-const ECC = { center: [0.75, 0.6, 0.3], e: 0.25, r: 0.42 }; // 偏心輪在棘齒桿的前面一層,只經偏心環與棘爪推棘齒桿
-const HANG = 0.6; // 偏心環的吊臂長(偏心輪中心到下方棘爪的鉸銷)
-export const TURNS = 5; // 升 2.2(十齒)
+const ECC = { center: [1.0, 0.2, 0.08], e: 0.25, r: 0.35, ring: 0.42 }; // 偏心輪軸、偏心距、偏心輪半徑、偏心環外徑;和棘齒桿同一層
+export const TURNS = 6;
 export const RANGE = [0, TURNS * TAU];
 const ROOT = 0.14; // 齒根(棘齒桿右緣)
 const TIP = 0.28; // 齒尖
-const TEETH = 18;
-const RACK_START = -0.65; // 逐步算的起點:棘齒桿放在這個高度,先空轉兩圈讓它坐到擋止上
-const PAWL_Z = 0.1; // 下方的爪那一層
-const STOP_Z = -0.02; // 擋止那一層(在下方的爪後面,兩個爪交錯時不相碰)
+const TEETH = 22;
+const RACK_START = 0.3; // 逐步算的起點:棘齒桿放在這個高度,先空轉兩圈讓它坐到擋止上
+const STOP_Z = -0.02; // 擋止那一層(在偏心環與爪的後面、耳的前面,兩個爪不相碰)
 const SLOPE = 0.6; // 斜面佔齒距的比例;其餘是齒根的立壁(爪尖卡在直面下、立壁旁的角落)
 
 // 棘齒桿的局部座標:第 i 齒的直面在 y_i,斜面從齒尖 (TIP, y_i) 往左上回到齒根 (ROOT, y_i + SLOPE·PITCH),再沿齒根的立壁到上一齒的直面
@@ -62,16 +64,37 @@ function pawlOutline(len, maxAngle) {
   // 爪身的左側(局部 +y,爪擺在左上時朝下)→ 鳥嘴下緣的後端 → 爪尖 → 鳥嘴上緣的後端 → 爪身的右側
   return [...arm.slice(0, half - 1), lb, [len, 0], ub, ...arm.slice(half + 1)];
 }
-const LOWER = { len: 0.86 };
-LOWER.outline = pawlOutline(LOWER.len, 2.7);
-const UPPER = { len: 0.58, pivot: [0.36, 0.72] };
-UPPER.outline = pawlOutline(UPPER.len, 2.0);
+// 和偏心環一體的爪:鉸點是偏心輪的中心,爪身從偏心環的外緣伸出(根部稍微伸進環裡,連成一件),外側(爪擺在左上時朝右上)
+// 由一段鼓起的弧接回環的右上方(原圖牛角形的外緣);接觸只看爪尖附近,鼓起的部分離齒很遠
+function hornOutline(len, maxAngle) {
+  const root = ECC.ring - 0.03;
+  const w = 0.08;
+  const up = -(maxAngle + 0.2);
+  const low = up - 0.6;
+  const ub = [len + 0.14 * Math.cos(up), 0.14 * Math.sin(up)];
+  const lb = [len + 0.06 * Math.cos(low), 0.06 * Math.sin(low)];
+  const start = Math.asin(w / 2 / root);
+  const end = -(105 * Math.PI) / 180; // 鼓起的弧接回環的地方(局部角;爪尖朝 135° 時在環的右上方 30°)
+  const p0 = [0.55 * len, -w / 2];
+  const p2 = [root * Math.cos(end), root * Math.sin(end)];
+  const p1 = [0.45 * len, -0.42];
+  const bulge = Array.from({ length: 9 }, (_, i) => {
+    const t = (i + 1) / 10;
+    return [0, 1].map((k) => (1 - t) * (1 - t) * p0[k] + 2 * (1 - t) * t * p1[k] + t * t * p2[k]);
+  });
+  const arc = Array.from({ length: 13 }, (_, i) => [root * Math.cos(end + ((start - end) * i) / 12), root * Math.sin(end + ((start - end) * i) / 12)]);
+  return [[root * Math.cos(start), w / 2], lb, [len, 0], ub, p0, ...bulge, ...arc.slice(0, -1)];
+}
+const LOWER = { len: 1.25 };
+LOWER.outline = hornOutline(LOWER.len, 2.7);
+const UPPER = { len: 0.58, pivot: [ROOT + 0.3, ECC.center[1] + 1.45] }; // 擋止:鉸在柱身的耳上,在偏心環與爪的上方;爪身斜約 115°
+UPPER.outline = pawlOutline(UPPER.len, 2.15);
 const tipOf = (which, pin, angle) => [pin[0] + which.len * Math.cos(angle), pin[1] + which.len * Math.sin(angle)];
 
-/** 偏心輪轉 theta → 偏心輪中心(偏心環跟著平移)與下方棘爪的鉸銷 */
+/** 偏心輪轉 theta → 偏心輪的中心:偏心環(與爪)繞這一點轉,也就是下方棘爪的鉸點 */
 export function hinge(theta) {
   const disc = [ECC.center[0] + ECC.e * Math.cos(theta), ECC.center[1] + ECC.e * Math.sin(theta)];
-  return { disc, pin: [disc[0], disc[1] - HANG] };
+  return { disc, pin: disc };
 }
 
 // 依接觸逐步算。爪身是細長的斜撐,只有爪尖碰得到齒:爪尖在齒面右邊就是沒碰到(gap ≥ 0)。
@@ -257,7 +280,6 @@ export function contactAt(theta) {
   };
 }
 
-const pawlPart = (id, which, thickness) => ({ id, kind: "group", arrow: false, pieces: [{ kind: "plate", shape: shape(which.outline), thickness }] }); // 鉸銷穿過爪身的孔(孔沒畫)
 
 export default {
   figure: 389,
@@ -270,9 +292,9 @@ export default {
         { kind: "plate", shape: shape([[-1.4, -2.8], [1.6, -2.8], [1.6, -2.5], [0.9, -2.3], [0.55, -1.0], [0.5, 1.8], [0.3, 1.8], [0.3, -2.5], [-0.25, -2.5], [-0.25, 1.8], [-0.55, 1.8], [-0.6, -1.0], [-0.95, -2.3], [-1.4, -2.5]]), thickness: 0.5, at: [0, 0, -0.3] },
         // 擋止的耳與鉸銷(從柱身右側伸出)
         { kind: "plate", shape: shape(rect(0.2, 0.24, UPPER.pivot[0] + 0.06, UPPER.pivot[1])), thickness: 0.5, at: [0, 0, -0.3] },
-        { kind: "cylinder", radius: 0.035, length: 0.14, at: [UPPER.pivot[0], UPPER.pivot[1], -0.04] },
+        { kind: "cylinder", radius: 0.035, length: 0.1, at: [UPPER.pivot[0], UPPER.pivot[1], STOP_Z - 0.02] },
         // 偏心輪軸的托架:柱身右側伸出一塊板,軸往後伸進板上的軸承
-        { kind: "plate", shape: shape(rect(0.55, 0.36, ECC.center[0] - 0.12, ECC.center[1])), thickness: 0.5, at: [0, 0, -0.3] },
+        { kind: "plate", shape: shape(rect(ECC.center[0] + 0.15 - 0.45, 0.36, (ECC.center[0] + 0.15 + 0.45) / 2, ECC.center[1])), thickness: 0.5, at: [0, 0, -0.3] },
       ],
     },
     {
@@ -281,48 +303,47 @@ export default {
       arrow: false,
       pieces: [
         { kind: "plate", shape: rackShape, thickness: 0.3 },
-        { kind: "plate", shape: shape(rect(0.9, 0.18, 0, toothY(TEETH - 1) + PITCH + 0.7)), thickness: 0.5 },
+        { kind: "plate", shape: shape(rect(0.9, 0.18, 0, toothY(TEETH - 1) + PITCH + 0.69)), thickness: 0.5 }, // 托座坐在桿頂
       ],
     },
     {
       id: "eccentric",
       kind: "group",
       center: ECC.center,
-      spin: ECC.r + ECC.e,
+      spin: ECC.r - 0.05, // 轉向箭頭畫在偏心輪面上,不蓋住偏心環上方的爪
       pieces: [
-        { kind: "plate", shape: shape(circle(ECC.r), [circle(0.06, -ECC.e, 0).reverse()]), thickness: 0.18, at: [ECC.e, 0, 0] },
-        { kind: "cylinder", radius: 0.06, length: 0.85, at: [0, 0, -0.2] },
-        { kind: "box", size: [1.0, 0.08, 0.08], at: [0.5, 0, 0.25], accent: true },
+        { kind: "plate", shape: shape(circle(ECC.r), [circle(0.06, -ECC.e, 0).reverse()]), thickness: 0.12, at: [ECC.e, 0, 0] },
+        { kind: "cylinder", radius: 0.06, length: 0.9, at: [0, 0, -0.17] },
+        { kind: "box", size: [1.0, 0.08, 0.08], at: [0.5, 0, 0.24], accent: true },
       ],
     },
-    // 偏心環:套在偏心輪外、不跟著轉,往下伸出一根吊臂,下端的銷掛著下方的棘爪
+    // 偏心環與下方的棘爪(一件):套在偏心輪外、不跟著轉,繞偏心輪的中心自由擺;爪從環的上方伸出,爪尖搭在齒上
     {
       id: "strap",
       kind: "group",
       arrow: false,
       pieces: [
-        { kind: "cylinder", radius: ECC.r + 0.07, inner: ECC.r, length: 0.18 },
-        { kind: "box", size: [0.08, HANG - ECC.r - 0.07 + 0.04, 0.1], at: [0, -(HANG + ECC.r + 0.07) / 2 + 0.02, 0] },
-        { kind: "cylinder", radius: 0.035, length: 0.3, at: [0, -HANG, -0.1] },
+        { kind: "cylinder", radius: ECC.ring, inner: ECC.r, length: 0.12 },
+        { kind: "plate", role: "pawl", shape: shape(LOWER.outline), thickness: 0.12 },
       ],
     },
-    pawlPart("pawl", LOWER, 0.1),
-    pawlPart("stop", UPPER, 0.08),
+    { id: "stop", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: shape(UPPER.outline), thickness: 0.06 }] }, // 鉸銷穿過爪身的孔(孔沒畫)
   ],
-  // 動力重演:只推偏心輪(偏心環跟著平移);兩個爪鉸接、靠自重搭在齒上,棘齒桿只靠自重與兩個爪的支撐
+  // 動力重演:只推偏心輪;偏心環(與爪)繞偏心輪的中心自由擺、擋止鉸在耳上,兩個都靠自重搭在齒上,棘齒桿只靠自重與兩個爪的支撐
   replay: {
     to: 3 * TAU,
     seconds: 30,
     free: {
       rack: { slide: [0, 1, 0] },
-      pawl: { pivot: [hinge(0).pin[0], hinge(0).pin[1], PAWL_Z], on: "strap" },
+      strap: { pivot: [hinge(0).disc[0], hinge(0).disc[1], ECC.center[2]], on: "eccentric" },
       stop: { pivot: [UPPER.pivot[0], UPPER.pivot[1], STOP_Z] },
     },
-    ignore: [["rack", "body"]],
+    // 棘齒桿在柱身的槽裡滑;偏心環套在偏心輪上、擋止套在耳的銷上(都是軸承,由樞軸代表)
+    ignore: [["rack", "body"], ["strap", "eccentric"], ["stop", "body"]],
     expect: [
-      { at: TAU, part: "rack", label: "偏心輪轉一圈,棘爪把棘齒桿推上兩齒", quote: "由偏心輪、棘爪與棘輪所操作的升降千斤頂" },
-      { at: 2 * TAU, part: "rack", label: "再轉一圈,擋止扣住、棘齒桿再升兩齒", quote: "上方的棘爪為一個擋止裝置" },
-      { part: "rack", label: "轉三圈,升六齒" },
+      { at: TAU, part: "rack", label: "偏心輪轉一圈,和偏心環一體的棘爪把棘齒桿推上去", quote: "由偏心輪、棘爪與棘輪所操作的升降千斤頂" },
+      { at: 2 * TAU, part: "rack", label: "再轉一圈,擋止扣住、棘齒桿再升一段", quote: "上方的棘爪為一個擋止裝置" },
+      { part: "rack", label: "轉三圈,升的高度和模型一致" },
     ],
   },
   driver: { part: "eccentric", type: "rotation", range: RANGE, initial: 0 },
@@ -330,13 +351,12 @@ export default {
   view: { direction: [0.06, 0.05, 1] },
   pose(theta) {
     const s = lookup(theta);
-    const { disc, pin } = hinge(theta);
+    const { disc } = hinge(theta);
     return {
       parts: {
         rack: { position: [0, H0 + s.h, 0] },
         eccentric: { angle: theta },
-        strap: { position: [disc[0], disc[1], ECC.center[2]] },
-        pawl: { position: [pin[0], pin[1], PAWL_Z], angle: s.lower },
+        strap: { position: [disc[0], disc[1], ECC.center[2]], angle: s.lower },
         stop: { position: [UPPER.pivot[0], UPPER.pivot[1], STOP_Z], angle: s.upper },
       },
       readouts: [],
