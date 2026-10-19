@@ -3,8 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep, part, plateLayers, guidedBetween } from "./helpers.js";
 import { lineAngle } from "../models/ruler-lines.js";
-import { rot2 } from "../models/kit.js";
-import { pointInPolygon, polygonsOverlap, edgeDistance } from "../models/contact.js";
+import { pointInPolygon, polygonsOverlap, edgeDistance, placeOutline } from "../models/contact.js";
 
 import * as m322 from "../models/fig322.js";
 import * as m323 from "../models/fig323.js";
@@ -17,12 +16,11 @@ import * as m328 from "../models/fig328.js";
 import * as m329 from "../models/fig329.js";
 import * as m330 from "../models/fig330.js";
 import * as m331 from "../models/fig331.js";
-import { dist } from "../models/kit.js";
+import { dist, add, scale, sub, dot, deg, rot2, quatRotate, partPoint, signedAngle } from "../models/kit.js";
 import * as m332 from "../models/fig332.js";
 import * as m333 from "../models/fig333.js";
 import * as m334 from "../models/fig334.js";
 import * as m335 from "../models/fig335.js";
-import { placeOutline, polygonsOverlap, pointInPolygon } from "../models/contact.js";
 import { rackShape, sectorShape, circle } from "../models/shapes.js";
 import * as m336 from "../models/fig336.js";
 import * as m337 from "../models/fig337.js";
@@ -699,14 +697,174 @@ test("第 347 種:碟形引擎:碟片像落下的硬幣般擺盪,活塞桿左端
   }
 });
 
-test("第 348 種:軸旋轉一圈,桿 B 往復兩次(兩滑塊在直角交叉的溝槽中滑動)", () => {
-  const ys = sweep(2 * Math.PI, 360).map((t) => m348.snyder(t).mid[1]);
+// 第 347 種:汽缸是繞 X 軸的旋轉體(剖面多邊形的座標是 [離軸距離, 沿軸]),世界點換成剖面座標就能和剖面比
+const shell347 = () => part(m347.default, "frame").pieces.find((q) => q.kind === "lathe");
+const toProfile347 = (P, at) => [Math.hypot(P[1] - at[1], P[2] - at[2]), P[0] - at[0]];
+/** 第 347 種的碟片:球心、法線與碟面上的兩個方向;碟片的半徑與厚度、球的半徑取自活塞的零件 */
+function disk347(p) {
+  const { position, rotation } = m347.default.pose(p).parts.piston;
+  const pieces = part(m347.default, "piston").pieces;
+  const plate = pieces.reduce((m, q) => (q.kind === "cylinder" && q.radius > (m?.radius ?? 0) ? q : m), null);
+  const ball = pieces.find((q) => q.kind === "sphere").radius;
+  const [n, e1, e2] = [[0, 0, 1], [1, 0, 0], [0, 1, 0]].map((v) => quatRotate(rotation, v));
+  const at = (side, rho, gamma) => add(add(position, scale(n, (side * plate.length) / 2)), add(scale(e1, rho * Math.cos(gamma)), scale(e2, rho * Math.sin(gamma))));
+  return { c: position, n, radius: plate.radius, half: plate.length / 2, ball, at };
+}
+
+test("第 347 種:汽缸蓋為圓錐形:碟片的兩面各沿一條半徑線(從球到缸壁)貼著一個圓錐形的汽缸蓋,全程不穿入", () => {
+  const shell = shell347();
+  for (const p of sweep(1, 24)) {
+    const d = disk347(p);
+    for (const side of [1, -1]) {
+      const touch = [];
+      for (let k = 0; k < 180; k++) {
+        const gamma = (k / 180) * 2 * Math.PI;
+        for (const rho of sweep(d.radius, 30, d.ball + 0.04)) {
+          const q = toProfile347(d.at(side, rho, gamma), shell.at);
+          const gap = edgeDistance(q, shell.profile);
+          assert.ok(!pointInPolygon(q, shell.profile) || gap < 1e-3, `進程 ${p}:碟片穿入汽缸 ${gap.toFixed(4)}`);
+          if (gap < 0.001 && rho < d.radius - 0.15) touch.push({ rho, gamma });
+        }
+      }
+      const rhos = touch.map((t) => t.rho);
+      assert.ok(touch.length && Math.min(...rhos) < d.ball + 0.1 && Math.max(...rhos) > d.radius - 0.25, `進程 ${p}:碟片${side > 0 ? "右" : "左"}面從球到缸壁都貼著圓錐`);
+      // 靠近球的地方圓錐彎得急,離得遠的那一段才看得出是一條線
+      const far = touch.filter((t) => t.rho > 0.8);
+      const spread = Math.max(...far.map((t) => Math.abs(signedAngle(t.gamma - far[0].gamma))));
+      assert.ok(spread < deg(12), `進程 ${p}:接觸只沿一條半徑線(散開 ${(spread * 180 / Math.PI).toFixed(1)}°)`);
+    }
+  }
+});
+
+test("第 347 種:該球體於汽缸蓋的同心座內作動:球心不動,兩個汽缸蓋頂端各有一圈以球心為圓心、貼著球的座", () => {
+  const shell = shell347();
+  const { ball } = disk347(0);
+  for (const p of sweep(1, 12)) close(dist(m347.default.pose(p).parts.piston.position, shell.at), 0, "球心在汽缸的中心", 1e-9);
+  const radii = shell.profile.map(([r, a]) => Math.hypot(r, a));
+  assert.ok(Math.min(...radii) >= ball - 1e-9, "座不切進球");
+  for (const side of [-1, 1]) {
+    const seat = shell.profile.filter(([r, a]) => Math.sign(a) === side && Math.abs(Math.hypot(r, a) - ball) < 0.003);
+    const polar = seat.map(([r, a]) => Math.atan2(r, a));
+    assert.ok(seat.length >= 2 && Math.max(...polar) - Math.min(...polar) > deg(10), `${side < 0 ? "左" : "右"}汽缸蓋的座包著球`);
+  }
+});
+
+test("第 347 種:缸壁是以球心為圓心的球帶,碟片的邊緣全程貼著缸壁", () => {
+  const shell = shell347();
+  for (const p of sweep(1, 24)) {
+    const d = disk347(p);
+    for (const side of [1, -1]) {
+      for (let k = 0; k < 72; k++) {
+        const q = toProfile347(d.at(side, d.radius, (k / 72) * 2 * Math.PI), shell.at);
+        const gap = edgeDistance(q, shell.profile);
+        assert.ok(gap < 0.005 && (!pointInPolygon(q, shell.profile) || gap < 1e-3), `進程 ${p}:碟緣離缸壁 ${gap.toFixed(4)}`);
+      }
+    }
+  }
+});
+
+test("第 347 種:蒸汽交替地從活塞兩側被引入:經進汽管與缸壁上的進汽口,進到碟片正讓出的那一側", () => {
+  const def = m347.default;
+  const shell = shell347();
+  const pipes = part(def, "frame").pieces.filter((q) => q.pipe);
+  assert.ok(pipes.length, "有進汽管");
+  // 在管裡,或在管口往下穿過缸壁的進汽口裡
+  const inPipe = (P) => pipes.some(({ at, size }) => P.every((v, i) => Math.abs(v - at[i]) <= size[i] / 2 + 1e-9) || (Math.abs(P[0] - at[0]) <= size[0] / 2 && Math.abs(P[2] - at[2]) <= size[2] / 2 && P[1] >= at[1] - size[1] / 2 - 0.3 && P[1] <= at[1]));
+  const inChamber = (P) => !pointInPolygon(toProfile347(P, shell.at), shell.profile) && dist(P, shell.at) < Math.max(...shell.profile.map(([r, a]) => Math.hypot(r, a)));
+  const sides = new Set();
+  for (const p of sweep(1, 96).slice(0, -1)) {
+    const d0 = disk347(p);
+    const d1 = disk347(p + 1e-4);
+    for (const P of def.pose(p).flows.flatMap((f) => f.points)) {
+      assert.ok(inPipe(P) || inChamber(P), `進程 ${p}:蒸汽的點 ${P.map((v) => v.toFixed(2))} 不在管裡也不在缸裡`);
+      if (inPipe(P)) continue;
+      const s0 = dot(sub(P, d0.c), d0.n);
+      const s1 = dot(sub(P, d1.c), d1.n);
+      assert.ok(Math.sign(s0) * (s1 - s0) > 0, `進程 ${p}:蒸汽進的那一側正在變大`);
+      sides.add(Math.sign(s0));
+    }
+  }
+  assert.deepEqual([...sides].sort(), [-1, 1], "兩側輪流進汽");
+});
+
+test("第 347 種:活塞桿穿過球,左端接在左側軸端的曲柄上,右端照原圖往右下穿出汽缸", () => {
+  const def = m347.default;
+  const shell = shell347();
+  const rod = part(def, "piston").pieces.find((q) => q.kind === "cylinder" && q.length > 2);
+  const crank = part(def, "crank");
+  const pin = crank.pieces.find((q) => q.kind === "sphere");
+  const right = shell.at[0] + Math.max(...shell.profile.map(([, a]) => a));
+  for (const p of sweep(1, 24)) {
+    const { piston, crank: c } = def.pose(p).parts;
+    const ends = [-1, 1].map((s) => add(piston.position, quatRotate(piston.rotation, [0, 0, rod.at[2] + (s * rod.length) / 2]))).sort((a, b) => a[0] - b[0]);
+    close(dist(ends[0], partPoint(crank.center, crank.axis, c.angle, pin.at)), 0, `進程 ${p}:桿的左端在曲柄銷上`, 1e-9);
+    assert.ok(ends[1][0] > right, `進程 ${p}:桿的右端穿出汽缸`);
+  }
+});
+
+test("第 347 種:曲柄軸穿過左邊軸承座的孔(軸承座站在機架上)", () => {
+  const def = m347.default;
+  const crank = part(def, "crank");
+  const shaft = crank.pieces.find((q) => q.kind === "cylinder" && q.length > 1);
+  const [x0, x1] = [-1, 1].map((s) => crank.center[0] + shaft.at[2] + (s * shaft.length) / 2);
+  const ring = part(def, "frame").pieces.find((q) => q.kind === "cylinder" && q.inner && q.axis?.[0] === 1);
+  assert.ok(ring && ring.inner >= shaft.radius && ring.inner - shaft.radius < 0.03, "軸承孔套著軸");
+  close(Math.hypot(ring.at[1] - crank.center[1], ring.at[2] - crank.center[2]), 0, "軸承孔和軸同心", 1e-9);
+  assert.ok(ring.at[0] - ring.length / 2 >= x0 && ring.at[0] + ring.length / 2 <= x1, "軸整段穿過軸承");
+});
+
+/** 第 348 種:零件 id 在姿勢下,局部 (x, y) 點的世界位置(繞 z 轉) */
+const at348 = (pose, id, [x, y]) => {
+  const { position, angle = 0 } = pose.parts[id];
+  const [rx, ry] = rot2([x, y], angle);
+  return [position[0] + rx, position[1] + ry];
+};
+
+test("第 348 種:軸旋轉一圈,桿往復兩次:連桿 B 的上端接在鉛直導軌裡的桿上", () => {
+  const def = m348.default;
+  const poses = sweep(2 * Math.PI, 360).map((t) => def.pose(t).parts.needleBar.position);
+  const ys = poses.map((q) => q[1]);
   let peaks = 0;
   for (let i = 1; i < ys.length - 1; i++) if (ys[i] > ys[i - 1] && ys[i] >= ys[i + 1]) peaks++;
   assert.equal(peaks, 2, "一圈兩次往復");
-  for (const t of sweep(2 * Math.PI, 12)) {
-    const s = m348.snyder(t);
-    close(dist(s.c1, s.c2), 0.95, "兩滑塊間距不變", 1e-9);
-    close(s.c2[0] - s.c1[0], 0, "桿保持方向(鉛直)", 1e-9);
+  assert.ok(Math.max(...ys) - Math.min(...ys) > 1, "往復的行程看得出來");
+  for (const q of poses) close(q[0], poses[0][0], "桿只沿鉛直導軌上下", 1e-9);
+});
+
+test("第 348 種:連桿 B 上以樞軸裝著兩個滑塊 c、c,各在碟片 A 的一道溝槽 a 裡(兩溝在中心直角交叉);B 是連桿,會擺", () => {
+  const def = m348.default;
+  const B = part(def, "barB");
+  const pins = B.pieces.filter((q) => q.kind === "cylinder").map((q) => q.at.slice(0, 2));
+  const top = part(def, "needleBar").pieces.find((q) => q.kind === "cylinder" && q.axis === undefined).at.slice(0, 2);
+  const grooves = [...new Set(part(def, "diskA").pieces.filter((q) => q.angle !== undefined).map((q) => q.angle))];
+  assert.equal(grooves.length, 2, "兩道溝槽");
+  close(Math.abs(Math.cos(grooves[0] - grooves[1])), 0, "兩道溝槽直角交叉", 1e-12);
+  const angles = [];
+  let length;
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const pose = def.pose(t);
+    const theta = pose.parts.diskA.angle;
+    for (const id of ["sliderC1", "sliderC2"]) {
+      const s = pose.parts[id].position;
+      const pin = pins.map((q) => at348(pose, "barB", q)).find((q) => Math.hypot(q[0] - s[0], q[1] - s[1]) < 1e-9);
+      assert.ok(pin, `${id} 套在 B 的銷上`);
+      // 在溝槽的中線上、並順著溝槽(滑塊經過中心時兩道溝都算)
+      const g = grooves.find((a) => Math.abs(Math.sin(theta + a - Math.atan2(s[1], s[0]))) * Math.hypot(s[0], s[1]) < 1e-9 && Math.abs(Math.sin(pose.parts[id].angle - theta - a)) < 1e-9);
+      assert.ok(g !== undefined, `${id} 在一道溝槽裡、順著溝槽`);
+    }
+    const upper = at348(pose, "barB", [0, 0]);
+    const head = at348(pose, "needleBar", top);
+    length ??= Math.hypot(head[0] - upper[0], head[1] - upper[1]);
+    close(Math.hypot(head[0] - upper[0], head[1] - upper[1]), length, "B 的長度不變(上端接在導軌裡的桿上)", 1e-9);
+    angles.push(pose.parts.barB.angle);
   }
+  assert.ok(Math.max(...angles) - Math.min(...angles) > deg(10), "B 是連桿,隨碟片擺動");
+});
+
+test("第 348 種:兩滑塊的間距照原圖約為碟片半徑的 0.76", () => {
+  const B = part(m348.default, "barB");
+  const pins = B.pieces.filter((q) => q.kind === "cylinder").map((q) => q.at[1]);
+  const R = part(m348.default, "diskA").spin;
+  const ratio = (Math.max(...pins) - Math.min(...pins)) / R;
+  assert.ok(ratio > 0.7 && ratio < 0.82, `間距 / 半徑 = ${ratio.toFixed(2)}`);
 });
