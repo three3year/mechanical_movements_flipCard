@@ -99,7 +99,7 @@ export default {
     { id: "wedgeUp", ...wedge(1) },
     { id: "wedgeDown", ...wedge(-1) },
   ],
-  driver: { part: "wedgeUp", grips: ["wedgeDown"], type: "translation", direction: [-1, 0, 0], range: RANGE, initial: 0.15 },
+  driver: { part: "wedgeUp", grips: ["wedgeDown"], type: "translation", direction: [-1, 0, 0], range: RANGE, initial: 0.2 },
   target: "board", // 被夾緊的木料
   view: { direction: [0.25, -0.2, 1] },
   pose(d0) {

@@ -3,6 +3,8 @@
 // 主動件是曲柄;機構共用部分見 cramp-drill.js。
 // 推斷:進料隨鑽頭的轉動以固定的量前進(原文只說心軸穿過螺桿中心)、螺桿與夾頭之間的止推面。
 // 進料螺桿是中空的(孔沒畫出來),心軸從中間穿過、上下兩端都露出來;開始時鑽尖離工件 0.2,行程後段鑽進工件。
+// 鑽頭(連心軸與曲柄)從上往下看順時針轉:右旋的鑽頭要這樣轉才切削。進料螺桿是右旋,從上看順時針轉才往下送;
+// 它和鑽頭各自轉(螺桿只用下端面推夾頭,傳不了轉動),兩者的轉向互不牽動。
 import { Y, TAU, clamp } from "./kit.js";
 import { frame, crankPiecesAt, feedOf, MAX, PITCH, ARMS } from "./cramp-drill.js";
 
@@ -23,7 +25,8 @@ export default {
       spinOffset: 1.25, // 箭頭在上臂下方露出來的那段螺桿上
       pieces: [
         { kind: "worm", role: "worm", radius: 0.16, length: WORM, pitch: PITCH, thread: 0.05, at: [0, 0, WORM / 2] },
-        // 螺桿頂的軸環(心軸從中間的孔穿過)與裝在它兩側的橫柄
+        // 螺桿頂的軸環(心軸從中間的孔穿過)與裝在它兩側的橫柄。偏離插圖:原圖的橫柄是一根橫穿螺桿頂的桿,
+        // 心軸從螺桿中心穿過,一根橫穿的桿會擋住心軸,所以拆成插在軸環兩側的兩截(推斷)
         { kind: "cylinder", radius: 0.2, inner: 0.06, length: 0.18, at: [0, 0, WORM + 0.045] },
         ...[-1, 1].map((s) => ({ kind: "cylinder", axis: [1, 0, 0], radius: 0.05, length: 0.65, at: [s * 0.475, 0, WORM + 0.045] })),
       ],
@@ -42,15 +45,19 @@ export default {
     },
     { id: "work", kind: "box", center: [0.25, ARMS.lower[1] + 0.1, 0], size: [1.2, 0.2, 0.8] },
   ],
-  driver: { part: "drill", type: "rotation", range: [0, MAX], initial: 0 },
+  // 外力來源:進料螺桿是操作的人另外轉動的(模型把它和鑽頭的轉動連在同一個主動量上);它只用下端面推著夾頭往下,
+  // 傳不了轉動,和曲柄之間沒有實體相連(同第 379 種的 screw)
+  powered: ["feedScrew"],
+  // 主動量就是鑽頭的轉角(拖曲柄時跟著指標走):從上看順時針是負的,所以範圍是 [−MAX, 0]、往負的方向進料
+  driver: { part: "drill", type: "rotation", range: [-MAX, 0], initial: 0 },
   target: "feedScrew", // 把鑽頭心軸往下送的進料螺桿
   view: { direction: [0.08, 0.06, 1] },
   pose(theta0) {
-    const theta = clamp(theta0, 0, MAX);
-    const f = feedOf(theta);
+    const theta = clamp(theta0, -MAX, 0);
+    const f = feedOf(-theta); // 曲柄從上看順時針轉了 −theta
     return {
       parts: {
-        drill: { angle: theta, position: [0.25, TOP - f, 0] },
+        drill: { angle: theta, position: [0.25, TOP - f, 0] }, // 從上往下看順時針(繞 +Y 負轉)
         // 右旋螺紋旋在上臂的螺孔裡:從上面看順時針轉一圈,往下一個螺距
         feedScrew: { angle: -(f / PITCH) * TAU, position: [0.25, SCREW_Y0 - f, 0] },
       },

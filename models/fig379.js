@@ -3,6 +3,8 @@
 // 推斷:進料隨鑽頭的轉動以固定的量前進(原文只說螺桿與鑽頭相對)、工件(原圖沒畫)。
 // 開始時工件頂面離鑽尖 0.15,行程中段碰到鑽尖,之後鑽頭鑽進工件(原圖墊塊離鑽尖很近)。
 // 鑽頭比上一版加長(原圖鑽尖約在兩臂中間);墊塊照原圖是扁平的板;握把照原圖直立在曲柄臂上。
+// 鑽頭(連心軸與曲柄)從上往下看順時針轉:右旋的鑽頭要這樣轉才切削。進料螺桿是右旋,人從下面看順時針轉它
+// (從上看逆時針),往上頂;它和鑽頭各自轉,兩者的轉向互不牽動。
 import { Y, TAU, clamp } from "./kit.js";
 import { frame, crankPiecesAt, feedOf, MAX, PITCH } from "./cramp-drill.js";
 
@@ -37,7 +39,8 @@ export default {
         { kind: "worm", role: "worm", radius: 0.12, length: WORM, pitch: PITCH, thread: 0.04, at: [0, 0, -WORM / 2] },
         // 頂端扁平的墊塊(局部 y 是深度、局部 z 是上下)
         { kind: "box", role: "pad", size: [0.6, 0.45, PAD], at: [0, 0, PAD / 2] },
-        // 下端的 T 形手柄:中間的轂套著螺桿下端,兩邊是圓球握把
+        // 下端的 T 形手柄:中間的轂套著螺桿下端,兩邊是圓球握把。推斷:轂的大小與它套緊在螺桿下端的
+        // 做法(原圖只畫出手柄中段略粗,看不出怎麼接在螺桿上;橫桿要有個套在螺桿上的轂才固定得住)
         { kind: "cylinder", role: "hub", radius: 0.14, length: 0.3, at: [0, 0, -WORM - 0.05] },
         { kind: "cylinder", axis: [1, 0, 0], radius: 0.06, length: 1.3, at: [0, 0, -WORM - 0.05] },
         { kind: "sphere", radius: 0.15, at: [0.65, 0, -WORM - 0.05] },
@@ -47,15 +50,16 @@ export default {
     { id: "work", kind: "box", size: [1.2, WORK, 0.8] },
   ],
   powered: ["screw"], // 外力來源:進給螺桿是操作的人另外轉動的(模型把它和鑽頭的轉動連在同一個主動量上)
-  driver: { part: "drill", type: "rotation", range: [0, MAX], initial: 0 },
+  // 主動量就是鑽頭的轉角(拖曲柄時跟著指標走):從上看順時針是負的,所以範圍是 [−MAX, 0]、往負的方向進料
+  driver: { part: "drill", type: "rotation", range: [-MAX, 0], initial: 0 },
   target: "work", // 被頂向鑽頭的工件
   view: { direction: [0.08, 0.06, 1] },
   pose(theta0) {
-    const theta = clamp(theta0, 0, MAX);
-    const f = feedOf(theta);
+    const theta = clamp(theta0, -MAX, 0);
+    const f = feedOf(-theta); // 曲柄從上看順時針轉了 −theta
     return {
       parts: {
-        drill: { angle: theta },
+        drill: { angle: theta }, // 從上往下看順時針(繞 +Y 負轉)
         // 右旋螺紋旋在下臂的螺孔裡:從下面看順時針轉一圈,往上一個螺距
         screw: { position: [0.25, SCREW_Y0 + f, 0], angle: (f / PITCH) * TAU },
         work: { position: [0.25, SCREW_Y0 + f + PAD + WORK / 2, 0] },
