@@ -1,29 +1,82 @@
-// 第 377 種:踏車。長圓筒的周邊排著踏板,人扶著前面的橫桿、踩在踏板上往上走,圓筒被人的重量帶著轉;
+// 第 377 種:踏車。長圓筒的周邊排著踏板,人扶著前上方的橫桿、踩在踏板上往上走,圓筒被人的重量帶著轉;
 // 軸端的大齒輪把動力傳出去(碾穀物、在中國用來抽水灌溉)。主動件是虛擬的「進程」:踏車已轉了幾圈。
-// 人留在原地踏步(腿交替擺動),圓筒在他腳下往後轉。
-// 推斷:踏板數、人的步伐與圓筒轉速的對應;只畫一個人。
-import { X, TAU, deg } from "./kit.js";
+// 照原圖:人在圓筒朝讀者的那一側(離頂約 25°–50°)往上爬,面向圓筒、背對讀者;他的重心在 +z 那一側,重量讓圓筒
+// 繞 +x 轉,他踩的那一側往下走。兩隻腳輪流:踩著的腳停在一片踏板上跟著往下走,另一隻抬起往上邁一步(隔一片踏板落下)。
+// 推斷:踏板數、人的步伐與圓筒轉速的對應、腿分成上下兩節(膝);只畫一個人;
+// 扶手的橫桿由兩端立在底座上的立柱撐著(原圖用一根斜木條撐著,斜木條會擋住人,改成立柱)。
+import { X, TAU, partPoint } from "./kit.js";
 import { shape, circle } from "./shapes.js";
+import { circleCircle } from "./linkage.js";
 
 const R = 1.35; // 圓筒半徑(踏板外緣)
+const CORE = 1.2; // 圓筒本體(踏板釘在它外面)
 const LEN = 4.4;
 const TREADS = 16;
+const SPACING = TAU / TREADS;
+const AXLE = 0.12;
+const GEAR_X = -LEN / 2 - 0.6; // 軸端的大齒輪
+const BASE_TOP = -1.95; // 底板頂面:比大齒輪的齒轉到最低處(−1.91)低
+const LEG_W = 0.12;
+const LIFT = 0.25; // 邁步時腳抬離踏板的高度
+const PERSON = [0.6, 2.0, 1.25]; // 髖(身體下緣的中點)
+const RAIL = { y: 2.95, z: 0.62, x: [-2.51, 2.81] }; // 扶手的橫桿(中心);兩端的立柱在 x −2.45、2.75
+const ARM_W = 0.08;
 
-/** 進程 p → 圓筒轉角、腿的擺動 */
+/** 進程 p → 圓筒轉角 */
 export function treadmill(p) {
-  const drum = -TAU * p; // 人往前(+z 方向朝讀者的左上)走,圓筒往回轉
-  const step = Math.sin((-drum * R) / ((TAU * R) / TREADS) * Math.PI);
-  return { drum, step };
+  return { drum: TAU * p }; // 繞 +x 轉:人那一側(+z)往下走
 }
 
 const treads = Array.from({ length: TREADS }, (_, i) => {
-  const a = (i * TAU) / TREADS;
-  return { kind: "box", size: [0.08, 0.32, LEN], at: [(R - 0.12) * Math.cos(a), (R - 0.12) * Math.sin(a), 0], angle: a, accent: i === 0 }; // 一片踏板塗記號色
+  const a = i * SPACING;
+  const r = (CORE + R) / 2;
+  return { kind: "box", size: [R - CORE, 0.32, LEN], at: [r * Math.cos(a), r * Math.sin(a), 0], angle: a, accent: i === 0, role: "tread" }; // 一片踏板塗記號色
 });
 const gearTeeth = Array.from({ length: 16 }, (_, i) => {
   const a = (i * TAU) / 16;
-  return { kind: "box", size: [0.4, 0.3, 0.25], at: [1.7 * Math.cos(a), 1.7 * Math.sin(a), 0], angle: a };
+  return { kind: "box", size: [0.4, 0.3, 0.25], at: [1.7 * Math.cos(a), 1.7 * Math.sin(a), GEAR_X], angle: a, role: "tooth" };
 });
+
+// 踏板在世界中的角度 ψ(從 +y 往 +z 量):圓筒轉角 θ 時,第 i 片在 ψ0 + iΔ + θ
+const psi = (p) => Math.atan2(p[2], p[1]);
+const TREAD0 = psi(partPoint([0, 0, 0], X, 0, [R, 0, 0]));
+const LAND = TREAD0 + Math.round(((25 * Math.PI) / 180 - TREAD0) / SPACING) * SPACING; // 腳落在離頂約 25° 的那一片踏板上
+const FOOT = R + LEG_W / 2; // 腳(小腿端頭的圓)貼著踏板外緣時,端點離軸的距離
+
+/** 進程 p → 腳 k(phase 0 或 1)在 yz 平面的位置與是否踩著 */
+export function foot(p, phase) {
+  const u = treadmill(p).drum / SPACING + phase;
+  const m = ((u % 2) + 2) % 2;
+  if (m < 1) {
+    const a = LAND + m * SPACING; // 踩著:跟著踏板往下走
+    return { at: [FOOT * Math.cos(a), FOOT * Math.sin(a)], stance: true };
+  }
+  const s = m - 1;
+  const a = LAND + SPACING - s * SPACING; // 邁步:抬起往上
+  const r = FOOT + LIFT * Math.sin(Math.PI * s);
+  return { at: [r * Math.cos(a), r * Math.sin(a)], stance: false };
+}
+
+const LEGS = { A: { side: 1, phase: 0 }, B: { side: -1, phase: 1 } };
+const HIP = [PERSON[1], PERSON[2]];
+const LEG_LEN = 0.53 * Math.max(...[LAND, LAND + SPACING].map((a) => Math.hypot(FOOT * Math.cos(a) - HIP[0], FOOT * Math.sin(a) - HIP[1])));
+
+function legPose(p, k) {
+  const { side, phase } = LEGS[k];
+  const f = foot(p, phase).at;
+  // 在 yz 平面解膝的位置(兩節一樣長),膝往前(−z,圓筒那一側)凸
+  const knee = [1, -1].map((s) => circleCircle([HIP[0], HIP[1], 0], LEG_LEN, [f[0], f[1], 0], LEG_LEN, s).point).reduce((a, b) => (b[1] < a[1] ? b : a));
+  const [xt, xs] = [PERSON[0] + side * 0.24, PERSON[0] + side * 0.36]; // 大腿貼著身體側面,小腿在大腿外側
+  return {
+    thigh: { from: [xt, ...HIP], to: [xt, knee[0], knee[1]] },
+    shin: { from: [xs, knee[0], knee[1]], to: [xs, ...f] },
+  };
+}
+
+// 兩手從肩伸到橫桿頂上
+const arm = (side) => ({ from: [PERSON[0] + side * 0.22, PERSON[1] + 0.75, PERSON[2]], to: [PERSON[0] + side * 0.22, RAIL.y + 0.05 + ARM_W / 2, RAIL.z] });
+const trestle = shape([[-1.0, BASE_TOP], [1.0, BASE_TOP], [0.3, 0.2], [-0.3, 0.2]]);
+const post = (x) => ({ kind: "box", size: [0.12, RAIL.y + 0.05 - BASE_TOP, 0.12], at: [x, (RAIL.y + 0.05 + BASE_TOP) / 2, RAIL.z], role: "railPost" });
 
 export default {
   figure: 377,
@@ -32,56 +85,59 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape([[-1.0, -1.9], [1.0, -1.9], [0.3, 0.2], [-0.3, 0.2]]), thickness: 0.3, at: [-3.35, 0, 0], axis: X },
-        { kind: "plate", shape: shape([[-1.0, -1.9], [1.0, -1.9], [0.3, 0.2], [-0.3, 0.2]]), thickness: 0.3, at: [2.45, 0, 0], axis: X },
-        { kind: "box", size: [6.4, 0.15, 1.6], at: [0, -1.95, 0] },
-        // 前面的扶手(斜桿與橫桿)
-        { kind: "box", size: [0.12, 1.6, 0.12], at: [-1.6, R + 1.0, 0.7] },
-        { kind: "box", size: [0.12, 1.6, 0.12], at: [2.0, R + 1.0, 0.7] },
-        { kind: "box", size: [3.8, 0.08, 0.08], at: [0.2, R + 1.75, 0.7] },
+        { kind: "plate", shape: trestle, thickness: 0.3, at: [-3.35, 0, 0], axis: X },
+        { kind: "plate", shape: trestle, thickness: 0.3, at: [2.45, 0, 0], axis: X },
+        { kind: "box", size: [6.4, 0.15, 1.6], at: [0, BASE_TOP - 0.075, 0], role: "base" },
+        // 前上方的扶手:橫桿與兩端的立柱(推斷)
+        post(-2.45),
+        post(2.75),
+        { kind: "box", size: [RAIL.x[1] - RAIL.x[0], 0.1, 0.1], at: [(RAIL.x[0] + RAIL.x[1]) / 2, RAIL.y, RAIL.z], role: "rail" },
       ],
     },
     {
       id: "drum",
       kind: "group",
       axis: X,
-      spin: R,
-      spinOffset: LEN / 2,
+      spin: R + 0.2, // 箭頭在踏板外面、圓筒右端
+      spinOffset: LEN / 2 + 0.05,
       pieces: [
         ...treads,
-        { kind: "cylinder", radius: R - 0.3, length: LEN - 0.2 },
-        { kind: "cylinder", radius: 0.12, length: LEN + 2.2, at: [0, 0, -0.6] },
+        { kind: "cylinder", radius: CORE, length: LEN - 0.2, role: "core" },
+        { kind: "cylinder", radius: AXLE, length: LEN + 2.2, at: [0, 0, -0.6], role: "axle" },
         // 軸端的大齒輪
-        { kind: "plate", shape: shape(circle(1.55), [circle(0.25).reverse()]), thickness: 0.25, at: [0, 0, -LEN / 2 - 0.6] },
-        ...gearTeeth.map((t) => ({ ...t, at: [t.at[0], t.at[1], -LEN / 2 - 0.6] })),
+        { kind: "plate", shape: shape(circle(1.55), [circle(AXLE).reverse()]), thickness: 0.25, at: [0, 0, GEAR_X], role: "gear" },
+        ...gearTeeth,
       ],
     },
-    // 人:身體與手臂(扶著橫桿),兩條腿另外擺動
-    { id: "person", kind: "group", center: [0.6, R + 0.95, 0.25], arrow: false, pieces: [
-      { kind: "box", size: [0.35, 0.8, 0.3], at: [0, 0.2, 0] },
-      { kind: "sphere", radius: 0.18, at: [0, 0.8, 0] },
-      { kind: "box", size: [0.08, 0.08, 0.5], at: [0.2, 0.55, 0.25] },
-      { kind: "box", size: [0.08, 0.08, 0.5], at: [-0.2, 0.55, 0.25] },
-    ] },
-    { id: "legA", kind: "link", width: 0.12, thickness: 0.12 },
-    { id: "legB", kind: "link", width: 0.12, thickness: 0.12 },
+    // 人:身體、頭,兩手扶著橫桿,兩條腿另外擺動
+    {
+      id: "person",
+      kind: "group",
+      center: PERSON,
+      arrow: false,
+      pieces: [
+        { kind: "box", size: [0.36, 0.85, 0.3], at: [0, 0.425, 0], role: "torso" },
+        { kind: "sphere", radius: 0.18, at: [0, 0.85 + 0.18, 0] },
+      ],
+    },
+    { id: "armA", kind: "link", axis: X, width: ARM_W, thickness: 0.08, pins: false },
+    { id: "armB", kind: "link", axis: X, width: ARM_W, thickness: 0.08, pins: false },
+    ...Object.keys(LEGS).flatMap((k) => [
+      { id: `thigh${k}`, kind: "link", axis: X, width: LEG_W, thickness: 0.12 },
+      { id: `shin${k}`, kind: "link", axis: X, width: LEG_W, thickness: 0.12 },
+    ]),
   ],
   powered: ["drum"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "圈", speed: 0.06 },
   target: "drum", // 被人踩著轉的圓筒
   view: { direction: [0.55, 0.35, 1] },
   pose(p) {
-    const t = treadmill(p);
-    const hip = [0.6, R + 0.75, 0.25];
-    const leg = (s) => {
-      const sw = deg(20) * t.step * s;
-      return { from: [hip[0] + 0.08 * s, hip[1], hip[2]], to: [hip[0] + 0.08 * s, hip[1] - 0.8 * Math.cos(sw), hip[2] + 0.8 * Math.sin(sw)] };
-    };
-    return { parts: { drum: { angle: t.drum }, legA: leg(1), legB: leg(-1) }, readouts: [] };
+    const parts = { drum: { angle: treadmill(p).drum }, armA: arm(1), armB: arm(-1) };
+    for (const k of Object.keys(LEGS)) {
+      const l = legPose(p, k);
+      parts[`thigh${k}`] = l.thigh;
+      parts[`shin${k}`] = l.shin;
+    }
+    return { parts, readouts: [] };
   },
-  waivers: [
-    { check: "interference", parts: ["person", "legB"], reason: "簡化畫法:人形的腿接在身體下緣,腿根伸進身體的方塊 0.08" },
-    { check: "interference", parts: ["person", "legA"], reason: "簡化畫法:人形的腿接在身體下緣,腿根伸進身體的方塊 0.08" },
-    { check: "interference", parts: ["frame", "drum"], reason: "簡化畫法:鼓輪上的踏塊轉到最低時擦到底板 0.03(96 個取樣中 29 個)" },
-  ],
 };

@@ -1404,24 +1404,323 @@ test("第 374 種:踏板上的滾子經無端皮帶帶動軸上的偏心輪:踏�
   assert.ok(th.every((t, i) => i === 0 || t >= th[i - 1] - 1e-9), "軸只朝一個方向轉");
 });
 
+// 第 374 種的偏心輪板與軸:定義裡帶孔的那塊板、穿過它的圓柱
+const eccentricOf = (def) => {
+  const shaft = part(def, "shaft");
+  const disk = shaft.pieces.find((q) => q.kind === "plate" && q.shape.holes.length);
+  const axle = shaft.pieces.find((q) => q.kind === "cylinder");
+  const ringOf = (pts, at = [0, 0]) => {
+    const c = pts.reduce((s, p) => [s[0] + p[0] / pts.length, s[1] + p[1] / pts.length], [0, 0]);
+    return { c: [c[0] + at[0], c[1] + at[1]], r: Math.max(...pts.map((p) => Math.hypot(p[0] - c[0], p[1] - c[1]))) };
+  };
+  return { disk: ringOf(disk.shape.outline, disk.at), hole: ringOf(disk.shape.holes[0], disk.at), axle };
+};
+
+test("第 374 種:偏心輪的孔正好套住軸(軸帶著偏心輪轉);偏心距是偏心輪半徑的一半(507movements 的動畫:2.5 / 5)", () => {
+  const { disk, hole, axle } = eccentricOf(m374.default);
+  close(Math.hypot(...hole.c), 0, "孔在軸心", 1e-9);
+  close(hole.r, axle.radius, "孔徑等於軸徑", 1e-3);
+  close(Math.hypot(...disk.c) / disk.r, 0.5, "偏心距 / 偏心輪半徑", 0.02);
+});
+
+test("第 374 種:滾子另成零件,用一根銷裝在踏板上:中心始終在銷上、孔套著銷,銷穿過整個滾子", () => {
+  const def = m374.default;
+  const treadle = part(def, "treadle");
+  const roller = part(def, "roller");
+  assert.ok(roller, "滾子是自己的零件(會轉)");
+  const pin = treadle.pieces.find((q) => q.role === "rollerPin");
+  assert.ok(pin, "踏板上有滾子的銷");
+  const wheel = roller.pieces.find((q) => q.kind === "plate");
+  const holeR = Math.max(...wheel.shape.holes[0].map((p) => Math.hypot(...p)));
+  close(holeR, pin.radius, "滾子的孔等於銷徑", 1e-3);
+  const [p0, p1] = [pin.at[2] - pin.length / 2, pin.at[2] + pin.length / 2];
+  const [r0, r1] = [(wheel.at?.[2] ?? 0) - wheel.thickness / 2, (wheel.at?.[2] ?? 0) + wheel.thickness / 2];
+  assert.ok(p0 <= r0 && r1 <= p1, `銷(z ${p0}..${p1})穿過整個滾子(z ${r0}..${r1})`);
+  const plate = treadle.pieces.find((q) => q.kind === "plate");
+  assert.ok(p0 <= plate.at[2] - plate.thickness / 2 + 1e-9, "銷從踏板背面穿出");
+  close(plate.at[2] + plate.thickness / 2, r0, "滾子貼著踏板正面", 1e-9);
+  const stroke = 2 * Math.abs(m374.PEDAL[0] - m374.PEDAL[1]);
+  for (const v of sweep(stroke, 40)) {
+    const pose = def.pose(v).parts;
+    const [x, y] = rot2(pin.at, pose.treadle.angle);
+    const at = [treadle.center[0] + x, treadle.center[1] + y];
+    close(dist([...at, 0], [pose.roller.position[0], pose.roller.position[1], 0]), 0, `行程 ${v.toFixed(2)}:滾子中心在踏板的銷上`, 1e-9);
+  }
+});
+
+test("第 374 種:皮帶在偏心輪與滾子上都不打滑:輪面相對皮帶繞過的那一段不動,滾子照皮帶走的長度轉", () => {
+  const def = m374.default;
+  const { disk } = eccentricOf(def);
+  const roller = part(def, "roller");
+  const rollerR = Math.max(...roller.pieces.find((q) => q.kind === "plate").shape.outline.map((p) => Math.hypot(...p)));
+  const shaft = part(def, "shaft");
+  const diskAt = shaft.pieces.find((q) => q.kind === "plate" && q.shape.holes.length).at;
+  // 皮帶繞過某個輪的那一段的中點(離輪心等距的點裡排在中間的那一個)與輪心連線的角度
+  const midWrap = (points, c) => {
+    const d = points.map((p) => Math.hypot(p[0] - c[0], p[1] - c[1]));
+    const r = Math.min(...d);
+    const on = d.map((x, i) => (Math.abs(x - r) < 1e-6 ? i : -1)).filter((i) => i >= 0);
+    const p = points[on[Math.floor(on.length / 2)]];
+    return Math.atan2(p[1] - c[1], p[0] - c[0]);
+  };
+  const stroke = 2 * Math.abs(m374.PEDAL[0] - m374.PEDAL[1]);
+  const dv = stroke / 4000;
+  const wrapPi = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  for (const v of sweep(2 * stroke, 60).slice(0, -1)) {
+    const [a, b] = [def.pose(v), def.pose(v + dv)];
+    const travel = b.paths.belt.phase - a.paths.belt.phase;
+    assert.ok(Math.abs(travel) > 1e-6, "皮帶在走");
+    const eccAt = (pose) => {
+      const [x, y] = rot2(diskAt, pose.parts.shaft.angle);
+      return [shaft.center[0] + x, shaft.center[1] + y];
+    };
+    const slipE = (pose) => midWrap(pose.paths.belt.points, eccAt(pose));
+    const slipR = (pose) => midWrap(pose.paths.belt.points, pose.parts.roller.position);
+    const ecc = (b.parts.shaft.angle - a.parts.shaft.angle - wrapPi(slipE(b) - slipE(a))) * disk.r;
+    const rol = (b.parts.roller.angle - a.parts.roller.angle - wrapPi(slipR(b) - slipR(a))) * rollerR;
+    close(ecc / travel, 1, `行程 ${v.toFixed(2)}:偏心輪面和皮帶同速`, 2e-3);
+    close(rol / travel, 1, `行程 ${v.toFixed(2)}:滾子面和皮帶同速`, 2e-3);
+  }
+});
+
 test("第 375 種:滾壓輪:輪軸接在直立軸上,輪在環形鍋盆裡繞行並滾動(不打滑)", () => {
   const a = m375.runners(0);
   const b = m375.runners(1);
   const { RUN, WHEEL } = m375.geometry;
   close(Math.abs(b.roll - a.roll) * WHEEL, Math.abs(b.shaft - a.shaft) * RUN, "輪滾過的長度 = 繞行的弧長");
-  close(Math.abs(b.shaft - a.shaft), 1, "傘齒輪 1:1");
 });
 
-test("第 376 種:踏輪馬力裝置:馬往上走,輪在牠腳下轉", () => {
-  close(m376.treadWheel(1).wheel, 2 * Math.PI, "進程一圈,輪轉一圈");
-  const strides = sweep(0.2, 40).map((p) => m376.treadWheel(p).stride);
-  assert.ok(Math.max(...strides) > 0.9 && Math.min(...strides) < -0.9, "腿交替擺動");
+// 群組零件裡沿自己軸線放的圓柱(at 只有沿軸的分量)→ 世界座標的 { at, axis, radius, length }
+const alongAxis = (p, q) => ({ at: add(p.center, scale(p.axis, q.at?.[2] ?? 0)), axis: p.axis, radius: q.radius, length: q.length });
+
+test("第 375 種:頂上的傘齒輪照原圖約 2 : 1(水平的大、垂直的小,原圖量約 2.1),直立軸轉速是主動軸的一半", () => {
+  const def = m375.default;
+  const [big, small] = ["shaft", "drive"].map((id) => part(def, id).pieces.find((q) => q.kind === "gear"));
+  const ratio = big.radius / small.radius;
+  assert.ok(ratio > 1.8 && ratio < 2.4, `水平傘齒輪約為垂直的兩倍(${ratio.toFixed(2)})`);
+  close(big.teeth / small.teeth, ratio, "齒數比等於節圓半徑比", 1e-9);
+  close(Math.abs(turned(def, "shaft", 0, 1) / turned(def, "drive", 0, 1)), small.teeth / big.teeth, "直立軸轉速比", 1e-9);
 });
 
-test("第 377 種:踏車:人踩在周邊的踏板上往上走,圓筒被人的重量帶著轉", () => {
-  close(m377.treadmill(1).drum, -2 * Math.PI, "進程一圈,圓筒轉一圈(往後轉)");
-  const steps = sweep(0.2, 60).map((p) => m377.treadmill(p).step);
-  assert.ok(Math.max(...steps) > 0.9 && Math.min(...steps) < -0.9, "人原地踏步");
+test("第 375 種:直立軸上穿過橫樑的軸承、下端立在盆底中央的腳軸承裡;主動軸由橫樑上的短立柱撐著;門形框的橫樑和立柱同一個平面、立在底座上", () => {
+  const def = m375.default;
+  const frame = part(def, "frame");
+  const shaft = part(def, "shaft");
+  const drive = part(def, "drive");
+  const vertical = alongAxis(shaft, shaft.pieces.find((q) => q.kind === "cylinder" && q.length > 2));
+  assertShaftInBearings(vertical, frame.pieces, "直立軸");
+  const rings = frame.pieces.filter((q) => q.kind === "cylinder" && q.inner && q.axis?.[1] === 1);
+  assert.ok(rings.length >= 2, "直立軸上下各一個軸承");
+  const ys = rings.map((q) => q.at[1]);
+  const { FLOOR, WHEEL } = m375.geometry;
+  assert.ok(Math.min(...ys) < FLOOR && Math.max(...ys) > FLOOR + 2 * WHEEL, "一個在盆底、一個在輪的上方(橫樑)");
+  const base = frame.pieces.find((q) => q.role === "base");
+  close(vertical.at[1] - vertical.length / 2, base.at[1] + base.size[1] / 2, "直立軸的下端立在底座上", 1e-9);
+  const driveShaft = alongAxis(drive, drive.pieces.find((q) => q.kind === "cylinder" && q.length > 1));
+  assertShaftInBearings(driveShaft, frame.pieces, "主動軸");
+  assertOnePiece({ pieces: frame.pieces.filter((q) => q.kind !== "lathe") }, "橫樑、立柱、軸承與底座接成一件");
+  const beam = frame.pieces.filter((q) => q.role === "beam");
+  const posts = frame.pieces.filter((q) => q.role === "post");
+  assert.ok(beam.length && posts.length === 2, "門形框:橫樑與兩根立柱");
+  for (const q of [...beam, ...posts]) close(q.at[2], 0, "橫樑、立柱和直立軸在同一個平面", 1e-9);
+});
+
+// 第 376 種:輪緣板(帶孔的那塊)的內面半徑與正面的 z
+const rimOf376 = () => {
+  const rim = part(m376.default, "wheel").pieces.find((q) => q.kind === "plate" && q.shape.holes.length);
+  return { inner: Math.min(...rim.shape.holes[0].map((p) => Math.hypot(...p))), front: (rim.at?.[2] ?? 0) + rim.thickness / 2 };
+};
+const LEGS_376 = ["FF", "FB", "HF", "HB"];
+
+test("第 376 種:馬在輪心朝轉向的那一側(逆時針轉時在左)、身體前高後低,重量對輪軸的力矩和輪的轉向同號(原文:藉由試圖沿其內側往上行走的動物之重量而轉動)", () => {
+  const def = m376.default;
+  close(turned(def, "wheel", 0, 1), 2 * Math.PI, "進程一圈,輪逆時針轉一圈");
+  const horse = part(def, "horse");
+  const body = horse.pieces.find((q) => q.kind === "plate").shape.outline;
+  // 輪廓的面積重心
+  let [area, cx] = [0, 0];
+  body.forEach((p, i) => {
+    const q = body[(i + 1) % body.length];
+    const c = p[0] * q[1] - q[0] * p[1];
+    area += c / 2;
+    cx += ((p[0] + q[0]) * c) / 6;
+  });
+  const x = horse.center[0] + cx / area;
+  const torque = -x; // 重量往下:對輪軸的力矩 z 分量 = x · (−mg)
+  assert.ok(torque > 0.3, `馬的重心在輪心左邊夠遠(x ${x.toFixed(2)}),重量讓輪逆時針轉`);
+  const nose = body.reduce((a, b) => (b[0] < a[0] ? b : a));
+  const tail = body.reduce((a, b) => (b[0] > a[0] ? b : a));
+  assert.ok(nose[1] - tail[1] > 0.5, "馬面朝左往上爬:頭那一端比臀部高(原圖前高後低)");
+});
+
+test("第 376 種:四隻蹄輪流踩在輪緣內面:支撐的蹄貼著輪緣內面、和輪面一起往後走,抬起的蹄離開輪面;腿接在馬身上,兩節長度不變", () => {
+  const def = m376.default;
+  const { inner } = rimOf376();
+  const dp = 1e-5;
+  const len0 = {};
+  const seen = Object.fromEntries(LEGS_376.map((k) => [k, { stance: 0, lift: 0 }]));
+  for (const p of sweep(0.25, 500)) {
+    const pose = def.pose(p).parts;
+    const next = def.pose(p + dp).parts;
+    let standing = 0;
+    for (const k of LEGS_376) {
+      const [leg, shin] = [pose[`leg${k}`], pose[`shin${k}`]];
+      close(Math.hypot(leg.to[0] - shin.from[0], leg.to[1] - shin.from[1]), 0, "兩節在膝相接(上下兩層)", 1e-9);
+      const lengths = [dist(leg.from, leg.to), dist(shin.from, shin.to)];
+      len0[k] ??= { lengths, top: leg.from };
+      lengths.forEach((l, i) => close(l, len0[k].lengths[i], `腿 ${k} 第 ${i + 1} 節長度不變`, 1e-9));
+      close(dist(leg.from, len0[k].top), 0, `腿 ${k} 接在馬身上的那一端不動`, 1e-9);
+      const gap = inner - (Math.hypot(shin.to[0], shin.to[1]) + part(def, `shin${k}`).width / 2);
+      assert.ok(gap > -1e-9, `進程 ${p.toFixed(3)}:蹄 ${k} 不穿進輪緣(${gap.toFixed(4)})`);
+      seen[k].lift = Math.max(seen[k].lift, gap);
+      if (gap > 1e-9) continue;
+      standing++;
+      seen[k].stance++;
+      const hoof = next[`shin${k}`].to;
+      if (inner - (Math.hypot(hoof[0], hoof[1]) + part(def, `shin${k}`).width / 2) > 1e-9) continue;
+      const moved = Math.atan2(hoof[1], hoof[0]) - Math.atan2(shin.to[1], shin.to[0]);
+      close(moved, next.wheel.angle - pose.wheel.angle, `進程 ${p.toFixed(3)}:支撐的蹄 ${k} 和輪面同速`, 1e-9);
+    }
+    assert.ok(standing >= 2, `進程 ${p.toFixed(3)}:至少兩隻蹄踩在輪緣上(${standing})`);
+  }
+  for (const k of LEGS_376) assert.ok(seen[k].stance > 50 && seen[k].lift > 0.1, `蹄 ${k} 輪流踩下與抬起`);
+});
+
+test("第 376 種:輪心的軸和輪一起轉(原圖輪心打斜線是剖開的軸),往後穿過軸承座;輪轂接到格子,螺栓在輪緣正面,轉向箭頭在輪緣前面", () => {
+  const def = m376.default;
+  const wheel = part(def, "wheel");
+  const frame = part(def, "frame");
+  const axle = wheel.pieces.find((q) => q.role === "axle");
+  assert.ok(axle, "軸是輪的一部分");
+  assert.ok(!frame.pieces.some((q) => q.kind === "cylinder" && !q.inner), "機架上沒有固定軸");
+  assertShaftInBearings({ at: axle.at, radius: axle.radius, length: axle.length }, frame.pieces, "輪軸");
+  const hub = wheel.pieces.find((q) => q.role === "hub");
+  const bars = wheel.pieces.filter((q) => q.role === "grid");
+  const reach = (q) => {
+    const [x, y] = rot2([-q.at[0], -q.at[1]], -(q.angle ?? 0));
+    return Math.hypot(Math.max(Math.abs(x) - q.size[0] / 2, 0), Math.max(Math.abs(y) - q.size[1] / 2, 0));
+  };
+  assert.ok(bars.filter((q) => reach(q) <= hub.radius).length >= 4, "最內圈的四根格條碰到輪轂");
+  const { front } = rimOf376();
+  const bolts = wheel.pieces.filter((q) => q.kind === "sphere");
+  assert.ok(bolts.length >= 8 && bolts.every((q) => Math.abs(q.at[2] - front) < 1e-9), "螺栓在輪緣正面(看得到)");
+  assert.ok(wheel.spinOffset > front, "轉向箭頭在輪緣前面");
+  assert.ok(bars.some((q) => q.accent), "一根格條塗記號色,看得出輪在轉");
+});
+
+test("第 376 種:軸端的大齒輪咬著小齒輪把動力傳出去(原文:驅動渡輪的槳輪等;推斷),小齒輪是目標件、照齒數比反向轉", () => {
+  const def = m376.default;
+  const wheel = part(def, "wheel");
+  const gear = wheel.pieces.find((q) => q.kind === "gear");
+  const axle = wheel.pieces.find((q) => q.role === "axle");
+  assert.ok(gear, "軸端有大齒輪");
+  assert.ok(Math.abs(gear.at[2] - (axle.at[2] - axle.length / 2)) < gear.width, "大齒輪在軸的後端");
+  const pinion = part(def, "pinion");
+  assert.equal(def.target, "pinion");
+  close(pinion.center[2], gear.at[2], "兩個齒輪同一層", 1e-9);
+  close(Math.hypot(pinion.center[0], pinion.center[1]), gear.radius + pinion.radius, "節圓相切", 1e-9);
+  close(turned(def, "pinion", 0, 0.1) / turned(def, "wheel", 0, 0.1), -gear.teeth / pinion.teeth, "轉速比", 1e-9);
+  const pin = pinion.pieces.find((q) => q.kind === "cylinder");
+  assertShaftInBearings({ at: add(pinion.center, pin.at), radius: pin.radius, length: pin.length }, part(def, "frame").pieces, "小齒輪的軸");
+});
+
+// 第 377 種:圓筒的踏板(沿軸的長方塊)在世界中的中心;軸沿 x,ψ 從 +y 往 +z 量
+const treads377 = (angle) => {
+  const drum = part(m377.default, "drum");
+  return drum.pieces.filter((q) => q.role === "tread").map((q) => ({ q, at: partPoint([0, 0, 0], drum.axis, angle, q.at) }));
+};
+const psi = (p) => Math.atan2(p[2], p[1]);
+
+test("第 377 種:人在圓筒朝讀者那一側往上爬,重量對軸的力矩和圓筒的轉向同號(原文:藉由人們踩踏於周邊踏板上的重量而轉動),人那一側往下走", () => {
+  const def = m377.default;
+  const spin = turned(def, "drum", 0, 0.01);
+  assert.ok(spin > 0, "圓筒繞 +x 轉:朝讀者(+z)那一側往下走");
+  const person = part(def, "person");
+  const torso = person.pieces.find((q) => q.role === "torso");
+  const z = person.center[2] + torso.at[2];
+  // 重量 (0, −mg, 0) 對 x 軸的力矩 = −z · (−mg) = z · mg
+  assert.ok(z > 0.6, `人的重心在 +z 那一側、離軸夠遠(z ${z.toFixed(2)})`);
+  assert.equal(Math.sign(z), Math.sign(spin), "力矩和轉向同號");
+  const before = treads377(0).map((t) => psi(t.at));
+  const after = treads377(0.01).map((t) => psi(t.at));
+  assert.ok(after.every((a, i) => Math.sin(a - before[i]) > 0), "踏板往 ψ 增加的方向走:人那一側往下");
+});
+
+test("第 377 種:腳輪流踩在踏板上、跟著踏板往下走,抬起的腳往上邁;手扶著前上方的橫桿;腿的兩節長度不變", () => {
+  const def = m377.default;
+  const frame = part(def, "frame");
+  const rail = frame.pieces.find((q) => q.role === "rail");
+  const treadOuter = Math.max(...treads377(0).map((t) => Math.hypot(t.at[1], t.at[2]) + t.q.size[0] / 2));
+  const len0 = {};
+  const seen = { A: 0, B: 0 };
+  const dp = 1e-5;
+  for (const p of sweep(0.25, 400)) {
+    const pose = def.pose(p).parts;
+    const next = def.pose(p + dp).parts;
+    const treads = treads377(pose.drum.angle);
+    let standing = 0;
+    for (const k of ["A", "B"]) {
+      const [thigh, shin] = [pose[`thigh${k}`], pose[`shin${k}`]];
+      close(Math.hypot(thigh.to[1] - shin.from[1], thigh.to[2] - shin.from[2]), 0, "兩節在膝相接", 1e-9);
+      const lengths = [dist(thigh.from, thigh.to), dist(shin.from, shin.to)];
+      len0[k] ??= { lengths, hip: thigh.from };
+      lengths.forEach((l, i) => close(l, len0[k].lengths[i], `腿 ${k} 第 ${i + 1} 節長度不變`, 1e-9));
+      close(dist(thigh.from, len0[k].hip), 0, `腿 ${k} 接在身上的那一端不動`, 1e-9);
+      const foot = shin.to;
+      const gap = Math.hypot(foot[1], foot[2]) - part(def, `shin${k}`).width / 2 - treadOuter;
+      assert.ok(gap > -1e-9, `進程 ${p.toFixed(3)}:腳 ${k} 不踩進踏板(${gap.toFixed(4)})`);
+      if (gap > 1e-9) continue;
+      // 踩著的那一片踏板:腳在它的寬度裡
+      const on = treads.find((t) => Math.abs(Math.atan2(Math.sin(psi(t.at) - psi(foot)), Math.cos(psi(t.at) - psi(foot)))) * treadOuter < t.q.size[1] / 2);
+      assert.ok(on, `進程 ${p.toFixed(3)}:腳 ${k} 落在一片踏板上`);
+      standing++;
+      seen[k]++;
+      const f2 = next[`shin${k}`].to;
+      if (Math.hypot(f2[1], f2[2]) - part(def, `shin${k}`).width / 2 - treadOuter > 1e-9) continue;
+      close(psi(f2) - psi(foot), next.drum.angle - pose.drum.angle, `進程 ${p.toFixed(3)}:腳 ${k} 跟著踏板走`, 1e-9);
+    }
+    assert.ok(standing >= 1, `進程 ${p.toFixed(3)}:至少一隻腳踩在踏板上`);
+  }
+  assert.ok(seen.A > 50 && seen.B > 50, "兩隻腳輪流踩");
+  // 手扶著橫桿:手(臂端的圓)貼著橫桿頂面,在人的前面(−z 那一側)
+  const pose = def.pose(0).parts;
+  for (const k of ["A", "B"]) {
+    const arm = pose[`arm${k}`];
+    const top = rail.at[1] + rail.size[1] / 2;
+    close(arm.to[1] - part(def, `arm${k}`).width / 2, top, `手 ${k} 擱在橫桿頂上`, 1e-9);
+    close(arm.to[2], rail.at[2], `手 ${k} 在橫桿正上方`, 1e-9);
+    assert.ok(arm.to[2] < arm.from[2], "橫桿在人的前面(人面向圓筒、背對讀者)");
+  }
+});
+
+test("第 377 種:踏板釘在圓筒上、大齒輪套緊在軸上、扶手的立柱立在底座上、頭接在身上;大齒輪轉到最低也不碰底板", () => {
+  const def = m377.default;
+  const drum = part(def, "drum");
+  const core = drum.pieces.find((q) => q.role === "core");
+  for (const t of drum.pieces.filter((q) => q.role === "tread")) close(Math.hypot(t.at[0], t.at[1]) - t.size[0] / 2, core.radius, "踏板內緣貼著圓筒", 1e-9);
+  const axle = drum.pieces.find((q) => q.role === "axle");
+  const gear = drum.pieces.find((q) => q.role === "gear");
+  close(Math.max(...gear.shape.holes[0].map((p) => Math.hypot(...p))), axle.radius, "大齒輪的孔等於軸徑", 1e-3);
+  const frame = part(def, "frame");
+  const base = frame.pieces.find((q) => q.role === "base");
+  const baseTop = base.at[1] + base.size[1] / 2;
+  const rail = frame.pieces.find((q) => q.role === "rail");
+  const posts = frame.pieces.filter((q) => q.role === "railPost");
+  assert.equal(posts.length, 2, "扶手兩端各一根立柱");
+  for (const q of posts) {
+    close(q.at[1] - q.size[1] / 2, baseTop, "立柱立在底座上", 1e-9);
+    close(q.at[1] + q.size[1] / 2, rail.at[1] + rail.size[1] / 2, "立柱頂到橫桿", 1e-9);
+    assert.ok(Math.abs(q.at[0]) > drum.pieces.find((t) => t.role === "tread").size[2] / 2 && Math.abs(q.at[0] - rail.at[0]) <= rail.size[0] / 2, "立柱在圓筒兩端外面、撐著橫桿");
+  }
+  const person = part(def, "person");
+  const torso = person.pieces.find((q) => q.role === "torso");
+  const head = person.pieces.find((q) => q.kind === "sphere");
+  close(head.at[1] - head.radius, torso.at[1] + torso.size[1] / 2, "頭擱在身體頂上", 1e-9);
+  // 大齒輪最外的點(齒頂的角)轉到最低時離底板頂面還有間隙
+  const teeth = drum.pieces.filter((q) => q.role === "tooth");
+  const reach = Math.max(...teeth.map((q) => Math.hypot(Math.hypot(q.at[0], q.at[1]) + q.size[0] / 2, q.size[1] / 2)));
+  assert.ok(-reach - baseTop > 0.02, `大齒輪的齒不碰底板(間隙 ${(-reach - baseTop).toFixed(3)})`);
+  assert.ok(!(def.waivers ?? []).some((w) => w.parts.includes("drum") && w.parts.includes("frame")), "不再需要齒輪擦底板的豁免");
 });
 
 test("第 378 種:擺鋸:擺的運動帶著鋸框往復,鋸條一面鋸一面往下切進樹幹", () => {
