@@ -98,7 +98,7 @@ function staticChecks(def, scene, opt) {
   const prediction = Math.max(opt.gap, 0);
 
   // 有沒有相對運動、軸是不是裝在孔裡,要看過所有狀態才知道(某個狀態下整個機構可能都不動)
-  const holes = new Map(); // 圓柱(或球)凸塊 → 它在對方座標裡的軸線是否始終是同一條(裝在孔裡)
+  const holes = new Map(); // 圓柱(或球)的軸線 → 它在對方座標裡是否始終是同一條(裝在孔裡)、有沒有沿軸滑
   const placed = []; // 每個取樣姿勢下各零件的位置(判斷兩個零件之間有沒有相對運動)
   const perState = [];
   for (const state of statesOf(def)) {
@@ -142,8 +142,8 @@ function staticChecks(def, scene, opt) {
           for (const pin of hit.pins ?? []) {
             for (const [piece, other] of pin.fits) {
               const line = axleIn(piece, other);
-              const hole = holes.get(piece) ?? new Map();
-              holes.set(piece, hole);
+              const hole = holes.get(piece.axle) ?? new Map();
+              holes.set(piece.axle, hole);
               const seen = hole.get(other);
               // 圓柱沿自己的軸在對方座標裡的位置(兩端中點投影到軸上),看它在這個狀態裡有沒有沿軸滑
               // (各狀態停在不同位置、狀態裡不動的不算滑)
@@ -224,7 +224,7 @@ function staticChecks(def, scene, opt) {
       // 和同一個零件自己的各部分一樣不查。兩個都固定不動的不在此列
       if (moves && rigid) continue;
       const inHole = ([piece, other, surrounded]) => {
-        const hole = holes.get(piece)?.get(other);
+        const hole = holes.get(piece.axle)?.get(other);
         return moves && hole?.fixed && (surrounded || !hole.slid);
       };
       o.depth = 0;
@@ -292,8 +292,15 @@ function measure(scene, a, b, prediction, tolerance) {
     });
     return gap == null ? null : { gap, depth: Math.max(0, -solid - path.radius), where };
   }
-  // 圓柱、球與對方的重疊另外記下,等整個狀態走完再判斷它是不是裝在孔裡
-  const pins = [];
+  // 圓柱、球與對方的重疊另外記下,等整個狀態走完再判斷它是不是裝在孔裡。判斷只看「沒裝在孔裡的最深一處」,
+  // 所以同一組 fits 只留最深的那一處(一根軸穿過旋轉體、齒輪時,一個姿勢就有上百對凸塊相碰,全留下會佔掉幾百 MB)
+  const groups = new Map();
+  const pin = (depth, fits, pa, pb, n) => {
+    const key = fits.map(([piece, , ok]) => `${axleId(piece.axle)}${ok ? "+" : "-"}`).join(",");
+    const g = groups.get(key);
+    if (g && g.depth >= depth) return;
+    groups.set(key, { depth, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}` });
+  };
   // 圓柱被對方圍著嗎(同一根圓柱和對方好幾塊相碰時只算一次;圓柱屬於 a 或 b,對方就是另一個)
   const enclosed = new Map();
   const surrounds = (piece, part) => {
@@ -317,7 +324,7 @@ function measure(scene, a, b, prediction, tolerance) {
       // (只看延長線的話,端頭停在圓桿旁邊的桿也會被當成穿過去)
       if (!rb && pb.axle?.bar && scene.segmentPasses(pb.axle, a)) fits.push([pb, a, true]);
       if (!ra && pa.axle?.bar && scene.segmentPasses(pa.axle, b)) fits.push([pa, b, true]);
-      pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}` });
+      pin(-d, fits, pa, pb, n);
     } else if (d < solid) {
       // 鉸接處的軸眼:某根軸(任一方的圓柱)的軸線同時穿過這兩塊,而且那根軸是裝在孔裡的鉸接軸,
       // 那麼這兩塊在軸周圍的重疊是鉸接處互相套著的軸眼(連桿端頭疊在槓桿上),和軸本身一樣等走完再判斷
@@ -327,15 +334,23 @@ function measure(scene, a, b, prediction, tolerance) {
         if (pa.axle?.bar && scene.passesThrough(pa.axle, b)) fits.push([pa, b, true]);
         if (pb.axle?.bar && scene.passesThrough(pb.axle, a)) fits.push([pb, a, true]);
       }
-      if (fits.length) pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}` });
+      if (fits.length) pin(-d, fits, pa, pb, n);
       else {
         solid = d;
         where = `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}`;
       }
     }
   });
-  return gap == null ? null : { gap, depth: -solid, pins, where };
+  return gap == null ? null : { gap, depth: -solid, pins: [...groups.values()], where };
 }
+
+// 軸線的編號(分組用;同一個網格的凸塊共用一條軸線,重建碰撞體時才換新)
+const axleIds = new WeakMap();
+let nextAxleId = 0;
+const axleId = (axle) => {
+  if (!axleIds.has(axle)) axleIds.set(axle, nextAxleId++);
+  return axleIds.get(axle);
+};
 
 // 軸線同時穿過凸塊 pa、pb 的那些軸(a 或 b 的圓柱凸塊),各配上「它裝在哪個零件的孔裡」與那個零件有沒有圍著它
 function knuckles(scene, a, b, pa, pb, surrounds) {

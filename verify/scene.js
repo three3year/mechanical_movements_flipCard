@@ -114,7 +114,11 @@ export class Scene {
         if (key !== m.scaleKey) {
           for (const piece of m.pieces ?? []) this.world.removeCollider(piece.collider, false);
           m.pieces = m.hulls.map((hull) => makePiece(this.world, hull, tmpS)).filter(Boolean);
-          if (m.axle) for (const piece of m.pieces) piece.axle = { from: new THREE.Vector3(), to: new THREE.Vector3(), radius: m.radius, bar: m.mesh.geometry.type === "BoxGeometry", thread: !!m.mesh.geometry.userData.thread };
+          // 同一個網格的凸塊(空心圓柱切成的一圈塊)共用一條軸線
+          if (m.axle) {
+            const axle = { from: new THREE.Vector3(), to: new THREE.Vector3(), radius: m.radius, bar: m.mesh.geometry.type === "BoxGeometry", thread: !!m.mesh.geometry.userData.thread };
+            for (const piece of m.pieces) piece.axle = axle;
+          }
           m.scaleKey = key;
         }
         for (const piece of m.pieces) {
