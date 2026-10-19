@@ -971,14 +971,104 @@ test("第 305 種:推斷的重錘驅動——圓盤軸上的鼓放出繩、經�
   assertWeightDrive(m305.default, { drum: DRUM, wheel: m305.escapement.angle, period: m305.escapement.period, every: REWIND });
 });
 
-test("第 306 種:三腳式擺式擒縱:三腳輪的齒交替作用於上、下叉瓦,擺每擺一次轉六分之一圈", () => {
-  escapes(m306.escapement, 2 * m306.STEP, 1);
+const gap306 = (a, b) => (polygonsOverlap(a, b) ? 0 : Math.min(...a.map((p) => edgeDistance(p, b)), ...b.map((p) => edgeDistance(p, a))));
+
+test("第 306 種:三腳式擺式擒縱:三腳輪的齒交替作用於上、下叉瓦,擺每擺一次轉六分之一圈;照原圖順時針", () => {
+  escapes(m306.escapement, 2 * m306.STEP, -1);
   noPenetration(m306.escapement);
 });
 
-test("第 307 種:三腳式擒縱的變形(較長的止動齒 D、E):擺每擺一次轉六分之一圈", () => {
-  escapes(m307.escapement, 2 * m307.STEP, 1);
+test("第 306 種:圖中所示為其中一齒正作用於上方擒縱叉瓦的狀態——v = 0 時上方叉瓦擋住輪心上方的腳,下方叉瓦沒碰到腳;板先往右(原圖箭頭)", () => {
+  const { teeth, stops } = m306.escapement.at(0);
+  const [upper, lower] = stops;
+  const near = (s) => Math.min(...teeth.map((t) => gap306(s, t)));
+  assert.ok(near(upper) < 1e-3, `上方叉瓦和腳的間隙 ${near(upper).toFixed(4)}`);
+  assert.ok(near(lower) > 0.03, `下方叉瓦和腳的間隙 ${near(lower).toFixed(4)}`);
+  const held = teeth.find((t) => gap306(upper, t) < 1e-3);
+  assert.ok(held.reduce((s, p) => s + p[1], 0) / held.length > 0.3, "被擋住的是輪心上方的腳");
+  assert.ok(m306.plateShift(0.05) > m306.plateShift(0), "板先往右移");
+});
+
+test("第 306 種:推斷的重錘驅動——三腳輪軸上的鼓放出繩、吊著重錘,重錘的拉力讓輪順時針轉", () => {
+  const { DRUM, REWIND } = m306.geometry;
+  assertWeightDrive(m306.default, { drum: DRUM, wheel: m306.escapement.angle, period: m306.escapement.period, every: REWIND, dir: -1 });
+});
+
+test("第 307 種:三腳式擒縱的變形(較長的止動齒 D、E):擺每擺一次轉六分之一圈;轉向同第 306 種(順時針)", () => {
+  escapes(m307.escapement, 2 * m307.STEP, -1);
   noPenetration(m307.escapement);
+});
+
+/** 第 307 種:主動量 v 時的外形——腳(前層)與腳根的鉤(橢圓口那一層)、D 與 E(前層)與口緣(上緣有 A、下緣有 B) */
+function shapes307(v) {
+  const s = m307.escapement.at(v);
+  const pick = (list, layers, layer) => list.filter((_, i) => layers[i] === layer);
+  return {
+    blades: pick(s.teeth, s.layers, "front"),
+    hooks: pick(s.teeth, s.layers, "flask"),
+    stops: pick(s.stops, s.stopLayers, "front"), // [D, E]
+    rims: pick(s.stops, s.stopLayers, "flask"), // [上緣(A), 下緣(B)]
+  };
+}
+/** 兩組外形之間最小的間隙,與最近的那一對 */
+function nearest307(as, bs) {
+  let best = { gap: Infinity };
+  for (const [i, a] of as.entries()) for (const [j, b] of bs.entries()) {
+    const g = gap306(a, b);
+    if (g < best.gap) best = { gap: g, i, j };
+  }
+  return best;
+}
+
+test("第 307 種:具有較長的止動齒 D 和 E——三腳輪停住時是長腳的腳尖頂在 D 或 E 上(橢圓口外、在大半徑處鎖住),腳根沒碰到口緣;D 在左、E 在右,輪流擋", () => {
+  const e = m307.escapement;
+  const { R_T, OVAL } = m307.geometry;
+  const n = 720;
+  const seen = new Set();
+  let locked = 0;
+  for (let k = 1; k < n; k++) {
+    const v = 2 * e.period + (2 * e.period * k) / n;
+    const dv = e.period / 400;
+    if (Math.abs(e.angle(v + dv) - e.angle(v - dv)) > 1e-4) continue; // 只看輪停著的時刻(弧面以折線近似,鎖住時有萬分之幾度的抖動)
+    locked++;
+    const s = shapes307(v);
+    const lock = nearest307(s.stops, s.blades);
+    assert.ok(lock.gap < 2e-3, `主動量 ${v.toFixed(4)}:輪停著,腳尖卻沒頂在 D、E 上(間隙 ${lock.gap.toFixed(4)})`);
+    // 接觸處:兩者互相最靠近的那個頂點
+    const [stop, blade] = [s.stops[lock.i], s.blades[lock.j]];
+    const tip = [...stop.map((p) => [p, edgeDistance(p, blade)]), ...blade.map((p) => [p, edgeDistance(p, stop)])].reduce((m, x) => (x[1] < m[1] ? x : m))[0];
+    assert.ok(Math.hypot(...tip) > 0.95 * R_T && Math.abs(tip[0]) > OVAL.half, `主動量 ${v.toFixed(4)}:頂在 D、E 上的是腳尖、在橢圓口外(接觸處離輪心 ${Math.hypot(...tip).toFixed(2)}、x ${tip[0].toFixed(2)})`);
+    assert.ok((lock.i === 0) === tip[0] < 0, "D 在左、E 在右");
+    seen.add(lock.i);
+    const root = nearest307(s.rims, s.hooks);
+    assert.ok(root.gap > 2e-3, `主動量 ${v.toFixed(4)}:鎖住時腳根碰到口緣(間隙 ${root.gap.toFixed(4)})`);
+  }
+  assert.ok(locked > n / 4, "輪有一段時間停著");
+  assert.equal(seen.size, 2, "D、E 輪流擋住腳尖");
+});
+
+test("第 307 種:A 和 B 為擒縱叉瓦——放開後腳根的鉤推著口緣的台階:擺往右時推上緣的 A、往左時推下緣的 B(衝量)", () => {
+  const e = m307.escapement;
+  const n = 1440;
+  const pushed = { right: new Set(), left: new Set() };
+  for (let k = 0; k < n; k++) {
+    const v = 2 * e.period + (2 * e.period * k) / n;
+    const dv = e.period / 2000;
+    const turning = e.angle(v + dv) - e.angle(v - dv) < -1e-6; // 輪往前(順時針)轉
+    if (!turning) continue;
+    const s = shapes307(v);
+    const push = nearest307(s.rims, s.hooks);
+    if (push.gap > 2e-3) continue;
+    const swing = m307.pendulumAngle(v + dv) - m307.pendulumAngle(v - dv); // 正:擺往右(下端往右)
+    pushed[swing > 0 ? "right" : "left"].add(push.i);
+  }
+  assert.deepEqual([...pushed.right], [0], "擺往右時,腳根推的是上緣的 A");
+  assert.deepEqual([...pushed.left], [1], "擺往左時,腳根推的是下緣的 B");
+});
+
+test("第 307 種:推斷的重錘驅動——三腳輪軸上的鼓放出繩、吊著重錘,重錘的拉力讓輪順時針轉", () => {
+  const { DRUM, REWIND } = m307.geometry;
+  assertWeightDrive(m307.default, { drum: DRUM, wheel: m307.escapement.angle, period: m307.escapement.period, every: REWIND, dir: -1 });
 });
 
 test("第 308 種:分離式擒縱:只在擺向左擺時由槓桿 Q 解鎖並接收衝量;擺向右返回時制動爪被推向一旁", () => {
