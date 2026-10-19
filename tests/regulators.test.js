@@ -1,7 +1,7 @@
 // 第十四章「擺與鐘錶調節」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, assertWeightDrive, plateLayers } from "./helpers.js";
+import { close, sweep, part, assertWeightDrive, assertMeshFree, plateLayers } from "./helpers.js";
 
 import * as m315 from "../models/fig315.js";
 import * as m316 from "../models/fig316.js";
@@ -539,15 +539,20 @@ test("第 320 種:無端鏈:上發條(拉 b)的期間,動力輪 P 照樣被帶�
 test("第 320 種:p 是軸(類似的滑輪騎在另一根軸 p 上);大重物 W 由繩段 c 拉起,d 仍掛在動力輪的滑輪 P 上", () => {
   const def = m320.default;
   const { Pp } = m320.geometry;
+  // p 標在報時輪的軸上(軸和報時輪固定在一起,是同一個零件):標籤在軸的前端,軸穿過棘輪滑輪的中心伸到前面
   const p = def.parts.find((q) => q.label === "p");
-  assert.equal(p.kind, "cylinder", "p 標在軸上");
+  const arbor = p.pieces.find((q) => q.kind === "cylinder" && Math.hypot(q.at[0], q.at[1]) < 1e-9);
+  assert.ok(arbor, "p 標在軸上");
   close(Math.hypot(p.center[0] - Pp[0], p.center[1] - Pp[1]), 0, "軸 p 穿過棘輪滑輪的中心", 1e-9);
+  const front = p.center[2] + arbor.at[2] + arbor.length / 2;
+  assert.ok(front > 0.2, "軸 p 穿過棘輪滑輪伸到前面");
+  close(Math.hypot(p.labelOffset[0], p.labelOffset[1]), Math.hypot(-0.12, 0.15), "標籤在軸端旁", 1e-9);
   assert.equal(def.parts.find((q) => q.id === "pulleyp").label, undefined, "棘輪滑輪本身不標 p");
   // 繩段 c 從棘輪滑輪下到 W 的滑輪,a 從 P 下到 w 的滑輪(兩段在中間交叉)
   const pose = def.pose(0.9).parts;
   const W = pose.sheaveW.position;
   const w = pose.sheavew.position;
-  const PP = def.parts.find((q) => q.id === "pulleyP").center;
+  const PP = def.parts.find((q) => q.id === "goingWheel").center;
   const at = (label) => {
     const q = def.parts.find((r) => r.label === label);
     return q.center.map((c, i) => c + q.labelOffset[i]);
@@ -577,10 +582,77 @@ test("第 320 種:無端鏈:棘輪滑輪在制動爪下方運行,爪被齒背抬
   for (const f of falls.filter((f) => f.length > 2)) assert.ok(f[1] > f[0], "落下是加速的");
   assert.ok(falls.every((f) => f.length > 1), "每次落下都有過程,不是瞬移");
   // 查表內插會讓爪在兩個取樣之間略深一點;以爪尖的位移算,容許 0.003(爪長 0.57)
-  for (const p of sweep(1, 800)) assert.ok(click(p) <= m320.clickLimit(p) + 0.003 / 0.57, `進程 ${p.toFixed(4)}:爪尖穿進棘輪`);
+  const { length } = m320.geometry.CLICK;
+  for (const p of sweep(1, 800)) assert.ok(click(p) <= m320.clickLimit(p) + 0.003 / length, `進程 ${p.toFixed(4)}:爪尖穿進棘輪`);
   const turn = m320.ratchetAngle(m320.chain(1).wound) - m320.ratchetAngle(m320.chain(0).wound);
   close(turn % ((2 * Math.PI) / m320.RATCHET.teeth), 0, "每次上發條棘輪滑輪轉過整數個齒", 1e-9);
   assert.ok(turn > 0, "棘輪滑輪只往逆時針(棘輪放行的方向)轉");
+});
+
+test("第 320 種:P 為一個固定於動力輪部分之主輪上的滑輪:動力輪比 P 大、P 固定在它上面;上發條時動力輪照轉,帶動往擒縱的小齒輪", () => {
+  const def = m320.default;
+  const wheel = part(def, "goingWheel");
+  assert.ok(wheel && wheel.kind === "gear", "有動力輪(有齒的主輪)");
+  assert.equal(def.target, "goingWheel", "目標件是一刻不失去動力的動力輪");
+  assert.equal(wheel.label, "P", "P 標在動力輪上的滑輪");
+  const P = wheel.pieces.find((q) => q.kind === "pulley");
+  assert.ok(P, "滑輪 P 是動力輪的一部分(固定在它上面)");
+  assert.ok(wheel.radius > P.radius * 1.4, "動力輪比 P 大得多(原圖)");
+  // 「表面做得粗糙以防止繩索在其上打滑」:動力輪轉過的弧長 = 經 P 送出的繩長
+  for (const [a, b] of [[0, 0.5], [0.75, 1], [0, 1]]) {
+    const turned = def.pose(b).parts.goingWheel.angle - def.pose(a).parts.goingWheel.angle;
+    close(-turned * P.radius, m320.chain(b).fed - m320.chain(a).fed, `${a}→${b}:繩不在 P 上打滑`, 1e-9);
+  }
+  // 往擒縱的小齒輪(推斷):和動力輪咬合,齒不重疊;上發條(0.75–1)的期間照轉,時鐘照走
+  assertMeshFree(def, "goingWheel", "goingPinion", sweep(1, 60));
+  const pinion = part(def, "goingPinion");
+  const spin = sweep(1, 200, 0.7).map((p) => def.pose(p).parts.goingPinion.angle);
+  assert.ok(spin.every((a, i) => i === 0 || a > spin[i - 1]), "小齒輪一直往前轉,上發條時也不停");
+  close((spin.at(-1) - spin[0]) / (def.pose(1).parts.goingWheel.angle - def.pose(0.7).parts.goingWheel.angle), -wheel.teeth / pinion.teeth, "轉速比 = 齒數反比", 1e-9);
+});
+
+test("第 320 種:左側的則為報時輪:軸 p 是報時輪主輪的軸,棘輪與制動爪把棘輪滑輪附著在報時輪上;棘輪比繩槽大", () => {
+  const def = m320.default;
+  const { Pp, CLICK } = m320.geometry;
+  const wheel = part(def, "strikingWheel");
+  assert.ok(wheel && wheel.kind === "gear", "有報時輪");
+  close(Math.hypot(wheel.center[0] - Pp[0], wheel.center[1] - Pp[1]), 0, "報時輪裝在軸 p 上", 1e-9);
+  assert.ok(wheel.radius > m320.RATCHET.outer + 0.15, "報時輪比棘輪滑輪大(原圖棘輪外的大圓)");
+  // 模型裡不報時:報時輪由報時輪系鎖住,停著不動(上發條時 W 的拉力經爪傳到它上面)
+  const angles = sweep(1, 40).map((p) => def.pose(p).parts.strikingWheel?.angle ?? 0);
+  assert.ok(angles.every((a) => a === angles[0]), "報時輪不轉");
+  assertMeshFree(def, "strikingWheel", "strikingPinion", [0]);
+  // 制動爪的樁在報時輪上,不在機架上
+  const onPivot = (q) => q.kind === "cylinder" && Math.hypot(q.at[0] + wheel.center[0] - CLICK.pivot[0], q.at[1] + wheel.center[1] - CLICK.pivot[1]) < 1e-9;
+  assert.ok(wheel.pieces.some(onPivot), "爪的樁裝在報時輪上");
+  assert.ok(!part(def, "frame").pieces.some((q) => q.kind === "cylinder" && Math.hypot(q.at[0] - CLICK.pivot[0], q.at[1] - CLICK.pivot[1]) < 1e-9), "機架上沒有爪的樁");
+  assert.equal(def.replay.free.click.on, "strikingWheel", "重演:爪鉸在報時輪上");
+  // 原圖棘輪齒尖半徑約 53 px、繩繞的半徑約 42 px:棘輪比繩槽大,齒根也在繩外
+  const P = part(def, "pulleyp").pieces.find((q) => q.kind === "pulley");
+  assert.ok(m320.RATCHET.inner > P.radius, "棘輪的齒根在繩槽外");
+});
+
+test("第 320 種:爪簧(原圖左上的淚滴形片)裝在報時輪上,片簧的末端全程貼著制動爪的背,把爪壓向棘輪", () => {
+  const def = m320.default;
+  const { Pp, CLICK, SEAT } = m320.geometry;
+  const wheel = part(def, "strikingWheel");
+  const leaf = part(def, "clickSpring");
+  assert.equal(leaf?.kind, "rod", "片簧畫成一條線");
+  assert.ok(wheel.pieces.some((q) => Math.hypot(q.at[0] + wheel.center[0] - SEAT.at[0], q.at[1] + wheel.center[1] - SEAT.at[1]) < 1e-9), "片簧的座(淚滴形片)裝在報時輪上");
+  for (const p of sweep(1, 300)) {
+    const pts = def.pose(p).paths.clickSpring.points;
+    assert.ok(Math.hypot(pts[0][0] - SEAT.at[0], pts[0][1] - SEAT.at[1]) <= SEAT.r + 1e-9, `進程 ${p.toFixed(3)}:片簧從座伸出`);
+    const psi = m320.clickAngle(p);
+    const u = [Math.cos(psi), Math.sin(psi)];
+    const rel = (q) => [q[0] - CLICK.pivot[0], q[1] - CLICK.pivot[1]];
+    const side = (q) => u[0] * rel(q)[1] - u[1] * rel(q)[0]; // 離爪中心線的帶號距離
+    const tip = pts.at(-1);
+    const along = u[0] * rel(tip)[0] + u[1] * rel(tip)[1];
+    assert.ok(along > 0.1 && along < CLICK.length - 0.12, `進程 ${p.toFixed(3)}:片簧壓在爪身上`);
+    assert.ok(Math.sign(side(tip)) === -Math.sign(side(Pp)), `進程 ${p.toFixed(3)}:片簧在爪背(離棘輪的一側)`);
+    const gap = Math.abs(side(tip)) - CLICK.width / 2 - (leaf.radius ?? 0.03);
+    assert.ok(gap > -1e-6 && gap < 0.006, `進程 ${p.toFixed(3)}:片簧末端貼著爪背(間隙 ${gap.toFixed(4)})`);
+  }
 });
 
 test("第 321 種:哈里森的動力盒:上發條時制動爪 T 擋住大棘輪,彈簧 S、S' 繼續推動主輪 G", () => {
@@ -628,4 +700,61 @@ test("第 321 種:哈里森的動力盒:T 被大棘輪的齒背抬起又落回,R
     }
     assert.ok(checked >= 2, `${key} 有落下的過程`);
   }
+});
+
+test("第 321 種:R 由片簧壓向小棘輪(原圖:兩顆螺絲固定在較大棘輪上的新月形片,伸出片簧壓在 R 的背上);起始畫面 R 的樞軸在右下", () => {
+  const def = m321.default;
+  const { R_PIVOT, R_LEN, R_WIDTH, LEAF, CRESCENT } = m321.geometry;
+  const big = part(def, "bigRatchet");
+  const leaf = part(def, "leafR");
+  assert.equal(leaf?.kind, "rod", "片簧畫成一條線");
+  assert.ok(big.pieces.includes(CRESCENT.plate), "新月形片是較大棘輪的一部分(固定在它上面)");
+  assert.equal(CRESCENT.screws.length, 2, "新月形片用兩顆螺絲固定");
+  for (const screw of CRESCENT.screws) {
+    assert.ok(big.pieces.includes(screw), "螺絲鎖在較大棘輪上");
+    assert.ok(pointInPolygon([screw.at[0] - CRESCENT.plate.at[0], screw.at[1] - CRESCENT.plate.at[1]], CRESCENT.plate.shape.outline), "螺絲穿過新月形片");
+  }
+  assert.ok(pointInPolygon([LEAF.root[0] - CRESCENT.plate.at[0], LEAF.root[1] - CRESCENT.plate.at[1]], CRESCENT.plate.shape.outline), "片簧的根部埋在新月形片的一端(從那裡伸出)");
+  const pivot0 = rot2(R_PIVOT, m321.phases.bigAngle(0));
+  const a0 = (Math.atan2(pivot0[1], pivot0[0]) * 180) / Math.PI;
+  assert.ok(a0 > -45 && a0 < 0, `起始畫面 R 的樞軸在右下(實際 ${a0.toFixed(0)}°)`);
+  const toLocal = (q, big) => rot2(q, -big);
+  let root0;
+  for (const p of sweep(1, 300)) {
+    const pts = def.pose(p).paths.leafR.points;
+    const bigA = m321.phases.bigAngle(p);
+    // 片簧的根部固定在較大棘輪上(在棘輪的座標裡不動),從新月形片伸出
+    const root = toLocal(pts[0], bigA);
+    root0 ??= root;
+    close(Math.hypot(root[0] - root0[0], root[1] - root0[1]), 0, `進程 ${p.toFixed(3)}:片簧的根部跟著較大棘輪轉`, 1e-9);
+    close(Math.hypot(root[0] - LEAF.root[0], root[1] - LEAF.root[1]), 0, "片簧從新月形片的一端伸出", 1e-9);
+    // 末端貼著 R 的背(離小棘輪的一側):R 的局部座標裡量
+    const psi = m321.clicks(p).R;
+    const u = [Math.cos(psi), Math.sin(psi)];
+    const tip = toLocal(pts.at(-1), bigA);
+    const rel = (q) => [q[0] - R_PIVOT[0], q[1] - R_PIVOT[1]];
+    const side = (q) => u[0] * rel(q)[1] - u[1] * rel(q)[0];
+    const along = u[0] * rel(tip)[0] + u[1] * rel(tip)[1];
+    assert.ok(along > 0.1 && along < R_LEN - 0.12, `進程 ${p.toFixed(3)}:片簧壓在 R 的爪身上`);
+    assert.ok(Math.sign(side(tip)) === -Math.sign(side([0, 0])), `進程 ${p.toFixed(3)}:片簧在 R 的背(離小棘輪的一側)`);
+    const gap = Math.abs(side(tip)) - R_WIDTH / 2 - leaf.radius;
+    assert.ok(gap > -1e-6 && gap < 0.006, `進程 ${p.toFixed(3)}:片簧末端貼著 R 的背(間隙 ${gap.toFixed(4)})`);
+    // 片簧繞在小棘輪外面,不掃過棘齒
+    for (const q of pts) assert.ok(Math.hypot(q[0], q[1]) > 0.72 + leaf.radius, `進程 ${p.toFixed(3)}:片簧碰到小棘輪`);
+  }
+  assert.equal(def.replay.free.clickR.spring, -1, "重演:片簧把 R 往順時針(壓向小棘輪)推");
+});
+
+test("第 321 種:主輪 G 咬一個小齒輪(推斷,代表往擒縱的輪系);上發條時彈簧照樣推著主輪,小齒輪照轉", () => {
+  const def = m321.default;
+  const { P } = m321.geometry;
+  const G = part(def, "wheelG");
+  assert.equal(G.kind, "gear", "主輪 G 是齒輪");
+  assertMeshFree(def, "wheelG", "pinion", sweep(1, 60));
+  const pinion = part(def, "pinion");
+  const spin = sweep(1, 300).map((p) => def.pose(p).parts.pinion.angle);
+  assert.ok(spin.every((a, i) => i === 0 || a < spin[i - 1]), "小齒輪一直往前轉(G 逆時針、小齒輪順時針),上發條時也不停");
+  const during = (p) => def.pose(p).parts.pinion.angle;
+  assert.ok(during(P.wound) < during(P.run), "上發條的期間小齒輪照轉");
+  close((spin.at(-1) - spin[0]) / (def.pose(1).parts.wheelG.angle - def.pose(0).parts.wheelG.angle), -G.teeth / pinion.teeth, "轉速比 = 齒數反比", 1e-9);
 });

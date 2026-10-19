@@ -3,16 +3,20 @@
 // 裝在框架上的制動爪 T 擋住較大的棘輪不讓它被彈簧拉回,於是在上發條的這段時間裡,彈簧 S、S' 繼續推動主輪,
 // 時鐘照走。上完之後重物再度拉緊彈簧,較大的棘輪追回原來的位置。
 // 主動件是虛擬的「進程」:每一輪前段時鐘照走,中段上發條(捲繩筒倒轉、重物上升),後段重物重新拉緊彈簧。
-// 兩個制動爪都由接觸算:T 鉸在框架的樁上、靠自重搭在較大的棘輪上;R 鉸在較大棘輪的輻條上、被彈簧(沒畫)壓向
-// 捲繩筒的小棘輪。棘輪轉過時爪被齒背抬起、過了齒尖加速落回(ratchets.pawlTrack)。照走到上發條的那一刻,
-// T 正好落在齒根、頂住齒的直面;上發條時多捲 0.4 個齒,R 落進齒根後放手,重物把筒拉回來靠上 R。
+// 主輪 G 咬一個小齒輪(推斷,代表往擒縱的輪系:「彈簧只需讓擒縱機構維持運作即可」),上發條時照轉。
+// 兩個制動爪都由接觸算:T 鉸在框架的樁上、靠自重搭在較大的棘輪上;R 鉸在較大棘輪的輻條上,由片簧壓向捲繩筒的
+// 小棘輪(照原圖:左下一片用兩顆螺絲固定在較大棘輪上的新月形片,伸出一條沿下方彎過去的片簧,末端壓在 R 的背上;
+// 起始畫面 R 的樞軸在右下)。棘輪轉過時爪被齒背抬起、過了齒尖加速落回(ratchets.pawlTrack),片簧的末端跟著
+// R 的背走。照走到上發條的那一刻,T 正好落在齒根、頂住齒的直面;上發條時多捲 0.4 個齒,R 落進齒根後放手,
+// 重物把筒拉回來靠上 R。
 // 推斷:各段所佔的進程、彈簧的變形量;小棘輪 16 齒(一次上發條轉 4 個齒);彈簧掛在兩輪耳片的銷上;
-// 心軸與 T 的樁裝在後面的夾板條上。轉向照原圖:T 的樁在右上方、爪往左伸,擋住較大棘輪順時針回落,
-// 所以整組逆時針轉、繩從捲繩筒左側垂下(原文沒寫轉向)。
+// 心軸、T 的樁與小齒輪的軸裝在後面的夾板條上;小齒輪的齒數;片簧的彎法(原圖只畫到它沿下方彎過去)。
+// 轉向照原圖:T 的樁在右上方、爪往左伸,擋住較大棘輪順時針回落,所以整組逆時針轉、繩從捲繩筒左側垂下(原文沒寫轉向)。
 import { TAU, deg, smooth, clamp } from "./kit.js";
 import { ratchetShape, shape, circle, thickLine } from "./shapes.js";
 import { pawlRest, pawlTrack } from "./ratchets.js";
 import { plateBar } from "./supports.js";
+import { meshAngle } from "./gears.js";
 
 const RATE = TAU / 4; // 每一輪主輪轉過的角度
 const P = { run: 0.7, wound: 0.85 }; // 0–0.7 照走、0.7–0.85 上發條、0.85–1 重新拉緊
@@ -23,9 +27,10 @@ const SMALL = { teeth: 16, outer: 0.72, inner: 0.58, dir: -1 }; // 相對較大�
 const T_PIVOT = [2.3, 2.15, 0];
 const T_LEN = 3.05; // 從右上方的樁伸到較大棘輪的左上方
 const T_HOOK = 0.25; // 爪尖比長臂低多少
-const SPOKE = deg(-140); // 較大棘輪的輻條方向
+const SPOKE = deg(-45); // 較大棘輪的輻條方向(R 的樞軸在上面;起始畫面在右下,原圖約 −22°)
 const R_PIVOT = [1.1 * Math.cos(SPOKE), 1.1 * Math.sin(SPOKE)]; // R 的樞軸(較大棘輪的局部座標,在輻條上)
 const R_LEN = 0.53;
+const R_WIDTH = 0.07;
 const Z_FRAME = -0.5;
 const rot = ([x, y], a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
 
@@ -50,11 +55,10 @@ export function harrison(p) {
   const spring = big - g; // 彈簧拉開的角度(越大越緊)
   return { g, big, drum, wind, spring, weight: -1.8 - DRUM * (drum - SPRING) };
 }
-export const geometry = { SPRING, RATE, P };
 
 // T:較大棘輪轉到 a 時能落到的角度;R:小棘輪相對較大棘輪轉到 r 時能落到的角度(較大棘輪的局部座標)
 const restT = (a) => pawlRest({ pivot: T_PIVOT, length: T_LEN, from: deg(185), into: 1, sweep: 0.5 }, { center: [0, 0], angle: a, ...BIG });
-const restR = (r) => pawlRest({ pivot: R_PIVOT, length: R_LEN, from: deg(85), into: -1, sweep: 1.0 }, { center: [0, 0], angle: r, ...SMALL });
+const restR = (r) => pawlRest({ pivot: R_PIVOT, length: R_LEN, from: SPOKE + deg(225), into: -1, sweep: 1.0 }, { center: [0, 0], angle: r, ...SMALL });
 // 齒的相位:照走到上發條的那一刻 T 落在齒根;照走時 R 落在小棘輪的齒根(重物經它推著較大的棘輪)
 const seat = (rest, pitch) => {
   let best = 0;
@@ -91,7 +95,63 @@ const Z_SPRING = -0.1;
 const SPRINGS = [deg(70), deg(-20)];
 const G_LEAD = deg(-28); // 主輪的銷落後較大棘輪的銷(較大的棘輪逆時針領先)
 
-const gearRing = { kind: "gear", teeth: 48, radius: 2.05, width: 0.12 };
+// 主輪 G 與往擒縱的小齒輪(推斷):小齒輪在 G 的右邊,軸裝在夾板條上
+const Z_G = -0.2;
+const GEAR_G = { center: [0, 0, Z_G], teeth: 48, radius: 2.05 };
+const BACKLASH = 0.02; // 齒隙:中心距稍微拉開
+const PINION = { teeth: 12, radius: (12 * 2.05) / 48 };
+PINION.center = [...rot([2.05 + PINION.radius + BACKLASH, 0], deg(-10)), Z_G];
+
+// R 的片簧(照原圖):新月形片在較大棘輪的左下(起始畫面約 −132°,在 R 的樞軸順時針方向 110°),
+// 兩顆螺絲把它鎖在棘輪的輪圈上;片簧從新月形片靠 R 的一端沿切線伸出,繞在小棘輪外面,末端從外側壓在 R 的背上
+// (壓的地方離 R 的樞軸 LEAF.press)。全部在較大棘輪的局部座標
+const CRESCENT_AT = SPOKE - deg(110); // 新月形片中央的方位
+const CRESCENT_SPAN = deg(32);
+const crescentPoint = (t, r) => rot([r, 0], CRESCENT_AT + (t - 0.5) * CRESCENT_SPAN);
+// 外緣是半徑 1.33 的弧,內緣往中心鼓出 0.16,兩端收尖
+const CRESCENT_OUTLINE = (() => {
+  const pts = [];
+  for (let i = 0; i <= 12; i++) pts.push(crescentPoint(i / 12, 1.33));
+  for (let i = 11; i >= 1; i--) pts.push(crescentPoint(i / 12, 1.33 - 0.16 * Math.sin((Math.PI * i) / 12)));
+  return pts;
+})();
+const LEAF_R = 0.015;
+const Z_LEAF = 0.12; // 和 R 同一層
+const LEAF = { root: crescentPoint(0.85, 1.29), press: 0.3 };
+LEAF.tangent = rot([0, 1], CRESCENT_AT + 0.35 * CRESCENT_SPAN); // 根部的方向:沿輪圈往逆時針(往 R)
+const crescentPlate = { kind: "plate", shape: { outline: CRESCENT_OUTLINE, holes: [] }, thickness: 0.1, at: [0, 0, 0.1] }; // 在輪圈正面(0.05–0.15)
+const crescentScrews = [0.3, 0.6].map((t) => {
+  const [x, y] = crescentPoint(t, 1.27);
+  return { kind: "cylinder", radius: 0.022, length: 0.22, at: [x, y, 0.06] }; // 穿過新月形片與輪圈,頭露在前面
+});
+export const geometry = { SPRING, RATE, P, R_PIVOT, R_LEN, R_WIDTH, LEAF, CRESCENT: { plate: crescentPlate, screws: crescentScrews } };
+
+/** R(較大棘輪局部座標裡的轉角 psi)被片簧壓著的點:R 的背上、離背一個片簧半徑 */
+const pressAt = (psi) => {
+  const u = [Math.cos(psi), Math.sin(psi)];
+  const mid = [R_PIVOT[0] + LEAF.press * u[0], R_PIVOT[1] + LEAF.press * u[1]];
+  let n = [u[1], -u[0]];
+  if (n[0] * mid[0] + n[1] * mid[1] < 0) n = [-n[0], -n[1]]; // 背是離小棘輪(圓心)的一側
+  const off = R_WIDTH / 2 + LEAF_R + 0.002;
+  return { at: [mid[0] + off * n[0], mid[1] + off * n[1]], n };
+};
+/** 進程 p → 片簧的折線(世界座標):根部固定在新月形片上,末端從外側壓在 R 的背上,彎曲吸收在片簧裡 */
+export function leafPoints(p) {
+  const big = bigAngle(p);
+  const { at: end, n } = pressAt(clicks(p).R);
+  const root = LEAF.root;
+  const span = Math.hypot(end[0] - root[0], end[1] - root[1]);
+  const p1 = [root[0] + (LEAF.tangent[0] * span) / 2, root[1] + (LEAF.tangent[1] * span) / 2];
+  const p2 = [end[0] + (n[0] * span) / 3, end[1] + (n[1] * span) / 3];
+  const pts = [];
+  for (let i = 0; i <= 16; i++) {
+    const t = i / 16;
+    const a = (1 - t) ** 3, b = 3 * (1 - t) ** 2 * t, c = 3 * (1 - t) * t * t, e = t ** 3;
+    const q = [a * root[0] + b * p1[0] + c * p2[0] + e * end[0], a * root[1] + b * p1[1] + c * p2[1] + e * end[1]];
+    pts.push([...rot(q, big), Z_LEAF]);
+  }
+  return pts;
+}
 
 export default {
   figure: 321,
@@ -104,24 +164,37 @@ export default {
     },
     {
       id: "wheelG",
-      kind: "group",
+      kind: "gear",
+      center: GEAR_G.center,
+      teeth: GEAR_G.teeth,
+      radius: GEAR_G.radius,
+      width: 0.12,
       spin: 2.15,
       label: "G",
-      labelOffset: [1.6, -1.2, 0.3],
+      labelOffset: [1.6, -1.2, 0.5],
       pieces: [
-        { ...gearRing, at: [0, 0, -0.2] },
-        { kind: "plate", shape: shape(circle(1.85), [circle(1.65).reverse()]), thickness: 0.1, at: [0, 0, -0.2] },
-        { kind: "box", size: [3.4, 0.1, 0.06], at: [0, 0, -0.2], angle: deg(-30) },
+        { kind: "plate", shape: shape(circle(1.85), [circle(1.65).reverse()]), thickness: 0.1 },
+        { kind: "box", size: [3.4, 0.1, 0.06], angle: deg(-30) },
         // 掛彈簧的耳片與銷
         ...SPRINGS.flatMap((a) => {
           const c = rot([1.55, 0], a + G_LEAD);
           const pin = rot([1.45, 0], a + G_LEAD);
           return [
-            { kind: "box", size: [0.3, 0.1, 0.1], at: [c[0], c[1], -0.2], angle: a + G_LEAD },
-            { kind: "cylinder", radius: PIN, length: 0.09, at: [pin[0], pin[1], -0.105] },
+            { kind: "box", size: [0.3, 0.1, 0.1], at: [c[0], c[1], 0], angle: a + G_LEAD },
+            { kind: "cylinder", radius: PIN, length: 0.09, at: [pin[0], pin[1], -0.105 - Z_G] },
           ];
         }),
       ],
+    },
+    // 往擒縱的小齒輪(推斷):軸和它固定在一起,後端插進夾板條
+    {
+      id: "pinion",
+      kind: "gear",
+      center: PINION.center,
+      teeth: PINION.teeth,
+      radius: PINION.radius,
+      width: 0.12,
+      pieces: [{ kind: "cylinder", radius: 0.06, length: 0.38, at: [0, 0, -0.11] }],
     },
     {
       id: "bigRatchet",
@@ -131,6 +204,8 @@ export default {
         { kind: "plate", shape: { ...ratchetShape(BIG), holes: [circle(1.25).reverse()] }, thickness: 0.1 },
         { kind: "box", size: [2.6, 0.1, 0.06], angle: SPOKE },
         { kind: "cylinder", radius: 0.025, length: 0.12, at: [R_PIVOT[0], R_PIVOT[1], 0.09] }, // R 的樞軸銷
+        crescentPlate, // R 的片簧的座(新月形片)
+        ...crescentScrews,
         // 掛彈簧的耳片與銷
         ...SPRINGS.flatMap((a) => {
           const c = rot([1.12, 0], a);
@@ -149,7 +224,7 @@ export default {
       label: "R",
       labelOffset: [-0.25, -0.2, 0.3],
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0], [R_LEN - 0.1, 0]], 0.07), [circle(0.03).reverse()]), thickness: 0.06, at: [0, 0, 0.12] },
+        { kind: "plate", shape: shape(thickLine([[0, 0], [R_LEN - 0.1, 0]], R_WIDTH), [circle(0.03).reverse()]), thickness: 0.06, at: [0, 0, 0.12] },
         { kind: "plate", shape: { outline: [[R_LEN - 0.12, 0.035], [R_LEN - 0.12, -0.035], [R_LEN, 0]], holes: [] }, thickness: 0.06, at: [0, 0, 0.12] }, // 爪尖
       ],
     },
@@ -184,14 +259,15 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        ...plateBar({ points: [[0, 0], [T_PIVOT[0], T_PIVOT[1]]], z: Z_FRAME, width: 0.24, boss: 0.16 }),
+        ...plateBar({ points: [[PINION.center[0], PINION.center[1]], [0, 0], [T_PIVOT[0], T_PIVOT[1]]], z: Z_FRAME, width: 0.24, boss: 0.16 }),
         { kind: "cylinder", radius: 0.08, length: 0.55, at: [T_PIVOT[0], T_PIVOT[1], -0.2] }, // T 的樁
       ],
     },
+    { id: "leafR", kind: "rod", radius: LEAF_R }, // R 的片簧
     { id: "rope", kind: "rope" },
     { id: "weight", kind: "box", size: [0.9, 0.6, 0.5] },
   ],
-  // 動力重演:T 鉸在樁上靠自重搭在較大的棘輪上;R 鉸在較大棘輪上、被彈簧壓向小棘輪;各輪照模型轉
+  // 動力重演:T 鉸在樁上靠自重搭在較大的棘輪上;R 鉸在較大棘輪上、被片簧壓向小棘輪(片簧是線狀零件,重演裡以 spring 代表);各輪照模型轉
   replay: {
     from: P.run - 0.05,
     to: 1 + P.run,
@@ -230,6 +306,7 @@ export default {
     return {
       parts: {
         wheelG: { angle: h.g },
+        pinion: { angle: meshAngle(GEAR_G, PINION, h.g) },
         bigRatchet: { angle: big },
         drumB: { angle: big + relAngle(p) },
         springS: ends(SPRINGS[0]),
@@ -238,8 +315,9 @@ export default {
         clickR: { position: [rPivot[0], rPivot[1], 0], angle: c.R + big },
         weight: { position: [ropeX, h.weight - 0.3, 0.35] },
       },
-      paths: { rope: { points: [[ropeX, 0, 0.35], [ropeX, h.weight, 0.35]], closed: false, phase: -h.weight } },
+      paths: { rope: { points: [[ropeX, 0, 0.35], [ropeX, h.weight, 0.35]], closed: false, phase: -h.weight }, leafR: { points: leafPoints(p), closed: false } },
       readouts: [],
     };
   },
 };
+
