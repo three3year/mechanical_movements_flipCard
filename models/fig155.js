@@ -127,6 +127,7 @@ export function contactAt(v, side) {
 
 const pawlPart = (id, side) => ({
   id,
+  posed: true, // 姿勢由狀態決定(爪尖朝右或朝左):切換狀態時轉到新的姿勢,不接續轉角
   kind: "group",
   center: [0, TOP, LAYER],
   arrow: false,

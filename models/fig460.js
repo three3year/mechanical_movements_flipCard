@@ -51,6 +51,7 @@ export default {
     { id: "channel", kind: "fill", fluid: "water", center: [0.35, (WATER - 1.15) / 2, 0], size: [2.0, WATER + 1.15, 1.2], level: 1 },
     {
       id: "scoop",
+      posed: true, // 姿勢由狀態決定:切換狀態時轉到新的姿勢,不接續轉角
       kind: "plate",
       shape: shape(thickLine([[0, 0], [SCOOP, 0]], 0.08)),
       thickness: 0.6,
@@ -61,7 +62,7 @@ export default {
         { kind: "box", size: [0.08, 0.45, 0.6], at: [SCOOP, 0.2, 0] },
       ],
     },
-    { id: "scoopWater", kind: "fill", fluid: "water", size: [0.8, 0.28, 0.55], level: 0 },
+    { id: "scoopWater", posed: true, kind: "fill", fluid: "water", size: [0.8, 0.28, 0.55], level: 0 },
     { id: "lever", kind: "plate", shape: notchShape, thickness: 0.1, arrow: false, pieces: [{ kind: "box", size: [0.5, 0.18, 0.12], at: [0.3, 0, 0] }] },
     { id: "pitman", kind: "link", width: 0.1, thickness: 0.06 },
   ],

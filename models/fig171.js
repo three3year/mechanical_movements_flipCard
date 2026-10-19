@@ -185,6 +185,7 @@ export default {
     {
       // 搖臂軸:前面的搖臂(末端的銷往後插進溝槽)、軸、後面的搖臂(末端的銷往後插進閥桿的十字頭)
       id: "rockShaft",
+      posed: true, // 姿勢由狀態決定:切換狀態時轉到新的姿勢,不接續轉角
       kind: "group",
       arrow: false,
       pieces: [

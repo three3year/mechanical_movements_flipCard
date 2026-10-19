@@ -66,7 +66,7 @@ export default {
     { id: "load", kind: "group", center: [WHEEL.center[0], WHEEL.center[1] + WHEEL.r + 2 * CART_W + 0.5, 0], arrow: false, pieces: Array.from({ length: 5 }, (_, i) => ({ kind: "box", size: [0.25, 0.22, 0.4], at: [-0.5 + i * 0.25, 0.05, 0], angle: deg(-20 + i * 10) })) },
     ...[-1, 1].map((s) => ({ id: s < 0 ? "cartWheelL" : "cartWheelR", kind: "pulley", style: "spoked", spokes: 4, radius: CART_W, width: 0.1, center: [WHEEL.center[0] + s * 0.5, WHEEL.center[1] + Math.sqrt((WHEEL.r + CART_W) ** 2 - 0.25), 0] })), // 小車輪壓在大輪的輪面上
     { id: "dial", kind: "group", center: DIAL, arrow: false, pieces: [{ kind: "plate", shape: shape(circle(0.75), [circle(0.62).reverse()]), thickness: 0.15 }, { kind: "plate", shape: shape(circle(0.62)), thickness: 0.05, at: [0, 0, -0.05] }] },
-    { id: "needle", kind: "plate", center: [DIAL[0], DIAL[1], 0.12], shape: shape([[0, -0.05], [0.55, 0], [0, 0.05]]), thickness: 0.03, arrow: false },
+    { id: "needle", posed: true, kind: "plate", center: [DIAL[0], DIAL[1], 0.12], shape: shape([[0, -0.05], [0.55, 0], [0, 0.05]]), thickness: 0.03, arrow: false },
     { id: "spring", kind: "spring", coils: 9, radius: 0.08, wire: 0.02 },
     { id: "belt", kind: "belt" },
   ],

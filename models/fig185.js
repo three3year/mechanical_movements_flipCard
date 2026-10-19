@@ -60,6 +60,7 @@ export default {
     { id: "block", kind: "cylinder", radius: 0.06, length: 0.5 }, // 滑塊畫成一根在連桿槽裡滑的銷,往後伸到滑塊桿那一層
     {
       id: "rocker",
+      posed: true, // 姿勢由狀態決定:切換狀態時轉到新的姿勢,不接續轉角
       kind: "group",
       center: ROCKER.pivot,
       arrow: false,

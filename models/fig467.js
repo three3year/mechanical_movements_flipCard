@@ -73,7 +73,7 @@ export default {
       ],
     },
     { id: "cylWater", kind: "fill", fluid: "water", shape: "cylinder", size: [2 * CYL.r - 0.02, LIFT + 0.1, 0], level: 0 },
-    { id: "handle", kind: "plate", shape: shape(thickLine([[0, 0], [1.3, 0]], 0.1), [circle(0.035).reverse()]), thickness: 0.08, arrow: false, pieces: [{ kind: "sphere", radius: 0.1, at: [1.3, 0, 0] }] },
+    { id: "handle", posed: true, kind: "plate", shape: shape(thickLine([[0, 0], [1.3, 0]], 0.1), [circle(0.035).reverse()]), thickness: 0.08, arrow: false, pieces: [{ kind: "sphere", radius: 0.1, at: [1.3, 0, 0] }] },
     { id: "plunger", kind: "cylinder", axis: Y, radius: 0.06, length: PLUNGER, arrow: false },
     { id: "link", kind: "link", width: 0.06, thickness: 0.04 },
   ],

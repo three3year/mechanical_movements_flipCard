@@ -58,6 +58,7 @@ export default {
     },
     {
       id: "lever",
+      posed: true, // 姿勢由狀態決定:切換狀態時轉到新的姿勢,不接續轉角
       kind: "group",
       center: PIVOT,
       arrow: false,

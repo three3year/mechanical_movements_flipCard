@@ -244,7 +244,7 @@
 
 ### #373-2 第 373 種:網頁切換「載重輕 / 重」時指針不動
 
-- **狀態:已修(2026-10-14)**:`needle` 標 `posed: true`;`npm test` 加了全書檢查(`tests/registry.test.js`「狀態決定姿勢的零件標了 posed」:同一主動量各狀態轉角不同、取樣中轉不滿一圈的零件要標 posed,有界但轉角是累積的列在 `ACCUMULATED` 並寫理由),先在本圖失敗後通過。同類候選照掃出的結果處理:第 150 種 `lever`、155 `pawlRight/pawlLeft`、171 `rockShaft`、179 `lever`、185 `rocker`、415 `pawlB/pawlC/crank`、460 `scoop/scoopWater`、467 `handle` 標 posed;第 104 種 `wheel`(主動件,與螺桿一起接續)、121 `cog`、155 `gear`、415 `wheel`(間歇轉動、狀態只決定轉向)接續才對,寫在 `ACCUMULATED`(model-audit-fixes-3 票 03)。指針改成桿帶動(#373-1)留給第 373 種的票。(2026-10-16 註:這項改動做在原本那台電腦上,push 前電腦損壞,改動遺失,repo 裡沒有,要重做。)
+- **狀態:已修(2026-10-19)**:`needle` 標 `posed: true`;`npm test` 加了全書檢查(`tests/registry.test.js`「狀態決定姿勢的零件標了 posed」:同一主動量各狀態的轉角不同、而且不是轉速類的零件要標 posed;轉速類以「持續運轉的主動量走很多輪後,某個狀態下轉了一圈以上」判斷,間歇轉動的輪也算),先在本圖失敗後通過。同類照掃出的結果處理:第 150 種 `lever`、155 `pawlRight/pawlLeft`、171 `rockShaft`、179 `lever`、185 `rocker`、415 `pawlB/pawlC/crank`、460 `scoop/scoopWater`、467 `handle` 標 posed(都是姿勢由狀態決定的撥桿、棘爪、搖臂、舀斗與手柄);第 48 種 `shaft`、104 `wheel`、121 `cog`、155 `gear`、415 `wheel` 由轉速類的判斷放過(接續才對),10-14 版本列的 `ACCUMULATED` 清單因此不需要。狀態切換時位置一律以短動畫移過去,不必標。截圖 `.playwright-mcp/maf3/373-light.png`、`373-heavy.png`(截圖頁先載入「輕」再切到「重」:指針從約 −47° 轉到約 −92°,修之前兩張一樣)。指針改成桿帶動(#373-1)留給第 373 種的票。(model-audit-fixes-3 票 03;10-14 的改動遺失後重做)
 
 - **類別**:7、1。
 - **證據**:`pose()` 給的指針角度 light −47°、heavy −91.8°,但 373-light.png、373-heavy.png(model-strip 先載入 light 再切到 heavy)兩張指針一樣。原因:`viewer.js` 的 `setState` 對有 `angle` 的零件加上接續的偏移量(「切換瞬間不跳動」),只有標 `posed` 的零件例外,`needle` 沒標。網站上讀者切換狀態也一樣,「重量的差異則會立即造成變化」演不出來。測試只比 `pose()` 的回傳值,抓不到。
