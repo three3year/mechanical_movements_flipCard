@@ -1,7 +1,8 @@
 // 維護用:掃全書的模型,找「長度會變的剛性桿」——姿勢以 from / to 擺放的零件(連桿、偏心環與桿……),
 // 兩端距離在播放中變了,畫面上就是桿在伸縮。彈簧本來就會伸縮,不算。
-// 用法:node tools/rigid-links.mjs [圖號…]
-import { sources, loadModel } from "../models/registry.js";
+// 用法:node tools/rigid-links.mjs [圖號或範圍(7 或 186-250)…]
+import { loadModel } from "../models/registry.js";
+import { figuresFrom } from "./figure-args.mjs";
 
 const SECONDS = 20;
 const FPS = 30;
@@ -34,8 +35,7 @@ function* play(d) {
 }
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], (a[2] ?? 0) - (b[2] ?? 0));
-const only = process.argv.slice(2).map(Number);
-const figures = (only.length ? only : Object.keys(sources).map(Number)).sort((a, b) => a - b);
+const figures = figuresFrom(process.argv.slice(2));
 let count = 0;
 for (const figure of figures) {
   const def = await loadModel(figure);
