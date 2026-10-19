@@ -5,12 +5,13 @@
 // 繩照第 129 種的做法捲在鼓上(原圖兩段都繞著好幾圈):繩頭固定在鼓的外端、跟著鼓轉,繩一圈圈往裡捲到
 // 離開鼓的地方;大段的繩從鼓的前方往上離開、小段從後方離開,鼓同一個轉向才會一邊捲進、一邊放出。
 // 繩從鼓的切線離開(切點由繩往導輪的方向算),捲上一圈離開點就往裡挪一個繩距。
-// 推斷:鼓輪的兩段半徑、可轉的圈數與起始時兩段各捲幾圈;撬棒的形狀;架頭的螺栓、鉤子與導輪的吊架;
+// 推斷:鼓輪的兩段半徑、可轉的圈數與起始時兩段各捲幾圈;撬棒的形狀;架頭的螺栓、鉤子與導輪的吊架;架腳在鼓軸處開軸孔的一塊;
 // 滑輪的吊架、鉤子與重物上的吊環。原圖架頂的兩個圓是把兩根腳接在架頭上的螺栓,導輪在兩腳中段的鉤子上。
 // 繩不打滑:大段捲進的速度是 (R1 + 繩半徑)·ω、小段放出的是 (R2 + 繩半徑)·ω(繩心繞鼓的半徑),所以左導輪、
 // 右導輪各以這兩個表面速度轉,吊重物的滑輪一邊升一邊以兩者平均的表面速度轉;繩頭固定在鼓上,
 // 繩上的色段從繩頭量起,跟著繩走。
 import { X, Z, TAU, clamp, routeRope } from "./kit.js";
+import { shape, rect, circle } from "./shapes.js";
 
 const R1 = 0.48; // 大段
 const R2 = 0.3; // 小段
@@ -24,7 +25,13 @@ export const TURNS = 2;
 export const RANGE = [0, TURNS * TAU];
 const Y0 = -0.52; // 重物滑輪的起始高度(重物底離鼓軸 0.01)
 const COIL = { pitch: 0.095, lift: 0.045, big: 5, small: 3.5 }; // 相鄰兩圈的間距、繩心離鼓面的高度(繩的半徑)、起始時兩段各捲幾圈
-const LEG = { atDrum: 2.45, tilt: 0.38, top: 2.35, foot: -2.9 }; // 架腳在鼓的高度離中線多遠、傾角、架頭頂、腳底
+// 架腳在鼓的高度離中線多遠、傾角、架頭頂、腳底。架頭頂照原圖:導輪的軸在架頭頂到鼓軸之間約 46% 處
+// (原圖架頭頂、導輪、鼓軸約在 y 5、79、165 px),兩腳往上收到架頭
+const LEG = { atDrum: 2.45, tilt: 0.35, top: 3.54, foot: -2.9 };
+const HEAD_Y = LEG.top - 0.2; // 架頭的中心高度
+// 架腳在鼓軸處加寬成一塊、開軸孔讓鼓軸穿過(推斷):沿 x 擠出的板,高 BOSS.h、深同架腳
+const AXLE_R = 0.07;
+const BOSS = { h: 0.5, depth: 0.3, width: 0.46, hole: AXLE_R + 0.005 };
 const legX = (y) => LEG.atDrum - Math.tan(LEG.tilt) * (y - DRUM_Y); // 架腳中心線在高度 y 離中線多遠
 const HOOK_Y = 1.27; // 鉤子的高度
 
@@ -96,12 +103,17 @@ export function rope(theta0) {
   return { turns, points: [...big, ...at.free.slice(1, -1), ...small] };
 }
 
-// 架腳:沿中心線從腳底到架頭頂
-const leg = (s) => {
-  const len = (LEG.top - LEG.foot) / Math.cos(LEG.tilt);
-  const yc = (LEG.top + LEG.foot) / 2;
-  return { kind: "box", size: [0.25, len, 0.3], at: [s * legX(yc), yc, 0], angle: s * LEG.tilt };
+// 架腳:沿中心線從高度 y0 到 y1 的一段
+const legPiece = (s, y0, y1) => {
+  const yc = (y0 + y1) / 2;
+  return { kind: "box", size: [0.25, (y1 - y0) / Math.cos(LEG.tilt), BOSS.depth], at: [s * legX(yc), yc, 0], angle: s * LEG.tilt };
 };
+// 一根架腳:鼓軸上下兩段,中間是開了軸孔的一塊(兩段的端面伸進這一塊)
+const leg = (s) => [
+  legPiece(s, LEG.foot, DRUM_Y - 0.2),
+  legPiece(s, DRUM_Y + 0.2, LEG.top),
+  { kind: "plate", axis: X, shape: shape(rect(BOSS.depth, BOSS.h), [circle(BOSS.hole).reverse()]), thickness: BOSS.width, at: [s * legX(DRUM_Y), DRUM_Y, 0] },
+];
 // 導輪的吊架:鉤子從架腳內側伸出,兩片夾板吊著導輪的軸(推斷)
 const hanger = (s) => {
   const [gx, gy] = s < 0 ? G.left : G.right;
@@ -121,11 +133,11 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        leg(-1),
-        leg(1),
-        { kind: "box", size: [2 * legX(2.15) + 0.4, 0.4, 0.3], at: [0, 2.15, 0] }, // 架頭
+        ...leg(-1),
+        ...leg(1),
+        { kind: "box", size: [2 * legX(HEAD_Y) + 0.4, 0.4, 0.3], at: [0, HEAD_Y, 0] }, // 架頭
         // 把兩根腳接在架頭上的螺栓(原圖架頂的兩個圓)
-        ...[-1, 1].map((s) => ({ kind: "cylinder", radius: 0.08, length: 0.36, at: [s * legX(2.15), 2.15, 0] })),
+        ...[-1, 1].map((s) => ({ kind: "cylinder", radius: 0.08, length: 0.36, at: [s * legX(HEAD_Y), HEAD_Y, 0] })),
         ...hanger(-1),
         ...hanger(1),
       ],
@@ -140,7 +152,7 @@ export default {
       spin: R1,
       spinOffset: BIG.x,
       pieces: [
-        { kind: "cylinder", radius: 0.07, length: 2 * LEG.atDrum + 0.7 }, // 鼓軸:穿過兩根架腳,兩端伸出
+        { kind: "cylinder", radius: AXLE_R, length: 2 * LEG.atDrum + 0.7 }, // 鼓軸:穿過兩根架腳的軸孔,兩端伸出
         { kind: "cylinder", radius: R1, length: BIG.length, at: [0, 0, BIG.x], mark: true },
         { kind: "cylinder", radius: R2, length: SMALL.length, at: [0, 0, SMALL.x], mark: true },
         // 撬棒(左端穿過鼓軸的兩根)

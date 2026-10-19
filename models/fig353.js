@@ -7,13 +7,16 @@
 // 推板輪的軸往後穿過支架(支架頂端圓、包住軸,原圖的立柱在輪前,這裡放在輪後讓推板看得到)。
 import { TAU, deg, polar } from "./kit.js";
 import { placeOutline, swingUntilContact, withFall } from "./contact.js";
-import { shape, circle, rect, thickLine, arcPoints, zCylinder } from "./shapes.js";
+import { shape, circle, rect, thickLine, arcPoints, zCylinder, spanBox } from "./shapes.js";
 
 const WHEEL = [2.5, 0.05, 0];
 const N = 6;
 const PIVOT = [0.6, 0.0, 0]; // 錘柄的支點
 const SWEEP = deg(30);
 const HANDLE = thickLine([[-2.6, 0.35], [1.15, -0.05]], 0.42); // 錘柄(支點座標):推板壓的是它的右端
+const AXLE_R = 0.12; // 推板輪的軸
+const RING = { r: 0.3 }; // 錘柄的軸承環
+const COLUMN = { w: 0.35, top: PIVOT[1] - Math.sqrt(RING.r ** 2 - 0.35 ** 2 / 4) }; // 支柱:頂角落在軸承環的外圓上
 
 const star = shape(
   Array.from({ length: 2 * N }, (_, i) => polar(i % 2 ? 0.42 : 0.85, (i * Math.PI) / N).slice(0, 2)),
@@ -37,15 +40,16 @@ export default {
       kind: "group",
       pieces: [
         // 推板輪的支架與砧(砧面就在錘頭落下的位置:動力重演時錘頭落在砧上停住)
-        { kind: "plate", shape: shape([[WHEEL[0] - 0.9, -2.4], [WHEEL[0] + 0.9, -2.4], ...arcPoints(0.25, 0, Math.PI, WHEEL[0], WHEEL[1])]), thickness: 0.2, at: [0, 0, -0.35] },
+        // 支架頂端開軸孔,推板輪的軸從孔裡穿過
+        { kind: "plate", shape: shape([[WHEEL[0] - 0.9, -2.4], [WHEEL[0] + 0.9, -2.4], ...arcPoints(0.25, 0, Math.PI, WHEEL[0], WHEEL[1])], [circle(AXLE_R, WHEEL[0], WHEEL[1]).reverse()]), thickness: 0.2, at: [0, 0, -0.35] },
         { kind: "box", size: [6.85, 0.2, 0.6], at: [0.225, -2.45, -0.2] }, // 底座:推板輪的支架、支柱與砧都立在上面
         { kind: "plate", shape: shape([[-3.2, -2.45], [-1.6, -2.45], [-1.75, -0.4], [-1.6, -0.17], [-3.2, -0.17], [-3.05, -0.4]]), thickness: 0.8 },
-        // 支柱在錘柄的後面,立在底座上;頂端伸進軸承環的下緣,環坐在柱頂、套著錘柄的軸
-        { kind: "box", size: [0.35, 2.15, 0.4], at: [PIVOT[0], -1.325, -0.42] },
-        { kind: "cylinder", radius: 0.3, inner: 0.13, length: 0.3, at: [PIVOT[0], PIVOT[1], -0.42] },
+        // 支柱在錘柄的後面,立在底座上;頂端伸進軸承環的下緣(頂角落在環的外圓上),環坐在柱頂、套著錘柄的軸
+        spanBox(PIVOT[0] - COLUMN.w / 2, PIVOT[0] + COLUMN.w / 2, -2.4, COLUMN.top, -0.62, -0.22),
+        { kind: "cylinder", radius: RING.r, inner: 0.13, length: 0.3, at: [PIVOT[0], PIVOT[1], -0.42] },
       ],
     },
-    { id: "wheel", kind: "plate", center: WHEEL, shape: star, thickness: 0.2, hub: 0.25, mark: [0.6, 0], markSize: 0.07, spin: 0.85, pieces: [zCylinder(-0.45, 0.16, 0.12)] }, // 軸往後穿過支架
+    { id: "wheel", kind: "plate", center: WHEEL, shape: star, thickness: 0.2, hub: 0.25, mark: [0.6, 0], markSize: 0.07, spin: 0.85, pieces: [zCylinder(-0.45, 0.16, AXLE_R)] }, // 軸往後穿過支架的軸孔
     {
       id: "hammer",
       kind: "group",

@@ -9,7 +9,8 @@
 // 托架的速度大致是作用處的半徑 × 曲柄角速度,差的部分來自往上那一段的斜度與螺旋的升程。
 // 偏離插圖:原圖托架兩根橫軸上的輪子輪面和鏈索輪軸垂直,像是沿垂直於軸的方向走;照維護者的決定(2026-10-14 (a)),
 // 托架沿軸向走,輪子改成輪面和軸平行,上輪壓在上導軌頂面、下輪頂著下導軌底面(夾住導軌,推斷)。
-// 托架與導軌在鏈索輪前面一層,全程不碰鏈索輪與它的軸;機架是一塊底座,兩個軸承座、導軌的柱與導輪的柱都立在上面。
+// 托架與導軌在鏈索輪前面一層,全程不碰鏈索輪與它的軸;機架是一塊底座,兩個軸承座、導軌的柱與導輪的柱都立在上面(都是推斷)。
+// 皮帶躺在鏈索輪面上、側面靠著螺旋凸條(凸條在小端那一側),捲著的一段貼著凸條、不穿入。
 import { X, Z, TAU, clamp } from "./kit.js";
 import { spanBox } from "./shapes.js";
 
@@ -18,8 +19,12 @@ const FUSEE = { from: -1.6, to: 0.5, big: 0.95, small: 0.35 };
 export const TURNS = 1.25;
 export const RANGE = [0, TURNS * TAU];
 const PITCH = (FUSEE.to - FUSEE.from - 0.2) / TURNS;
-const LIFT = 0.07; // 皮帶中心線離鏈索輪面的高度(皮帶壓在螺旋槽的凸條上)
 const BELT_R = 0.045; // 皮帶(繩)的粗細(半徑)
+const SLOPE = (FUSEE.small - FUSEE.big) / (FUSEE.to - FUSEE.from);
+// 皮帶躺在鏈索輪面上:皮帶中心線離錐面(沿錐面的法線)一個皮帶半徑,換成沿半徑方向的高度
+const LIFT = BELT_R * Math.hypot(1, SLOPE);
+// 螺旋槽的凸條:粗細與中心線離錐面的高度(凸條的底埋進錐面一點,和鏈索輪接成一件)
+const RIDGE = { r: 0.025, lift: 0.02 };
 const SHAFT = { r: 0.08, from: -2.8, to: 0.8 }; // 鏈索輪的軸(沿 x)
 // 導輪(推斷):寬的滾筒,軸沿 z,在鏈索輪上方
 const GUIDE = { x: 0.1, y: 3.2, r: 0.28, z0: 0.3, z1: 1.1 };
@@ -37,7 +42,6 @@ export const radiusAt = (x) => FUSEE.big + ((FUSEE.small - FUSEE.big) * (x - FUS
 // 螺旋槽:參數 s 從大端起量的轉角;曲柄轉角 theta 時,s 那一點在鏈索輪上的世界角(從 +y 往 +z 量)是 π/2 − s + theta,
 // 所以 s = theta 那一點正好在鏈索輪正前方(z 最大處)——皮帶在那裡沿切線往上離開
 const grooveX = (s) => FUSEE.from + 0.1 + (PITCH * s) / TAU;
-const SLOPE = (FUSEE.small - FUSEE.big) / (FUSEE.to - FUSEE.from);
 const P = PITCH / TAU;
 // 捲在鏈索輪上的皮帶長:∫ √(ρ² + x'² + ρ'²) ds,ρ 是皮帶中心線的半徑
 function coilLength(theta) {
@@ -74,7 +78,7 @@ function belt(theta) {
   return { f, rb, e, used: f.wound + e.free + GR * wrap };
 }
 // 皮帶總長:曲柄轉到底時托架停在 X_END(托架左邊離導軌左端的柱還有一點距離)
-const X_END = 1.6;
+const X_END = 1.75;
 const spanFor = (b, hx) => Math.hypot(hx - GUIDE.x, CZ - b.rb);
 const LENGTH = (() => {
   const b = belt(RANGE[1]);
@@ -89,13 +93,46 @@ export function carriageAt(theta) {
 }
 const CARRIAGE0 = carriageAt(0).x;
 
-// 螺旋槽的凸條(固定在鏈索輪上,局部座標:局部 z 沿軸;世界 (x, y, z) 在局部是 (−z, y, x))
-const ridge = Array.from({ length: Math.round(TURNS * 48) + 1 }, (_, i) => {
-  const s = (i / 48) * TAU;
+// 螺旋槽的凸條(固定在鏈索輪上,局部座標:局部 z 沿軸;世界 (x, y, z) 在局部是 (−z, y, x)):
+// 和皮帶同一條螺旋、往小端挪 dx(s),皮帶躺在錐面上、側面靠著凸條(錐面上捲著的皮帶受拉會往小端滑,凸條擋在小端那一側)。
+// dx 讓凸條與皮帶兩條中心線的最短距離 = 兩個半徑相加;螺旋斜著走,所以 dx 比兩個半徑相加小,而且隨半徑變,逐點解出
+const beltAt = (s) => {
   const x = grooveX(s);
-  const r = radiusAt(x) + 0.02;
-  const a = Math.PI / 2 - s;
-  return [-r * Math.sin(a), r * Math.cos(a), x];
+  const rho = radiusAt(x) + LIFT;
+  return [x, rho * Math.cos(Math.PI / 2 - s), rho * Math.sin(Math.PI / 2 - s)];
+};
+const ridgeAt = (s, dx) => {
+  const x = grooveX(s) + dx;
+  const r = radiusAt(x) + RIDGE.lift;
+  return [x, r * Math.cos(Math.PI / 2 - s), r * Math.sin(Math.PI / 2 - s)];
+};
+// 皮帶上 s 那一點到「挪了 dx 的凸條」中心線的最短距離(在 s 附近找)
+function ridgeDistance(s, dx) {
+  const b = beltAt(s);
+  const d = (u) => Math.hypot(...ridgeAt(s + u, dx).map((v, k) => v - b[k]));
+  let [lo, hi] = [-0.4, 0.4];
+  for (let i = 0; i < 60; i++) {
+    const m1 = lo + (hi - lo) / 3;
+    const m2 = hi - (hi - lo) / 3;
+    if (d(m1) < d(m2)) hi = m2;
+    else lo = m1;
+  }
+  return d((lo + hi) / 2);
+}
+const ridgeShift = (s) => {
+  let [lo, hi] = [0, 0.3];
+  for (let i = 0; i < 50; i++) {
+    const m = (lo + hi) / 2;
+    if (ridgeDistance(s, m) < BELT_R + RIDGE.r) lo = m;
+    else hi = m;
+  }
+  return (lo + hi) / 2;
+};
+const RIDGE_STEPS = 96; // 每圈取的點數
+const ridge = Array.from({ length: Math.round(TURNS * RIDGE_STEPS) + 1 }, (_, i) => {
+  const s = (i / RIDGE_STEPS) * TAU;
+  const [x, y, z] = ridgeAt(s, ridgeShift(s));
+  return [-z, y, x];
 });
 
 // 軸承環(軸沿 x)與底下的座
@@ -116,10 +153,10 @@ export default {
       pieces: [
         // 底座(推斷)
         spanBox(-3.3, RAIL.to + 0.2, BASE_Y - 0.15, BASE_Y, -1.25, 1.25),
-        // 鏈索輪軸的兩個軸承:左邊在曲柄與鏈索輪之間,右邊在鏈索輪小端與軸端之間(軸穿過環孔)
+        // 鏈索輪軸的兩個軸承與座(推斷,原圖沒畫軸怎麼支著):左邊在曲柄與鏈索輪之間,右邊在鏈索輪小端與軸端之間(軸穿過環孔)
         ...bearing(-2.2, 0.25),
         ...bearing(0.65, 0.2),
-        // 導軌:上導軌頂面托著上輪,下導軌底面擋著下輪;兩端各一根柱立在底座上
+        // 導軌:上導軌頂面托著上輪,下導軌底面擋著下輪;兩端各一根柱立在底座上(柱是推斷,原圖導軌伸出畫面)
         spanBox(RAIL.from, RAIL.to, TOP_RAIL_Y - RAIL.t, TOP_RAIL_Y, RAIL.z0, RAIL.z1),
         spanBox(RAIL.from, RAIL.to, BOTTOM_RAIL_Y, BOTTOM_RAIL_Y + RAIL.t, RAIL.z0, RAIL.z1),
         railPost(RAIL.from + 0.1),
@@ -137,7 +174,7 @@ export default {
       spinOffset: FUSEE.from - 0.05,
       pieces: [
         { kind: "lathe", profile: [[0, FUSEE.from], [FUSEE.big, FUSEE.from], [FUSEE.small, FUSEE.to], [0, FUSEE.to]], mark: true },
-        { kind: "tube", points: ridge, radius: 0.025 },
+        { kind: "tube", points: ridge, radius: RIDGE.r },
         { kind: "cylinder", radius: SHAFT.r, length: SHAFT.to - SHAFT.from, at: [0, 0, (SHAFT.from + SHAFT.to) / 2] },
         // 曲柄
         { kind: "box", size: [0.12, 0.7, 0.12], at: [0, -0.35, -2.75] },
