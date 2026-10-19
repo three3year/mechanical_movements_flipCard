@@ -4,7 +4,7 @@
 // 開始時工件頂面離鑽尖 0.15,行程中段碰到鑽尖,之後鑽頭鑽進工件(原圖墊塊離鑽尖很近)。
 // 鑽頭比上一版加長(原圖鑽尖約在兩臂中間);墊塊照原圖是扁平的板;握把照原圖直立在曲柄臂上。
 import { Y, TAU, clamp } from "./kit.js";
-import { frame, crankPieces, feedOf, MAX, PITCH } from "./cramp-drill.js";
+import { frame, crankPiecesAt, feedOf, MAX, PITCH } from "./cramp-drill.js";
 
 const SCREW_Y0 = -0.47; // 起始時進料螺桿頂端(墊塊底面)的高度
 const WORM = 2.2; // 螺桿長:行程中一直旋在下臂裡
@@ -25,7 +25,7 @@ export default {
         { kind: "cylinder", role: "spindle", radius: 0.07, length: 1.6, at: [0, 0, -0.3] },
         { kind: "cylinder", radius: 0.25, length: 0.5, at: [0, 0, -0.6] },
         { kind: "lathe", role: "bit", profile: [[0, -1.85], [0.06, -1.7], [0.08, -0.85], [0, -0.85]] },
-        ...crankPieces(0.5),
+        ...crankPiecesAt(0.5),
       ],
     },
     {

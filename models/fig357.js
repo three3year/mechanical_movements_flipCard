@@ -9,7 +9,8 @@
 // H 的立軸、底座的傘齒輪與水平軸照轉速的積分轉;I 照 H 轉過的角度沿 G 滾(G 有 64 齒、I 有 8 齒,H 轉一圈 I 自轉 8 圈),
 // B¹ 經萬向接頭帶著 B 與輪 A 轉(十字頭的兩支銷互相垂直、各垂直於自己的軸,照實算出 B 的轉角)。
 // 畫法慣例(決定 2026-10-14 (a),同第 162、287 種的飛球):H、B、B¹、A、C 畫在同一個平面上、不跟著立軸繞,
-// 只畫各自的自轉;H 的框架因此畫成不轉的,立軸在它的轂裡轉;N、P、L、閥桿本來就不隨 H 轉。
+// 只畫各自的自轉;H 的框架因此畫成不轉的,立軸在它的轂裡轉;N、P、L、閥桿本來就不隨 H 轉。實物上桿 C 隨 H 繞立軸、
+// 閥桿不轉,所以閥桿下端與桿 C 之間要有旋轉接頭(推斷,原圖沒畫,這裡因為 C 不繞而不畫)。
 // 外殼照原圖的剖面畫成紙面上的一圈帶狀板:上面的罩、下面的碗與底座,G 是碗口上一圈冠狀的齒環。
 // 推斷:傾角與轉速的對應(示意,不模擬角動量);轉速的起伏;H 的框架(立軸頂的轂、從後面托住鉸接軸的立臂、繞到 I 外側
 // 托住 B¹ 的臂);鉸接的做法——B 在輪 A 兩側的兩個軸承裡轉,兩個軸承由一個從輪後面繞過的 U 形托架相連,托架中央往後
@@ -22,8 +23,8 @@
 // 偏離插圖:萬向接頭離鉸接 0.7(原圖約 0.8),和外端一樣遠,鉸接在 B 的中點(原文);碗比原圖深一點,讓 H 的轂與臂
 // 從輪 A 底下經過;N 的短臂朝右下、和桿 P 約略垂直(原圖朝下),長臂短一點,閥桿走完行程時彈簧不會被壓到底;
 // 彈簧 L 掛在罩的外側一點(原圖貼著罩)。
-import { X, Y, Z, TAU, deg, clamp, add, sub, scale, cross, norm, len, quatFromBasis } from "./kit.js";
-import { shape, thickLine } from "./shapes.js";
+import { X, Y, Z, TAU, deg, clamp, add, sub, scale, cross, norm, len, quatFromBasis, rot2 } from "./kit.js";
+import { shape, thickLine, zCylinder } from "./shapes.js";
 import { bevelGear, pitchCones, bevelContact, meshAngle } from "./gears.js";
 import { throttle } from "./throttle.js";
 
@@ -157,11 +158,10 @@ export function leverAngle(valve) {
   // 短臂末端在 樞軸→D 的連線下方(順時針那一側)
   return base - off - A_SHORT;
 }
-const rotate = ([x, y], a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
 /** 槓桿 N 轉 a 時短臂與長臂末端的位置 */
 export const leverEnds = (a) => ({
-  short: add([...N_PIVOT, 0], [...rotate(N_SHORT, a), 0]),
-  long: add([...N_PIVOT, 0], [...rotate(N_LONG, a), 0]),
+  short: add([...N_PIVOT, 0], [...rot2(N_SHORT, a), 0]),
+  long: add([...N_PIVOT, 0], [...rot2(N_LONG, a), 0]),
 });
 
 // ── 萬向接頭與兩段軸的朝向 ─────────────────
@@ -183,7 +183,6 @@ export function shafts(p) {
 }
 
 // ── 零件 ─────────────────────────────
-const zPin = (x, y, z0, z1, radius) => ({ kind: "cylinder", radius, length: z1 - z0, at: [x, y, (z0 + z1) / 2] });
 const forkPieces = (sign) => [
   // 叉底(橫在軸上)與兩股(沿局部 x 離軸線 FORK.r,十字頭的銷穿過)
   { kind: "box", size: [2 * (FORK.r + 0.02), 0.08, 0.05], at: [0, 0, sign * FORK.yoke] },
@@ -228,7 +227,7 @@ const casing = [
   { kind: "cylinder", axis: X, radius: 0.12, inner: 0.05, length: 0.3, at: [PED_X + 0.05, APEX[1], 0] }, // 水平軸的軸承
   // 彈簧 L 下端的耳(從罩的外側伸出)與 N 的樞軸銷
   { kind: "box", size: [0.4, 0.06, 0.26], at: [-2.56, SPRING_FOOT[1] - 0.03, 0.08] },
-  zPin(...N_PIVOT, 0, N_Z + 0.05, 0.035),
+  zCylinder(0, N_Z + 0.05, 0.035, N_PIVOT),
   ...VALVE.framePieces,
 ];
 
@@ -348,7 +347,7 @@ export default {
           { kind: "box", size: [CRADLE.bar, CRADLE.bar, -CRADLE.back], at: [k * CRADLE.x, 0, CRADLE.back / 2] },
         ]),
         { kind: "box", size: [2 * CRADLE.x + CRADLE.bar, CRADLE.bar, CRADLE.bar], at: [0, 0, CRADLE.back] },
-        zPin(0, 0, H_BACK - 0.08, CRADLE.back, 0.04),
+        zCylinder(H_BACK - 0.08, CRADLE.back, 0.04),
       ],
     },
     {
@@ -359,7 +358,7 @@ export default {
       arrow: false,
       pieces: [
         { kind: "cylinder", axis: X, radius: 0.1, inner: SHAFT_R, length: 0.1, at: [OUTER, 0, 0] },
-        zPin(OUTER, 0, 0.06, C_Z + 0.06, 0.03),
+        zCylinder(0.06, C_Z + 0.06, 0.03, [OUTER, 0]),
       ],
     },
     {
@@ -384,9 +383,9 @@ export default {
       labelOffset: [0.25, 0.15, 0.3],
       pieces: [
         { kind: "cylinder", axis: Y, radius: 0.05, length: LD + 0.06 + GROOVE.top + COLLAR + 0.1, at: [0, (GROOVE.top + COLLAR + 0.1 - LD - 0.06) / 2, 0] },
-        zPin(0, -LD, -0.06, C_Z + 0.05, 0.03), // 下端的銷:桿 C 套在上面
+        zCylinder(-0.06, C_Z + 0.05, 0.03, [0, -LD]), // 下端的銷:桿 C 套在上面
         { kind: "cylinder", radius: 0.08, length: 0.12 }, // 上端的轂
-        zPin(0, 0, 0, P_Z + 0.05, 0.03), // 上端的銷:桿 P 套在上面
+        zCylinder(0, P_Z + 0.05, 0.03), // 上端的銷:桿 P 套在上面
         { kind: "cylinder", axis: Y, radius: GROOVE.outer, length: COLLAR, at: [0, GROOVE.top + COLLAR / 2, 0] }, // 環槽的上壁
         ...VALVE.sleevePieces(),
       ],
@@ -402,15 +401,17 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(thickLine([N_LONG, [0, 0], N_SHORT], 0.09)), thickness: 0.05 },
         { kind: "cylinder", radius: 0.09, length: 0.05 },
-        zPin(...N_SHORT, -0.03, P_Z - N_Z + 0.05, 0.03),
-        zPin(...N_LONG, -0.025, 0.025, 0.04),
+        zCylinder(-0.03, P_Z - N_Z + 0.05, 0.03, N_SHORT),
+        zCylinder(-0.025, 0.025, 0.04, N_LONG),
       ],
     },
     { id: "rodP", kind: "link", width: 0.08, thickness: 0.05, label: "P", labelOffset: [0.05, 0.45, 0.2] },
     { id: "springL", kind: "spring", coils: 7, radius: 0.08, wire: 0.022, label: "L", labelOffset: [-0.3, 0.6, 0.2] },
     ...VALVE.parts,
   ],
-  powered: ["driveShaft", "shaftB"], // 外力來源:引擎帶動的水平軸;輪 A 的陀螺效應把 B 往垂直扳
+  // 外力來源:引擎帶動的水平軸;shaftB 另列,因為畫法慣例讓 H 不轉,傘齒輪 → 立軸 → H → I 這條帶動鏈在 H 斷掉——
+  // 實物上 B¹、萬向接頭、B 與輪 A 的自轉由 I 沿 G 滾帶動,B 的傾斜則由輪 A 的陀螺效應扳動
+  powered: ["driveShaft", "shaftB"],
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, PERIOD], unit: "圈", speed: 0.5 },
   target: "valve", // 被調節的節流閥
   view: { direction: [0.15, 0.12, 1] },

@@ -255,6 +255,9 @@ export function thickLine(points, w) {
  */
 export const zCylinder = (z0, z1, radius, [x, y] = [0, 0], base = 0) => ({ kind: "cylinder", radius, length: z1 - z0, at: [x, y, (z0 + z1) / 2 - base] });
 
+/** 由兩個角點的座標範圍定的方塊(x0..x1、y0..y1、z0..z1);extra 併進方塊(例如 role) */
+export const spanBox = (x0, x1, y0, y1, z0, z1, extra = {}) => ({ kind: "box", ...extra, size: [x1 - x0, y1 - y0, z1 - z0], at: [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2] });
+
 /** 正多邊形(n 邊,外接圓半徑 r;第一個頂點在角度 start) */
 export const polygon = (n, r, start = 0) =>
   Array.from({ length: n }, (_, i) => [r * Math.cos(start + (i * TAU) / n), r * Math.sin(start + (i * TAU) / n)]);

@@ -4,7 +4,7 @@
 // 推斷:進料隨鑽頭的轉動以固定的量前進(原文只說心軸穿過螺桿中心)、螺桿與夾頭之間的止推面。
 // 進料螺桿是中空的(孔沒畫出來),心軸從中間穿過、上下兩端都露出來;開始時鑽尖離工件 0.2,行程後段鑽進工件。
 import { Y, TAU, clamp } from "./kit.js";
-import { frame, crankPieces, feedOf, MAX, PITCH, ARMS } from "./cramp-drill.js";
+import { frame, crankPiecesAt, feedOf, MAX, PITCH, ARMS } from "./cramp-drill.js";
 
 const TOP = 2.95; // 起始時心軸頂(曲柄臂底面)的高度
 const SCREW_Y0 = 0.275; // 起始時進料螺桿下端的高度(頂著夾頭)
@@ -37,7 +37,7 @@ export default {
         { kind: "cylinder", role: "spindle", radius: 0.06, length: 2.7, at: [0, 0, -1.35] },
         { kind: "cylinder", role: "chuck", radius: 0.2, length: CHUCK[1] - CHUCK[0], at: [0, 0, (CHUCK[0] + CHUCK[1]) / 2] },
         { kind: "lathe", role: "bit", profile: [[0, -4.175], [0.05, -4.0], [0.07, CHUCK[0]], [0, CHUCK[0]]] },
-        ...crankPieces(0),
+        ...crankPiecesAt(0),
       ],
     },
     { id: "work", kind: "box", center: [0.25, ARMS.lower[1] + 0.1, 0], size: [1.2, 0.2, 0.8] },

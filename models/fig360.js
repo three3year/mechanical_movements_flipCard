@@ -14,8 +14,8 @@
 // 回程裡飛輪滑行不到一齒,所以下一程棘爪碰上的是它面前的第一個齒面(往回轉時爪滑過的那幾齒之後),
 // 碰上之後推到這一程的終點。鼓輪每程轉過的角度剛好是 3 齒(鼓輪半徑依此選定),每圈飛輪前進 3 齒,
 // 棘爪每一程都在同一個相位碰上齒面;碰上的時刻由「飛輪滑到的位置 = 鼓輪轉到的位置」算出。
-import { deg, swingPhase, rot2, TAU } from "./kit.js";
-import { ratchetShape, shape, circle, arcPoints, thickLine } from "./shapes.js";
+import { deg, swingPhase, rot2, around, TAU } from "./kit.js";
+import { ratchetShape, shape, circle, arcPoints, thickLine, spanBox } from "./shapes.js";
 import { ratchetObstacles } from "./ratchets.js";
 import { swingUntilContact, fallingRest } from "./contact.js";
 import { solve } from "./linkage.js";
@@ -101,7 +101,6 @@ const head = (s) => {
   const mid = s > 0 ? 0 : Math.PI;
   return shape([...arcPoints(HEAD.outer, mid - HEAD.half, mid + HEAD.half), ...arcPoints(HEAD.inner, mid + HEAD.half, mid - HEAD.half)]);
 };
-const around = (c, r, a, z) => [c[0] + r * Math.cos(a), c[1] + r * Math.sin(a), z];
 
 // 右繩:繩頭在右弧頭上端,貼著弧頭外緣繞到最右邊,鉛直落到鼓輪右側的切點,再繞進鼓輪(繩尾固定在鼓輪上)
 function rightRope(psi, drum) {
@@ -143,7 +142,6 @@ function spring(drum) {
   });
 }
 
-const zBox = (x0, x1, y0, y1, z0, z1) => ({ kind: "box", size: [x1 - x0, y1 - y0, z1 - z0], at: [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2] });
 const BASE_TOP = -2.6;
 const SPRING_FOOT = DRUM.center[1] - SPRING.r1; // 彈簧外端的高度
 
@@ -157,16 +155,16 @@ export default {
         // A 形架在飛輪後面,頂上的凸台托著樑的樞銷
         { kind: "plate", shape: shape(thickLine([[-2.3, -2.6], [-0.6, 2.3], [1.1, -2.6]], 0.2)), thickness: 0.2, at: [0, 0, -0.65] },
         { kind: "plate", shape: shape(circle(0.22, PIVOT[0], PIVOT[1])), thickness: 0.2, at: [0, 0, -0.65] },
-        zBox(-2.3, 2.6, BASE_TOP - 0.2, BASE_TOP, -0.8, 0.2),
+        spanBox(-2.3, 2.6, BASE_TOP - 0.2, BASE_TOP, -0.8, 0.2),
         // 樑的樞銷:從 A 形架穿過樑的輪轂,前端有銷頭擋住;銷上套一段隔套,讓樑貼著銷頭轉、不往後滑
         { kind: "cylinder", radius: 0.08, length: 0.95, at: [PIVOT[0], PIVOT[1], -0.275] },
         { kind: "cylinder", radius: 0.13, length: 0.05, at: [PIVOT[0], PIVOT[1], 0.18] },
         { kind: "cylinder", radius: 0.14, inner: 0.08, length: 0.395, at: [PIVOT[0], PIVOT[1], -0.3525] },
         // 飛輪軸的軸承座:立柱在飛輪的後面,頂上一個軸承環(軸穿過環孔)
-        zBox(DRUM.center[0] - 0.125, DRUM.center[0] + 0.125, BASE_TOP, DRUM.center[1] - 0.25, -0.8, -0.6),
+        spanBox(DRUM.center[0] - 0.125, DRUM.center[0] + 0.125, BASE_TOP, DRUM.center[1] - 0.25, -0.8, -0.6),
         { kind: "cylinder", radius: 0.27, inner: 0.1, length: 0.1, at: [DRUM.center[0], DRUM.center[1], -0.55] },
         // 渦卷彈簧外端的柱(推斷):從底座立在飛輪前面、鼓輪正下方,彈簧外端插進柱頂
-        zBox(DRUM.center[0] - 0.06, DRUM.center[0] + 0.06, BASE_TOP, SPRING_FOOT + 0.04, Z.spring - 0.05, Z.spring + 0.05),
+        spanBox(DRUM.center[0] - 0.06, DRUM.center[0] + 0.06, BASE_TOP, SPRING_FOOT + 0.04, Z.spring - 0.05, Z.spring + 0.05),
       ],
     },
     {

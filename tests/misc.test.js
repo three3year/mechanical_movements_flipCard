@@ -2,8 +2,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep, part, turned, inSolid, pieceBox, plateLayers, guidedBetween, assertOnePiece, assertThrottle, assertShaftInBearings } from "./helpers.js";
-import { deg, quatMul, quatRotate, partPoint, rotateAbout, add, sub, scale, cross, dot, dist, len, norm, lerp3, rot2, X, Y, Z, TAU } from "../models/kit.js";
+import { deg, quatMul, quatRotate, partPoint, rotateAbout, add, sub, scale, cross, dot, dist, len, norm, lerp3, rot2, polar, X, Y, Z, TAU } from "../models/kit.js";
 import { rackShape } from "../models/shapes.js";
+import { pathLength } from "../models/flow.js";
+import { lineAngle } from "../models/ruler-lines.js";
+import * as cramp from "../models/cramp-drill.js";
 
 import * as m350 from "../models/fig350.js";
 import * as m351 from "../models/fig351.js";
@@ -13,21 +16,19 @@ import * as m354 from "../models/fig354.js";
 import * as m355 from "../models/fig355.js";
 import * as m356 from "../models/fig356.js";
 import * as m357 from "../models/fig357.js";
-import * as m363 from "../models/fig363.js";
-import * as m365 from "../models/fig365.js";
 import * as m358 from "../models/fig358.js";
 import * as m359 from "../models/fig359.js";
 import * as m360 from "../models/fig360.js";
 import * as m361 from "../models/fig361.js";
 import * as m362 from "../models/fig362.js";
+import * as m363 from "../models/fig363.js";
 import * as m364 from "../models/fig364.js";
+import * as m365 from "../models/fig365.js";
 import * as m366 from "../models/fig366.js";
 import * as m367 from "../models/fig367.js";
 import * as m368 from "../models/fig368.js";
 import * as m369 from "../models/fig369.js";
 import * as m370 from "../models/fig370.js";
-import * as m384 from "../models/fig384.js";
-import { lineAngle } from "../models/ruler-lines.js";
 import * as m371 from "../models/fig371.js";
 import * as m372 from "../models/fig372.js";
 import * as m373 from "../models/fig373.js";
@@ -36,12 +37,12 @@ import * as m375 from "../models/fig375.js";
 import * as m376 from "../models/fig376.js";
 import * as m377 from "../models/fig377.js";
 import * as m378 from "../models/fig378.js";
-import fig379 from "../models/fig379.js";
-import fig380 from "../models/fig380.js";
-import * as cramp from "../models/cramp-drill.js";
+import * as m379 from "../models/fig379.js";
+import * as m380 from "../models/fig380.js";
 import * as m381 from "../models/fig381.js";
 import * as m382 from "../models/fig382.js";
 import * as m383 from "../models/fig383.js";
+import * as m384 from "../models/fig384.js";
 import * as m385 from "../models/fig385.js";
 import * as m386 from "../models/fig386.js";
 import * as m387 from "../models/fig387.js";
@@ -380,6 +381,14 @@ test("第 354 種:曲柄臂貼在曲柄盤面上、銷立在臂上;十字頭的�
   const def = m354.default;
   assertOnePiece(part(def, "crank"), "曲柄的盤、臂、銷與軸連成一件");
   assertOnePiece(part(def, "crosshead"), "十字頭的板、島、壓條與上下桿連成一件");
+  // assertOnePiece 只看外輪廓、不看孔:另外量臂的背面落在盤面的正面上,而且臂蓋住的是盤的實心部分(不是軸孔)
+  const crank = part(def, "crank");
+  const disc = crank.pieces.find((q) => q.kind === "plate" && q.shape.holes?.length && q.thickness < 0.1);
+  const arm = crank.pieces.find((q) => q.kind === "box");
+  close(pieceBox(arm).lo[2], pieceBox(disc).hi[2], "臂的背面貼著盤面", 1e-9);
+  const [hole] = disc.shape.holes;
+  const holeR = Math.max(...hole.map(([x, y]) => Math.hypot(x, y)));
+  assert.ok(pieceBox(arm).hi[0] > holeR + 0.1, "臂伸過軸孔、壓在盤的實心部分上");
 });
 
 test("第 355 種:陀螺儀:碟片高速旋轉時不掉落,而是繞鉛直軸轉(進動)", () => {
@@ -620,24 +629,21 @@ test("第 363 種:蹺蹺板:長板繞支點作有限的擺動", () => {
   close(pose(lo - 1), lo, "擺動有限");
 });
 
-// 方塊的世界外框
-const boxRange = (q, o = [0, 0, 0]) => [0, 1, 2].map((k) => [o[k] + q.at[k] - q.size[k] / 2, o[k] + q.at[k] + q.size[k] / 2]);
-
 test("第 363 種:板穿過立柱的榫眼,樞銷穿過立柱與板(原圖:立柱高出板、頂端圓弧,板上的虛線是穿過立柱的那段)", () => {
   const def = m363.default;
   const stand = def.parts.find((p) => p.id === "stand");
   const board = def.parts.find((p) => p.id === "board");
   const [px, py] = board.center;
-  const plank = boxRange(board.pieces.find((q) => q.kind === "box" && q.size[0] > 2), board.center);
+  const plank = pieceBox(board.pieces.find((q) => q.kind === "box" && q.size[0] > 2), board.center);
   const pin = stand.pieces.find((q) => q.kind === "cylinder" && !q.axis && dist(q.at, board.center) < 1e-9);
   assert.ok(pin, "樞銷在板的支點上、沿前後方向");
   const [z0, z1] = [pin.at[2] - pin.length / 2, pin.at[2] + pin.length / 2];
-  assert.ok(plank[1][0] < py && py < plank[1][1] && z0 < plank[2][0] && plank[2][1] < z1, "樞銷從板的中間穿過、伸出板的前後兩側");
+  assert.ok(plank.lo[1] < py && py < plank.hi[1] && z0 < plank.lo[2] && plank.hi[2] < z1, "樞銷從板的中間穿過、伸出板的前後兩側");
   // 板的前後各有立柱的一片(榫眼的兩頰),樞銷穿進兩片
-  const cheeks = stand.pieces.filter((q) => q.kind === "box").map((q) => boxRange(q)).filter(([x, y]) => x[0] < px && px < x[1] && y[0] < py && py < y[1]);
-  assert.ok(cheeks.some(([, , z]) => z[1] <= plank[2][0] + 1e-9 && z[1] > z0) && cheeks.some(([, , z]) => z[0] >= plank[2][1] - 1e-9 && z[0] < z1), "板前、板後都有立柱,樞銷穿進兩邊");
+  const cheeks = stand.pieces.filter((q) => q.kind === "box").map((q) => pieceBox(q)).filter((b) => b.lo[0] < px && px < b.hi[0] && b.lo[1] < py && py < b.hi[1]);
+  assert.ok(cheeks.some((b) => b.hi[2] <= plank.lo[2] + 1e-9 && b.hi[2] > z0) && cheeks.some((b) => b.lo[2] >= plank.hi[2] - 1e-9 && b.lo[2] < z1), "板前、板後都有立柱,樞銷穿進兩邊");
   // 立柱高出板
-  const top = Math.max(...stand.pieces.filter((q) => q.kind !== "plate").map((q) => (q.kind === "box" ? boxRange(q)[1][1] : q.at[1] + q.radius)));
+  const top = Math.max(...stand.pieces.filter((q) => q.kind !== "plate").map((q) => (q.kind === "box" ? pieceBox(q).hi[1] : q.at[1] + q.radius)));
   assert.ok(top > py + 0.3, `立柱頂(${top.toFixed(2)})高出板`);
 });
 
@@ -645,7 +651,7 @@ test("第 363 種:擺動的範圍由板端碰到地面擋住,擺幅照原圖(約
   const def = m363.default;
   const board = def.parts.find((p) => p.id === "board");
   const stand = def.parts.find((p) => p.id === "stand");
-  const ground = Math.max(...stand.pieces.filter((q) => q.kind === "box").map((q) => boxRange(q)[1][1]).filter((y) => y < board.center[1] - 1));
+  const ground = Math.max(...stand.pieces.filter((q) => q.kind === "box").map((q) => pieceBox(q).hi[1]).filter((y) => y < board.center[1] - 1));
   // 板(長板與座位)各角的世界座標
   const corners = (a) =>
     board.pieces.flatMap((q) => {
@@ -653,11 +659,11 @@ test("第 363 種:擺動的範圍由板端碰到地面擋住,擺幅照原圖(約
       return pts.map((p) => add(board.center, [...rot2(p, a), 0]));
     });
   const low = (a) => corners(a).reduce((m, p) => (p[1] < m[1] ? p : m));
-  const base = stand.pieces.filter((q) => q.kind === "box").map((q) => boxRange(q)).find(([, y]) => Math.abs(y[1] - ground) < 1e-9);
+  const base = stand.pieces.filter((q) => q.kind === "box").map((q) => pieceBox(q)).find((b) => Math.abs(b.hi[1] - ground) < 1e-9);
   for (const end of m363.RANGE) {
     const p = low(def.pose(end).parts.board.angle);
     close(p[1], ground, `擺到 ${((end * 180) / Math.PI).toFixed(1)}°:板端碰到地面`, 1e-6);
-    assert.ok(base[0][0] <= p[0] && p[0] <= base[0][1], "碰到的地方有底座(地面)");
+    assert.ok(base.lo[0] <= p[0] && p[0] <= base.hi[0], "碰到的地方有底座(地面)");
   }
   for (const a of sweep(m363.RANGE[1], 40, m363.RANGE[0]).slice(1, -1)) assert.ok(low(a)[1] > ground, "範圍內板不碰地");
   for (const end of m363.RANGE) assert.ok(Math.abs(end) > deg(30) && Math.abs(end) < deg(36), `擺幅 ${((end * 180) / Math.PI).toFixed(1)}° 接近原圖的 33°`);
@@ -682,27 +688,8 @@ test("第 365 種:桿全程在底板上方(桿最低時下端也不穿到地面�
   }
 });
 
-// 第 358–361 種共用:折線長、軸對齊外框(方塊、沿座標軸的圓柱,世界座標)與外框的連通
-const polyLength = (pts) => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1], p[2] - pts[i][2]), 0);
-function axisBox(q, origin = [0, 0, 0]) {
-  const at = (q.at ?? [0, 0, 0]).map((v, k) => v + origin[k]);
-  const axis = q.axis ?? [0, 0, 1];
-  const h = q.kind === "box" ? q.size.map((v) => v / 2) : axis.map((a) => (Math.abs(a) > 0.5 ? q.length / 2 : q.radius));
-  return { lo: at.map((v, k) => v - h[k]), hi: at.map((v, k) => v + h[k]) };
-}
-const boxesTouch = (a, b, eps = 1e-6) => [0, 1, 2].every((k) => a.lo[k] <= b.hi[k] + eps && b.lo[k] <= a.hi[k] + eps);
+// 第 358–361 種共用:兩個外框(pieceBox)是否重疊
 const boxesOverlap = (a, b) => [0, 1, 2].every((k) => a.lo[k] < b.hi[k] && b.lo[k] < a.hi[k]);
-/** 外框兩兩相接(或相交)時,從第一個走得到每一個 */
-function allConnected(boxes) {
-  const seen = new Set([0]);
-  for (let grew = true; grew; ) {
-    grew = false;
-    boxes.forEach((b, i) => {
-      if (!seen.has(i) && [...seen].some((j) => boxesTouch(boxes[j], b))) (seen.add(i), (grew = true));
-    });
-  }
-  return seen.size === boxes.length;
-}
 
 const d358 = m358.default;
 const carriageX = (t) => d358.pose(t).parts.carriage.position[0];
@@ -722,8 +709,8 @@ test("第 358 種:托架的橫移速度依皮帶在鏈索輪上作用處的直�
 });
 
 test("第 358 種:皮帶長不變——托架走過的距離就是捲進鏈索輪的皮帶長(扣掉斜段的變化)", () => {
-  const L0 = polyLength(d358.pose(0).paths.belt.points);
-  for (const t of sweep(m358.RANGE[1], 60)) close(polyLength(d358.pose(t).paths.belt.points), L0, `曲柄轉 ${t.toFixed(2)}:皮帶長不變`, 5e-3);
+  const L0 = pathLength(d358.pose(0).paths.belt.points);
+  for (const t of sweep(m358.RANGE[1], 60)) close(pathLength(d358.pose(t).paths.belt.points), L0, `曲柄轉 ${t.toFixed(2)}:皮帶長不變`, 5e-3);
 });
 
 test("第 358 種:皮帶從鏈索輪的切線方向(大致垂直於軸)離開、被捲進去,繞過導輪轉成沿軸向接到托架", () => {
@@ -761,9 +748,8 @@ test("第 358 種:皮帶從鏈索輪的切線方向(大致垂直於軸)離開、
 
 test("第 358 種:托架的輪子坐在導軌上滾,機架連成一件,鏈索輪軸穿過兩端的軸承;托架全程不碰鏈索輪與它的軸", () => {
   const frame = part(d358, "frame");
-  const boxes = frame.pieces.map((q) => axisBox(q));
-  assert.ok(allConnected(boxes), "機架的每一塊連成一件(底座、軸承座、導軌、導輪的座)");
-  const rails = frame.pieces.filter((q) => q.kind === "box" && q.size[0] > 4 && q.size[2] < 0.5).map((q) => axisBox(q)).sort((a, b) => b.hi[1] - a.hi[1]);
+  assertOnePiece(frame, "機架的每一塊連成一件(底座、軸承座、導軌、導輪的座)");
+  const rails = frame.pieces.filter((q) => q.kind === "box" && q.size[0] > 4 && q.size[2] < 0.5).map((q) => pieceBox(q)).sort((a, b) => b.hi[1] - a.hi[1]);
   assert.equal(rails.length, 2, "上下兩條導軌");
   const fuseeShaft = part(d358, "fusee").pieces.find((q) => q.kind === "cylinder" && q.length > 3);
   const shaft = { from: fuseeShaft.at[2] - fuseeShaft.length / 2, to: fuseeShaft.at[2] + fuseeShaft.length / 2 };
@@ -785,7 +771,7 @@ test("第 358 種:托架的輪子坐在導軌上滾,機架連成一件,鏈索輪
     }
     const c = pose.parts.carriage.position;
     const fx = { lo: [shaft.from, -1, -1], hi: [shaft.to, 1, 1] };
-    for (const q of part(d358, "carriage").pieces) assert.ok(!boxesOverlap(axisBox(q, c), fx), `曲柄轉 ${t.toFixed(2)}:托架不碰鏈索輪與它的軸`);
+    for (const q of part(d358, "carriage").pieces) assert.ok(!boxesOverlap(pieceBox(q, c), fx), `曲柄轉 ${t.toFixed(2)}:托架不碰鏈索輪與它的軸`);
   }
 });
 
@@ -814,9 +800,9 @@ test("第 359 種:原始鑽孔裝置:按下橫桿時繩解開、心軸轉;放開
 
 test("第 359 種:繩長不變——心軸的轉角由繩長算出,兩股繩在按下、放開的全程都不伸縮", () => {
   const S = m359.STROKE;
-  const L0 = ["cordL", "cordR"].map((id) => polyLength(d359.pose(0).paths[id].points));
+  const L0 = ["cordL", "cordR"].map((id) => pathLength(d359.pose(0).paths[id].points));
   for (const v of sweep(4 * S, 160))
-    ["cordL", "cordR"].forEach((id, i) => close(polyLength(d359.pose(v).paths[id].points), L0[i], `行程 ${v.toFixed(2)}:${id} 的長度不變`, 0.01));
+    ["cordL", "cordR"].forEach((id, i) => close(pathLength(d359.pose(v).paths[id].points), L0[i], `行程 ${v.toFixed(2)}:${id} 的長度不變`, 0.01));
 });
 
 test("第 359 種:橫桿在上時繩在心軸上捲約 2.5 圈(原圖);按到底時繩完全解開;繩的一端繫在橫桿端", () => {
@@ -892,8 +878,8 @@ test("第 360 種:右端弧形頭的繩照原圖沿鼓輪右側鉛直落下、�
 test("第 360 種:兩條繩的長度全程不變", () => {
   const S = m360.SWING;
   for (const id of ["ropeR", "ropeL"]) {
-    const L0 = polyLength(d360.pose(0).paths[id].points);
-    for (const v of sweep(4 * S, 80)) close(polyLength(d360.pose(v).paths[id].points), L0, `擺動 ${v.toFixed(3)}:${id} 長度不變`, 2e-3);
+    const L0 = pathLength(d360.pose(0).paths[id].points);
+    for (const v of sweep(4 * S, 80)) close(pathLength(d360.pose(v).paths[id].points), L0, `擺動 ${v.toFixed(3)}:${id} 長度不變`, 2e-3);
   }
 });
 
@@ -907,7 +893,7 @@ test("第 360 種:鼓輪的渦卷彈簧(推斷)內端在鼓輪上、外端插在
   const p0 = d360.pose(0);
   const [in0, out0] = [p0.paths.spring.points[0], p0.paths.spring.points.at(-1)];
   const n0 = turns(p0.paths.spring.points);
-  const boxes = part(d360, "frame").pieces.filter((q) => q.kind === "box").map((q) => axisBox(q));
+  const boxes = part(d360, "frame").pieces.filter((q) => q.kind === "box").map((q) => pieceBox(q));
   assert.ok(boxes.some((b) => [0, 1, 2].every((k) => b.lo[k] - 1e-9 <= out0[k] && out0[k] <= b.hi[k] + 1e-9)), "外端插在機架的柱頂");
   for (const v of sweep(4 * S, 40)) {
     const pose = d360.pose(v);
@@ -990,9 +976,9 @@ test("第 361 種:推皮帶輪的彎槓桿繞右立柱上的樞軸擺動,下端�
   const frame = part(d361, "frame");
   const pivotPin = frame.pieces.find((q) => q.kind === "cylinder" && Math.hypot(q.at[0] - lever.center[0], q.at[1] - lever.center[1]) < 1e-9);
   assert.ok(pivotPin, "立柱上有槓桿的樞銷");
-  const post = frame.pieces.map((q) => axisBox(q)).find((b) => b.hi[1] - b.lo[1] > 3 && b.lo[0] <= lever.center[0] && lever.center[0] <= b.hi[0]);
+  const post = frame.pieces.map((q) => pieceBox(q)).find((b) => b.hi[1] - b.lo[1] > 3 && b.lo[0] <= lever.center[0] && lever.center[0] <= b.hi[0]);
   assert.ok(post, "樞軸在右立柱上");
-  const pb = axisBox(pivotPin);
+  const pb = pieceBox(pivotPin);
   const plate = lever.pieces.find((q) => q.kind === "plate");
   const lz = [lever.center[2] + plate.at[2] - plate.thickness / 2, lever.center[2] + plate.at[2] + plate.thickness / 2];
   assert.ok(pb.lo[2] <= lz[0] && pb.hi[2] > post.lo[2] + 0.05, "樞銷從槓桿穿進立柱");
@@ -1026,9 +1012,9 @@ test("第 361 種:左端的飛輪是裝在軸上的實心碟;兩根軸穿過立�
   assert.ok(!fly.inner, "飛輪是實心碟,不是浮在軸外的環");
   assert.ok(zr(shaft)[0] < zr(fly)[1] - 0.05, "軸穿進飛輪");
   const frame = part(d361, "frame");
-  assert.ok(allConnected(frame.pieces.map((q) => axisBox(q))), "兩根立柱接在底座上,機架連成一件");
-  const posts = frame.pieces.filter((q) => q.kind === "box" && q.size[1] > 3).map((q) => axisBox(q));
-  assert.equal(posts.length, 2);
+  assertOnePiece(frame, "兩根立柱接在底座上,機架連成一件");
+  const posts = frame.pieces.filter((q) => q.kind === "box" && q.size[1] > 3).map((q) => pieceBox(q));
+  assert.equal(posts.length, 2, "兩根立柱(原圖)");
   for (const b of posts) assert.ok(b.lo[2] < -0.07 && b.hi[2] > 0.07, "軸(z = 0)穿過立柱");
 });
 
@@ -1696,12 +1682,11 @@ test("第 371 種:兩面有齒的曼格輪:小齒輪均勻旋轉,輪交替地往
 });
 
 // 第 371 種的量測:小齒輪軸心(世界)、輪緣兩端的端點(換面時小齒輪繞著它)
-const m371Ends = (w) => m371.ENDS.map((a) => [m371.R * Math.cos(w + a), m371.R * Math.sin(w + a), 0]);
-const m371Period = m371.PERIOD;
+const m371Ends = (w) => m371.ENDS.map((a) => polar(m371.R, w + a));
 
 test("第 371 種:小齒輪咬著一面的齒時,接觸點上小齒輪的節圓和輪面同向、同速(滾動不滑,輪的轉向由小齒輪決定)", () => {
   let checked = 0;
-  for (const t of sweep(m371Period, 600)) {
+  for (const t of sweep(m371.PERIOD, 600)) {
     const m = m371.mangle(t);
     if (Math.abs(Math.abs(m.z) - m371.RHO) > 1e-9 || Math.abs(Math.abs(m371.mangle(t + 1e-4).z) - m371.RHO) > 1e-9) continue;
     const dw = (m371.mangle(t + 1e-4).wheel - m.wheel) / 1e-4;
@@ -1718,7 +1703,7 @@ test("第 371 種:換面時小齒輪繞過輪緣的端點、從開口穿到另�
   const tip = m371.RP + m371.M; // 小齒輪齒頂半徑
   const endTip = m371.H + m371.M; // 端點齒的齒頂半徑
   let switching = 0;
-  for (const t of sweep(m371Period, 1200)) {
+  for (const t of sweep(m371.PERIOD, 1200)) {
     const m = m371.mangle(t);
     const p = [-m371.R, 0, m.z];
     const d = m371Ends(m.wheel).map((e) => dist(p, e));
@@ -1736,7 +1721,7 @@ test("第 371 種:換面時小齒輪繞過輪緣的端點、從開口穿到另�
   }
   assert.ok(switching > 20, "有換面");
   // 換面時穿過開口:小齒輪的軸心走到兩面正中(z = 0)時,在開口裡
-  const mid = sweep(m371Period, 2400).map((t) => m371.mangle(t)).filter((m) => Math.abs(m.z) < 0.01);
+  const mid = sweep(m371.PERIOD, 2400).map((t) => m371.mangle(t)).filter((m) => Math.abs(m.z) < 0.01);
   assert.ok(mid.length > 0 && mid.every((m) => { const l = ((Math.PI - m.wheel) % TAU + TAU) % TAU; return l < m371.ENDS[0] || l > m371.ENDS[1]; }), "穿過開口");
 });
 
@@ -1750,7 +1735,7 @@ test("第 371 種:小齒輪軸在軸承座的前後長槽裡滑:軸全程在槽�
   const around = blocks.filter((b) => b.lo[0] <= x && x <= b.hi[0]);
   // 軸的截面(y–z 平面)到每一塊的距離
   const gapTo = (z, b) => Math.hypot(Math.max(b.lo[1] - 0, 0, 0 - b.hi[1]), Math.max(b.lo[2] - z, 0, z - b.hi[2])) - r;
-  for (const t of sweep(m371Period, 400)) {
+  for (const t of sweep(m371.PERIOD, 400)) {
     const z = m371.mangle(t).z;
     for (const b of around) assert.ok(gapTo(z, b) > -1e-9, `小齒輪轉 ${t.toFixed(2)}:軸不穿進槽壁`);
     assert.ok(around.some((b) => b.lo[1] > 0) && around.some((b) => b.hi[1] < 0), "槽的上下兩側都有壁");
@@ -1882,7 +1867,7 @@ test("第 373 種:直桿一端以銷接在小車上,另一端經繞在捲筒上�
     close(dot(norm(straight), norm(sub(cord[1], axis))), 0, `${s}:繩沿切線離開捲筒`, 1e-9);
     close(len(cross(norm(straight), norm(sub(to, from)))), 0, `${s}:繩與直桿成一直線`, 1e-9);
     const end = cord[cord.length - 1];
-    return { rod: dist(from, to), cord: polyLength(cord), x: from[0], needle: pose.parts.needle.angle, anchor: Math.atan2(end[1] - axis[1], end[0] - axis[0]) };
+    return { rod: dist(from, to), cord: pathLength(cord), x: from[0], needle: pose.parts.needle.angle, anchor: Math.atan2(end[1] - axis[1], end[0] - axis[0]) };
   });
   const [light, heavy] = rows;
   close(heavy.rod, light.rod, "桿長不變", 1e-9);
@@ -2423,8 +2408,8 @@ test("第 378 種:繩長不變,繩的下端掛在托架的掛眼上、全程在�
       const pts = s.paths[`cord${side}`].points;
       const sheave = part(d, `sheave${side}`);
       const rope = part(d, `cord${side}`);
-      L0[side] ??= polyLength(pts);
-      close(polyLength(pts), L0[side], `進程 ${p.toFixed(3)}:繩長不變`, 1e-9);
+      L0[side] ??= pathLength(pts);
+      close(pathLength(pts), L0[side], `進程 ${p.toFixed(3)}:繩長不變`, 1e-9);
       const [x0, y0] = pts[0];
       const c = s.parts.carriage.position;
       close(x0, (eyes[i].lo[0] + eyes[i].hi[0]) / 2 + c[0], "繩的下端在掛眼上(x)", 1e-9);
@@ -2455,7 +2440,7 @@ const role = (p, r) => p.pieces.find((q) => q.role === r);
 const yOf = (def, pose, id) => (pose[id].position ?? part(def, id).center)[1];
 
 test("第 379 種:進料螺桿與鑽頭相對,把墊塊與工件往上頂向鑽頭:行程中段工件碰到鑽尖,之後鑽頭鑽進工件", () => {
-  const d = fig379;
+  const d = m379.default;
   assert.deepEqual(part(d, "drill").axis, Y);
   assert.deepEqual(part(d, "screw").axis, Y);
   const bit = role(part(d, "drill"), "bit");
@@ -2485,7 +2470,7 @@ test("第 379 種:進料螺桿與鑽頭相對,把墊塊與工件往上頂向鑽�
 });
 
 test("第 380 種:鑽頭心軸穿過進料螺桿中心,進料螺桿旋在上臂裡往下走、下端頂著心軸上的夾頭,把鑽頭送進工件", () => {
-  const d = fig380;
+  const d = m380.default;
   assert.deepEqual(part(d, "drill").axis, Y);
   assert.deepEqual(part(d, "feedScrew").axis, Y);
   const drill = part(d, "drill");
@@ -2524,7 +2509,7 @@ test("第 380 種:鑽頭心軸穿過進料螺桿中心,進料螺桿旋在上臂�
 });
 
 test("第 379、380 種:曲柄臂貼著心軸頂,握把直立在臂的外端上;379 的 T 形手柄接在螺桿下端", () => {
-  for (const d of [fig379, fig380]) {
+  for (const d of [m379.default, m380.default]) {
     const drill = part(d, "drill");
     const arm = role(drill, "arm");
     const grip = role(drill, "grip");
@@ -2538,7 +2523,7 @@ test("第 379、380 種:曲柄臂貼著心軸頂,握把直立在臂的外端上;
     close(g.lo[2], a.hi[2], `第 ${d.figure} 種:握把立在臂上`, 1e-9);
     assert.ok(g.lo[0] >= a.lo[0] - 1e-9 && g.hi[0] <= a.hi[0] + 1e-9, `第 ${d.figure} 種:握把在臂的範圍內`);
   }
-  const screw = part(fig379, "screw");
+  const screw = part(m379.default, "screw");
   const worm = pieceBox(role(screw, "worm"));
   const hub = pieceBox(role(screw, "hub"));
   assert.ok(hub.hi[2] > worm.lo[2] && hub.lo[2] < worm.lo[2], "T 形手柄的轂套著螺桿下端");

@@ -23,7 +23,7 @@ export const frame = {
  * 曲柄(心軸頂上的橫臂與握把),局部 z 是鑽頭心軸、心軸在局部原點:臂的底面在 top(貼著心軸頂),
  * 臂的內端蓋住心軸頂,握把直立在臂的外端上(原圖)
  */
-export const crankPieces = (top) => [
+export const crankPiecesAt = (top) => [
   { kind: "box", role: "arm", size: [1.45, 0.14, 0.1], at: [-0.6, 0, top + 0.05] },
   { kind: "cylinder", role: "grip", radius: 0.08, length: 0.4, at: [-1.22, 0, top + 0.3], accent: true },
 ];

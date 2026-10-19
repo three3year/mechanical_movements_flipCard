@@ -22,7 +22,7 @@ const PULLEY = 0.32;
 const G = { left: [-(PULLEY + 0.17), 0.9, 0], right: [PULLEY + 0.17, 0.9, 0], r: 0.17 };
 export const TURNS = 2;
 export const RANGE = [0, TURNS * TAU];
-const Y0 = -0.52; // 重物滑輪的起始高度(重物底離鼓軸 0.05)
+const Y0 = -0.52; // 重物滑輪的起始高度(重物底離鼓軸 0.01)
 const COIL = { pitch: 0.095, lift: 0.045, big: 5, small: 3.5 }; // 相鄰兩圈的間距、繩心離鼓面的高度(繩的半徑)、起始時兩段各捲幾圈
 const LEG = { atDrum: 2.45, tilt: 0.38, top: 2.35, foot: -2.9 }; // 架腳在鼓的高度離中線多遠、傾角、架頭頂、腳底
 const legX = (y) => LEG.atDrum - Math.tan(LEG.tilt) * (y - DRUM_Y); // 架腳中心線在高度 y 離中線多遠

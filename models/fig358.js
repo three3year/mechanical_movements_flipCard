@@ -11,6 +11,7 @@
 // 托架沿軸向走,輪子改成輪面和軸平行,上輪壓在上導軌頂面、下輪頂著下導軌底面(夾住導軌,推斷)。
 // 托架與導軌在鏈索輪前面一層,全程不碰鏈索輪與它的軸;機架是一塊底座,兩個軸承座、導軌的柱與導輪的柱都立在上面。
 import { X, Z, TAU, clamp } from "./kit.js";
+import { spanBox } from "./shapes.js";
 
 const AXIS_Y = 0.0;
 const FUSEE = { from: -1.6, to: 0.5, big: 0.95, small: 0.35 };
@@ -97,15 +98,14 @@ const ridge = Array.from({ length: Math.round(TURNS * 48) + 1 }, (_, i) => {
   return [-r * Math.sin(a), r * Math.cos(a), x];
 });
 
-const box = (x0, x1, y0, y1, z0, z1) => ({ kind: "box", size: [x1 - x0, y1 - y0, z1 - z0], at: [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2] });
 // 軸承環(軸沿 x)與底下的座
 const bearing = (x, len) => [
   { kind: "cylinder", axis: X, radius: 0.2, inner: SHAFT.r, length: len, at: [x, AXIS_Y, 0] },
-  box(x - len / 2, x + len / 2, BASE_Y, AXIS_Y - 0.17, -0.2, 0.2),
+  spanBox(x - len / 2, x + len / 2, BASE_Y, AXIS_Y - 0.17, -0.2, 0.2),
 ];
 const TOP_RAIL_Y = WHEEL.top - WHEEL.r; // 上導軌頂面
 const BOTTOM_RAIL_Y = WHEEL.bottom + WHEEL.r; // 下導軌底面
-const railPost = (x) => box(x - 0.1, x + 0.1, BASE_Y, TOP_RAIL_Y, RAIL.z0, RAIL.z1);
+const railPost = (x) => spanBox(x - 0.1, x + 0.1, BASE_Y, TOP_RAIL_Y, RAIL.z0, RAIL.z1);
 
 export default {
   figure: 358,
@@ -115,17 +115,17 @@ export default {
       kind: "group",
       pieces: [
         // 底座(推斷)
-        box(-3.3, RAIL.to + 0.2, BASE_Y - 0.15, BASE_Y, -1.25, 1.25),
+        spanBox(-3.3, RAIL.to + 0.2, BASE_Y - 0.15, BASE_Y, -1.25, 1.25),
         // 鏈索輪軸的兩個軸承:左邊在曲柄與鏈索輪之間,右邊在鏈索輪小端與軸端之間(軸穿過環孔)
         ...bearing(-2.2, 0.25),
         ...bearing(0.65, 0.2),
         // 導軌:上導軌頂面托著上輪,下導軌底面擋著下輪;兩端各一根柱立在底座上
-        box(RAIL.from, RAIL.to, TOP_RAIL_Y - RAIL.t, TOP_RAIL_Y, RAIL.z0, RAIL.z1),
-        box(RAIL.from, RAIL.to, BOTTOM_RAIL_Y, BOTTOM_RAIL_Y + RAIL.t, RAIL.z0, RAIL.z1),
+        spanBox(RAIL.from, RAIL.to, TOP_RAIL_Y - RAIL.t, TOP_RAIL_Y, RAIL.z0, RAIL.z1),
+        spanBox(RAIL.from, RAIL.to, BOTTOM_RAIL_Y, BOTTOM_RAIL_Y + RAIL.t, RAIL.z0, RAIL.z1),
         railPost(RAIL.from + 0.1),
         railPost(RAIL.to - 0.1),
         // 導輪的柱:在鏈索輪後面立到導輪的高度,導輪的軸往前伸過鏈索輪上方
-        box(GUIDE.x - 0.12, GUIDE.x + 0.12, BASE_Y, GUIDE.y + 0.12, -1.15, -0.95),
+        spanBox(GUIDE.x - 0.12, GUIDE.x + 0.12, BASE_Y, GUIDE.y + 0.12, -1.15, -0.95),
       ],
     },
     {
@@ -162,11 +162,11 @@ export default {
       kind: "group",
       pieces: [
         // 兩根直桿與三根橫桿:頂上的橫桿接皮帶,另兩根橫桿托著上下兩個輪的軸
-        box(-0.41, -0.29, -0.75, HOOK_Y + 0.18, CZ - 0.06, CZ + 0.06),
-        box(0.29, 0.41, -0.75, HOOK_Y + 0.18, CZ - 0.06, CZ + 0.06),
-        box(-0.41, 0.41, HOOK_Y - 0.06, HOOK_Y + 0.06, CZ - 0.06, CZ + 0.06),
-        box(-0.41, 0.41, WHEEL.top - 0.06, WHEEL.top + 0.06, CZ - 0.06, CZ + 0.06),
-        box(-0.41, 0.41, WHEEL.bottom - 0.06, WHEEL.bottom + 0.06, CZ - 0.06, CZ + 0.06),
+        spanBox(-0.41, -0.29, -0.75, HOOK_Y + 0.18, CZ - 0.06, CZ + 0.06),
+        spanBox(0.29, 0.41, -0.75, HOOK_Y + 0.18, CZ - 0.06, CZ + 0.06),
+        spanBox(-0.41, 0.41, HOOK_Y - 0.06, HOOK_Y + 0.06, CZ - 0.06, CZ + 0.06),
+        spanBox(-0.41, 0.41, WHEEL.top - 0.06, WHEEL.top + 0.06, CZ - 0.06, CZ + 0.06),
+        spanBox(-0.41, 0.41, WHEEL.bottom - 0.06, WHEEL.bottom + 0.06, CZ - 0.06, CZ + 0.06),
         // 輪軸:從橫桿往前穿過輪
         { kind: "cylinder", radius: 0.04, length: WHEEL.z + 0.1 - CZ, at: [0, WHEEL.top, (WHEEL.z + 0.1 + CZ) / 2] },
         { kind: "cylinder", radius: 0.04, length: WHEEL.z + 0.1 - CZ, at: [0, WHEEL.bottom, (WHEEL.z + 0.1 + CZ) / 2] },

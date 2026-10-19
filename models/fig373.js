@@ -13,8 +13,8 @@
 // 皮帶:原圖從大輪軸上四根彎輪輻的小輪往左上伸出圖外。推斷:另一端是工場天軸上的主動皮帶輪(天軸由圖外的動力
 // 帶動,吊架掛在天花板的樑上),是這個模型的主動件;開口皮帶,大輪和它同向(逆時針)轉,輪頂往左、把小車往
 // 指示器的反方向拖。大輪的軸架在 A 形架的頂上。
-import { deg, Z, TAU, routeBelt, rot2, signedAngle } from "./kit.js";
-import { shape, circle, rect, thickLine, arcPoints } from "./shapes.js";
+import { deg, Z, TAU, routeBelt, rot2, signedAngle, around } from "./kit.js";
+import { shape, circle, rect, thickLine, arcPoints, spanBox } from "./shapes.js";
 
 export const WHEEL = { center: [-0.9, -1.0, 0], r: 1.65 };
 export const HUB = 0.7; // 大輪軸上皮帶繞的小輪半徑
@@ -52,7 +52,6 @@ export const indicator = (state) => ZERO - deg(32) * LOADS[state];
 const SPRING_INNER = Math.PI / 2 - ZERO; // 彈簧內端相對指針的角度:載重 0 時外端在正上方
 const ANCHOR = WRAP0 - Math.PI / 2 - ZERO; // 繩的固定端在捲筒上相對指針的角度
 
-const around = (c, r, a, z) => [c[0] + r * Math.cos(a), c[1] + r * Math.sin(a), z];
 const turn = (p, b) => {
   // 繞大輪的軸心轉 b
   const [x, y] = rot2([p[0] - WHEEL.center[0], p[1] - WHEEL.center[1]], b);
@@ -104,7 +103,6 @@ function bentSpoke(i) {
   return { kind: "plate", role: "spoke", shape: shape(thickLine(line, 0.07)), thickness: 0.1, at: [0, 0, BELT_Z], line: [line[0], line[4], line[8]] };
 }
 
-const zBox = (x0, x1, y0, y1, z0, z1, role) => ({ kind: "box", role, size: [x1 - x0, y1 - y0, z1 - z0], at: [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2] });
 
 // 右立柱:螺桿穿過的地方開方孔(孔邊離螺桿 0.01)
 const POST = { x0: 2.6, x1: 2.8, z0: -0.55, z1: 0.05, bottom: -2.6, top: 1.9 };
@@ -132,13 +130,13 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(thickLine([[-3.0, -2.7], [-0.9, -1.0], [1.2, -2.7]], 0.2)), thickness: 0.25, at: [0, 0, -0.5] },
         { kind: "plate", shape: shape(thickLine([[-3.2, -1.65], [POST.x0 + 0.1, -1.65 + (POST.x0 + 0.1 + 3.2) * 0.25]], 0.22)), thickness: 0.3, at: [0, 0, -0.4] },
-        zBox(POST.x0, POST.x1, POST.bottom, DIAL[1] - HOLE, POST.z0, POST.z1, "post"),
-        zBox(POST.x0, POST.x1, DIAL[1] + HOLE, POST.top, POST.z0, POST.z1, "post"),
-        zBox(POST.x0, POST.x1, DIAL[1] - HOLE, DIAL[1] + HOLE, POST.z0, SCREW_Z - HOLE, "post"),
-        zBox(POST.x0, POST.x1, DIAL[1] - HOLE, DIAL[1] + HOLE, SCREW_Z + HOLE, POST.z1, "post"),
+        spanBox(POST.x0, POST.x1, POST.bottom, DIAL[1] - HOLE, POST.z0, POST.z1, { role: "post" }),
+        spanBox(POST.x0, POST.x1, DIAL[1] + HOLE, POST.top, POST.z0, POST.z1, { role: "post" }),
+        spanBox(POST.x0, POST.x1, DIAL[1] - HOLE, DIAL[1] + HOLE, POST.z0, SCREW_Z - HOLE, { role: "post" }),
+        spanBox(POST.x0, POST.x1, DIAL[1] - HOLE, DIAL[1] + HOLE, SCREW_Z + HOLE, POST.z1, { role: "post" }),
         // 刻度盤底下的架子與撐架(原圖)
-        zBox(0.85, POST.x0, SHELF_TOP - 0.124, SHELF_TOP, -0.3, 0.05, "shelf"),
-        zBox(1.15, 1.3, -0.5, SHELF_TOP - 0.124, -0.38, -0.22),
+        spanBox(0.85, POST.x0, SHELF_TOP - 0.124, SHELF_TOP, -0.3, 0.05, { role: "shelf" }),
+        spanBox(1.15, 1.3, -0.5, SHELF_TOP - 0.124, -0.38, -0.22),
       ],
     },
     {
@@ -174,8 +172,8 @@ export default {
       arrow: false,
       pieces: [
         { kind: "cylinder", role: "bearing", radius: 0.17, inner: 0.08, length: 0.15, at: [0, 0, -0.15] },
-        zBox(-0.07, 0.07, 0.12, CEILING - DRIVE.center[1], -0.21, -0.09),
-        zBox(-0.75, 0.75, CEILING - DRIVE.center[1], CEILING - DRIVE.center[1] + 0.15, -0.35, 0.05),
+        spanBox(-0.07, 0.07, 0.12, CEILING - DRIVE.center[1], -0.21, -0.09),
+        spanBox(-0.75, 0.75, CEILING - DRIVE.center[1], CEILING - DRIVE.center[1] + 0.15, -0.35, 0.05),
       ],
     },
     {

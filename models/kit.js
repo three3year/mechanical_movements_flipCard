@@ -190,6 +190,8 @@ export const signedAngle = (a) => Math.PI - wrap(Math.PI - a);
 export const rot2 = ([x, y], a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
 /** 極座標轉成 xy 平面上的點 */
 export const polar = (r, a, z = 0) => [r * Math.cos(a), r * Math.sin(a), z];
+/** 以平面上的點 c 為圓心、半徑 r、角度 a 的點,深度 z */
+export const around = (c, r, a, z = 0) => [c[0] + r * Math.cos(a), c[1] + r * Math.sin(a), z];
 /** 平滑的 0→1 過渡(t 在 [0,1] 之外夾住) */
 export const smooth = (t) => {
   const s = clamp(t, 0, 1);
