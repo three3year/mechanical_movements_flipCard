@@ -1,16 +1,22 @@
-// 第 374 種:以一條無端皮帶把踏板的動作變成軸的旋轉。皮帶從踏板中段的滾子繞到上方軸上的偏心輪(原圖虛線圓是
-// 偏心輪中心繞軸走的圓);踩下踏板時皮帶拉著偏心輪往下,軸轉半圈;偏心輪轉過底部後再把踏板拉起。
+// 第 374 種:以一條無端皮帶把踏板的動作變成軸的旋轉。皮帶從踏板中段的滾子繞到上方軸上的偏心輪;
+// 踩下踏板時皮帶拉著偏心輪往下,軸轉半圈;偏心輪轉過底部後再把踏板拉起。原圖右上的虛線圓是偏心輪轉了半圈後的位置
+// (預覽運動線,不畫成零件),不是偏心輪中心走的軌跡。
 // 主動件是踏板(原文:運動從踏板傳給軸),往復踩動;踏板每走一程(上死點到下死點)軸轉半圈,軸的轉角由皮帶的幾何反推。
-// 目標件是軸。推斷:皮帶長度不變,所以滾子中心與偏心輪中心的距離固定;踏板的支點在右端;軸的軸承座與踏板支點的支座。
+// 目標件是軸。偏心距是偏心輪半徑的一半(507movements 的動畫:2.5 / 5;原圖畫得比較大)。
+// 推斷:皮帶長度不變,所以滾子中心與偏心輪中心的距離固定;皮帶在偏心輪與滾子上都不打滑,滾子照皮帶走的長度轉;
+// 滾子套在踏板上的一根銷上;踏板的支點在右端;軸的軸承座與踏板支點的支座。
 import { Z, TAU, routeBelt, swingPhase, signedAngle } from "./kit.js";
 import { pedestal } from "./supports.js";
 import { circleCircle, angleOf } from "./linkage.js";
 import { shape, circle, thickLine } from "./shapes.js";
 
 const SHAFT = [0.55, 1.6, 0];
-const ECC = 0.55; // 偏心距
 const DISK = 0.75; // 偏心輪半徑
+const ECC = DISK / 2; // 偏心距
+const AXLE = 0.12; // 軸半徑(偏心輪的孔一樣大)
 const ROLLER = 0.18;
+const PIN = 0.06; // 滾子的銷
+const PIVOT_PIN = 0.1; // 踏板支點的銷
 const PIVOT = [2.0, -1.95, 0]; // 踏板支點
 const ARM = 1.75; // 支點到滾子
 export const SPAN = 3.15; // 滾子中心到偏心輪中心(皮帶長度不變)
@@ -52,6 +58,23 @@ export function shaftAngle(v) {
   return cycle * TAU + from + span * ((lo + hi) / 2);
 }
 
+// 兩輪連心線的方向(由偏心輪中心指向滾子)。兩輪大小與距離不變,皮帶離開、繞上兩輪的切點跟著連心線轉
+const lineOfCenters = (theta) => {
+  const t = treadle(theta);
+  return Math.atan2(t.roller[1] - t.e[1], t.roller[0] - t.e[0]);
+};
+const LINE0 = lineOfCenters(0);
+
+/**
+ * 軸轉 theta(累計)→ 皮帶走的長度、滾子的轉角。皮帶不打滑:輪面相對切點(跟著連心線轉)的轉角乘半徑 = 皮帶走的長度,
+ * 所以偏心輪轉 dθ、連心線轉 dα 時皮帶走 DISK·(dθ − dα),滾子轉 皮帶長 / ROLLER + dα
+ */
+export function belt(theta) {
+  const turn = signedAngle(lineOfCenters(theta) - LINE0); // 連心線只在小範圍內來回擺
+  const travel = DISK * (theta - turn);
+  return { travel, roller: travel / ROLLER + turn };
+}
+
 export default {
   figure: 374,
   parts: [
@@ -61,8 +84,8 @@ export default {
       pieces: [
         // 軸的軸承座在偏心輪後面;踏板支點的銷立在地上的支座上
         ...pedestal({ at: [SHAFT[0], SHAFT[1]], z: -0.45, bore: 0.13, floor: -2.45 }),
-        { kind: "cylinder", radius: 0.1, length: 0.6, at: [PIVOT[0], PIVOT[1], -0.05] },
-        { kind: "box", size: [0.3, 0.45, 0.3], at: [PIVOT[0], PIVOT[1] - 0.3, -0.34] },
+        { kind: "cylinder", radius: PIVOT_PIN, length: 0.6, at: [PIVOT[0], PIVOT[1], -0.05] },
+        { kind: "box", size: [0.3, 0.45, 0.3], at: [PIVOT[0], PIVOT[1] - 0.3, -0.4] },
         { kind: "box", size: [4.6, 0.15, 0.8], at: [0.2, -2.52, -0.3] },
       ],
     },
@@ -72,8 +95,8 @@ export default {
       center: SHAFT,
       spin: ECC + DISK,
       pieces: [
-        { kind: "plate", shape: shape(circle(DISK), [circle(0.14, -ECC, 0).reverse()]), thickness: 0.2, at: [ECC, 0, 0] },
-        { kind: "cylinder", radius: 0.12, length: 0.75, at: [0, 0, -0.2] }, // 軸,往後伸進軸承座
+        { kind: "plate", shape: shape(circle(DISK), [circle(AXLE, -ECC, 0).reverse()]), thickness: 0.2, at: [ECC, 0, 0] },
+        { kind: "cylinder", radius: AXLE, length: 0.75, at: [0, 0, -0.2] }, // 軸,往後伸進軸承座
         { kind: "box", size: [0.15, 0.15, 0.22], at: [ECC + DISK - 0.15, 0, 0], accent: true },
       ],
     },
@@ -83,9 +106,17 @@ export default {
       center: PIVOT,
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0.15, 0], [-ARM - 1.8, 0]], 0.14), [circle(0.06).reverse()]), thickness: 0.12, at: [0, 0, -0.1] },
-        { kind: "cylinder", radius: ROLLER, length: 0.2, at: [-ARM, 0, 0.1] },
+        // 踏板在滾子後面一層(z −0.22..−0.1),滾子的銷從踏板背面穿過滾子,前端一個銷頭擋住
+        { kind: "plate", shape: shape(thickLine([[0.15, 0], [-ARM - 1.8, 0]], 0.14), [circle(PIVOT_PIN).reverse()]), thickness: 0.12, at: [0, 0, -0.16] },
+        { kind: "cylinder", radius: PIN, length: 0.36, at: [-ARM, 0, -0.04], role: "rollerPin" },
+        { kind: "cylinder", radius: 0.1, length: 0.04, at: [-ARM, 0, 0.12] },
       ],
+    },
+    {
+      id: "roller",
+      kind: "group",
+      arrow: false,
+      pieces: [{ kind: "plate", shape: shape(circle(ROLLER), [circle(PIN).reverse()]), thickness: 0.2, mark: [ROLLER * 0.62, 0], markSize: 0.04 }],
     },
     { id: "belt", kind: "belt" },
   ],
@@ -95,13 +126,14 @@ export default {
   pose(v) {
     const theta = shaftAngle(v);
     const t = treadle(theta);
-    const belt = routeBelt([
+    const b = belt(theta);
+    const route = routeBelt([
       { center: [t.e[0], t.e[1], 0], axis: Z, radius: DISK, sense: 1 },
       { center: [t.roller[0], t.roller[1], 0], axis: Z, radius: ROLLER, sense: 1 },
     ]);
     return {
-      parts: { shaft: { angle: theta }, treadle: { angle: pedal(theta) } },
-      paths: { belt: { points: belt.points, closed: true, phase: theta * DISK } },
+      parts: { shaft: { angle: theta }, treadle: { angle: pedal(theta) }, roller: { position: t.roller, angle: b.roller } },
+      paths: { belt: { points: route.points, closed: true, phase: b.travel } },
       readouts: [],
     };
   },
