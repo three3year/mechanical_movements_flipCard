@@ -1021,6 +1021,89 @@ test("第 310 種:三腳式重力擒縱:叉瓦 A、B 交替被抬起,擒縱輪�
   noPenetration(m310.escapement);
 });
 
+// ── 第 310 種:豎琴形框架重讀成兩支重力臂(model-audit-fixes-3 票 10)──
+
+test("第 310 種:「擒縱叉瓦由擺懸掛點附近的兩個中心擺動」——豎琴的左、右彎帶是兩支重力臂,從懸掛點旁的樞軸垂到輪的下方,D、E 釘在彎帶上,下端的調整螺絲夾著擺桿上的方塊", () => {
+  const def = m310.default;
+  const pend = part(def, "pendulum");
+  const W = part(def, "wheel").center;
+  const v = 2 * m310.escapement.period + 3 * m310.SWING; // 擺在正中
+  const s = m310.escapement.at(v);
+  for (const [k, id, stop] of [[0, "armA", "E"], [1, "armB", "D"]]) {
+    const arm = part(def, id);
+    assert.ok(Math.hypot(arm.center[0] - pend.center[0], arm.center[1] - pend.center[1]) < 0.6, `${id} 的樞軸在擺的懸掛點附近`);
+    const band = placePoly(arm.pieces[0].shape.outline, arm.center, def.pose(v).parts[id].angle);
+    assert.ok(Math.min(...band.map((p) => p[1])) < W[1] - m310.LEG, `${id} 的彎帶從樞軸垂到輪的下方`);
+    assert.ok(polygonsOverlap(band, s.stops[k]), `擋止 ${stop} 釘在 ${id} 的彎帶上`);
+    const screw = s.beats[k];
+    assert.ok(Math.max(...screw.map((p) => p[1])) < W[1] - m310.LEG, `${id} 的調整螺絲在輪的下方`);
+    assert.ok(polygonsOverlap(band, screw) || gap309(band, screw) < 1e-6, `${id} 的調整螺絲裝在彎帶的下端`);
+    // 擺來回時螺絲輪流頂住方塊(相碰時間隙接近 0),全程不穿入
+    const gaps = sweep(2 * m310.escapement.period, 360).map((u) => {
+      const t = m310.escapement.at(u);
+      return Math.min(...t.rod.map((r) => (polygonsOverlap(t.beats[k], r) ? -penetrationDepth(t.beats[k], r) : gap309(t.beats[k], r))));
+    });
+    assert.ok(Math.min(...gaps) > -2e-3, `${id} 的調整螺絲穿入方塊 ${(-Math.min(...gaps)).toFixed(4)}`);
+    assert.ok(gaps.filter((g) => g < 1e-3).length > 20, `${id} 的調整螺絲頂住擺桿上的方塊(相碰的取樣 ${gaps.filter((g) => g < 1e-3).length})`);
+  }
+  assert.ok(s.beats[0][0][0] > s.rod[0][0][0] && s.beats[1][0][0] < s.rod[0][0][0], "右臂的螺絲在方塊右邊、左臂的在左邊,夾著方塊");
+});
+
+test("第 310 種:擺返回時,重力臂貼著擺落下、由臂的重量給擺衝量(臂不比擺先落下)", () => {
+  fallsWithPendulum309(m310.escapement, m310.SWING, (v) => [m310.gravity(v).right, m310.gravity(v).left]);
+});
+
+test("第 310 種:擒縱輪鎖住時不回退(只往前轉,轉向箭頭不反過來)", () => {
+  forwardOnly309(m310.escapement, 1);
+});
+
+test("第 310 種:擺以虛線畫在輪的後面——擺桿不蓋住輪心、抬升銷與叉瓦", () => {
+  const W = part(m310.default, "wheel").center;
+  const faces = (v) => m310.escapement.at(v).stops.slice(2);
+  const share = hiddenByPendulum309(m310.default, m310.escapement, (v) => [disc309(W, 0.42), ...faces(v)], 0);
+  assert.equal(share, 0, `輪心、抬升銷與叉瓦被擺蓋住 ${(share * 100).toFixed(0)}%`);
+});
+
+test("第 310 種:原圖從輪心往上標「FLY」的細線是調速風扇,裝在擒縱輪軸上、跟著輪轉", () => {
+  const wheel = part(m310.default, "wheel");
+  const fly = wheel.pieces.filter((p) => p.kind === "box" && p.size[0] > 2.5 * m310.LEG && Math.hypot(p.at?.[0] ?? 0, p.at?.[1] ?? 0) < 1e-9);
+  assert.equal(fly.length, 1, "輪上有一片穿過輪軸、比腳長得多的細長風扇");
+  const z = fly[0].at[2];
+  const axle = wheel.pieces.filter((p) => p.kind === "cylinder" && Math.hypot(p.at?.[0] ?? 0, p.at?.[1] ?? 0) < 1e-9);
+  assert.ok(axle.some((a) => meet309(depth309(a), [z - fly[0].size[2] / 2, z + fly[0].size[2] / 2])), "風扇套在輪軸上");
+});
+
+test("第 310 種:兩臂靠重量往內倒時靠在擋銷上:擋銷在彎帶的內側、臂落到底時正好貼著,擋銷裝在機架上", () => {
+  const def = m310.default;
+  const stops = part(def, "armStops").pieces.filter((p) => p.kind === "cylinder");
+  const plate = part(def, "frame").pieces.map((p) => depth309(p));
+  for (const [id, sign] of [["armA", -1], ["armB", 1]]) {
+    const arm = part(def, id);
+    const band = arm.pieces[0];
+    const at = (a) => placePoly(band.shape.outline, arm.center, a);
+    const touching = stops.filter((s) => edgeDistance([s.at[0], s.at[1]], at(0)) < s.radius + 0.002 && meet309(depth309(s), depth309(band)));
+    assert.ok(touching.length > 0, `${id} 落到底(角度 0)時貼著擋銷`);
+    const pin = disc309(touching[0].at, touching[0].radius);
+    assert.ok(polygonsOverlap(pin, at(sign * 0.01)), `${id} 再往內倒就碰到擋銷(擋銷在臂往內倒的那一側)`);
+    assert.ok(!polygonsOverlap(pin, at(-sign * 0.01)), `${id} 抬起時離開擋銷`);
+    assert.ok(plate.some((d) => meet309(d, depth309(touching[0]))), "擋銷往後伸到機架");
+  }
+});
+
+test("第 310 種:擺的懸點掛在機架頂端的懸掛座上;補上擺錘(推斷),擺錘在輪的下方", () => {
+  const def = m310.default;
+  const pend = part(def, "pendulum");
+  const pivot = pend.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9);
+  const seat = part(def, "frame").pieces.filter((p) => cover299(p).has(pend.center[0], pend.center[1]) && meet309(depth309(p), depth309(pivot, pend.center[2])));
+  assert.ok(seat.length > 0, "擺的懸點圓柱插進機架的懸掛座");
+  bob309(def, part(def, "wheel").center[1] - m310.LEG);
+});
+
+test("第 310 種:推斷的重錘驅動——擒縱輪軸上的鼓放出繩、經滑輪吊著重錘,重錘的拉力讓輪逆時針轉", () => {
+  const { DRUM, REWIND } = m310.geometry;
+  assertWeightDrive(m310.default, { drum: DRUM, wheel: m310.escapement.angle, period: m310.escapement.period, every: REWIND, dir: 1 });
+});
+
 test("第 311 種:雙三腳式重力擒縱:兩個叉瓦交替被抬起,鎖定輪每擺一次轉六分之一圈", () => {
   const S = m311.SWING;
   const base = 2 * m311.escapement.period;
