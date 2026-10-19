@@ -3528,16 +3528,12 @@ test("第 391 種:一根齒條上升時、另一根下降時作用於齒輪,得�
 // 第 391 種:齒條的齒(role teeth)、重錘(role weight)、連桿的銷(role linkPin)
 const d391 = m391.default;
 const role391 = (id, r) => part(d391, id).pieces.filter((q) => q.role === r);
-const world391 = (pose, id, [x, y]) => {
-  const p = pose.parts[id];
-  const c = p.position ?? part(d391, id).center ?? [0, 0, 0];
-  const [u, w] = rot2([x, y], p.angle ?? 0);
-  return [c[0] + u, c[1] + w];
-};
-const gearWorld391 = (pose) => {
+const at391 = (pose, id, [x, y]) => partPoint(pose.parts[id].position ?? part(d391, id).center ?? [0, 0, 0], Z, pose.parts[id].angle ?? 0, [x, y, 0]);
+const gearWorld391 = (pose, turn = 0) => {
   const g = part(d391, "gear");
-  return { outline: gearProfile(g).map((q) => { const [u, w] = rot2(q, pose.parts.gear.angle); return [g.center[0] + u, g.center[1] + w]; }), holes: [] };
+  return { outline: gearProfile(g).map((q) => partPoint(g.center, Z, pose.parts.gear.angle + turn, [...q, 0]).slice(0, 2)), holes: [] };
 };
+const teeth391 = (pose, id) => role391(id, "teeth")[0].shape.outline.map((q) => at391(pose, id, q).slice(0, 2));
 
 test("第 391 種:行程是整數個齒距,每次重新咬合時齒條的齒都落在齒輪的齒槽裡,三個來回都不穿入", () => {
   const S = m391.geometry.STROKE;
@@ -3546,13 +3542,68 @@ test("第 391 種:行程是整數個齒距,每次重新咬合時齒條的齒都�
     const pose = d391.pose(v);
     const gear = gearWorld391(pose);
     for (const id of ["rackA", "rackA1"]) {
-      const teeth = role391(id, "teeth")[0];
-      assert.ok(teeth, `${id} 的齒`);
-      const outline = teeth.shape.outline.map((q) => world391(pose, id, [q[0] + (teeth.at?.[0] ?? 0), q[1] + (teeth.at?.[1] ?? 0)]));
-      const depth = penetrationDepth(outline, gear);
+      assert.ok(role391(id, "teeth")[0] && !role391(id, "teeth")[0].at, `${id} 的齒(板件在零件原點)`);
+      const depth = penetrationDepth(teeth391(pose, id), gear);
       assert.ok(depth < 0.004, `主動量 ${v.toFixed(3)}:${id} 的齒穿進齒輪 ${depth.toFixed(3)}`);
     }
   }
+});
+
+test("第 391 種:作用於齒輪——咬著的那一根齒條推齒輪的那一面貼著齒輪的齒(間隙接近 0),齒輪少轉一點就穿進那一面", () => {
+  const S = m391.geometry.STROKE;
+  let n = 0;
+  for (const v of sweep(4 * S, 240)) {
+    const r = m391.racks(v);
+    const id = r.up ? "rackA1" : "rackA"; // 上升時 A¹ 往上推、下降時 A 往下推,齒輪都是逆時針
+    if (Math.abs(r.up ? r.angleA1 : r.angleA) > 1e-6) continue; // 只看直立咬著的時候(圓角上滑進滑出的另外看)
+    n++;
+    const pose = d391.pose(v);
+    const teeth = teeth391(pose, id);
+    const gap = polyGap(teeth, gearWorld391(pose).outline);
+    assert.ok(gap < 0.003, `主動量 ${v.toFixed(3)}:${id} 的齒和齒輪的齒相碰(間隙 ${gap.toFixed(4)})`);
+    const less = penetrationDepth(teeth, gearWorld391(pose, -0.006));
+    assert.ok(less > 0.002, `主動量 ${v.toFixed(3)}:齒輪少轉 0.006 弧度就穿進 ${id} 推它的那一面(${less.toFixed(4)})`);
+  }
+  assert.ok(n > 150, "大部分時間有一根齒條直立咬著");
+});
+
+test("第 391 種:得到連續旋轉——兩根齒條都離開齒輪的只有換向前後的一小段", () => {
+  const S = m391.geometry.STROKE;
+  const vs = sweep(2 * S, 400);
+  const free = vs.filter((v) => {
+    const pose = d391.pose(v);
+    const gear = gearWorld391(pose).outline;
+    return ["rackA", "rackA1"].every((id) => polyGap(teeth391(pose, id), gear) > 0.02);
+  });
+  assert.ok(free.length / vs.length < 0.1, `一個來回裡兩根齒條都沒咬著的比例 ${(free.length / vs.length).toFixed(3)}`);
+  for (const v of free) {
+    const y = m391.racks(v).y;
+    assert.ok(Math.min(y, S - y) < 0.1 * S, `主動量 ${v.toFixed(3)}:沒咬著的時候在行程的一端(離端點 ${Math.min(y, S - y).toFixed(3)})`);
+  }
+});
+
+test("第 391 種:肘形槓桿 C 與彈簧 d 把右邊齒條 A¹ 的銷帶過溝槽 b 的上角(運動學:d 在上角縮短、經 C 與連桿把 A¹ 的上端往外帶)", () => {
+  // 受力沒有算(重錘把 A¹ 往內擺、d 經 C 與連桿把它往外推),這裡驗運動學:銷走過上角的那一段,d 一路縮短(放出拉伸時存的能量)、
+  // C 朝同一個方向擺,連桿的兩端沿連桿方向往同一邊走(C 推著連桿),A¹ 的上端往外;過了上角,銷在外側那一條溝裡往下走
+  const S = m391.geometry.STROKE;
+  const vs = sweep(S, 120, S - 0.4).filter((v) => m391.pinOf(1, v + 1e-4)[0] - m391.pinOf(1, v)[0] > 1e-6);
+  assert.ok(vs.length > 5, "上升的末段 A¹ 的銷往外走(上角)");
+  const springLen = (v) => { const sp = d391.pose(v).parts.springD; return Math.hypot(sp.to[0] - sp.from[0], sp.to[1] - sp.from[1]); };
+  const cPin = role391("toggleC", "linkPin")[0].at;
+  for (const v of vs) {
+    const [p0, p1] = [d391.pose(v), d391.pose(v + 1e-3)];
+    assert.ok(springLen(v + 1e-3) < springLen(v), `主動量 ${v.toFixed(3)}:彈簧 d 縮短`);
+    assert.ok(p1.parts.toggleC.angle > p0.parts.toggleC.angle, `主動量 ${v.toFixed(3)}:C 朝同一個方向擺`);
+    const q = at391(p0, "toggleC", cPin);
+    const t = p0.parts.linkC.to;
+    const dt = sub(p1.parts.linkC.to, t);
+    assert.ok(dt[0] > 0, `主動量 ${v.toFixed(3)}:A¹ 的上端往外`);
+    assert.ok(dot(sub(t, q), dt) > 0, `主動量 ${v.toFixed(3)}:C 推著連桿,把 A¹ 的上端往外帶`);
+  }
+  assert.ok(springLen(vs[0]) - springLen(vs[vs.length - 1]) > 0.05, "d 在上角縮短一段");
+  // 過了上角:下降時銷在外側那一條溝裡(和行程最高時的 x 一樣)
+  close(m391.pinOf(1, 1.5 * S)[0], m391.pinOf(1, S)[0], "過了上角,A¹ 的銷在外側的溝裡往下走", 1e-9);
+  assert.ok(m391.pinOf(1, S)[0] - m391.pinOf(1, S / 2)[0] > 0.5, "外側的溝離內側一段");
 });
 
 test("第 391 種:肘形槓桿 C 以短連桿接 A¹ 的上端(連桿長度不變),彈簧 d 拉著 C", () => {
@@ -3565,15 +3616,15 @@ test("第 391 種:肘形槓桿 C 以短連桿接 A¹ 的上端(連桿長度不�
   for (const v of sweep(4 * S, 160)) {
     const pose = d391.pose(v);
     const link = pose.parts.linkC;
-    const q = world391(pose, "toggleC", cPin.at);
-    const t = world391(pose, "rackA1", aPin.at);
+    const q = at391(pose, "toggleC", cPin.at);
+    const t = at391(pose, "rackA1", aPin.at);
     assert.ok(Math.hypot(link.from[0] - q[0], link.from[1] - q[1]) < 1e-9, `主動量 ${v.toFixed(2)}:連桿一端在 C 的銷上`);
     assert.ok(Math.hypot(link.to[0] - t[0], link.to[1] - t[1]) < 1e-9, `主動量 ${v.toFixed(2)}:連桿另一端在 A¹ 上端的銷上`);
     L ??= Math.hypot(t[0] - q[0], t[1] - q[1]);
     close(Math.hypot(t[0] - q[0], t[1] - q[1]), L, `主動量 ${v.toFixed(2)}:連桿長度不變`, 1e-6);
     // 彈簧 d 的兩端鉤在 C 的銷與機架的掛柱上(端圈離銷心不到 0.06)
     const sp = pose.parts.springD;
-    const w = world391(pose, "toggleC", role391("toggleC", "spring")[0].at);
+    const w = at391(pose, "toggleC", role391("toggleC", "spring")[0].at);
     const k = role391("frame", "anchor")[0].at;
     const near = (e, q) => Math.hypot(e[0] - q[0], e[1] - q[1]) < 0.06;
     assert.ok((near(sp.from, w) && near(sp.to, k)) || (near(sp.to, w) && near(sp.from, k)), `主動量 ${v.toFixed(2)}:彈簧 d 一端鉤在 C 上、另一端鉤在掛柱上`);
@@ -3587,13 +3638,21 @@ test("第 391 種:A 的重錘朝外、A¹ 的重錘朝內(球在兩根齒條中�
   const S = m391.geometry.STROKE;
   for (const v of sweep(2 * S, 40)) {
     const pose = d391.pose(v);
-    const ball = (id) => world391(pose, id, part(d391, id).pieces.find((q) => q.kind === "sphere").at);
+    const ball = (id) => at391(pose, id, part(d391, id).pieces.find((q) => q.kind === "sphere").at);
     assert.ok(ball("rackA")[0] < pose.parts.rackA.position[0], `主動量 ${v.toFixed(2)}:A 的重錘在樞軸外側`);
     const b1 = ball("rackA1")[0];
     assert.ok(b1 < pose.parts.rackA1.position[0] && b1 > pose.parts.rackA.position[0], `主動量 ${v.toFixed(2)}:A¹ 的重錘在兩根齒條中間`);
   }
   assertOnePiece(part(d391, "frame"), "機架的各塊連成一件");
   assertOnePiece(part(d391, "piston"), "活塞桿與兩根樞軸銷連成一件");
+  // 齒條:桿身、齒(每一齒都在同一塊齒板上)、上端的臂與銷、軸眼、重錘的臂連成一件,重錘的球套在臂端
+  for (const id of ["rackA", "rackA1"]) {
+    const pieces = part(d391, id).pieces;
+    assertOnePiece({ pieces: pieces.filter((q) => q.kind !== "sphere") }, `${id} 的桿身、齒、臂、銷連成一件`);
+    const ball = pieces.find((q) => q.kind === "sphere");
+    const arms = pieces.filter((q) => q.kind === "plate" && q.role !== "teeth");
+    assert.ok(arms.some((q) => polyGap(q.shape.outline, circlePolygon(ball.at, ball.radius, 48)) === 0), `${id} 的重錘球接在臂端`);
+  }
 });
 
 test("第 392 種:跳鋸:下端由曲柄帶動上下,上端的彈簧讓鋸子保持繃緊", () => {
@@ -3608,7 +3667,6 @@ test("第 392 種:跳鋸:下端由曲柄帶動上下,上端的彈簧讓鋸子保
 // 第 392 種:鋸條、十字頭、導柱、台面都以 role 標出;彈簧桿是路徑零件 springBar
 const d392 = m392.default;
 const roles392 = (id, r) => part(d392, id).pieces.filter((q) => q.role === r);
-const pathLen392 = (pts) => pts.slice(1).reduce((s, q, i) => s + dist(q, pts[i]), 0);
 
 test("第 392 種:上端連接於彈簧上——上方的水平桿就是彈簧桿:一端夾死在夾座,另一端經吊環隨鋸條上下彎", () => {
   assert.ok(part(d392, "springBar")?.kind === "rod", "彈簧桿是一根會彎的桿(路徑零件)");
@@ -3625,8 +3683,8 @@ test("第 392 種:上端連接於彈簧上——上方的水平桿就是彈簧�
     const end = bar[0];
     assert.ok([0, 1, 2].every((k) => end[k] >= box.lo[k] - 1e-9 && end[k] <= box.hi[k] + 1e-9), `θ=${t.toFixed(2)}:彈簧桿的固定端在夾座裡`);
     // 桿不伸縮
-    len0 ??= pathLen392(bar);
-    close(pathLen392(bar), len0, `θ=${t.toFixed(2)}:彈簧桿長度不變`, 1e-6);
+    len0 ??= pathLength(bar);
+    close(pathLength(bar), len0, `θ=${t.toFixed(2)}:彈簧桿長度不變`, 1e-6);
     // 末端經吊環(shackle)接到鋸條上端的吊桿銷
     const s = pose.parts.shackle;
     assert.ok(dist(s.from, bar.at(-1)) < 1e-9, `θ=${t.toFixed(2)}:吊環掛在彈簧桿末端`);
@@ -3775,8 +3833,7 @@ test("第 394 種:可作為擺動汽缸引擎中曲柄的替代——小齒輪(�
   close(speed[Math.round(n / 2) - 1] / mid, 0, "框在另一端換向時速度接近 0", 0.05);
 });
 
-test("第 394 種:框上的齒與小齒輪全程咬合、不穿入(框的齒是框板內緣的一部分)", async () => {
-  const { gearProfile } = await import("../models/shapes.js");
+test("第 394 種:框上的齒與小齒輪全程咬合、不穿入(框的齒是框板內緣的一部分)", () => {
   const frame = part(m394.default, "frame");
   const pinion = part(m394.default, "pinion");
   const front = frame.pieces[0];
@@ -3785,7 +3842,7 @@ test("第 394 種:框上的齒與小齒輪全程咬合、不穿入(框的齒是�
   const prof = gearProfile({ teeth: pinion.teeth, radius: pinion.radius });
   const d = m394.default.driver;
   const stroke = Math.abs(d.cycle[1] - d.cycle[0]);
-  // 簡化的梯形齒(齒側是直線)在直線段咬合時,框的齒尖擦進小齒輪約 0.008
+  // 框的齒是短齒(齒冠 0.75 模數):齒冠做滿時,直線段咬合進出那一下框的齒尖擦進 10 齒的小齒輪約 0.008
   let nearest = Infinity;
   for (const v of sweep(2 * stroke, 400)) {
     const pose = m394.default.pose(v).parts;
@@ -3793,10 +3850,10 @@ test("第 394 種:框上的齒與小齒輪全程咬合、不穿入(框的齒是�
     const placed = placeOutline(prof, [-fx, -fy], pose.pinion.angle); // 框的座標
     for (const p of placed) {
       const gap = edgeDistance(p, hole);
-      if (!pointInPolygon(p, hole)) assert.ok(gap < 0.01, `主動量 ${v.toFixed(3)}:小齒輪的齒穿進框 ${gap.toFixed(4)}`);
+      if (!pointInPolygon(p, hole)) assert.ok(gap < 1e-3, `主動量 ${v.toFixed(3)}:小齒輪的齒穿進框 ${gap.toFixed(4)}`);
       else nearest = Math.min(nearest, gap);
     }
-    for (const q of hole) if (Math.hypot(q[0] + fx, q[1] + fy) < 0.6 && pointInPolygon(q, placed)) assert.ok(edgeDistance(q, placed) < 0.01, `主動量 ${v.toFixed(3)}:框的齒穿進小齒輪`);
+    for (const q of hole) if (Math.hypot(q[0] + fx, q[1] + fy) < 0.6 && pointInPolygon(q, placed)) assert.ok(edgeDistance(q, placed) < 1e-3, `主動量 ${v.toFixed(3)}:框的齒穿進小齒輪 ${edgeDistance(q, placed).toFixed(4)}`);
   }
   assert.ok(nearest < 0.02, "小齒輪的齒碰得到框的齒");
   assertOnePiece({ pieces: frame.pieces.filter((q) => q.kind === "plate") }, "框板、齒與溝的台階是同一件");

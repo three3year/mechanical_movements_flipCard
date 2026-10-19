@@ -5,13 +5,13 @@
 //
 // 2026-10-20 照原圖整個重排(#391-1~3,維護者 10-14 決定 (a)):
 // - 原圖齒輪中心的箭頭由上繞左到下:逆時針。齒輪左側往下、右側往上,所以 A(左)在下降時咬著齒輪往下推,A¹(右)在上升時咬著
-//   往上推。齒條的齒用和齒輪同齒形的齒條齒(shapes.rackShape),節線在齒條直立時切著節圓。
+//   往上推。齒條的節線在齒條直立時切著節圓(齒形見下面 code review 後那一段)。
 // - 行程是 8 個齒距:一個來回齒輪轉 16 齒,兩根齒條每次重新咬合時,齒都落在齒輪的齒槽裡(原本 7.64 個齒距,相位逐圈漂移)。
 // - 齒條的傾角由銷在溝裡的位置決定:銷走在靠齒輪的內側時齒條直立、咬著齒輪,走在外側時齒條外傾、離開齒輪。溝是一圈 D 形的溝,
 //   外側是直的,內側的兩端是圓角:咬著的那一程開始時銷沿圓角滑進內側(齒條跟著齒輪的齒面一起走,齒順著齒槽進去),
 //   那一程結束前沿另一個圓角滑回外側。偏離插圖:原圖左邊的溝圓角在左上與右下(右邊的在右上與左下),照那樣做,A 要在上升的末段
 //   (和齒輪左側反向走)擺進齒輪,齒會對撞;所以兩個圓角都改在內側(實物可行 > 插圖外形)。行程兩端兩根齒條都在外側,
-//   那一瞬間齒輪靠慣性帶過(推斷)。
+//   這一段齒輪靠慣性帶過(推斷,長短見下面 code review 後那一段)。
 // - 重錘照原圖:A 的往外伸(球在左下),A¹ 的往內伸(球在兩根齒條中間)。
 // - 肘形槓桿 C 鉸在右邊溝槽上方的機架上,弧臂中段的銷以一根短連桿接到 A¹ 的上端(原圖),彈簧 d 一端掛在 C 的弧臂上、另一端掛在
 //   機架上。C 與連桿的角度由 A¹ 上端的位置決定(四連桿);受力(重錘把 A¹ 往內擺、d 經 C 與連桿把 A¹ 的上端往外推,銷才在上角
@@ -20,8 +20,17 @@
 //   原圖那麼長的行程短連桿接不起來(實物可行 > 插圖外形;要不要改成只在上角碰到 A¹ 的推桿,寫在報告「需要你決定的」)。
 //   彈簧 d 在 C 前面一層,兩端的端圈鉤在 C 與掛柱伸出來的銷上。
 // - 機架:溝槽板、溝中間的島、齒輪軸、C 的鉸銷、d 的掛柱都裝在溝槽板後面的一片背板上(推斷;原圖只畫溝槽)。
-import { TAU, swingPhase } from "./kit.js";
-import { shape, thickLine, ring, rackShape } from "./shapes.js";
+//
+// code review 後(2026-10-20):
+// - 齒條的齒照齒輪的齒形展成(齒輪沿節線滾過時一個齒掃過的範圍就是齒槽),推齒輪的那一面(A¹ 的上面、A 的下面)就在掃過
+//   範圍的邊上,直立咬著的整段都貼著齒輪的齒(間隙 0);另一面讓 0.03。原本兩者都用 shapes 的直齒側齒形,齒側不共軛,
+//   咬著時間隙在 0.003 到 0.007 之間來回,從沒碰到。
+// - 溝內側兩端的圓角從 0.45 縮到 0.15:咬著的那一根在行程一端前後才滑進滑出。兩根齒條都離開齒輪(間隙 > 0.02)的只剩
+//   活塞離行程兩端約 0.08 以內(行程 2.01;一個來回約 8%,原本約 31%),每次換向這一段齒輪照原來的轉速轉約 0.2 弧度
+//   (0.64 齒),推斷是靠齒輪軸上飛輪的慣性(模型沒有算減速)。圓角變陡,銷在圓角上被溝推著橫走(壓力角大),
+//   上角那一下由 C 與 d 帶、下角由重錘帶(受力沒有算)。
+import { TAU, swingPhase, rot2 } from "./kit.js";
+import { shape, thickLine, ring, gearProfile } from "./shapes.js";
 import { pointInPolygon, edgeDistance } from "./contact.js";
 
 const GEAR = { center: [0, 0, 0], teeth: 20, r: 0.8 };
@@ -34,7 +43,7 @@ const PIVOT_X = GEAR.r + POFF; // 齒條直立時,樞軸離齒輪中心的水平
 const PIN = { up: 4.5, side: 0.55, r: 0.06 }; // 齒條上端的銷:在樞軸上方多高、往外偏多少
 const BASE = -3.8; // 行程最低時,齒條樞軸的高度
 const AWAY = 0.65; // 銷走外側時,離內側多遠
-const T = 0.45; // 溝內側兩端圓角的高度
+const T = 0.15; // 溝內側兩端圓角的高度(樞軸走這麼高,咬著的齒條滑進或滑出)
 const HALF = PIN.r + 0.02; // 溝的半寬
 
 const xin = (s) => s * (PIVOT_X + PIN.side);
@@ -95,12 +104,44 @@ const TEETH_Y = (() => {
   return y0 + Math.ceil((want - y0) / PITCH) * PITCH; // 最下一齒的中心
 })();
 const ATT = PIN.up - 0.05; // A¹ 上端接連桿的銷
+// 齒條的齒照齒輪的齒形展成:齒輪沿節線滾動(不打滑)時,一個齒掃過的範圍就是齒條的齒槽。SPACE 是各深度 w
+// (離節線、朝齒輪為正)的齒槽半寬;推齒輪的那一面就在掃過範圍的邊上(全程貼著齒輪的齒),另一面多讓 BACKLASH。
+const BACKLASH = 0.03;
+const SPACE = (() => {
+  // 齒輪的一個齒(齒 0,朝 +X)連同輪心圍成的多邊形;reach 是齒輪轉 phi、齒條相對齒輪往上 r·phi 時,這個齒在 x = X 上最高到哪
+  const tooth = [[0, 0], ...gearProfile({ teeth: GEAR.teeth, radius: GEAR.r }).filter(([x, y]) => Math.abs(Math.atan2(y, x)) <= Math.PI / GEAR.teeth + 1e-9).sort((a, b) => Math.atan2(a[1], a[0]) - Math.atan2(b[1], b[0]))];
+  const reach = (phi, X) => {
+    let hi = 0;
+    const pts = tooth.map((q) => { const [x, y] = rot2(q, phi); return [x, y - GEAR.r * phi]; });
+    pts.forEach((a, i) => {
+      const b = pts[(i + 1) % pts.length];
+      if ((a[0] - X) * (b[0] - X) <= 0 && a[0] !== b[0]) hi = Math.max(hi, a[1] + ((X - a[0]) / (b[0] - a[0])) * (b[1] - a[1]));
+    });
+    return hi;
+  };
+  // 齒輪的齒尖到齒條節線外 M 為止;再往外到齒根(1.2 M)齒槽照 −0.9 M 的寬度直下
+  const levels = Array.from({ length: 20 }, (_, k) => -0.9 * M + (1.9 * M * k) / 19);
+  return levels.map((w) => {
+    let hs = 0;
+    for (let i = -700; i <= 700; i++) hs = Math.max(hs, reach(i * 0.001, GEAR.r - w));
+    return [w, hs];
+  });
+})();
 function teethOutline(s) {
-  const { outline } = rackShape({ teeth: N_TEETH, pitch: PITCH, depth: DEPTH });
-  const yc = TEETH_Y + ((N_TEETH - 1) / 2) * PITCH;
-  const pts = outline.map(([u, w]) => [-s * (POFF + w), yc + u]);
-  const area = pts.reduce((sum, p, i) => sum + p[0] * pts[(i + 1) % pts.length][1] - pts[(i + 1) % pts.length][0] * p[1], 0);
-  return area < 0 ? pts.reverse() : pts;
+  const root = -1.2 * M;
+  const half = (hs, drive) => PITCH / 2 - hs - (drive ? 0 : BACKLASH); // 齒的半寬:hs 是齒槽半寬
+  const pts = [[TEETH_Y - PITCH / 2, root - DEPTH], [TEETH_Y - PITCH / 2, root]];
+  for (let k = 0; k < N_TEETH; k++) {
+    const c = TEETH_Y + k * PITCH;
+    // 往上推的(A¹,s = +1)上面那一面推齒輪,往下推的(A)下面那一面
+    const lo = SPACE.map(([w, hs]) => [c - half(hs, s < 0), w]);
+    const hi = SPACE.map(([w, hs]) => [c + half(hs, s > 0), w]).reverse();
+    pts.push([lo[0][0], root], ...lo, ...hi, [hi[hi.length - 1][0], root]);
+  }
+  pts.push([TEETH_Y + (N_TEETH - 0.5) * PITCH, root], [TEETH_Y + (N_TEETH - 0.5) * PITCH, root - DEPTH]);
+  const out = pts.map(([u, w]) => [-s * (POFF + w), u]);
+  const area = out.reduce((sum, p, i) => sum + p[0] * out[(i + 1) % out.length][1] - out[(i + 1) % out.length][0] * p[1], 0);
+  return area < 0 ? out.reverse() : out;
 }
 // 重錘:A 的往外伸(−x),A¹ 的往內伸(也是 −x,球在兩根齒條中間)
 const WEIGHT = { [-1]: { ball: [-1.3, -0.1], r: 0.32 }, [1]: { ball: [-1.2, 0.3], r: 0.3 } };
@@ -124,18 +165,20 @@ const rackPieces = (s) => {
 // ── 溝槽 b ──
 // 銷的中心線就是銷走過的軌跡:外側一條直線,內側兩端是圓角(逆時針排列)
 function loop(s) {
-  const n = 48;
-  const pts = [];
-  for (let i = 0; i <= n; i++) {
-    const yv = BASE + (STROKE * i) / n;
-    pts.push(pinAt(s, yv, rackAngle(s, yv, s > 0)));
-  }
+  // 中段的直溝取疏一點,兩端的圓角(高 T)取密一點
+  const ys = [
+    ...Array.from({ length: 24 }, (_, i) => (T * i) / 24),
+    ...Array.from({ length: 25 }, (_, i) => T + ((STROKE - 2 * T) * i) / 24),
+    ...Array.from({ length: 24 }, (_, i) => STROKE - T + (T * (i + 1)) / 24),
+  ];
+  const pts = ys.map((y) => pinAt(s, BASE + y, rackAngle(s, BASE + y, s > 0)));
   // 咬著的那一程從行程一端走到另一端;外側那一條直溝是首尾之間的那條邊
   const area = pts.reduce((sum, p, i) => sum + p[0] * pts[(i + 1) % pts.length][1] - pts[(i + 1) % pts.length][0] * p[1], 0);
   return area < 0 ? pts.reverse() : pts;
 }
 // 凸的封閉折線往外(d > 0)或往內(d < 0)偏 d 的輪廓:從形心往各方向找離折線正好 |d| 的點(往外偏時角上是圓角,
-// 往內偏時角是尖的;直接平移各邊再求交點,在短邊與銳角處會翻出尖刺)
+// 往內偏時角是尖的;直接平移各邊再求交點,在短邊與銳角處會翻出尖刺)。不用 shapes.offsetLoop:它把每個頂點沿前後兩點
+// 連線的法線移 d,在外側直溝與圓角相接的約 80° 的角上,相鄰的長邊只偏了不到 d,溝在角上變窄、銷穿進溝壁約 0.03。
 function offset(points, d, n = 360) {
   const c = points.reduce((m, p) => [m[0] + p[0] / points.length, m[1] + p[1] / points.length], [0, 0]);
   const signed = (q) => (pointInPolygon(q, points) ? -1 : 1) * edgeDistance(q, points);

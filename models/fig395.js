@@ -11,9 +11,9 @@
 // - 流動沿通道的中心弧走,不再斜穿過盤面。
 // - 補示意的汽缸(推斷):左右兩口各接一段管到汽缸的兩端,汽缸畫成剖開的(看得到活塞);蒸汽進的那一端推活塞,
 //   活塞走到另一端時旋塞轉 1/4 圈換向。閥殼也畫成剖開的:四個口是開口朝前的槽,殼體後面一片蓋板。
-import { deg, clamp, smooth } from "./kit.js";
+import { deg, clamp, smooth, rot2 } from "./kit.js";
 import { stream } from "./flow.js";
-import { shape, circle, arcPoints, thickLine, rect } from "./shapes.js";
+import { shape, circle, arcPoints, thickLine, rect, spanBox } from "./shapes.js";
 
 const R = 1.4; // 閥殼內半徑(口的中心在這個圓上)
 const CASE_R = 1.65; // 閥殼外半徑
@@ -62,6 +62,7 @@ const PASSAGES = [
   { center: [R, -R], from: deg(90), to: deg(180) },
 ];
 const passageArc = ({ center, from, to }, r = R) => arcPoints(r, from, to, ...center);
+// 折線改成逆時針(kit、shapes 沒有同樣的函式)
 const ccw = (poly) => {
   let area = 0;
   for (let i = 0; i < poly.length; i++) {
@@ -74,7 +75,6 @@ const ccw = (poly) => {
 const wall = (p, r) => ccw(thickLine(passageArc(p, r).filter(([x, y]) => Math.hypot(x, y) <= PLUG_R - WALL), WALL));
 const WALLS = PASSAGES.flatMap((p) => [wall(p, R - HALF_W - WALL / 2), wall(p, R + HALF_W + WALL / 2)]);
 
-const rot = ([x, y], a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
 const at = (pts) => pts.map(([x, y]) => [x, y, FLOW_Z]);
 const inCyl = (side) => [[side * PIPE_X, 0], [side * PIPE_X, CYL.y + CYL.radius], [side * PIPE_X, CYL.y]];
 
@@ -85,7 +85,7 @@ const inCyl = (side) => [[side * PIPE_X, 0], [side * PIPE_X, CYL.y + CYL.radius]
  */
 export function routes(pos) {
   const a = pos === 1 ? deg(90) : 0;
-  const arcs = PASSAGES.map((p) => passageArc(p).map((q) => rot(q, a)));
+  const arcs = PASSAGES.map((p) => passageArc(p).map((q) => rot2(q, a)));
   // 位置 0:P1 連上口與左口、P2 連右口與下口;位置 1(轉 1/4 圈):P2 連上口與右口、P1 連左口與下口
   const [inlet, outlet] = pos === 1 ? [arcs[1], arcs[0]] : [arcs[0], arcs[1]];
   const side = pos === 1 ? 1 : -1; // 蒸汽進的那一端
@@ -102,7 +102,6 @@ const sector = (a0, a1) => {
   return [...arcPoints(R, a0 + di, a1 - di), ...arcPoints(CASE_R, a1 - dout, a0 + dout)];
 };
 const plate = (outline, z0, z1, extra = {}) => ({ kind: "plate", shape: shape(outline), thickness: z1 - z0, at: [0, 0, (z0 + z1) / 2], ...extra });
-const box = (x0, x1, y0, y1, z0, z1) => ({ kind: "box", size: [x1 - x0, y1 - y0, z1 - z0], at: [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2] });
 // 沿 +x 到 r1 的槽(兩側壁 + 槽底),再轉到角度 a;側壁從環的內緣起,槽底從閥塞盤外起
 const portPieces = (a, r1) => {
   const r0 = Math.sqrt(R * R - HALF_W * HALF_W);
@@ -111,7 +110,7 @@ const portPieces = (a, r1) => {
     { size: [r1 - r0, SIDE, Z.top - Z.floor], at: [(r0 + r1) / 2, -HALF_W - SIDE / 2, (Z.top + Z.floor) / 2] },
     { size: [r1 - R, 2 * (HALF_W + SIDE), Z.face - Z.floor], at: [(R + r1) / 2, 0, (Z.face + Z.floor) / 2] },
   ];
-  return pieces.map((q) => ({ kind: "box", size: q.size, at: [...rot(q.at, a), q.at[2]], angle: a }));
+  return pieces.map((q) => ({ kind: "box", size: q.size, at: [...rot2(q.at, a), q.at[2]], angle: a }));
 };
 // 左右兩口接到汽缸的直管(推斷):x 在 PIPE_X ± HALF_W 的槽,從口的高度往下到汽缸頂
 const pipePieces = (s) => {
@@ -120,10 +119,10 @@ const pipePieces = (s) => {
   const hi = (u, v) => Math.max(u, v);
   const cylTop = CYL.y + CYL.radius + SIDE;
   return [
-    box(lo(xi - s * SIDE, xi), hi(xi - s * SIDE, xi), cylTop, -HALF_W, Z.floor, Z.top), // 內側壁(口的下方)
-    box(lo(xo, xo + s * SIDE), hi(xo, xo + s * SIDE), cylTop, HALF_W + SIDE, Z.floor, Z.top), // 外側壁
-    box(lo(s * CASE_R, xo), hi(s * CASE_R, xo), HALF_W, HALF_W + SIDE, Z.floor, Z.top), // 頂(口的上側壁接過來)
-    box(lo(xi - s * SIDE, xo + s * SIDE), hi(xi - s * SIDE, xo + s * SIDE), cylTop, HALF_W + SIDE, Z.back, Z.face), // 槽底與後蓋
+    spanBox(lo(xi - s * SIDE, xi), hi(xi - s * SIDE, xi), cylTop, -HALF_W, Z.floor, Z.top), // 內側壁(口的下方)
+    spanBox(lo(xo, xo + s * SIDE), hi(xo, xo + s * SIDE), cylTop, HALF_W + SIDE, Z.floor, Z.top), // 外側壁
+    spanBox(lo(s * CASE_R, xo), hi(s * CASE_R, xo), HALF_W, HALF_W + SIDE, Z.floor, Z.top), // 頂(口的上側壁接過來)
+    spanBox(lo(xi - s * SIDE, xo + s * SIDE), hi(xi - s * SIDE, xo + s * SIDE), cylTop, HALF_W + SIDE, Z.back, Z.face), // 槽底與後蓋
   ];
 };
 // 汽缸(推斷,剖開畫):後蓋、上下壁、兩端的缸蓋(右端留活塞桿的孔);上壁在兩根直管進來的地方開口
@@ -133,14 +132,14 @@ const cylinderPieces = () => {
   const end = half + SIDE;
   const rodR = 0.07;
   return [
-    box(-end, end, bottom - SIDE, top + SIDE, Z.back, Z.floor),
-    box(-end, end, bottom - SIDE, bottom, Z.floor, Z.top),
-    box(-(PIPE_X - HALF_W), PIPE_X - HALF_W, top, top + SIDE, Z.floor, Z.top),
-    box(PIPE_X + HALF_W, end, top, top + SIDE, Z.floor, Z.top),
-    box(-end, -(PIPE_X + HALF_W), top, top + SIDE, Z.floor, Z.top),
-    box(-end, -half, bottom, top, Z.floor, Z.top),
-    box(half, end, y + rodR + 0.005, top, Z.floor, Z.top),
-    box(half, end, bottom, y - rodR - 0.005, Z.floor, Z.top),
+    spanBox(-end, end, bottom - SIDE, top + SIDE, Z.back, Z.floor),
+    spanBox(-end, end, bottom - SIDE, bottom, Z.floor, Z.top),
+    spanBox(-(PIPE_X - HALF_W), PIPE_X - HALF_W, top, top + SIDE, Z.floor, Z.top),
+    spanBox(PIPE_X + HALF_W, end, top, top + SIDE, Z.floor, Z.top),
+    spanBox(-end, -(PIPE_X + HALF_W), top, top + SIDE, Z.floor, Z.top),
+    spanBox(-end, -half, bottom, top, Z.floor, Z.top),
+    spanBox(half, end, y + rodR + 0.005, top, Z.floor, Z.top),
+    spanBox(half, end, bottom, y - rodR - 0.005, Z.floor, Z.top),
   ];
 };
 
