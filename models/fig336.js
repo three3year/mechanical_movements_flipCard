@@ -12,30 +12,29 @@
 // 深度由後往前:機架 → 汽缸(剖開前半)→ 搖臂軸的半徑臂 → 平行桿 → 直桿 → 側槓桿與側桿;P 點一根銷穿過半徑臂、平行桿與直桿,
 // Q 點一根銷穿過平行桿與側桿,M 點一根銷穿過直桿與槓桿。
 // (原本的模型把十字頭直接當成沿直線走、再補一個平行四邊形,和原圖的桿件配置不同,已照原圖重排。)
-import { deg } from "./kit.js";
+import { deg, dist } from "./kit.js";
 import { circleCircle, angleOf } from "./linkage.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
-import { shape, circle, thickLine } from "./shapes.js";
+import { shape, circle, thickLine, zCylinder } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
 const K = 0.0125;
 const px = (x, y) => [(x - 65) * K - 2.0, (320 - y) * K - 1.6, 0];
-const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const A = px(65, 320); // 側槓桿樞軸
 const S0 = px(325, 378); // 側桿下端(槓桿右端)
 const M0 = [-0.88, px(175, 345)[1], 0]; // 直桿下端(槓桿中段;原圖在 x −0.625,見檔頭)
 const Q0 = px(325, 100); // 平行桿接在側桿上的點
 const P0 = px(170, 65); // 半徑臂端、平行桿左端
 export const UP = 0.43; // 十字頭(側桿頂端)在 Q 上方多遠(原圖)
-const SIDE_Q = d(S0, Q0);
+const SIDE_Q = dist(S0, Q0);
 const SIDE = SIDE_Q + UP;
 export const F = [-0.04, 1.82, 0]; // 搖臂軸
-const LEVER = d(A, S0);
-const LEVER_M = d(A, M0);
+const LEVER = dist(A, S0);
+const LEVER_M = dist(A, M0);
 const M_ANGLE = angleOf(A, M0) - angleOf(A, S0);
-const PARALLEL = d(P0, Q0);
-const UPRIGHT = d(P0, M0);
-export const ARM = d(F, P0);
+const PARALLEL = dist(P0, Q0);
+const UPRIGHT = dist(P0, M0);
+export const ARM = dist(F, P0);
 const TILT = angleOf(A, S0); // 原圖的槓桿角:最低處
 const SWING = deg(15); // 擺幅的一半
 const X = Q0[0];
@@ -48,7 +47,7 @@ const T = 0.06; // 各桿的厚度
 const LEVER_T = 0.12;
 
 /** 兩個解裡離原圖位置 near 最近的那一個 */
-const nearest = (a, b, near) => (d(a, near) < d(b, near) ? a : b);
+const nearest = (a, b, near) => (dist(a, near) < dist(b, near) ? a : b);
 
 /** 進程 p → 槓桿角與各接點:A、S、M、P、Q(平行桿接側桿)、E(十字頭)、搖臂角 */
 export function motion(p) {
@@ -65,14 +64,8 @@ export function motion(p) {
   return { ...now, rock: angleOf(F, now.P), downward: at(p + 1e-4).E[1] < now.E[1] };
 }
 
-/** 從 lo 層的背面穿到 hi 層正面的銷,掛在 z 層的連桿上:回傳相對 z 與長度 */
-const through = (z, lo, hi, tLo = T, tHi = T) => {
-  const [a, b] = [lo - tLo / 2, hi + tHi / 2];
-  return { at: (a + b) / 2 - z, length: b - a };
-};
-const PIN_P = through(Z.upright, Z.arm, Z.upright);
-const PIN_Q = through(Z.parallel, Z.parallel, Z.side);
-const PIN_M = through(Z.upright, Z.upright, Z.lever, T, LEVER_T);
+/** 從 lo 層(厚 tLo)的背面穿到 hi 層(厚 tHi)正面的銷,在 x 處、掛在 z 層的連桿上 */
+const through = (x, z, lo, hi, tLo = T, tHi = T) => zCylinder(lo - tLo / 2, hi + tHi / 2, PIN, [x, 0], z);
 const PIN = 0.04;
 // 斜撐的中心線:從左上斜下來,轉進汽缸頂的台面,再往下成腳落到底座
 const STRUT = [[-2.6, 2.7], [-0.15, 0.95], [0.18, 0.62], [0.18, BASE]];
@@ -136,12 +129,12 @@ export default {
       width: 0.1,
       thickness: T,
       pieces: [
-        { kind: "cylinder", radius: PIN, length: PIN_M.length, at: [0, 0, PIN_M.at] },
-        { kind: "cylinder", radius: PIN, length: PIN_P.length, at: [UPRIGHT, 0, PIN_P.at] },
+        through(0, Z.upright, Z.upright, Z.lever, T, LEVER_T),
+        through(UPRIGHT, Z.upright, Z.arm, Z.upright),
       ],
     },
     // 平行桿:右端 Q 的銷穿過側桿
-    { id: "parallelBar", kind: "link", width: 0.1, thickness: T, pieces: [{ kind: "cylinder", radius: PIN, length: PIN_Q.length, at: [PARALLEL, 0, PIN_Q.at] }] },
+    { id: "parallelBar", kind: "link", width: 0.1, thickness: T, pieces: [through(PARALLEL, Z.parallel, Z.parallel, Z.side)] },
     { id: "crosshead", kind: "group", pieces: [{ kind: "box", size: [0.32, 0.26, 1.1], at: [0, 0, 0.45] }, { kind: "box", size: [0.1, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] }] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件

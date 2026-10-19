@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { gearProfile } from "../models/shapes.js";
 import { planeBasis, add, scale, rot2 } from "../models/kit.js";
-import { pointInPolygon, penetrationDepth, circlePolygon } from "../models/contact.js";
+import { pointInPolygon, penetrationDepth, circlePolygon, polygonsOverlap, edgeDistance } from "../models/contact.js";
 
 export const close = (actual, expected, msg, eps = 1e-9) =>
   assert.ok(Math.abs(actual - expected) < eps, `${msg ?? ""} 期望 ${expected},實際 ${actual}`);
@@ -80,7 +80,11 @@ export function plateLayers(p) {
   return layers;
 }
 
-const inSolid = (q, s) => pointInPolygon(q, s.outline) && !s.holes.some((h) => pointInPolygon(q, h));
+/** 點在板件的實體裡(外形之內、孔之外) */
+export const inSolid = (q, s) => pointInPolygon(q, s.outline) && !(s.holes ?? []).some((h) => pointInPolygon(q, h));
+
+/** 兩個多邊形的間隙(重疊為 0;不相交時是頂點到對方邊的最短距離) */
+export const polyGap = (a, b) => (polygonsOverlap(a, b) ? 0 : Math.min(...a.map((p) => edgeDistance(p, b)), ...b.map((p) => edgeDistance(p, a))));
 
 /**
  * 圓(軸的截面:圓心 c、半徑 r)在 solids 的溝或槽裡:depth 是穿進實體的深度;

@@ -1,7 +1,7 @@
 // 第十三章「擒縱機構」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, assertWeightDrive } from "./helpers.js";
+import { close, sweep, part, assertWeightDrive, polyGap } from "./helpers.js";
 import { penetrationDepth, polygonsOverlap, edgeDistance, pointInPolygon } from "../models/contact.js";
 import { placePoly, DROP } from "../models/escapement.js";
 import { partPoint, deg } from "../models/kit.js";
@@ -538,8 +538,6 @@ test("第 296 種:兩根擋銷裝在夾板條上(從夾板條立起)", () => {
 // 第 298 種照原圖重讀成惠更斯的 pirouette(2026-10-12 決定):擺輪 C 的直立軸上端是小齒輪,水平立軸右端的冠狀齒輪咬它;
 // 立軸左段的兩個叉瓦擋左下的擒縱輪
 const piece298 = (def, id, kind) => part(def, id).pieces.find((p) => p.kind === kind);
-/** 兩個多邊形的間隙(不相交時是頂點到對方邊的最短距離) */
-const polyGap = (a, b) => (polygonsOverlap(a, b) ? 0 : Math.min(...a.map((p) => edgeDistance(p, b)), ...b.map((p) => edgeDistance(p, a))));
 
 test("第 298 種(原圖):擺輪軸上端的小齒輪咬水平立軸右端的冠狀齒輪;直立軸在冠狀齒輪右邊,立軸往左伸過左下的擒縱輪", () => {
   const def = m298.default;

@@ -1,7 +1,7 @@
 // 第十章「變速與曼格機構」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, plateLayers, guidedBetween, shaftSegments, assertGrooveGuides } from "./helpers.js";
+import { close, sweep, part, plateLayers, guidedBetween, shaftSegments, assertGrooveGuides, inSolid } from "./helpers.js";
 import * as m192 from "../models/fig192.js";
 import * as m193 from "../models/fig193.js";
 import * as m194 from "../models/fig194.js";
@@ -1377,7 +1377,6 @@ function camLayers() {
     return { piece: p, z: [z - half, z + half], solid };
   });
 }
-const inSolid = (pt, s) => pointInPolygon(pt, s.outline) && !(s.holes ?? []).some((h) => pointInPolygon(pt, h));
 
 test("第 217 種:開槽的凸輪盤是一件——溝槽只開到盤的前半厚度,溝底貼在盤背面接住外圈與內島,機架的軸頭伸進輪轂", () => {
   const layers = camLayers();

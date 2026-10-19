@@ -1,8 +1,34 @@
-// 擺動式引擎(第 344、345 種)共用:汽缸以長度中點(或上端)的樞軸裝在固定的軸承上,隨曲柄擺動;
+// 擺動式引擎(第 171、344、345 種)共用:汽缸以長度中點(或上端)的樞軸裝在固定的軸承上,隨曲柄擺動;
 // 活塞桿不用導件,直接接曲柄銷,所以活塞桿始終指向樞軸。汽缸內正在推活塞的那一側以蒸汽填色,
-// 進汽經樞軸流入。全是曲柄轉角的純函式。
+// 進汽經樞軸流入。全是曲柄轉角的純函式。第 344、345 種另外共用耳軸、斷開接軸承環的橫樑與曲柄的寫法。
 import { Y, Z, quatMul, quatAxisAngle, quatFromZ } from "./kit.js";
 import { backHalf } from "./section.js";
+import { shape, thickLine } from "./shapes.js";
+
+/**
+ * 汽缸的耳軸(放進 cylinderPieces):從汽缸局部 y = from 沿局部 +Y(世界的後方 −z)伸到 to 的圓柱(半徑 r),
+ * 在樞軸上(汽缸中心沿軸線離樞軸 cyl.offset)
+ */
+export const trunnionStub = ({ r, from, to }, cyl) => ({ kind: "cylinder", axis: [0, 1, 0], radius: r, length: to - from, at: [0, (from + to) / 2, -cyl.offset] });
+
+/** 機架的橫樑(x −1.8 到 1.8,深度 z、截面 t × t)在 c 處斷開、接上一個軸承環(外半徑 0.3,孔半徑 inner) */
+export const beamWithBearing = (c, inner, { z, t }) => [
+  { kind: "box", size: [1.8 + c[0] - 0.26, t, t], at: [(-1.8 + c[0] - 0.26) / 2, c[1], z] },
+  { kind: "box", size: [1.8 - c[0] - 0.26, t, t], at: [(1.8 + c[0] + 0.26) / 2, c[1], z] },
+  { kind: "cylinder", radius: 0.3, inner, length: t, at: [c[0], c[1], z] },
+];
+
+/**
+ * 曲柄的附件(曲柄零件的局部座標):半徑 r 的曲柄臂在深度 armZ(活塞桿後面一層),曲柄銷(半徑 pinR)從臂背面往前
+ * 穿過活塞桿端的眼、前面有銷頭;輪轂在臂的背面,曲柄軸沿 z 從 shaft.from 到 shaft.to
+ */
+export const oscillatingCrank = ({ r, armZ, pinR, shaft }) => [
+  { kind: "plate", shape: shape(thickLine([[0, 0], [r, 0]], 0.3)), thickness: 0.12, at: [0, 0, armZ] },
+  { kind: "cylinder", radius: 0.2, length: 0.2, at: [0, 0, armZ - 0.16] }, // 輪轂(臂的背面)
+  { kind: "cylinder", radius: 0.12, length: shaft.to - shaft.from, at: [0, 0, (shaft.from + shaft.to) / 2] },
+  { kind: "cylinder", radius: pinR, length: 0.06 - (armZ - 0.06), at: [r, 0, (0.06 + armZ - 0.06) / 2], accent: true }, // 曲柄銷:從臂背面穿到活塞桿前面
+  { kind: "cylinder", radius: 0.07, length: 0.03, at: [r, 0, 0.06], accent: true }, // 銷頭(擋住活塞桿的眼)
+];
 
 /**
  * trunnion:汽缸樞軸;crank:曲柄心、r:曲柄半徑;cyl:{ length, radius, offset }(汽缸中心沿軸線離樞軸的距離,

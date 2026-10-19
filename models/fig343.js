@@ -10,7 +10,7 @@ import { TAU } from "./kit.js";
 import { solve } from "./linkage.js";
 import { wattLinkage } from "./parallel-motion.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
-import { shape, arcPoints, circle, stadium } from "./shapes.js";
+import { shape, arcPoints, circle, stadium, zCylinder } from "./shapes.js";
 
 export const watt = wattLinkage({ line: 0, y1: 1.05, y2: -0.05, a: 1.4, b: 1.4, beamSide: -1 });
 const CRANK = [0, 2.75, 0];
@@ -24,7 +24,6 @@ const Z_RADIUS = 0.15; // 半徑桿(厚 0.06)
 const Z_VIB = 0.22; // 擺動件(厚 0.06)
 const Z_ROD = 0.29; // 連桿(厚 0.06)
 const PIN = 0.04;
-const vibPin = (x, z0, z1) => ({ kind: "cylinder", radius: PIN, length: z1 - z0, at: [x, 0, (z0 + z1) / 2 - Z_VIB] });
 // 半徑桿的固定樞軸:立柱上的托架,銷往前穿過半徑桿
 const bracket = (O, side) => [
   { kind: "box", size: [0.12, 0.16, 0.25], at: [O[0] + side * 0.04, O[1], -0.225] },
@@ -89,7 +88,7 @@ export default {
       shape: stadium(watt.c, 0.14),
       thickness: 0.06,
       arrow: false,
-      pieces: [vibPin(0, Z_RADIUS - 0.03, Z_VIB + 0.03), vibPin(watt.c, Z_RADIUS - 0.03, Z_VIB + 0.03), vibPin(watt.c * watt.k, Z_PISTON - 0.04, Z_ROD + 0.03)],
+      pieces: [zCylinder(Z_RADIUS - 0.03, Z_VIB + 0.03, PIN, [0, 0], Z_VIB), zCylinder(Z_RADIUS - 0.03, Z_VIB + 0.03, PIN, [watt.c, 0], Z_VIB), zCylinder(Z_PISTON - 0.04, Z_ROD + 0.03, PIN, [watt.c * watt.k, 0], Z_VIB)],
     },
     { id: "pistonRod", kind: "box", size: [0.08, PISTON_ROD, 0.08] },
   ],

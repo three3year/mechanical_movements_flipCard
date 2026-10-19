@@ -1,7 +1,7 @@
 // 第十五章「平行運動與引擎」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, plateLayers, guidedBetween, assertMeshFree } from "./helpers.js";
+import { close, sweep, part, plateLayers, guidedBetween, assertMeshFree, polyGap, inSolid } from "./helpers.js";
 import { lineAngle } from "../models/ruler-lines.js";
 import { pointInPolygon, polygonsOverlap, edgeDistance, placeOutline } from "../models/contact.js";
 
@@ -131,9 +131,6 @@ const plateAt = (def, pose, id) => {
   const move = (loop) => loop.map(([x, y]) => [x + c[0], y + c[1]]);
   return plateLayers(p).map((l) => ({ outline: move(l.solid.outline), holes: l.solid.holes.map(move) }));
 };
-
-/** 兩個多邊形的間隙(重疊為 0) */
-const polyGap = (a, b) => (polygonsOverlap(a, b) ? 0 : Math.min(...a.map((p) => edgeDistance(p, b)), ...b.map((p) => edgeDistance(p, a))));
 
 test("第 322 種:一個三角形的斜邊沿另一個三角形的斜邊滑動,直角邊保持平行", () => {
   parallelLines(m322.default, sweep(1.2, 8, -1.2));
@@ -306,16 +303,76 @@ function steamPushes(def, values) {
 // 用 vertical-engine.js 汽缸的各圖:汽缸底下的座落到底座頂面、進汽管的支管接到汽缸留下的後半外壁
 const ENGINES = [m326, m327, m328, m329, m330, m331, m332, m336, m339, m341, m343, m346].map((m) => m.default);
 
+/** 群組零件的一塊(方塊、沿座標軸的圓柱、沿 z 的板件;不轉)的外框,世界座標(origin 是零件中心):{ lo, hi } */
+function pieceBox(q, origin = [0, 0, 0]) {
+  const at = (q.at ?? [0, 0, 0]).map((v, k) => v + origin[k]);
+  if (q.kind === "plate") {
+    const xs = q.shape.outline.map((v) => v[0]);
+    const ys = q.shape.outline.map((v) => v[1]);
+    const h = (q.thickness ?? 0.2) / 2;
+    return { lo: [at[0] + Math.min(...xs), at[1] + Math.min(...ys), at[2] - h], hi: [at[0] + Math.max(...xs), at[1] + Math.max(...ys), at[2] + h] };
+  }
+  const axis = q.axis ?? [0, 0, 1];
+  const h = q.kind === "box" ? q.size.map((v) => v / 2) : axis.map((a) => (Math.abs(a) > 0.5 ? q.length / 2 : q.radius));
+  return { lo: at.map((v, k) => v - h[k]), hi: at.map((v, k) => v + h[k]) };
+}
+
 // 不動的零件裡沒有轉角的方塊(世界座標的外框)
 function fixedBoxes(def) {
   const posed = new Set(Object.keys(def.pose(0).parts));
   return def.parts
     .filter((p) => !posed.has(p.id))
-    .flatMap((p) => (p.pieces ?? []).filter((q) => q.kind === "box" && !q.angle && !q.axis).map((q) => ({ p, q })))
-    .map(({ p, q }) => {
-      const c = (p.center ?? [0, 0, 0]).map((v, k) => v + (q.at ?? [0, 0, 0])[k]);
-      return { lo: c.map((v, k) => v - q.size[k] / 2), hi: c.map((v, k) => v + q.size[k] / 2) };
+    .flatMap((p) => (p.pieces ?? []).filter((q) => q.kind === "box" && !q.angle && !q.axis).map((q) => pieceBox(q, p.center)));
+}
+
+/**
+ * 群組零件 p 的各塊連成一件:兩塊的深度範圍相接、平面外形相接就算相連(板件用輪廓、方塊用矩形、沿 z 的圓柱用圓,
+ * 沿 x、y 的圓柱用外框);從第一塊走得到每一塊
+ */
+function assertOnePiece(p, what) {
+  const items = p.pieces.map((q) => {
+    assert.ok(["plate", "box", "cylinder"].includes(q.kind), `只認板件、方塊與圓柱(${q.kind})`);
+    assert.ok(!q.angle && !q.rotation && (!q.axis || (q.kind === "cylinder" && q.axis.filter((a) => a !== 0).length === 1)), "方塊、板件沿 z、不轉;圓柱沿座標軸");
+    const { lo, hi } = pieceBox(q);
+    const [x, y] = q.at ?? [0, 0];
+    let poly;
+    if (q.kind === "plate") poly = q.shape.outline.map(([u, v]) => [u + x, v + y]);
+    else if (q.kind === "cylinder" && !q.axis?.[0] && !q.axis?.[1]) poly = circle(q.radius, x, y);
+    else poly = rect(hi[0] - lo[0], hi[1] - lo[1], (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2);
+    return { poly, z: [lo[2], hi[2]] };
+  });
+  const touch = (a, b) => a.z[0] <= b.z[1] + 1e-9 && b.z[0] <= a.z[1] + 1e-9 && polyGap(a.poly, b.poly) < 1e-6;
+  const seen = new Set([0]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    items.forEach((b, i) => {
+      if (!seen.has(i) && [...seen].some((j) => touch(items[j], b))) (seen.add(i), (grew = true));
     });
+  }
+  assert.deepEqual(items.map((_, i) => i).filter((i) => !seen.has(i)), [], what);
+}
+
+/** 軸承環的孔比軸大的上限(各圖的孔不是等於軸徑,就是大 0.01) */
+const BEARING_FIT = 0.01;
+
+/**
+ * 軸穿過 pieces 裡和它同軸的每個軸承環(有孔的圓柱):至少有一個環,環的孔套著軸(孔比軸大 0 到 BEARING_FIT),
+ * 軸沿軸線蓋住整個環。軸與 pieces 都是世界座標:{ at, axis(省略為 z), radius, length },環另有 inner
+ */
+function assertShaftInBearings(shaft, pieces, what) {
+  const axis = norm(shaft.axis ?? [0, 0, 1]);
+  const along = (q) => dot(sub(q, shaft.at), axis);
+  const onAxis = (q) => dist(q, add(shaft.at, scale(axis, along(q)))) < 1e-9;
+  const rings = pieces.filter((q) => q.kind === "cylinder" && q.inner && Math.abs(Math.abs(dot(norm(q.axis ?? [0, 0, 1]), axis)) - 1) < 1e-9 && onAxis(q.at ?? [0, 0, 0]));
+  assert.ok(rings.length > 0, `${what}有軸承環`);
+  const [s0, s1] = [-shaft.length / 2, shaft.length / 2];
+  for (const ring of rings) {
+    const c = along(ring.at ?? [0, 0, 0]);
+    const [r0, r1] = [c - ring.length / 2, c + ring.length / 2];
+    assert.ok(s0 <= r0 + 1e-9 && r1 - 1e-9 <= s1, `${what}(沿軸 ${s0.toFixed(3)}..${s1.toFixed(3)})穿過整個軸承環(${r0.toFixed(3)}..${r1.toFixed(3)})`);
+    const fit = ring.inner - shaft.radius;
+    assert.ok(fit >= -1e-9 && fit <= BEARING_FIT + 1e-9, `${what}(半徑 ${shaft.radius})套在軸承環的孔裡(孔 ${ring.inner})`);
+  }
 }
 
 test("直立引擎的汽缸(第 326–346 種):汽缸底下的座落到底座頂面", () => {
@@ -505,7 +562,6 @@ test("第 328 種:橫樑在齒輪前面、擋住齒輪下半,兩端由立柱撐�
 
 test("第 328 種:曲柄裝在齒輪軸上(軸穿過軸承到曲柄),曲柄端有曲柄銷、穿過連桿的眼", () => {
   const def = m328.default;
-  const ring = (g) => part(def, "frame").pieces.find((q) => q.kind === "cylinder" && q.inner && q.at[0] === g.center[0] && q.at[1] === g.center[1]);
   for (const [gid, rid] of [["gearL", "rodL"], ["gearR", "rodR"]]) {
     const g = part(def, gid);
     const cyl = g.pieces.filter((q) => q.kind === "cylinder");
@@ -513,8 +569,7 @@ test("第 328 種:曲柄裝在齒輪軸上(軸穿過軸承到曲柄),曲柄端�
     const plate = g.pieces.find((q) => q.kind === "plate");
     const [s0, s1] = zSpan(shaft);
     assert.ok(s0 <= -g.width / 2 + 1e-9 && s1 >= plate.at[2] + plate.thickness / 2 - 1e-9, `${gid}:軸從齒輪穿到曲柄前面`);
-    const [r0, r1] = zSpan(ring(g));
-    assert.ok(s0 <= r0 && s1 >= r1 && shaft.radius <= ring(g).inner, `${gid}:軸穿過軸承環`);
+    assertShaftInBearings({ ...shaft, at: add(g.center, shaft.at) }, part(def, "frame").pieces, `${gid} 的軸`);
     const rod = part(def, rid);
     for (const p of sweep(1, 12)) {
       const pose = def.pose(p).parts;
@@ -565,9 +620,6 @@ function zSpan(q, base = 0) {
   const h = q.kind === "cylinder" ? q.length / 2 : q.kind === "plate" ? (q.thickness ?? 0.2) / 2 : q.size[2] / 2;
   return [z - h, z + h];
 }
-
-/** 點在板件的實體裡(外形之內、孔之外) */
-const inSolid = (pt, s) => pointInPolygon(pt, s.outline) && !(s.holes ?? []).some((h) => pointInPolygon(pt, h));
 
 /** 板件是從軸心伸到銷的臂:兩者的中點在實體裡,外形沿銷的方向伸到銷心以外 */
 function armTo(q, [x, y]) {
@@ -826,41 +878,13 @@ test("第 336 種:蒸汽推動汽缸的活塞:活塞走過汽缸可用長度的�
   assert.ok(stroke / (length - piston.length) >= 0.7, `活塞行程 ${stroke.toFixed(2)} 是可用長度 ${(length - piston.length).toFixed(2)} 的 ${(stroke / (length - piston.length)).toFixed(2)}`);
 });
 
-/**
- * 固定件群組的各塊是否連成一件:兩塊的深度範圍相接、平面外形相接就算相連
- * (板件用輪廓、方塊用矩形、沿 z 的圓柱用圓;方塊不轉)。回傳沒連上的塊的索引
- */
-function unlinkedPieces(pieces) {
-  const foot = (q) => {
-    const [x, y] = q.at ?? [0, 0];
-    if (q.kind === "plate") return q.shape.outline.map(([u, v]) => [u + x, v + y]);
-    if (q.kind === "box") return (assert.ok(!q.angle && !q.axis, "方塊不轉"), rect(q.size[0], q.size[1], x, y));
-    assert.ok(q.kind === "cylinder" && !q.axis, `只認板件、方塊與沿 z 的圓柱(${q.kind})`);
-    return circle(q.radius, x, y);
-  };
-  const items = pieces.map((q) => ({ poly: foot(q), z: zSpan(q) }));
-  const touch = (a, b) => a.z[0] <= b.z[1] + 1e-9 && b.z[0] <= a.z[1] + 1e-9 && polyGap(a.poly, b.poly) < 1e-6;
-  const seen = new Set([0]);
-  for (let grew = true; grew; ) {
-    grew = false;
-    items.forEach((b, i) => {
-      if (!seen.has(i) && [...seen].some((j) => touch(items[j], b))) (seen.add(i), (grew = true));
-    });
-  }
-  return items.map((_, i) => i).filter((i) => !seen.has(i));
-}
-
 test("第 336 種:機架是一件——斜撐從左上接到汽缸頂、往下有腳落到底座,搖臂軸 F 的軸承座立在斜撐上,軸穿在軸承環裡", () => {
-  const frame = part(m336.default, "frame").pieces;
-  assert.deepEqual(unlinkedPieces(frame), [], "機架的每一塊都連成一件");
+  const frame = part(m336.default, "frame");
+  assertOnePiece(frame, "機架的每一塊都連成一件");
   const rock = part(m336.default, "rock");
   const shaft = rock.pieces.find((q) => q.kind === "cylinder");
-  const at = (q) => Math.hypot(q.at[0] - m336.F[0], q.at[1] - m336.F[1]) < 1e-9;
-  const ring = frame.find((q) => q.kind === "cylinder" && q.inner === shaft.radius && at(q));
-  assert.ok(ring, "搖臂軸穿在軸承環裡(孔徑等於軸徑)");
-  const [r0, r1] = zSpan(ring);
-  const [s0, s1] = zSpan(shaft);
-  assert.ok(s0 <= r0 + 1e-9 && s1 >= r1 - 1e-9, "軸貫穿軸承環");
+  close(Math.hypot(rock.center[0] - m336.F[0], rock.center[1] - m336.F[1]), 0, "搖臂軸在 F", 1e-9);
+  assertShaftInBearings({ ...shaft, at: add(rock.center, shaft.at) }, frame.pieces, "搖臂軸");
 });
 
 test("第 333 種:特殊的平行運動(依原圖):樑由兩根桿撐著,左上端 T 與吊桿中段 J1 都走近似直線", () => {
@@ -1012,28 +1036,13 @@ test("第 335 種:原圖的虛線弧是 Q 繞固定樞軸擺的軌跡,圓心在�
 });
 
 test("第 335 種:機架是一件——軸承座撐著樑的軸、固定臂從牆柱伸到半徑桿的固定樞軸,都站在同一塊地基上", () => {
-  const frame = m335.default.parts.find((p) => p.id === "frame").pieces;
-  // 各塊的外接盒(盒子不轉;圓柱沿 z),兩盒相貼或重疊就算相連
-  const boxOf = (q) => {
-    const axis = q.axis ?? [0, 0, 1];
-    const h = q.kind === "box" ? q.size.map((s) => s / 2) : axis.map((a) => (Math.abs(a) > 0.5 ? q.length / 2 : q.radius));
-    return [q.at.map((c, i) => c - h[i]), q.at.map((c, i) => c + h[i])];
-  };
-  const boxes = frame.map(boxOf);
-  const touch = (a, b) => [0, 1, 2].every((i) => a[0][i] <= b[1][i] + 1e-9 && b[0][i] <= a[1][i] + 1e-9);
-  const seen = new Set([0]);
-  for (let grew = true; grew; ) {
-    grew = false;
-    boxes.forEach((b, i) => {
-      if (!seen.has(i) && [...seen].some((j) => touch(boxes[j], b))) (seen.add(i), (grew = true));
-    });
-  }
-  assert.equal(seen.size, frame.length, `相連的塊 ${seen.size} / ${frame.length}`);
-  // 樑的軸穿在軸承環裡:環的孔徑等於軸的半徑,圓心在樑的樞軸上
-  const O1 = m335.default.parts.find((p) => p.id === "beam").center;
-  const at = (q) => Math.hypot(q.at[0] - O1[0], q.at[1] - O1[1]) < 1e-9;
-  const axle = frame.find((q) => q.kind === "cylinder" && !q.inner && at(q));
-  assert.ok(axle && frame.some((q) => q.kind === "cylinder" && q.inner === axle.radius && at(q)), "樑的軸穿在軸承環裡");
+  const frame = part(m335.default, "frame");
+  assertOnePiece(frame, "機架的每一塊都連成一件");
+  // 樑的軸(機架上不轉的軸)在樑的樞軸上,穿在軸承環裡
+  const O1 = part(m335.default, "beam").center;
+  const axle = frame.pieces.find((q) => q.kind === "cylinder" && !q.inner && Math.hypot(q.at[0] - O1[0], q.at[1] - O1[1]) < 1e-9);
+  assert.ok(axle, "樑的樞軸上有軸");
+  assertShaftInBearings(axle, frame.pieces, "樑的軸");
 });
 
 test("第 337 種:半徑桿接在短擺動桿的下端,擺動桿中點(活塞桿)的軌跡近似直線", () => {
@@ -1138,16 +1147,11 @@ test("第 339 種:F、A、C、B 四個接點都有銷穿過相接的零件;F 的
 
 test("第 339 種:機架是一件——整塊鑄件的腹板托著 F 的銷,溝槽 D 的板貼在機架上,機架落在底座上;頂上的曲柄軸穿在軸承座的孔裡", () => {
   const def = m339.default;
+  assertOnePiece(part(def, "frame"), "機架的每一塊都連成一件");
   const frame = part(def, "frame").pieces;
-  assert.deepEqual(unlinkedPieces(frame), [], "機架的每一塊都連成一件");
   const crank = part(def, "crank");
   const shaft = crank.pieces.find((q) => q.kind === "cylinder" && !q.accent);
-  const at = (q) => Math.hypot(q.at[0] - crank.center[0], q.at[1] - crank.center[1]) < 1e-9;
-  const ring = frame.find((q) => q.kind === "cylinder" && q.inner === shaft.radius && at(q));
-  assert.ok(ring, "曲柄軸穿在軸承座的孔裡(孔徑等於軸徑)");
-  const [r0, r1] = zSpan(ring);
-  const [s0, s1] = zSpan(shaft, crank.center[2]);
-  assert.ok(s0 <= r0 + 1e-9 && s1 >= r1 - 1e-9, "軸貫穿軸承座");
+  assertShaftInBearings({ ...shaft, at: add(crank.center, shaft.at) }, frame, "曲柄軸");
   // 滑塊 B 在溝槽 D 的板那一層、在溝槽裡
   const slot = frame.find((q) => q.kind === "plate" && q.shape.holes.some((h) => h.every(([x]) => x + (q.at?.[0] ?? 0) < m339.F[0] - 1)));
   const [d0, d1] = zSpan(slot);
@@ -1165,40 +1169,6 @@ test("第 339 種:機架是一件——整塊鑄件的腹板托著 F 的銷,溝�
 test("第 340 種:樑架在搖動立柱支座 B–F 上,支座繞中心 F 擺動,半徑桿 E–A 產生平行運動:C 近似直線", () => {
   straightish(sweep(m340.RANGE[1], 30, m340.RANGE[0]).map((v) => m340.beam(v).C), 0.01);
 });
-
-/**
- * 群組零件的各塊(沒有轉角的方塊、沿座標軸的圓柱、沿 z 的板件)以外框判斷相貼或重疊,回傳和第一塊連不起來的塊的編號
- * (第 340–343 種的機架:牆、托架、立柱要接到底座)
- */
-function looseBlocks340(p) {
-  const c = p.center ?? [0, 0, 0];
-  const boxes = p.pieces.map((q) => {
-    const at = (q.at ?? [0, 0, 0]).map((v, k) => v + c[k]);
-    assert.ok(!q.angle && !q.rotation && (!q.axis || (q.kind === "cylinder" && q.axis.filter((a) => a !== 0).length === 1)), "方塊、板件沿 z、不轉;圓柱沿座標軸");
-    if (q.kind === "plate") {
-      const xs = q.shape.outline.map((v) => v[0]);
-      const ys = q.shape.outline.map((v) => v[1]);
-      const h = (q.thickness ?? 0.2) / 2;
-      return { lo: [at[0] + Math.min(...xs), at[1] + Math.min(...ys), at[2] - h], hi: [at[0] + Math.max(...xs), at[1] + Math.max(...ys), at[2] + h] };
-    }
-    const axis = q.axis ?? [0, 0, 1];
-    const h = q.kind === "box" ? q.size.map((s) => s / 2) : axis.map((a) => (Math.abs(a) > 0.5 ? q.length / 2 : q.radius));
-    return { lo: at.map((v, k) => v - h[k]), hi: at.map((v, k) => v + h[k]) };
-  });
-  const touch = (a, b) => [0, 1, 2].every((k) => a.lo[k] <= b.hi[k] + 1e-9 && b.lo[k] <= a.hi[k] + 1e-9);
-  const reached = new Set([0]);
-  const queue = [0];
-  while (queue.length) {
-    const i = queue.shift();
-    boxes.forEach((b, j) => {
-      if (!reached.has(j) && touch(boxes[i], b)) {
-        reached.add(j);
-        queue.push(j);
-      }
-    });
-  }
-  return boxes.map((_, i) => i).filter((i) => !reached.has(i));
-}
 
 test("第 340 種:D 端的桿是會擺的連桿:上端以銷接在樑端 D,下端的銷在固定的鉛直導槽裡滑(推斷)", () => {
   const def = m340.default;
@@ -1252,7 +1222,7 @@ test("第 340 種:樑套在立柱頂 B 的粗軸上(原圖 B 是打斜線的軸)
 
 test("第 340 種:E 的樞軸裝在從牆伸出的托架上,牆站在底座上(固定件連成一塊)", () => {
   const def = m340.default;
-  assert.deepEqual(looseBlocks340(part(def, "ground")), [], "固定件的每一塊都連到底座");
+  assertOnePiece(part(def, "ground"), "固定件的每一塊都連到底座");
   const E = m340.geometry.E;
   assert.ok(pinsOf(def, 0).some((q) => Math.hypot(q.at[0] - E[0], q.at[1] - E[1]) < 1e-6), "E 有銷");
 });
@@ -1264,7 +1234,7 @@ test("第 341 種:蚱蜢式樑式引擎:樑的一端在搖動立柱 A 上,半徑
 
 test("第 341 種:半徑桿 B 的固定樞軸在牆上的托架、銷穿過半徑桿,另一端以銷接在樑的中點;牆站在底座上", () => {
   const def = m341.default;
-  assert.deepEqual(looseBlocks340(part(def, "frame")), [], "機架的每一塊(牆、托架、軸承座)都連到底座");
+  assertOnePiece(part(def, "frame"), "機架的每一塊(牆、托架、軸承座)都連到底座");
   for (const p of sweep(1, 8)) {
     const g = m341.grasshopper(p);
     assertPinned(def, p, m341.geometry.E, [["radiusB"]], "半徑桿的固定樞軸");
@@ -1273,21 +1243,18 @@ test("第 341 種:半徑桿 B 的固定樞軸在牆上的托架、銷穿過半�
   }
 });
 
-test("第 341 種:曲柄軸跟著曲柄轉,從軸承座穿過圓盤伸到曲柄臂的背面(曲柄臂、銷不懸空)", () => {
+test("第 341 種:曲柄軸跟著曲柄轉,從軸承座穿過圓盤伸到曲柄臂的背面(曲柄臂、銷經軸連回軸承座,不是憑空連動)", () => {
   const def = m341.default;
   const crank = part(def, "crank");
-  assert.deepEqual(looseBlocks340(crank), [], "曲柄的每一塊(軸、圓盤、臂、銷)連成一件");
+  assertOnePiece(crank, "曲柄的每一塊(軸、圓盤、臂、銷)連成一件");
   const shaft = crank.pieces.find((q) => q.kind === "cylinder" && !q.inner && Math.hypot(q.at[0], q.at[1]) < 1e-9 && q.length > 0.3);
   assert.ok(shaft, "曲柄群組裡有曲柄軸");
   const arm = crank.pieces.find((q) => q.kind === "box");
-  const [s0, s1] = zSpan(shaft, crank.center[2]);
+  const [, s1] = zSpan(shaft, crank.center[2]);
   assert.ok(s1 >= zSpan(arm, crank.center[2])[0] - 1e-9, "軸伸到曲柄臂的背面");
   const frame = part(def, "frame");
+  assertShaftInBearings({ ...shaft, at: add(crank.center, shaft.at) }, frame.pieces, "曲柄軸");
   const at = (q) => Math.hypot(q.at[0] - crank.center[0], q.at[1] - crank.center[1]) < 1e-9;
-  const bearing = frame.pieces.find((q) => q.kind === "cylinder" && q.inner === shaft.radius && at(q));
-  assert.ok(bearing, "軸承座的環的孔等於軸徑");
-  const [b0, b1] = zSpan(bearing);
-  assert.ok(s0 <= b0 + 1e-9 && s1 >= b1 - 1e-9, "軸穿過整個軸承環");
   assert.ok(!frame.pieces.some((q) => q.kind === "cylinder" && !q.inner && at(q)), "機架裡沒有不轉的曲柄軸");
 });
 
@@ -1329,7 +1296,7 @@ test("第 342 種:大氣壓力引擎:蒸汽進入時配重抬起活塞;冷凝後
   assert.ok(def.pose(0.6).flows.some((f) => f.fluid === "water"), "噴水冷凝");
 });
 
-/** 第 342 種:零件(方塊與它的方塊附件)在姿勢下的外框:{ lo, hi }(世界 xy),以及最高點 */
+/** 第 342 種:零件(方塊與它的方塊附件)在姿勢下的外框,各是一個矩形多邊形(世界 xy) */
 function boxes342(def, pose, id) {
   const p = part(def, id);
   const c = pose[id].position;
@@ -1404,7 +1371,7 @@ test("第 342 種:樑另一端的抽水桿:蒸汽進入時抽水桿的重量讓�
 test("第 342 種:機架落地:牆、樑台、立柱與汽缸台座連成一塊,汽缸座在台座上,樑的軸穿過牆頂軸承座的環", () => {
   const def = m342.default;
   const frame = part(def, "frame");
-  assert.deepEqual(looseBlocks340(frame), [], "機架的每一塊都連到地面");
+  assertOnePiece(frame, "機架的每一塊都連到地面");
   const cyl = part(def, "cylinder");
   const bottom = cyl.center[1] + Math.min(...cyl.profile.map(([, h]) => h));
   const x = cyl.center[0];
@@ -1412,20 +1379,24 @@ test("第 342 種:機架落地:牆、樑台、立柱與汽缸台座連成一塊,
   close(Math.max(...under.map((q) => q.at[1] + q.size[1] / 2)), bottom, "汽缸底與台座頂面相貼", 1e-9);
   const beam = part(def, "beam");
   const axle = beam.pieces.find((q) => q.kind === "cylinder" && !q.axis && q.length > 0.6);
-  const ring = frame.pieces.find((q) => q.kind === "cylinder" && q.inner === axle?.radius && Math.hypot(q.at[0] - beam.center[0], q.at[1] - beam.center[1]) < 1e-9);
-  assert.ok(axle && ring, "樑的軸在軸承座的環裡");
-  const [a0, a1] = zSpan(axle, beam.center[2]);
-  const [r0, r1] = zSpan(ring);
-  assert.ok(a0 <= r0 + 1e-9 && a1 >= r1 - 1e-9, "軸穿過整個環");
+  assert.ok(axle, "樑上有軸");
+  assertShaftInBearings({ ...axle, at: add(beam.center, axle.at ?? [0, 0, 0]) }, frame.pieces, "樑的軸");
 });
 
 test("第 342 種:兩端的弓頭都接上樑臂(樑身與斜撐伸進弓頭)", () => {
-  const plates = part(m342.default, "beam").pieces.filter((q) => q.kind === "plate").map((q) => q.shape.outline);
-  const arches = plates.filter((o) => o.every(([x]) => Math.abs(x) > 1.5));
-  assert.equal(arches.length, 2, "兩個弓頭");
-  const arms = plates.filter((o) => !arches.includes(o));
-  for (const arch of arches) {
-    assert.ok(arms.filter((o) => polygonsOverlap(o, arch)).length >= 2, "弓頭和樑身、斜撐都重疊");
+  const def = m342.default;
+  const beam = part(def, "beam");
+  const plates = beam.pieces.filter((q) => q.kind === "plate").map((q) => q.shape.outline);
+  const body = beam.pieces.find((q) => q.kind === "plate" && q.shape.holes.some((h) => pointInPolygon([0, 0], h))).shape.outline; // 樑身:樑的軸穿過的那一塊
+  const pose = def.pose(0);
+  for (const id of ["chain", "pumpChain"]) {
+    // 弓頭:鏈條上端固定的那一塊(換到樑的局部座標);鏈條的上端貼在它的外緣上
+    const [x, y] = pose.paths[id].points[0];
+    const anchor = rot2([x - beam.center[0], y - beam.center[1]], -pose.parts.beam.angle);
+    const arch = plates.reduce((a, o) => (edgeDistance(anchor, o) < edgeDistance(anchor, a) ? o : a));
+    assert.ok(!pointInPolygon(anchor, arch) && edgeDistance(anchor, arch) < part(def, id).width / 2, `${id} 的上端貼在弓頭外緣`);
+    assert.ok(arch !== body && polygonsOverlap(body, arch), `${id} 的弓頭:樑身伸進弓頭`);
+    assert.ok(plates.some((o) => o !== body && o !== arch && polygonsOverlap(o, arch) && polygonsOverlap(o, body)), `${id} 的弓頭:有斜撐從樑身伸進弓頭`);
   }
 });
 
@@ -1464,7 +1435,7 @@ test("第 343 種:擺動件在活塞桿頂部:P 的銷穿過活塞桿頂、擺�
 });
 
 test("第 343 種:機架的立柱與托架都站在底座上(固定件連成一塊)", () => {
-  assert.deepEqual(looseBlocks340(part(m343.default, "frame")), [], "機架的每一塊都連到底座");
+  assertOnePiece(part(m343.default, "frame"), "機架的每一塊都連到底座");
 });
 
 for (const [n, m] of [[344, m344], [345, m345]]) {
@@ -1485,14 +1456,12 @@ for (const [n, m] of [[344, m344], [345, m345]]) {
       const end = def.pose(v).parts.pistonRod.to;
       assertPinned(def, v, end, [["pistonRod"], ["crank"]], "活塞桿端與曲柄臂");
     }
-    crankShaft344(def, "frame");
+    assertCrankShaft(def, "frame");
   });
 
   test(`第 ${n} 種:汽缸的耳軸是汽缸的一部分,往後伸進機架橫樑上的軸承(於固定的軸承內作動)`, () => {
     const def = m.default;
     const T = m.TRUNNION;
-    const rings = part(def, "frame").pieces.filter((q) => q.kind === "cylinder" && q.inner && Math.hypot(q.at[0] - T[0], q.at[1] - T[1]) < 1e-9);
-    assert.ok(rings.length > 0, "樞軸處有軸承環");
     const cyl = part(def, "cylinder");
     for (const v of sweep(1, 8)) {
       const s = def.pose(v).parts.cylinder;
@@ -1501,18 +1470,13 @@ for (const [n, m] of [[344, m344], [345, m345]]) {
         .map((q) => ({ q, c: add(s.position, quatRotate(s.rotation, q.at ?? [0, 0, 0])), a: quatRotate(s.rotation, q.axis ?? [0, 0, 1]) }))
         .filter(({ c, a }) => Math.abs(Math.abs(a[2]) - 1) < 1e-9 && Math.hypot(c[0] - T[0], c[1] - T[1]) < 1e-9);
       assert.ok(stubs.length > 0, `主動量 ${v}:汽缸上有沿樞軸的耳軸`);
-      for (const ring of rings) {
-        const [r0, r1] = zSpan(ring);
-        const stub = stubs.find(({ q, c }) => c[2] - q.length / 2 <= r0 + 1e-9 && r1 - 1e-9 <= c[2] + q.length / 2);
-        assert.ok(stub, `主動量 ${v}:耳軸穿過整個軸承環`);
-        assert.ok(stub.q.radius <= ring.inner && ring.inner < stub.q.radius + 0.02, `耳軸(半徑 ${stub.q.radius})貼著軸承的孔(${ring.inner})`);
-      }
+      for (const { q, c, a } of stubs) assertShaftInBearings({ ...q, at: c, axis: a }, part(def, "frame").pieces, `主動量 ${v}:耳軸`);
     }
   });
 }
 
-/** 第 344–346 種:曲柄軸是曲柄的一部分、穿過每片曲柄臂,並穿過機架上每個軸承環(環的孔比軸大不到 0.02) */
-function crankShaft344(def, frameId) {
+/** 曲柄軸是曲柄的一部分、穿過每片曲柄臂,並穿過機架(frameId)上和它同軸的軸承環(第 344–346 種) */
+function assertCrankShaft(def, frameId) {
   const crank = part(def, "crank");
   const c = crank.center;
   const onAxis = (q) => q.kind === "cylinder" && !q.axis && !q.inner && Math.hypot(q.at?.[0] ?? 0, q.at?.[1] ?? 0) < 1e-9;
@@ -1522,28 +1486,28 @@ function crankShaft344(def, frameId) {
     const [a0, a1] = zSpan(arm, c[2]);
     assert.ok(s0 <= a0 + 1e-9 && a1 - 1e-9 <= s1, `曲柄軸(z ${s0}..${s1})穿過曲柄臂(z ${a0}..${a1})`);
   }
-  const rings = part(def, frameId).pieces.filter((q) => q.kind === "cylinder" && q.inner && Math.hypot(q.at[0] - c[0], q.at[1] - c[1]) < 1e-9);
-  assert.ok(rings.length > 0, "曲柄軸有軸承");
-  for (const ring of rings) {
-    const [r0, r1] = zSpan(ring);
-    assert.ok(s0 <= r0 + 1e-9 && r1 - 1e-9 <= s1, `曲柄軸(z ${s0}..${s1})穿過軸承環(z ${r0}..${r1})`);
-    assert.ok(shaft.radius <= ring.inner && ring.inner < shaft.radius + 0.02, `曲柄軸(半徑 ${shaft.radius})貼著軸承的孔(${ring.inner})`);
-  }
+  assertShaftInBearings({ ...shaft, at: add(c, shaft.at ?? [0, 0, 0]) }, part(def, frameId).pieces, "曲柄軸");
 }
 
 test("第 346 種:桌式引擎:十字頭在開槽導件裡直線上下,經兩根側連桿帶動桌下的兩個平行曲柄", () => {
-  const heads = sweep(1, 40).map((p) => m346.table(p).head);
-  close(Math.max(...heads) - Math.min(...heads), 0.9, "十字頭行程 = 曲柄直徑", 0.02);
-  for (const p of sweep(1, 12)) {
-    const t = m346.table(p);
-    close(Math.hypot(t.pin[0], t.head - t.pin[1]), 4.0, "側連桿長度不變", 1e-9);
+  const def = m346.default;
+  const center = part(def, "crank").center;
+  const rows = sweep(1, 40).map((p) => ({ t: m346.table(p), pose: def.pose(p).parts }));
+  const r = dist(rows[0].t.pin, center); // 曲柄半徑
+  const heads = rows.map(({ t }) => t.head);
+  close(Math.max(...heads) - Math.min(...heads), 2 * r, "十字頭行程 = 曲柄直徑", 0.02);
+  const { sideRod: first, crosshead } = rows[0].pose;
+  for (const { t, pose } of rows) {
+    close(dist(t.pin, center), r, "曲柄銷繞曲柄軸轉", 1e-9);
+    close(dist(pose.sideRod.from, pose.sideRod.to), dist(first.from, first.to), "側連桿長度不變", 1e-9);
+    close(pose.crosshead.position[0], crosshead.position[0], "十字頭沿鉛直線上下", 1e-12);
   }
-  steamPushes(m346.default, sweep(1, 8));
+  steamPushes(def, sweep(1, 8));
 });
 
 test("第 346 種:兩個平行曲柄裝在桌下的同一根軸上,兩根側連桿的下端都套在曲柄銷上、上端由十字頭的銷接起", () => {
   const def = m346.default;
-  crankShaft344(def, "table");
+  assertCrankShaft(def, "table");
   for (const v of sweep(1, 12)) {
     const pose = def.pose(v).parts;
     assertPinned(def, v, pose.sideRod.from, [["sideRod"], ["crank", 0.1]], "前側連桿的下端");
@@ -1686,11 +1650,7 @@ test("第 347 種:曲柄軸穿過左邊軸承座的孔(軸承座站在機架上)
   const def = m347.default;
   const crank = part(def, "crank");
   const shaft = crank.pieces.find((q) => q.kind === "cylinder" && q.length > 1);
-  const [x0, x1] = [-1, 1].map((s) => crank.center[0] + shaft.at[2] + (s * shaft.length) / 2);
-  const ring = part(def, "frame").pieces.find((q) => q.kind === "cylinder" && q.inner && q.axis?.[0] === 1);
-  assert.ok(ring && ring.inner >= shaft.radius && ring.inner - shaft.radius < 0.03, "軸承孔套著軸");
-  close(Math.hypot(ring.at[1] - crank.center[1], ring.at[2] - crank.center[2]), 0, "軸承孔和軸同心", 1e-9);
-  assert.ok(ring.at[0] - ring.length / 2 >= x0 && ring.at[0] + ring.length / 2 <= x1, "軸整段穿過軸承");
+  assertShaftInBearings({ ...shaft, at: partPoint(crank.center, crank.axis, 0, shaft.at), axis: crank.axis }, part(def, "frame").pieces, "曲柄軸");
 });
 
 /** 第 348 種:零件 id 在姿勢下,局部 (x, y) 點的世界位置(繞 z 轉) */

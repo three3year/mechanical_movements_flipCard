@@ -8,7 +8,7 @@
 // 長約 1.5 倍扇形段半徑(原圖約 30 齒、1.45 倍;取奇數齒:中間一齒在齒條的原點,和原本的 23 齒同一個相位),
 // 下端接一段沒有齒的桿(B)。扇形段照原圖只是一條齒弧,由桁架(斜撐)接到樑上。
 // 原圖畫的是樑左端抬到最高(主動量 −0.31、齒條在最上面)的姿勢。
-import { deg, clamp } from "./kit.js";
+import { deg, clamp, polar } from "./kit.js";
 import { rackOffset, circularPitch } from "./gears.js";
 import { shape, thickLine, arcPoints, sectorShape, gearSize } from "./shapes.js";
 import { pedestal } from "./supports.js";
@@ -39,7 +39,6 @@ const bandShape = shape([
   ...arcPoints(ROOT - BAND, SECTOR.span[1], SECTOR.span[0]),
 ]);
 // 桁架:齒弧上端與下端各一根斜撐接到樑的左端上角,下端再一根斜撐接到樑的下緣(原圖的三角形桁架)
-const polar = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
 const TRUSS_R = ROOT - BAND + 0.04;
 const TRUSS_TOP = polar(TRUSS_R, deg(154));
 const TRUSS_BOT = polar(TRUSS_R, deg(206));

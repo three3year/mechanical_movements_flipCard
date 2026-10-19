@@ -57,21 +57,21 @@ function arc(R, from, to, step = deg(3)) {
     return [R * Math.sin(t), R * Math.cos(t)];
   });
 }
-const polar = ([r, a]) => Math.atan2(r, a);
+const angleFromAxis = ([r, a]) => Math.atan2(r, a); // 剖面點 [離軸距離, 沿軸] 從軸線量起的角度
 const mirror = ([r, a]) => [r, -a];
 const seatR = coneMeets(BALL); // 右蓋的圓錐面和座的交界
 const wallR = coneMeets(RS); // 右蓋的圓錐面和缸壁的交界
 const endR = [Math.sqrt(RO * RO - END * END), END]; // 端面的外緣
 const hollowR = [END * Math.tan(HOLLOW), END]; // 端面的內緣(空腔口)
 const shell = [
-  ...arc(BALL, Math.PI - HOLLOW, Math.PI - polar(seatR)), // 左蓋的座
+  ...arc(BALL, Math.PI - HOLLOW, Math.PI - angleFromAxis(seatR)), // 左蓋的座
   mirror(wallR), // 左蓋的圓錐面
-  ...arc(RS, Math.PI - polar(wallR), polar(wallR)).slice(1, -1), // 球帶缸壁的內面
+  ...arc(RS, Math.PI - angleFromAxis(wallR), angleFromAxis(wallR)).slice(1, -1), // 球帶缸壁的內面
   wallR, // 右蓋的圓錐面
-  ...arc(BALL, polar(seatR), HOLLOW), // 右蓋的座
+  ...arc(BALL, angleFromAxis(seatR), HOLLOW), // 右蓋的座
   hollowR, // 右蓋背面的空腔
   endR,
-  ...arc(RO, polar(endR), Math.PI - polar(endR)).slice(1, -1), // 球帶缸壁的外面
+  ...arc(RO, angleFromAxis(endR), Math.PI - angleFromAxis(endR)).slice(1, -1), // 球帶缸壁的外面
   mirror(endR),
   mirror(hollowR), // 左蓋背面的空腔
 ];

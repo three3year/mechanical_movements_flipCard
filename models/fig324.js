@@ -6,7 +6,7 @@
 // 五處樞接都有銷(原圖與 507movements 的動畫):兩個樞軸銷立在尺上、兩根滑動銷在兩尺的溝槽裡、中點一根銷穿過兩臂。
 // armDown 比尺面高一個臂厚,兩端由墊圈墊著(樞軸端是尺上的凸台,滑動端是滑動銷的軸環,軸環比槽寬、壓在尺面上滑)(推斷)。
 import { clamp } from "./kit.js";
-import { shape, rect, stadium } from "./shapes.js";
+import { shape, rect, stadium, zCylinder } from "./shapes.js";
 import { rulerLineParts, rulerLines } from "./ruler-lines.js";
 
 const L = 3.6; // 臂長
@@ -16,7 +16,6 @@ const ARM_T = 0.06; // 臂厚
 const Z_UP = RULER.t / 2 + ARM_T / 2; // armUp 貼著尺面
 const Z_DOWN = Z_UP + ARM_T; // armDown 在 armUp 上面一層
 const PIN_R = 0.07; // 滑動銷(溝槽寬 0.16)
-const SPAN = (z0, z1, r, at = [0, 0]) => ({ kind: "cylinder", radius: r, length: z1 - z0, at: [at[0], at[1], (z0 + z1) / 2] }); // 沿 z 從 z0 到 z1 的圓柱
 export const RANGE = [0.7, 2.3]; // 兩尺樞軸線的距離
 
 /** 兩尺距離 h → 兩臂左端(滑動銷)的 x、交叉點 */
@@ -41,15 +40,15 @@ export default {
   parts: [
     { id: "paper", kind: "box", center: [0, 1.0, -RULER.t / 2 - 0.02], size: [7.5, 5.0, 0.04] },
     // 下尺右端:armDown 的樞軸銷與墊在臂下的凸台
-    { id: "rulerLow", ...ruler("A"), center: [0, 0, 0], pieces: [SPAN(-RULER.t / 2, Z_DOWN + ARM_T / 2 + 0.02, 0.035, [XR, 0]), SPAN(RULER.t / 2, Z_DOWN - ARM_T / 2, 0.09, [XR, 0])] },
+    { id: "rulerLow", ...ruler("A"), center: [0, 0, 0], pieces: [zCylinder(-RULER.t / 2, Z_DOWN + ARM_T / 2 + 0.02, 0.035, [XR, 0]), zCylinder(RULER.t / 2, Z_DOWN - ARM_T / 2, 0.09, [XR, 0])] },
     // 上尺右端:armUp 的樞軸銷
-    { id: "rulerTop", ...ruler("A"), pieces: [SPAN(-RULER.t / 2, Z_UP + ARM_T / 2 + 0.02, 0.035, [XR, 0])] },
+    { id: "rulerTop", ...ruler("A"), pieces: [zCylinder(-RULER.t / 2, Z_UP + ARM_T / 2 + 0.02, 0.035, [XR, 0])] },
     // 中點的樞銷:裝在 armUp 上,往上穿過 armDown
-    { id: "armUp", kind: "link", width: 0.14, thickness: ARM_T, pins: false, pieces: [SPAN(RULER.t / 2 - Z_UP, Z_DOWN + ARM_T / 2 + 0.02 - Z_UP, 0.035, [L / 2, 0])] },
+    { id: "armUp", kind: "link", width: 0.14, thickness: ARM_T, pins: false, pieces: [zCylinder(RULER.t / 2 - Z_UP, Z_DOWN + ARM_T / 2 + 0.02 - Z_UP, 0.035, [L / 2, 0])] },
     { id: "armDown", kind: "link", width: 0.14, thickness: ARM_T, pins: false },
     // 兩根滑動銷:下尺溝槽裡的接 armUp;上尺溝槽 B 裡的接 armDown,帶一個壓在尺面上的軸環把臂墊高
-    { id: "pinLow", kind: "group", pieces: [SPAN(-RULER.t / 2, Z_UP + ARM_T / 2 + 0.02, PIN_R)] },
-    { id: "pinB", kind: "group", label: "B", labelOffset: [0.3, 0.25, 0.3], pieces: [SPAN(-RULER.t / 2, Z_DOWN + ARM_T / 2 + 0.02, PIN_R), SPAN(RULER.t / 2, Z_DOWN - ARM_T / 2, 0.11)] },
+    { id: "pinLow", kind: "group", pieces: [zCylinder(-RULER.t / 2, Z_UP + ARM_T / 2 + 0.02, PIN_R)] },
+    { id: "pinB", kind: "group", label: "B", labelOffset: [0.3, 0.25, 0.3], pieces: [zCylinder(-RULER.t / 2, Z_DOWN + ARM_T / 2 + 0.02, PIN_R), zCylinder(RULER.t / 2, Z_DOWN - ARM_T / 2, 0.11)] },
     ...rulerLineParts(),
   ],
   driver: { part: "rulerTop", type: "translation", direction: [0, 1, 0], range: RANGE, initial: 1.4 },

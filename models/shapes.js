@@ -249,6 +249,12 @@ export function thickLine(points, w) {
   return [...side(1), ...side(-1).reverse()];
 }
 
+/**
+ * 沿 z 從 z0 到 z1 的圓柱附件(銷、軸、凸台):半徑 radius、圓心在 (x, y)。base 是掛著它的零件的深度,
+ * z0、z1 是世界深度時傳 base,回傳的 at 換成相對零件的座標
+ */
+export const zCylinder = (z0, z1, radius, [x, y] = [0, 0], base = 0) => ({ kind: "cylinder", radius, length: z1 - z0, at: [x, y, (z0 + z1) / 2 - base] });
+
 /** 正多邊形(n 邊,外接圓半徑 r;第一個頂點在角度 start) */
 export const polygon = (n, r, start = 0) =>
   Array.from({ length: n }, (_, i) => [r * Math.cos(start + (i * TAU) / n), r * Math.sin(start + (i * TAU) / n)]);

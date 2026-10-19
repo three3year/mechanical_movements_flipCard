@@ -8,7 +8,7 @@
 // 深度由後往前:樑與活塞桿 → 短連桿 → 半徑桿。樑端 B 是圓眼,一根銷穿過樑與短連桿;活塞桿頂掛在短連桿下端 P 的銷上。
 import { deg, clamp } from "./kit.js";
 import { sameSideLinkage } from "./parallel-motion.js";
-import { shape, circle, arcPoints } from "./shapes.js";
+import { shape, circle, arcPoints, zCylinder } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
 export const RANGE = [deg(-22), deg(-6)];
@@ -24,10 +24,6 @@ const T = 0.06;
 const BEAM_T = 0.12;
 const EYE = 0.15; // 樑端圓眼的半徑
 const PIN = 0.05;
-/** 從 lo 面到 hi 面的銷,掛在 z 層的短連桿上:相對 z 與長度 */
-const through = (lo, hi) => ({ at: (lo + hi) / 2 - Z.short, length: hi - lo });
-const PIN_B = through(Z.beam - BEAM_T / 2, Z.short + T / 2);
-const PIN_P = through(Z.rod - 0.04, Z.short + T / 2);
 
 export default {
   figure: 338,
@@ -63,8 +59,8 @@ export default {
       width: 0.12,
       thickness: T,
       pieces: [
-        { kind: "cylinder", radius: PIN, length: PIN_B.length, at: [C, 0, PIN_B.at] },
-        { kind: "cylinder", radius: 0.04, length: PIN_P.length, at: [C * (1 + watt.t), 0, PIN_P.at] },
+        zCylinder(Z.beam - BEAM_T / 2, Z.short + T / 2, PIN, [C, 0], Z.short), // B 的銷:從樑的背面穿到短連桿正面
+        zCylinder(Z.rod - 0.04, Z.short + T / 2, 0.04, [C * (1 + watt.t), 0], Z.short), // P 的銷:從活塞桿裡穿到短連桿正面
       ],
     },
     { id: "pistonRod", kind: "box", size: [0.08, PISTON_ROD, 0.08] },

@@ -12,7 +12,7 @@
 // (z 0)上,往前伸出一根軸到側桿那一層,側桿與平行桿套在這根軸上(實機兩側各有一組側槓桿,原圖只畫前面這組)。
 // (原本的模型把左邊的直桿讀成固定的立柱、C 當成固定樞軸、F 當成會動的點,十字頭直接指定沿直線走;已照原圖重排,
 // 共用的 side-lever.js 只有這張用,一併拿掉。)
-import { deg } from "./kit.js";
+import { deg, dist } from "./kit.js";
 import { circleCircle, angleOf } from "./linkage.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
 import { shape, thickLine } from "./shapes.js";
@@ -20,23 +20,22 @@ import { pedestal } from "./supports.js";
 
 const K = 0.0125;
 const px = (x, y) => [(x - 104) * K - 1.85, (429 - y) * K - 2.0, 0];
-const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 export const A = px(104, 429); // 側槓桿樞軸
 const S0 = px(389, 430.5); // 槓桿右端(側桿下端)
 const M0 = px(228, 427); // 槓桿中段(直桿下端)
 const D0 = px(232, 66); // 直桿頂端
 const E0 = px(392.5, 65); // 十字頭
 export const F = px(495, 154.5); // 半徑桿的固定樞軸
-const LEVER = d(A, S0);
-const LEVER_M = d(A, M0);
+const LEVER = dist(A, S0);
+const LEVER_M = dist(A, M0);
 const M_ANGLE = angleOf(A, M0) - angleOf(A, S0);
 const TILT = angleOf(A, S0);
-const UPRIGHT = d(M0, D0); // 直桿 M–D
-const MC = d(M0, px(231, 154)); // 直桿上 M 到 C(C 取在直桿上,高度照原圖)
+const UPRIGHT = dist(M0, D0); // 直桿 M–D
+const MC = dist(M0, px(231, 154)); // 直桿上 M 到 C(C 取在直桿上,高度照原圖)
 const C0 = [M0[0] + ((D0[0] - M0[0]) * MC) / UPRIGHT, M0[1] + ((D0[1] - M0[1]) * MC) / UPRIGHT, 0];
-const RADIUS = d(F, C0); // 半徑桿
-const PARALLEL = d(D0, E0); // 平行桿
-const SIDE = d(S0, E0); // 側桿
+const RADIUS = dist(F, C0); // 半徑桿
+const PARALLEL = dist(D0, E0); // 平行桿
+const SIDE = dist(S0, E0); // 側桿
 const SWING = deg(9);
 const X = E0[0]; // 汽缸中心線
 const FLOOR = -3.0; // 底座頂面
@@ -49,7 +48,7 @@ const Z = { lever: 1.35, upright: 1.2, bar: 1.1, bracket: 0.98 };
 /** 兩個解裡離原圖位置 near 最近的那一個 */
 const nearest = (c1, r1, c2, r2, near) => {
   const [a, b] = [circleCircle(c1, r1, c2, r2, 1).point, circleCircle(c1, r1, c2, r2, -1).point];
-  return d(a, near) < d(b, near) ? a : b;
+  return dist(a, near) < dist(b, near) ? a : b;
 };
 
 /** 進程 p → 槓桿角與各接點:S(槓桿右端)、M(槓桿中段)、C、D(直桿)、E(十字頭) */

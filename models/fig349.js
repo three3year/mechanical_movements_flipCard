@@ -7,7 +7,7 @@
 // 合到最小開度時兩尺的寬段合攏,中介桿填滿窄段之間的空隙、尖端靠進斜階。臂在尺與中介桿前面兩層(上臂貼著尺面,下臂在上臂前面)。
 // 推斷:使用時的動作——上尺在起始位置沿上緣畫一條線,拉開後再畫一條,兩線平行。
 import { clamp } from "./kit.js";
-import { shape } from "./shapes.js";
+import { shape, zCylinder } from "./shapes.js";
 import { rulerLineParts, rulerLines } from "./ruler-lines.js";
 
 const LINK = 1.25; // 每根臂長
@@ -45,9 +45,8 @@ const topOutline = [[-W / 2, -P - STEP], [XS_STEP, -P - STEP], [XS_STEP + STEP, 
 const LINK_T = 0.05;
 const Z_UP = T / 2 + LINK_T / 2;
 const Z_DOWN = Z_UP + LINK_T;
-const TOP_OF = (z) => z + LINK_T / 2 + 0.02; // 銷伸出臂面一點
-/** 沿 z 從 z0 到 z1 的銷(或凸台) */
-const span = (x, z0, z1, radius = 0.05) => ({ kind: "cylinder", radius, length: z1 - z0, at: [x, 0, (z0 + z1) / 2] });
+const topOf = (z) => z + LINK_T / 2 + 0.02; // 銷伸出臂面一點
+const PIN_R = 0.05; // 銷的半徑
 
 export default {
   figure: 349,
@@ -60,18 +59,18 @@ export default {
       center: [0, BOTTOM, 0],
       pieces: [
         { kind: "plate", shape: shape(lowOutline), thickness: T },
-        ...XS.flatMap((x) => [span(x, -T / 2, TOP_OF(Z_DOWN)), span(x, T / 2, Z_DOWN - LINK_T / 2, 0.07)]),
+        ...XS.flatMap((x) => [zCylinder(-T / 2, topOf(Z_DOWN), PIN_R, [x, 0]), zCylinder(T / 2, Z_DOWN - LINK_T / 2, 0.07, [x, 0])]),
       ],
     },
     // 上尺:臂端的銷立在尺上,穿過上臂
-    { id: "rulerTop", kind: "plate", shape: shape(topOutline), thickness: T, pieces: XS.map((x) => span(x, -T / 2, TOP_OF(Z_UP))) },
+    { id: "rulerTop", kind: "plate", shape: shape(topOutline), thickness: T, pieces: XS.map((x) => zCylinder(-T / 2, topOf(Z_UP), PIN_R, [x, 0])) },
     // 中介桿:左端削尖(原圖);兩個鉸點的銷立在它上面,穿過上下兩根臂
     {
       id: "midBar",
       kind: "plate",
       shape: shape([[TIP, 0], [TIP + BAR / 2, -BAR / 2], [BAR_END, -BAR / 2], [BAR_END, BAR / 2], [TIP + BAR / 2, BAR / 2]]),
       thickness: T,
-      pieces: XS.map((x) => span(x, -T / 2, TOP_OF(Z_DOWN))),
+      pieces: XS.map((x) => zCylinder(-T / 2, topOf(Z_DOWN), PIN_R, [x, 0])),
     },
     ...XS.flatMap((_, i) => [
       { id: `up${i}`, kind: "link", width: 0.14, thickness: LINK_T, pins: false },

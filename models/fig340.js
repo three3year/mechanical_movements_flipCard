@@ -8,7 +8,7 @@
 // (推斷;網站動畫裡這根桿也跟著 D 斜擺)。D 橫移約 0.8,只平移的桿下端沒有東西導引。
 import { deg, clamp } from "./kit.js";
 import { circleCircle } from "./linkage.js";
-import { shape, circle, thickLine, arcPoints, rect } from "./shapes.js";
+import { shape, circle, thickLine, arcPoints, rect, zCylinder } from "./shapes.js";
 
 const F = [-0.6, -2.4, 0]; // 立柱的擺動中心
 const PILLAR = 3.25; // F 到 B
@@ -49,7 +49,7 @@ const Q_Y = [lower(beam(RANGE[0]).D)[1], lower(beam(RANGE[1]).D)[1]].sort((a, b)
 const slot = [...arcPoints(PIN, Math.PI, 2 * Math.PI, 0, Q_Y[0]), ...arcPoints(PIN, 0, Math.PI, 0, Q_Y[1])].reverse();
 const SLOT_PLATE = { lo: Q_Y[0] - 0.25, hi: Q_Y[1] + 0.2 };
 
-const beamPin = (x) => ({ kind: "cylinder", radius: PIN, length: PIN_Z[1] - PIN_Z[0], at: [x, 0, (PIN_Z[0] + PIN_Z[1]) / 2 - Z_BEAM] });
+const beamPin = (x) => zCylinder(PIN_Z[0], PIN_Z[1], PIN, [x, 0], Z_BEAM);
 
 export default {
   figure: 340,
