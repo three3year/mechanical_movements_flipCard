@@ -1,8 +1,10 @@
 // 第十五章「平行運動與引擎」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
+import { close, sweep, part, plateLayers, guidedBetween } from "./helpers.js";
 import { lineAngle } from "../models/ruler-lines.js";
+import { rot2 } from "../models/kit.js";
+import { pointInPolygon, polygonsOverlap, edgeDistance } from "../models/contact.js";
 
 import * as m322 from "../models/fig322.js";
 import * as m323 from "../models/fig323.js";
@@ -45,15 +47,147 @@ function parallelLines(def, values) {
   }
 }
 
+/** 紙面的頂面高度 */
+const paperTop = (def) => {
+  const p = part(def, "paper");
+  return p.center[2] + p.size[2] / 2;
+};
+
+/** 尺(板件,或含板件的群組)的厚度範圍,世界 z */
+function layerOf(def, pose, id) {
+  const p = part(def, id);
+  if (p.kind === "link") {
+    const z = pose[id].from[2];
+    return [z - p.thickness / 2, z + p.thickness / 2];
+  }
+  const z = (pose[id]?.position ?? p.center)[2];
+  const layers = plateLayers(p);
+  return [z + Math.min(...layers.map((l) => l.z0)), z + Math.max(...layers.map((l) => l.z1))];
+}
+
+/** 原文是把尺放在紙上、沿尺邊畫線:各尺的底面貼著紙面,兩條作圖線畫在紙面上 */
+function onPaper(def, ids, values) {
+  const top = paperTop(def);
+  for (const v of values) {
+    const { parts, paths } = def.pose(v);
+    for (const id of ids) close(layerOf(def, parts, id)[0], top, `主動量 ${v.toFixed(2)}:${id} 的底面貼著紙面`);
+    for (const line of [paths.lineStart, paths.lineNow]) for (const p of line.points) assert.ok(Math.abs(p[2] - top) < 0.005, `作圖線在紙面上(z ${p[2]},紙面 ${top})`);
+  }
+}
+
+/** 各零件(含附件)裡沿 z 的銷,換到世界座標:{ at: [x, y], z0, z1, r } */
+function pinsOf(def, v) {
+  const pose = def.pose(v).parts;
+  const pins = [];
+  const isPin = (q) => q.kind === "cylinder" && !q.axis;
+  for (const p of def.parts) {
+    const s = pose[p.id] ?? {};
+    let place;
+    if (s.from) {
+      const l = Math.hypot(s.to[0] - s.from[0], s.to[1] - s.from[1]);
+      const [ux, uy] = [(s.to[0] - s.from[0]) / l, (s.to[1] - s.from[1]) / l];
+      place = ([x, y, z]) => [s.from[0] + ux * x - uy * y, s.from[1] + uy * x + ux * y, s.from[2] + z];
+    } else {
+      if (p.axis) continue;
+      const c = s.position ?? p.center ?? [0, 0, 0];
+      place = (q) => {
+        const [x, y] = rot2(q, s.angle ?? 0);
+        return [c[0] + x, c[1] + y, c[2] + q[2]];
+      };
+    }
+    const add = (q, at) => {
+      const [x, y, z] = place(at);
+      pins.push({ at: [x, y], z0: z - q.length / 2, z1: z + q.length / 2, r: q.radius });
+    };
+    if (isPin(p) && !s.from) add(p, [0, 0, 0]);
+    for (const q of p.pieces ?? []) if (isPin(q)) add(q, q.at ?? [0, 0, 0]);
+  }
+  return pins;
+}
+
+/**
+ * 樞接 at 有一根銷,而且銷穿過每個成員:臂(連桿)整個厚度都套在銷上,尺至少插進 0.04。
+ * members:[零件 id, 只要插進的深度(省略 = 整個厚度)]
+ */
+function assertPinned(def, v, at, members, what) {
+  const pose = def.pose(v).parts;
+  const need = members.map(([id, depth]) => {
+    const [z0, z1] = layerOf(def, pose, id);
+    return { id, z0, z1, depth: depth ?? z1 - z0 };
+  });
+  const pin = pinsOf(def, v).find((q) => Math.hypot(q.at[0] - at[0], q.at[1] - at[1]) < 1e-6 && need.every((m) => Math.min(q.z1, m.z1) - Math.max(q.z0, m.z0) >= m.depth - 1e-9));
+  assert.ok(pin, `主動量 ${v.toFixed(2)}:${what}有銷,穿過 ${need.map((m) => m.id).join("、")}`);
+}
+
+/** 板件零件在姿勢下的外形(世界 xy;只平移) */
+const plateAt = (def, pose, id) => {
+  const p = part(def, id);
+  const c = pose[id]?.position ?? p.center;
+  const move = (loop) => loop.map(([x, y]) => [x + c[0], y + c[1]]);
+  return plateLayers(p).map((l) => ({ outline: move(l.solid.outline), holes: l.solid.holes.map(move) }));
+};
+
+/** 兩個多邊形的間隙(重疊為 0) */
+const polyGap = (a, b) => (polygonsOverlap(a, b) ? 0 : Math.min(...a.map((p) => edgeDistance(p, b)), ...b.map((p) => edgeDistance(p, a))));
+
 test("第 322 種:一個三角形的斜邊沿另一個三角形的斜邊滑動,直角邊保持平行", () => {
   parallelLines(m322.default, sweep(1.2, 8, -1.2));
   const [dx, dy] = m322.slide(1);
   close(Math.atan2(dy, dx), Math.atan2(2.5, 4.2), "沿斜邊方向滑動", 1e-12);
 });
 
+test("第 322 種:三角形 A、B 放在紙上:兩者的底面貼著紙面,沿直角邊畫的線在紙面上", () => {
+  onPaper(m322.default, ["triA", "triB"], sweep(1.2, 8, -1.2));
+});
+
 test("第 323 種:滾輪平行尺:輪抓住紙張,尺滾動時始終與畫過的線平行;輪轉角 = 滾過的距離 / 半徑", () => {
   parallelLines(m323.default, sweep(1.5, 6, -1.5));
-  close(m323.wheelAngle(0.9) * 0.45, -0.9, "輪不打滑");
+  close(m323.default.pose(0.9).parts.wheels.angle * m323.WHEEL.radius, -0.9, "輪不打滑");
+});
+
+test("第 323 種:輪 A、A 僅略微凸出於尺的下側、抓住紙張:輪底貼紙,尺底只比輪底高一點,輪在尺上開的窗裡", () => {
+  const def = m323.default;
+  const top = paperTop(def);
+  const R = m323.WHEEL.radius;
+  onPaper(def, [], [0]);
+  for (const y of sweep(1.5, 6, -1.5)) {
+    const pose = def.pose(y).parts;
+    const axleZ = pose.wheels.position[2];
+    close(axleZ - R, top, "輪底(刻紋的頂)貼著紙面");
+    const [zb, zt] = layerOf(def, pose, "rulerB");
+    assert.ok(zb - top > 0 && zb - top < 0.2 * R, `尺底比輪底高一點(${(zb - top).toFixed(3)},輪半徑 ${R})`);
+    // 輪在尺的厚度範圍內的投影(最寬處)要落在尺上開的窗裡
+    const dz = axleZ - Math.min(Math.max(axleZ, zb), zt);
+    const half = Math.sqrt(R * R - dz * dz);
+    const [solid] = plateAt(def, pose, "rulerB");
+    for (const x of m323.WHEEL.at) {
+      const corners = [[x - m323.WHEEL.width / 2, y - half], [x + m323.WHEEL.width / 2, y - half], [x + m323.WHEEL.width / 2, y + half], [x - m323.WHEEL.width / 2, y + half]];
+      assert.ok(solid.holes.some((h) => corners.every((c) => pointInPolygon(c, h))), `x ${x} 的輪穿過尺上的窗,不穿進尺`);
+    }
+  }
+});
+
+test("第 323 種:附屬的輪軸 C 與兩輪 A、A 是一個零件(兩輪一起轉,尺才不偏),軸從尺面上方跨過兩個窗、軸頸架在窗外的軸承上", () => {
+  const def = m323.default;
+  const wheels = part(def, "wheels");
+  const axle = wheels.pieces.find((q) => q.kind === "cylinder" && q.radius < 0.1 && q.length > 3);
+  assert.ok(axle, "軸 C 是輪的一部分");
+  const [a, b] = m323.WHEEL.at;
+  assert.ok(axle.length / 2 > Math.max(Math.abs(a), Math.abs(b)) + m323.WHEEL.width, "軸穿過兩個輪、伸到外側");
+  const pose = def.pose(0.7).parts;
+  const [, zt] = layerOf(def, pose, "rulerB");
+  assert.ok(pose.wheels.position[2] - axle.radius > zt, "軸在尺面上方");
+  const rz = pose.rulerB.position[2];
+  const out = Math.max(...m323.WHEEL.at.map(Math.abs)) + m323.WHEEL.width / 2;
+  const bearings = part(def, "rulerB").pieces.filter((q) => q.kind === "box");
+  for (const side of [-1, 1]) {
+    const held = bearings.some((q) => {
+      const [x0, x1] = [q.at[0] - q.size[0] / 2, q.at[0] + q.size[0] / 2];
+      const [z0, z1] = [rz + q.at[2] - q.size[2] / 2, rz + q.at[2] + q.size[2] / 2];
+      return side * x0 > out && side * x1 > out && Math.max(Math.abs(x0), Math.abs(x1)) <= axle.length / 2 && z0 < pose.wheels.position[2] && pose.wheels.position[2] < z1 && Math.abs(z0 - zt) < 1e-9;
+    });
+    assert.ok(held, `${side < 0 ? "左" : "右"}端的軸頸架在窗外、立在尺面上的軸承裡`);
+  }
 });
 
 test("第 324 種:複合平行尺:兩臂交叉、中點相連,一端樞接、一端在溝槽 B 中滑動,尺的兩端與邊緣都保持平行", () => {
@@ -62,17 +196,95 @@ test("第 324 種:複合平行尺:兩臂交叉、中點相連,一端樞接、一
     const { xl, mid } = m324.cross(h);
     close(Math.hypot(1.85 - xl, h), 3.6, "臂長不變", 1e-9);
     close(mid[1], h / 2, "兩臂交在中點", 1e-12);
+    const { rulerTop } = m324.default.pose(h).parts;
+    close(rulerTop.position[0], part(m324.default, "rulerLow").center[0], "尺的兩端也保持平行:上尺的兩端始終正對著下尺的兩端");
   }
+});
+
+test("第 324 種:每根臂一端以樞軸接在一根尺上、另一端的滑動銷在另一根尺的溝槽裡,兩臂在中點以樞軸相連:五處都有銷", () => {
+  const def = m324.default;
+  for (const h of sweep(2.3, 8, 0.7)) {
+    const pose = def.pose(h).parts;
+    const { armUp, armDown } = pose;
+    assertPinned(def, h, armUp.from, [["armUp"], ["rulerLow", 0.04]], "armUp 在下尺溝槽裡的滑動端");
+    assertPinned(def, h, armUp.to, [["armUp"], ["rulerTop", 0.04]], "armUp 在上尺的樞軸端");
+    assertPinned(def, h, armDown.from, [["armDown"], ["rulerTop", 0.04]], "armDown 在上尺溝槽 B 裡的滑動端");
+    assertPinned(def, h, armDown.to, [["armDown"], ["rulerLow", 0.04]], "armDown 在下尺的樞軸端");
+    assertPinned(def, h, [(armUp.from[0] + armUp.to[0]) / 2, (armUp.from[1] + armUp.to[1]) / 2], [["armUp"], ["armDown"]], "兩臂的中點");
+    for (const [arm, ruler] of [["armUp", "rulerLow"], ["armDown", "rulerTop"]]) {
+      const pin = pinsOf(def, h).find((q) => Math.hypot(q.at[0] - pose[arm].from[0], q.at[1] - pose[arm].from[1]) < 1e-6);
+      const [solid] = plateAt(def, pose, ruler);
+      const g = guidedBetween(pin.at, pin.r, [solid]);
+      assert.ok(g.open && g.depth < 1e-3 && g.sides, `${ruler} 的溝槽夾著滑動銷、銷不穿進槽壁(穿入 ${g.depth.toFixed(3)})`);
+    }
+  }
+});
+
+test("第 324 種:兩根尺放在紙上:底面貼著紙面,作圖線在紙面上", () => {
+  onPaper(m324.default, ["rulerLow", "rulerTop"], sweep(2.3, 8, 0.7));
 });
 
 test("第 325 種:兩根臂 C、C 構成平行四邊形,尺 A、B 的邊緣保持平行", () => {
   parallelLines(m325.default, sweep(m325.RANGE[1], 8, m325.RANGE[0]));
 });
 
-test("第 349 種:各臂在中點鉸接、以中介桿相連,尺的兩端及兩側皆保持平行", () => {
-  parallelLines(m349.default, sweep(2.3, 8, 0.9));
-  const poses = sweep(2.3, 4, 0.9).map((h) => m349.default.pose(h).parts.rulerTop.position[0]);
-  assert.ok(poses.every((x) => x === poses[0]), "上尺只上下開合,不左右偏移");
+test("第 325 種:臂 C、C 以樞軸擺動:四個樞軸都有銷穿過臂、插進尺;兩根尺放在紙上", () => {
+  const def = m325.default;
+  for (const a of sweep(m325.RANGE[1], 8, m325.RANGE[0])) {
+    const pose = def.pose(a).parts;
+    for (const arm of ["armL", "armR"]) {
+      assertPinned(def, a, pose[arm].from, [[arm], ["rulerB", 0.04]], `臂 ${arm} 在尺 B 上的樞軸`);
+      assertPinned(def, a, pose[arm].to, [[arm], ["rulerA", 0.04]], `臂 ${arm} 在尺 A 上的樞軸`);
+    }
+  }
+  onPaper(def, ["rulerA", "rulerB"], sweep(m325.RANGE[1], 8, m325.RANGE[0]));
+});
+
+test("第 349 種:各臂在中點鉸接、以中介桿相連,尺的兩端及兩側皆保持平行(這裡演出正對著拉開)", () => {
+  const [lo, hi] = m349.RANGE;
+  parallelLines(m349.default, sweep(hi, 8, lo));
+  const poses = sweep(hi, 4, lo).map((h) => m349.default.pose(h).parts.rulerTop.position[0]);
+  assert.ok(poses.every((x) => x === poses[0]), "正對著拉開時,上尺的兩端始終正對著下尺的兩端");
+});
+
+test("第 349 種:每根臂的兩端與鉸點都有銷:臂端的銷穿過臂、插進尺,鉸點的銷穿過兩根臂、插進中介桿;兩根尺放在紙上", () => {
+  const def = m349.default;
+  const [lo, hi] = m349.RANGE;
+  for (const h of sweep(hi, 6, lo)) {
+    const pose = def.pose(h).parts;
+    for (const i of [0, 1]) {
+      const up = pose[`up${i}`];
+      const down = pose[`down${i}`];
+      assertPinned(def, h, up.from, [[`up${i}`], ["rulerTop", 0.04]], `上尺的樞軸 ${i}`);
+      assertPinned(def, h, up.to, [[`up${i}`], [`down${i}`], ["midBar", 0.04]], `鉸點 ${i}`);
+      assertPinned(def, h, down.to, [[`down${i}`], ["rulerLow", 0.04]], `下尺的樞軸 ${i}`);
+    }
+  }
+  onPaper(def, ["rulerLow", "rulerTop"], sweep(hi, 6, lo));
+});
+
+test("第 349 種:中介桿夾在兩尺之間、和尺同一層,全程不穿進尺;合到最小開度時兩尺的寬段合攏,中介桿的尖端靠進尺內緣的斜階", () => {
+  const def = m349.default;
+  const [lo, hi] = m349.RANGE;
+  for (const h of sweep(hi, 60, lo)) {
+    const pose = def.pose(h).parts;
+    const [m0, m1] = layerOf(def, pose, "midBar");
+    const [bar] = plateAt(def, pose, "midBar");
+    for (const id of ["rulerLow", "rulerTop"]) {
+      const [r0, r1] = layerOf(def, pose, id);
+      assert.ok(Math.min(m1, r1) - Math.max(m0, r0) > 0.05, `中介桿和 ${id} 同一層`);
+      const [ruler] = plateAt(def, pose, id);
+      assert.ok(polyGap(bar.outline, ruler.outline) > 1e-4, `開度 ${h.toFixed(2)}:中介桿不穿進 ${id}`);
+    }
+  }
+  const pose = def.pose(lo).parts;
+  const [low] = plateAt(def, pose, "rulerLow");
+  const [top] = plateAt(def, pose, "rulerTop");
+  const gap = polyGap(low.outline, top.outline);
+  assert.ok(gap > 1e-4 && gap < 0.02, `最小開度:兩尺的寬段合攏(間隙 ${gap.toFixed(3)})`);
+  const [bar] = plateAt(def, pose, "midBar");
+  const tip = bar.outline.reduce((a, b) => (b[0] < a[0] ? b : a));
+  for (const ruler of [low, top]) assert.ok(edgeDistance(tip, ruler.outline) < 0.02, `最小開度:中介桿的尖端靠進斜階(${edgeDistance(tip, ruler.outline).toFixed(3)})`);
 });
 
 /** 汽缸的蒸汽:活塞往哪邊走,就是另一側的蒸汽在推 */
