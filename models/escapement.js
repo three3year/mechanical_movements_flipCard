@@ -1,5 +1,6 @@
 // 擒縱與冠狀棘輪的共用小工具。純函式。sawCrown 是冠狀鋸齒的零件(第 234、237、277 種等);
 // toothedWheel 以下是由接觸算的擒縱:擒縱輪、叉瓦作圖與鉸接零件的逐步模擬(第 288–314 種)。
+// 重力擒縱(第 309–312 種)的叉瓦臂共用 gravityArm(擺返回時臂貼著擺落下),靜擊式的輪用 periodic 的 forward 抹平數值回退。
 // (原本照相位擺放的 escapeStep、escapeRecoil、singleBeat 等,第 234、237、238、402 種改成由接觸算後沒有人用,已刪)
 import { quatFromBasis } from "./kit.js";
 import { shape } from "./shapes.js";
@@ -203,19 +204,52 @@ export function fall(hit, { q, w }, { sign, acc, dt, limit, max }) {
 }
 
 /**
+ * 重力擒縱的叉瓦臂(第 309–312 種)走一步:臂鉸在擺的懸點附近,靠自重往內倒(往 sign 走);擺往外擺時,擺桿推臂上的
+ * 叉爪銷(擺銷),把臂往外推開(往 −sign)。擺返回時臂壓在擺桿上、跟著擺一起落回——原文第 309 種「當擺返回時,
+ * 擒縱叉瓦會隨之落下,並由擒縱叉瓦的重量傳遞衝量」:是臂的重量推著擺走——直到碰到擋銷(limit)、抬升銷或齒,
+ * 臂才和擺分開。沒靠在擺上的臂(被抬升銷放開、從高處落下)照 fall 以 acc 加速落下。
+ * beat(q, rod):臂在 q 時叉爪銷有沒有碰到擺桿 rod;rest(q):臂在 q 時有沒有碰到擺桿以外擋它往內倒的東西(抬升銷、齒;
+ * 擋銷用 limit)。rod、prev:這一步與上一步的擺桿外形(上一步臂貼著擺桿,這一步就跟著它落)。
+ * reach:跟著擺落下時每步最多走多少(要小於叉爪銷整個穿過擺桿的角度,approach 才不會跳過擺桿)。回傳新的 { q, w }。
+ */
+export function gravityArm({ beat, rest = () => false }, { q, w }, { rod, prev, sign, acc, dt, limit, max, reach = 0.01 }) {
+  if (beat(q, rod)) return { q: q - sign * clearance((x) => beat(x, rod), q, -sign, max), w: 0 };
+  const hit = (x) => beat(x, rod) || rest(x);
+  const leaning = beat(q + sign * TOUCH, prev);
+  if (!leaning || hit(q)) return fall(hit, { q, w }, { sign, acc, dt, limit, max });
+  const dist = limit == null ? reach : Math.max(0, Math.min(reach, (limit - q) * sign));
+  const next = approach(hit, q, sign, dist);
+  return { q: next, w: Math.abs(next - q) / dt };
+}
+const TOUCH = 1e-6; // 臂離擺桿在這個角度以內,算靠在擺桿上
+
+const BACKSLIP = 3e-4; // forward 抹平的回退上限(弧度):超過就是真的被推回,不是數值誤差
+
+/**
  * 主動量週期 period 的機構逐步算一張表:step(state, v, dv) 回傳下一步的狀態(數值的物件)。
  * 先空走 warmup 個週期,記下之後的一個週期。
  * snap:{ 量: 齒距 }——會累積的量(輪的轉角):每週期的變化湊成整數個齒距(見 snapPeriod),接在後面的週期上。
+ * forward:{ 量: 方向(±1) }——只往一個方向走的量(靜擊式的輪:擋止 / 鎖面以臂的軸為圓心,鎖住時不回退)。
+ * 逐步模擬裡以折線近似的弧,在臂轉動時會把鎖住的輪推回萬分之幾度,轉向箭頭就跟著反過來;這種回退抹平(停在原處)。
+ * 回退超過 BACKSLIP 表示真的被推回(幾何要調),報錯。
  * 其餘的量(槓桿、臂的角度與速度)每週期回到原值:還沒完全收斂的一點殘差平均分攤到整個週期,不會一週期一週期地漂走。
  * 回傳 { at(v) → 狀態, advance(每週期的變化) }。
  */
-export function periodic({ period, init, step, samples = 720, warmup = 2, snap }) {
+export function periodic({ period, init, step, samples = 720, warmup = 2, snap, forward }) {
   const dv = period / samples;
   let s = { ...init };
   for (let i = 1; i <= warmup * samples; i++) s = step(s, i * dv, dv);
   const keys = Object.keys(s).filter((k) => typeof s[k] === "number");
   const table = [s];
   for (let i = 1; i <= samples; i++) table.push((s = step(s, (warmup * samples + i) * dv, dv)));
+  for (const [key, dir] of Object.entries(forward ?? {})) {
+    for (let i = 1; i <= samples; i++) {
+      const back = (table[i - 1][key] - table[i][key]) * dir;
+      if (back <= 0) continue;
+      if (back > BACKSLIP) throw new Error(`${key} 在第 ${i} 步往回走了 ${back.toExponential(2)},不是數值誤差`);
+      table[i] = { ...table[i], [key]: table[i - 1][key] };
+    }
+  }
   for (const [key, pitch] of Object.entries(snap ?? {})) {
     const column = table.map((row) => row[key] - table[0][key]);
     snapPeriod(column, pitch);

@@ -1118,3 +1118,159 @@ test("第 314 種:槓桿式天文台計時器擒縱:叉瓦只鎖輪,衝量直接
   noPenetration(e, 2000);
   apart(m314.escapement, "fork", "pin");
 });
+
+// ── 第 309、312 種與重力擒縱的共用邏輯(model-audit-fixes-3 票 09)──
+
+/** 兩個多邊形之間的間隙(相碰為 0) */
+const gap309 = (a, b) => (polygonsOverlap(a, b) ? 0 : Math.min(...a.map((p) => edgeDistance(p, b)), ...b.map((p) => edgeDistance(p, a))));
+/** 一塊的深度範圍(零件局部 z 加上零件中心的 z) */
+function depth309(piece, z0 = 0) {
+  const z = z0 + (piece.at?.[2] ?? 0);
+  const along = (piece.axis ?? [0, 0, 1])[2] !== 0;
+  const half = piece.kind === "box" ? piece.size[2] / 2 : piece.kind === "cylinder" ? (along ? piece.length / 2 : piece.radius) : piece.kind === "plate" ? piece.thickness / 2 : piece.radius;
+  return [z - half, z + half];
+}
+const meet309 = (a, b) => a[0] <= b[1] + 1e-9 && b[0] <= a[1] + 1e-9;
+const disc309 = (c, r) => Array.from({ length: 24 }, (_, i) => [c[0] + r * Math.cos((i * Math.PI) / 12), c[1] + r * Math.sin((i * Math.PI) / 12)]);
+
+/**
+ * 重力擒縱的叉瓦臂貼著擺落下:原文第 309 種「當擺返回時,擒縱叉瓦會隨之落下,並由擒縱叉瓦的重量傳遞衝量」
+ * (第 310–312 種同一個原理)。擺從一端擺回中間的那一程,被它推開的那支臂還在往內落的每一刻,臂上的叉爪銷 / 擺銷
+ * 和擺桿的間隙都接近 0——臂壓在擺上一起落回,由重量推著擺;臂先落下、離開擺,就沒有給擺衝量。
+ * lifts(v):[右臂, 左臂] 抬起的角度(正值);e.at(v).rod:擺桿(碰叉爪銷的那一段)的外形,e.at(v).beats:[右臂, 左臂] 的叉爪銷。
+ * 擺在 2·SWING 擺到右端(推開右臂)、4·SWING 擺到左端(推開左臂)。
+ */
+function fallsWithPendulum309(e, swing, lifts, n = 720) {
+  const base = 2 * e.period;
+  for (const [k, from, name] of [[0, 2 * swing, "右臂"], [1, 4 * swing, "左臂"]]) {
+    let falling = 0;
+    let worst = 0;
+    for (let i = 1; i <= n; i++) {
+      const v = base + from + (swing * i) / n;
+      if (lifts(v - swing / n)[k] - lifts(v)[k] <= 1e-7) continue;
+      falling++;
+      const s = e.at(v);
+      worst = Math.max(worst, Math.min(...s.rod.map((r) => gap309(s.beats[k], r))));
+    }
+    assert.ok(falling > n / 20, `擺返回時${name}落下(落下的取樣 ${falling})`);
+    assert.ok(worst < 0.002, `擺返回時${name}貼著擺落下:叉爪銷和擺桿的間隙最大 ${worst.toFixed(4)}`);
+  }
+}
+
+test("第 309 種:擺返回時,叉瓦臂貼著擺落下、由叉瓦的重量給擺衝量(臂不比擺先落下)", () => {
+  fallsWithPendulum309(m309.escapement, m309.SWING, (v) => [m309.mudge(v).right, m309.mudge(v).left]);
+});
+
+test("第 312 種:擺返回時,叉瓦臂貼著擺落下、由重量給擺衝量(臂不比擺先落下)", () => {
+  fallsWithPendulum309(m312.escapement, m312.SWING, (v) => [m312.bloxam(v).right, m312.bloxam(v).left]);
+});
+
+/** 輪只往前轉:鎖住時不回退(靜擊式:擋止 / 鎖面以臂的軸為圓心),轉向箭頭不會反過來 */
+function forwardOnly309(e, dir, n = 2880) {
+  let worst = 0;
+  for (let i = 1; i <= 2 * n; i++) worst = Math.max(worst, -dir * (e.angle((e.period * i) / n) - e.angle((e.period * (i - 1)) / n)));
+  assert.ok(worst <= 1e-12, `輪往回轉了 ${((worst * 180) / Math.PI).toExponential(2)}°`);
+}
+
+test("第 309、312 種:擒縱輪鎖住時不回退(只往前轉,轉向箭頭不反過來)", () => {
+  forwardOnly309(m309.escapement, -1);
+  forwardOnly309(m312.escapement, -1);
+});
+
+test("第 309 種:輪輻照原圖是 X 形的 4 根,伸進輪緣", () => {
+  const wheel = part(m309.default, "wheel");
+  const rim = wheel.pieces[0];
+  const hole = Math.max(...rim.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  const spokes = wheel.pieces.filter((p) => p.kind === "box" && !p.accent);
+  assert.equal(spokes.length * 2, 4, `輪輻 ${spokes.length * 2} 根(每塊貫穿直徑,算兩根)`);
+  close(Math.cos(spokes[0].angle - spokes[1].angle), 0, "兩塊相隔 90°(X 形)", 1e-9);
+  for (const s of spokes) assert.ok(s.size[0] / 2 > hole + 0.01, `輪輻(半長 ${(s.size[0] / 2).toFixed(3)})伸進輪緣(孔半徑 ${hole.toFixed(3)})`);
+});
+
+test("第 309 種:兩臂靠重量往內倒時靠在擋銷上:擋銷在臂的內側、臂落到底時正好貼著,擋銷裝在夾板上", () => {
+  const def = m309.default;
+  const stops = part(def, "armStops").pieces.filter((p) => p.kind === "cylinder");
+  const plate = part(def, "frame").pieces.map((p) => depth309(p));
+  for (const [id, sign] of [["armA", -1], ["armB", 1]]) {
+    const arm = part(def, id);
+    const bar = arm.pieces[0];
+    const at = (a) => placePoly(bar.shape.outline, arm.center, a);
+    const touching = stops.filter((s) => edgeDistance([s.at[0], s.at[1]], at(0)) < s.radius + 0.002 && meet309(depth309(s), depth309(bar)));
+    assert.ok(touching.length > 0, `${id} 落到底(角度 0)時貼著擋銷`);
+    const pin = disc309(touching[0].at, touching[0].radius);
+    assert.ok(polygonsOverlap(pin, at(sign * 0.01)), `${id} 再往內倒就碰到擋銷(擋銷在臂往內倒的那一側)`);
+    assert.ok(!polygonsOverlap(pin, at(-sign * 0.01)), `${id} 抬起時離開擋銷`);
+    assert.ok(plate.some((d) => meet309(d, depth309(touching[0]))), "擋銷往後伸到夾板");
+  }
+});
+
+test("第 309 種:擺的懸點掛在夾板頂端的懸掛座上", () => {
+  const def = m309.default;
+  const pend = part(def, "pendulum");
+  const pivot = pend.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9);
+  const seat = part(def, "frame").pieces.filter((p) => cover299(p).has(pend.center[0], pend.center[1]) && meet309(depth309(p), depth309(pivot, pend.center[2])));
+  assert.ok(seat.length > 0, "擺的懸點圓柱插進機架的懸掛座");
+});
+
+/** 擺錘(推斷):擺最低的一塊在輪的下緣下方、夠大,看得出是擺 */
+function bob309(def, wheelBottom) {
+  const pend = part(def, "pendulum");
+  const lowest = pend.pieces.reduce((m, p) => (p.at[1] < m.at[1] ? p : m));
+  assert.ok(pend.center[1] + lowest.at[1] < wheelBottom, `擺錘(y ${(pend.center[1] + lowest.at[1]).toFixed(2)})在輪的下緣(y ${wheelBottom.toFixed(2)})下方`);
+  assert.ok(lowest.kind === "cylinder" && lowest.radius >= 0.25, "擺錘是個看得出來的圓盤");
+}
+
+test("第 309、312 種:補上擺錘(推斷),擺錘在輪的下方", () => {
+  bob309(m309.default, -0.2 - 1.55);
+  bob309(m312.default, -0.75 - 1.58);
+});
+
+test("第 309 種:推斷的重錘驅動——擒縱輪軸上的鼓放出繩、經滑輪吊著重錘,重錘的拉力讓輪順時針轉", () => {
+  const { DRUM, REWIND } = m309.geometry;
+  assertWeightDrive(m309.default, { drum: DRUM, wheel: m309.escapement.angle, period: m309.escapement.period, every: REWIND, dir: -1 });
+});
+
+test("第 312 種:推斷的重錘驅動——擒縱輪軸上的鼓放出繩、經滑輪吊著重錘,重錘的拉力讓輪順時針轉", () => {
+  const { DRUM, REWIND } = m312.geometry;
+  assertWeightDrive(m312.default, { drum: DRUM, wheel: m312.escapement.angle, period: m312.escapement.period, every: REWIND, dir: -1 });
+});
+
+/** 從正面看,polys(v)(世界 xy)被擺在 zFront 之前的塊蓋住的比例,取兩個來回裡的最大值 */
+function hiddenByPendulum309(def, e, polys, zFront) {
+  const pend = part(def, "pendulum");
+  let worst = 0;
+  for (const v of sweep(2 * e.period, 32)) {
+    const covers = pend.pieces.map((p) => cover299(p, pend.center, def.pose(v).parts.pendulum.angle));
+    for (const poly of polys(v)) worst = Math.max(worst, hiddenShare299(poly, zFront, covers));
+  }
+  return worst;
+}
+
+test("第 309 種:擺桿不蓋住輪心(擺在輪與夾板的後面,只有夾在叉爪銷 P、Q 之間的一段伸到前面)", () => {
+  const W = part(m309.default, "wheel").center;
+  const share = hiddenByPendulum309(m309.default, m309.escapement, () => [disc309(W, 0.3)], 0);
+  assert.equal(share, 0, `輪心被擺蓋住 ${(share * 100).toFixed(0)}%`);
+});
+
+test("第 312 種:擺桿不蓋住小輪與兩個叉瓦(看得到小輪把叉瓦抬起)", () => {
+  const W = part(m312.default, "wheel").center;
+  const faces = (v) => m312.escapement.at(v).stops.slice(2);
+  const share = hiddenByPendulum309(m312.default, m312.escapement, (v) => [disc309(W, 0.34), ...faces(v)], 0.1);
+  assert.equal(share, 0, `小輪與叉瓦被擺蓋住 ${(share * 100).toFixed(0)}%`);
+});
+
+test("第 312 種:小輪裝在輪軸上;叉爪銷 E、F 照原圖在輪轂兩旁(E 在左臂繞到輪轂下方的彎帶上、F 在右臂往內的分支上),夾住擺", () => {
+  const def = m312.default;
+  const wheel = part(def, "wheel");
+  const small = wheel.pieces.find((p) => p.kind === "plate" && !p.shape.holes?.length && Math.max(...p.shape.outline.map(([x, y]) => Math.hypot(x, y))) > 0.3 && Math.max(...p.shape.outline.map(([x, y]) => Math.hypot(x, y))) < 0.5);
+  const axle = wheel.pieces.filter((p) => p.kind === "cylinder" && Math.hypot(p.at?.[0] ?? 0, p.at?.[1] ?? 0) < 1e-9);
+  const rim = depth309(wheel.pieces[0]);
+  assert.ok(axle.some((a) => meet309(depth309(a), rim) && meet309(depth309(a), depth309(small))), "輪軸(輪轂)從大輪一路接到小輪");
+  const W = wheel.center;
+  const s = m312.escapement.at(2 * m312.escapement.period + 3 * m312.SWING); // 擺在正中
+  const [F, E] = s.beats.map((b) => [b.reduce((t, p) => t + p[0], 0) / b.length, b.reduce((t, p) => t + p[1], 0) / b.length]);
+  for (const [name, p] of [["E", E], ["F", F]]) assert.ok(Math.hypot(p[0] - W[0], p[1] - W[1]) < 0.6 * 1.58, `${name} 在輪轂旁(離輪心 ${Math.hypot(p[0] - W[0], p[1] - W[1]).toFixed(2)})`);
+  assert.ok(E[0] < W[0] && E[1] < W[1], "E 在輪轂的左下方");
+  assert.ok(F[0] > W[0] && F[1] > E[1], "F 在輪轂的右邊、比 E 高");
+  for (const b of s.beats) assert.ok(Math.min(...s.rod.map((r) => gap309(b, r))) < 0.1, "E、F 夾著擺(擺在正中時離擺桿不遠)");
+});
