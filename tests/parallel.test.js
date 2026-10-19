@@ -16,7 +16,7 @@ import * as m328 from "../models/fig328.js";
 import * as m329 from "../models/fig329.js";
 import * as m330 from "../models/fig330.js";
 import * as m331 from "../models/fig331.js";
-import { dist, add, scale, sub, dot, deg, rot2, quatRotate, partPoint, signedAngle } from "../models/kit.js";
+import { dist, add, scale, sub, dot, deg, rot2, quatRotate, partPoint, signedAngle, norm } from "../models/kit.js";
 import * as m332 from "../models/fig332.js";
 import * as m333 from "../models/fig333.js";
 import * as m334 from "../models/fig334.js";
@@ -627,12 +627,67 @@ test("第 329 種:機架照原圖是兩支斜腳,下端站在底座上,上端接
   }
 });
 
-test("第 330 種:延長的活塞桿在與汽缸同中心線的導引件 A 中作動,叉形連桿帶動曲柄", () => {
-  for (const p of sweep(1, 24)) {
-    const e = m330.engine(p);
-    close(dist(e.pin, [0, e.head, 0]), 2.9, "連桿長度不變", 1e-9);
+test("第 330 種:延長的活塞桿在與汽缸同中心線的導引件 A 中作動", () => {
+  const def = m330.default;
+  const cyl = part(def, "cylinder");
+  const { GUIDE, ROD_TOP } = m330;
+  close(GUIDE.x, cyl.center[0], "導引件 A 與汽缸同中心線(x)");
+  close(GUIDE.z, cyl.center[2], "導引件 A 與汽缸同中心線(z)");
+  for (const p of sweep(1, 48)) {
+    const { pistonRod, piston } = def.pose(p).parts;
+    for (const k of [0, 2]) {
+      close(pistonRod.position[k], cyl.center[k], `進程 ${p}:活塞桿在汽缸中心線上`);
+      close(piston.position[k], cyl.center[k], `進程 ${p}:活塞在汽缸中心線上`);
+    }
+    // 延長的活塞桿頂端全程插在導引件 A 裡(至少插進導引件長度的八成),下面的十字頭全程在導引件下方
+    const top = pistonRod.position[1] + ROD_TOP;
+    assert.ok(Math.min(top, GUIDE.y1) - GUIDE.y0 >= 0.8 * (GUIDE.y1 - GUIDE.y0), `進程 ${p}:活塞桿插在導引件 A 裡(桿頂 ${top})`);
+    assert.ok(pistonRod.position[1] < GUIDE.y0, `進程 ${p}:十字頭在導引件下方`);
   }
-  steamPushes(m330.default, sweep(1, 12));
+  steamPushes(def, sweep(1, 12));
+});
+
+test("第 330 種:連桿的下部做成叉形,活塞桿的上部從兩股中間穿過,兩股下端共用一根十字頭銷;曲柄軸橫在紙面上、曲柄前後轉", () => {
+  const def = m330.default;
+  const rod = part(def, "conrod");
+  const { ROD, FORK, ROD_TOP, ROD_R, R } = m330;
+  const zs = [];
+  for (const p of sweep(1, 48)) {
+    const e = m330.engine(p);
+    const { conrod, pistonRod } = def.pose(p).parts;
+    const at = (local) => partPoint(conrod.position, rod.axis, conrod.angle, local);
+    close(e.pin[0], 0, `進程 ${p}:曲柄銷只在垂直紙面的平面裡走(原圖曲柄軸橫在紙面上)`);
+    zs.push(e.pin[2]);
+    close(dist(at([0, 0, 0]), e.pin), 0, `進程 ${p}:連桿上端套在曲柄銷上`, 1e-9);
+    close(dist(e.pin, pistonRod.position), ROD, `進程 ${p}:曲柄銷到十字頭銷的距離(連桿長)不變`, 1e-9);
+    for (const s of [-1, 1]) {
+      const end = at([ROD, 0, s * FORK.half]);
+      close(end[0], s * FORK.half, `進程 ${p}:叉股下端在活塞桿${s < 0 ? "左" : "右"}側`, 1e-9);
+      close(end[1], pistonRod.position[1], `進程 ${p}:叉股下端在十字頭銷上(高度)`, 1e-9);
+      close(end[2], pistonRod.position[2], `進程 ${p}:叉股下端在十字頭銷上(深度)`, 1e-9);
+    }
+    // 活塞桿的上部在叉的環裡:左右在兩股之間,桿頂在拱頂下方
+    const top = [pistonRod.position[0], pistonRod.position[1] + ROD_TOP, pistonRod.position[2]];
+    const along = dot(sub(top, at([0, 0, 0])), norm(sub(at([1, 0, 0]), at([0, 0, 0]))));
+    assert.ok(along > ROD - FORK.inner + 0.03, `進程 ${p}:桿頂在叉的拱頂下方(離拱頂 ${along - (ROD - FORK.inner)})`);
+    assert.ok(Math.abs(top[0]) + ROD_R < FORK.half - FORK.prong / 2, `進程 ${p}:活塞桿在兩股之間`);
+  }
+  close(Math.max(...zs) - Math.min(...zs), 2 * R, "曲柄銷前後走滿曲柄直徑", 1e-3);
+});
+
+test("第 330 種:導引件 A 的橫臂從右股前面跨過、接到立柱,全程不碰叉股", () => {
+  const { ARM, FORK } = m330;
+  for (const p of sweep(1, 96)) {
+    const e = m330.engine(p);
+    const tilt = Math.atan2(Math.abs(e.pin[2]), e.pin[1] - e.head);
+    for (let i = 0; i <= 10; i++) {
+      const y = ARM.y0 + ((ARM.y1 - ARM.y0) * i) / 10;
+      const t = (y - e.head) / (e.pin[1] - e.head); // 沿連桿從十字頭量起的比例
+      const front = Math.abs(e.pin[2]) * t + FORK.depth / 2 / Math.cos(tilt);
+      assert.ok(front < ARM.z0, `進程 ${p}、高度 ${y.toFixed(2)}:叉股前緣 ${front.toFixed(3)} 在橫臂背面 ${ARM.z0} 之後`);
+    }
+  }
+  assert.ok(ARM.x0 < FORK.half - FORK.prong / 2 && ARM.x1 > FORK.half + FORK.prong / 2, "橫臂跨過右股");
 });
 
 test("第 331 種:曲柄銷軸頸 B 在開槽十字頭 A 內作動,十字頭在導件 D、D 之間直線往復", () => {
