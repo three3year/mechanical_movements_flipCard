@@ -64,8 +64,8 @@ export function parsons(v) {
 }
 export const geometry = { RP, C, HALF, LEN, TIP };
 
-// 跑道形(逆時針):直線段長 LEN、兩端半圓半徑 r
-function stadium(r, n = 48) {
+// 跑道形(逆時針):直線段長 LEN、兩端半圓半徑 r(框的外緣與兩道溝壁)
+function racetrack(r, n = 48) {
   const pts = [];
   for (let i = 0; i <= n; i++) { const a = -Math.PI / 2 + (Math.PI * i) / n; pts.push([LEN / 2 + r * Math.cos(a), r * Math.sin(a)]); }
   for (let i = 0; i <= n; i++) { const a = Math.PI / 2 + (Math.PI * i) / n; pts.push([-LEN / 2 + r * Math.cos(a), r * Math.sin(a)]); }
@@ -73,7 +73,7 @@ function stadium(r, n = 48) {
 }
 
 // 框板內緣的齒廓(逆時針):沿節線(離中線 HALF 的跑道)每隔一個齒距一齒,齒朝內;齒形和 shapes.js 的齒條、內齒輪一樣
-// (節線上齒厚 0.42 齒距、齒側斜 14°、齒冠 1 模數、齒根 1.2 模數)。σ 從左下角沿下排往右量。
+// (節線上齒厚 0.42 齒距、齒側斜 14°、齒根 1.2 模數;齒冠見 toothedLoop)。σ 從左下角沿下排往右量。
 function pitchPoint(sigma, w) {
   const s = ((sigma % (2 * LEN + 2 * Math.PI * HALF)) + 2 * LEN + 2 * Math.PI * HALF) % (2 * LEN + 2 * Math.PI * HALF);
   const arc = Math.PI * HALF;
@@ -88,7 +88,9 @@ function toothedLoop() {
   const n = Math.round((2 * LEN + 2 * Math.PI * HALF) / PITCH); // 38 齒
   const flank = Math.tan((14 * Math.PI) / 180);
   const halfAt = (w) => Math.max(0.05 * MOD, (0.42 * PITCH) / 2 - w * flank); // w:從節線往齒頂(朝內)
-  const [tip, root] = [MOD, -1.2 * MOD];
+  // 齒冠只有 0.75 模數(短齒):小齒輪只有 10 齒,框的齒冠做滿 1 模數時,直線段咬合進出那一下齒尖會擦進小齒輪的齒根約 0.008
+  // (齒側是直線,和小齒輪不共軛);齒冠降到 0.75 模數就不擦,咬合時兩者的齒側仍只差約 0.008
+  const [tip, root] = [0.75 * MOD, -1.2 * MOD];
   const pts = [];
   for (let k = 0; k < n; k++) {
     const c = (k + 0.5) * PITCH;
@@ -99,7 +101,7 @@ function toothedLoop() {
   }
   return pts;
 }
-const OUTER = stadium(BAND);
+const OUTER = racetrack(BAND);
 const ROD_X = LEN / 2 + BAND;
 
 export default {
@@ -116,7 +118,7 @@ export default {
         // 側邊的兩道溝:齒板後面兩層台階,內緣是兩個凸緣各自走的溝壁(凸緣最外的一點一直貼著它)
         ...FLANGES.map((f) => ({
           kind: "plate",
-          shape: shape(OUTER, [stadium(C + f.radius + CLEAR).reverse()]),
+          shape: shape(OUTER, [racetrack(C + f.radius + CLEAR).reverse()]),
           thickness: f.layer[1] - f.layer[0],
           at: [0, 0, (f.layer[0] + f.layer[1]) / 2],
         })),
