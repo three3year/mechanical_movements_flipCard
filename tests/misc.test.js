@@ -1621,6 +1621,71 @@ test("第 384 種:螺旋線描繪儀:小輪繞中心滾動,同時沿螺紋移動
   close(Math.log(h.d / m384.helicograph(0).d), m384.K, "每轉一弧度,距離按固定比例增加", 1e-12);
 });
 
+test("第 384 種:小輪在紙上純滾動——接觸紙面的那一點沿滾動方向(垂直於臂)的速度約為 0(不是往反方向刷過紙面)", () => {
+  const def = m384.default;
+  const paper = part(def, "paper");
+  const top = paper.center[1] + paper.size[1] / 2;
+  const conj = ([x, y, z, w]) => [-x, -y, -z, w];
+  for (const psi of [1, 5, 10]) {
+    const e = 1e-5;
+    const a = def.pose(psi).parts.wheel;
+    const b = def.pose(psi + e).parts.wheel;
+    const down = [0, top - a.position[1], 0]; // 輪心到紙面的接觸點
+    const local = quatRotate(conj(a.rotation), down);
+    const pa = add(a.position, down);
+    const pb = add(b.position, quatRotate(b.rotation, local));
+    // 滾動方向:臂繞中心轉時輪心走的切線方向(小輪同時沿臂往外移,那是沿輪軸的側滑,不是滾動)
+    const tangent = [-Math.sin(psi), 0, -Math.cos(psi)];
+    const v = dot(sub(pb, pa), tangent) / e;
+    const vc = dot(sub(b.position, a.position), tangent) / e;
+    assert.ok(Math.abs(v) < 0.01 * vc, `ψ = ${psi}:接觸點沿滾動方向的速度 ${v.toFixed(3)} 應約為 0(輪心 ${vc.toFixed(3)})`);
+  }
+});
+
+test("第 384 種:小輪旋在螺紋軸上——沿軸前進的量 = 相對軸的自轉 × 螺距 / 2π,方向照螺紋的旋向", () => {
+  const worm = part(m384.default, "arm").pieces.find((q) => q.kind === "worm");
+  const hand = worm.hand ?? 1;
+  for (const [a, b] of [[0, 1], [3, 9], [9, 15]]) {
+    const h0 = m384.helicograph(a);
+    const h1 = m384.helicograph(b);
+    close(h1.d - h0.d, (hand * worm.pitch * (h1.spin - h0.spin)) / TAU, `ψ ${a} → ${b}:前進量對得上螺紋`, 1e-9);
+  }
+});
+
+test("第 384 種:中心尖插進紙裡、頂上有握柄,固定不動;臂端的扁環套在尖上繞著轉", () => {
+  const def = m384.default;
+  const paper = part(def, "paper");
+  const top = paper.center[1] + paper.size[1] / 2;
+  const bottom = paper.center[1] - paper.size[1] / 2;
+  const center = part(def, "center");
+  assert.ok(center, "中心尖是一個零件");
+  assert.ok(!def.pose(3).parts.center, "中心尖固定不動");
+  const y0 = center.center?.[1] ?? 0;
+  const prof = center.profile.map(([r, y]) => [r, y + y0]);
+  const tip = Math.min(...prof.map(([, y]) => y));
+  assert.ok(tip < top && tip > bottom, `尖端插進紙裡(尖端 ${tip.toFixed(3)}、紙面 ${top.toFixed(3)})`);
+  // 中心尖在高度 y 的半徑(取通過那個高度的各段之中最大的)
+  const rAt = (y) => Math.max(0, ...prof.slice(1).flatMap(([r1, y1], i) => {
+    const [r0, yy0] = prof[i];
+    if ((y - yy0) * (y - y1) > 0 || yy0 === y1) return [];
+    return [r0 + ((r1 - r0) * (y - yy0)) / (y1 - yy0)];
+  }));
+  const arm = part(def, "arm");
+  const ring = arm.pieces.find((q) => q.role === "ring");
+  assert.ok(ring, "臂端有扁環");
+  // 臂的局部 z 是世界的 Y(繞中心尖轉的軸)
+  assert.deepEqual([ring.at?.[0] ?? 0, ring.at?.[1] ?? 0], [0, 0], "扁環和臂的轉軸同軸");
+  const ry = arm.center[1] + (ring.at?.[2] ?? 0);
+  const [r0, r1] = [ry - ring.length / 2, ry + ring.length / 2];
+  for (const y of [r0 + 0.005, ry, r1 - 0.005]) {
+    const fit = ring.inner - rAt(y);
+    assert.ok(fit >= -1e-9 && fit <= 0.01, `扁環的孔套著中心尖(高度 ${y.toFixed(2)}:孔 ${ring.inner}、尖 ${rAt(y).toFixed(3)})`);
+  }
+  assert.ok(rAt(r0 - 0.01) > ring.inner, "扁環下面有凸緣托著");
+  const knob = Math.max(...prof.filter(([, y]) => y > r1 + 0.05).map(([r]) => r));
+  assert.ok(knob > 2 * ring.inner, "扁環上方有比尖粗的握柄");
+});
+
 test("第 371 種:兩面有齒的曼格輪:小齒輪均勻旋轉,輪交替地往兩個方向轉,換向時小齒輪穿過開口到另一面", () => {
   const ws = sweep(4 * Math.PI * 60 / 8, 800).map((t) => m371.mangle(t));
   const dirs = ws.slice(1).map((w, i) => Math.sign(w.wheel - ws[i].wheel)).filter(Boolean);
@@ -2479,10 +2544,89 @@ test("第 379、380 種:曲柄臂貼著心軸頂,握把直立在臂的外端上;
   assert.ok(hub.hi[2] > worm.lo[2] && hub.lo[2] < worm.lo[2], "T 形手柄的轂套著螺桿下端");
 });
 
-test("第 381 種:Bowery 式夾具:楔塊順著燕尾形夾頰往裡推,內側夾緊木料", () => {
-  const [lo, hi] = m381.RANGE;
-  assert.ok(m381.clampGap(hi).inner < m381.clampGap(lo).inner, "推進時兩楔塊靠攏");
-  close(m381.clampGap(hi).inner, 0.34, "推到底時夾緊木料", 1e-9);
+// 第 381 種:世界座標的點 p 在零件 id 的實體裡(方塊與板件;板件可帶 rotation)
+function inPart381(def, pose, id, p) {
+  const q = part(def, id);
+  const origin = pose.parts[id]?.position ?? q.center ?? [0, 0, 0];
+  const solids = [...(q.kind === "group" ? [] : [{ ...q, at: [0, 0, 0] }]), ...(q.pieces ?? [])];
+  return solids.some((s) => {
+    const d = sub(p, add(origin, s.at ?? [0, 0, 0]));
+    const r = s.rotation;
+    const [x, y, z] = r ? quatRotate([-r[0], -r[1], -r[2], r[3]], d) : d;
+    if (s.kind === "box") return Math.abs(x) <= s.size[0] / 2 && Math.abs(y) <= s.size[1] / 2 && Math.abs(z) <= s.size[2] / 2;
+    if (s.kind === "plate") return Math.abs(z) <= (s.thickness ?? 0.2) / 2 && inSolid([x, y], s.shape);
+    return false;
+  });
+}
+
+// 第 381 種:床台面與夾頰頂的高度
+function levels381(def) {
+  const bed = part(def, "bed");
+  const base = bed.pieces.find((q) => q.role === "bed");
+  const jaw = bed.pieces.find((q) => q.role === "jaw");
+  assert.ok(base && jaw, "床台與夾頰標了 role");
+  return { bedTop: pieceBox(base).hi[2], jawTop: pieceBox(jaw).hi[2] };
+}
+
+test("第 381 種:木料立著刨邊——立在床台上、比夾頰高出好幾倍,高度大於厚度(原圖的橫截面)", () => {
+  const def = m381.default;
+  const { bedTop, jawTop } = levels381(def);
+  const board = part(def, "board");
+  const b = pieceBox({ ...board, at: board.center });
+  close(b.lo[2], bedTop, "木料立在床台上", 1e-9);
+  assert.ok(b.hi[2] - bedTop > 3 * (jawTop - bedTop), `木料高出夾頰好幾倍(木料 ${(b.hi[2] - bedTop).toFixed(2)}、夾頰 ${(jawTop - bedTop).toFixed(2)})`);
+  assert.ok(b.hi[2] - b.lo[2] > 2 * (b.hi[1] - b.lo[1]), "木料立著:高度大於厚度");
+});
+
+test("第 381 種:夾頰從上緣燕尾狀地向內收,容納兩個楔塊——楔塊下緣伸到夾頰上緣底下,斜面貼著斜面,全程不穿入", () => {
+  const def = m381.default;
+  const { bedTop, jawTop } = levels381(def);
+  for (const d of sweep(m381.RANGE[1], 4, m381.RANGE[0])) {
+    const pose = def.pose(d);
+    const x = m381.clampGap(d).xr - 0.5; // 楔塊的中段
+    for (const [id, s] of [["wedgeUp", 1], ["wedgeDown", -1]]) {
+      // 這個高度上,楔塊外緣與夾頰內緣離中線的距離
+      const edge = (z) => {
+        let yw = null;
+        let yj = null;
+        for (let y = 0; y <= 1.2; y += 0.002) {
+          const p = [x, s * y, z];
+          const w = inPart381(def, pose, id, p);
+          const j = inPart381(def, pose, "bed", p);
+          assert.ok(!(w && j), `推進 ${d.toFixed(2)}:${id} 穿進夾頰(z ${z.toFixed(2)}、y ${y.toFixed(3)})`);
+          if (w) yw = y;
+          if (j && yj === null && yw !== null) yj = y;
+        }
+        assert.ok(yw !== null && yj !== null, `推進 ${d.toFixed(2)}:${id} 在 z ${z.toFixed(2)} 夾在夾頰裡`);
+        return { yw, yj };
+      };
+      const low = edge(bedTop + 0.01);
+      const high = edge(jawTop - 0.01);
+      assert.ok(low.yw > high.yj + 0.02, `推進 ${d.toFixed(2)}:${id} 的下緣伸到夾頰上緣的底下(燕尾;下緣 ${low.yw.toFixed(3)}、上緣 ${high.yj.toFixed(3)})`);
+      for (const e of [low, high]) assert.ok(e.yj - e.yw < 0.006, `推進 ${d.toFixed(2)}:${id} 的斜面貼著夾頰(間隙 ${(e.yj - e.yw).toFixed(3)})`);
+    }
+  }
+});
+
+test("第 381 種:把楔塊順著夾頰往裡推,兩個楔塊的內側從兩邊夾緊立著的木料", () => {
+  const def = m381.default;
+  const { bedTop } = levels381(def);
+  const board = part(def, "board");
+  const half = board.size[1] / 2;
+  const z = bedTop + 0.1;
+  const gapAt = (d, id, s) => {
+    const pose = def.pose(d);
+    const x = m381.clampGap(d).xr - 0.5;
+    assert.ok(!inPart381(def, pose, id, [x, s * (half - 0.002), z]), `推進 ${d.toFixed(2)}:${id} 沒有壓進木料`);
+    let y = half;
+    while (!inPart381(def, pose, id, [x, s * y, z]) && y < 2) y += 0.001;
+    return y - half;
+  };
+  assert.ok(m381.clampGap(m381.RANGE[1]).inner < m381.clampGap(m381.RANGE[0]).inner, "推進時兩楔塊靠攏");
+  for (const [id, s] of [["wedgeUp", 1], ["wedgeDown", -1]]) {
+    assert.ok(gapAt(m381.RANGE[0], id, s) > 0.1, `推進前 ${id} 離木料還有一段`);
+    assert.ok(gapAt(m381.RANGE[1], id, s) < 0.003, `推到底時 ${id} 的內側貼著木料`);
+  }
 });
 
 test("第 382 種:鏡子支架:玻璃可抬高或降下、左右轉動,並改變傾斜角度", () => {
@@ -2491,7 +2635,65 @@ test("第 382 種:鏡子支架:玻璃可抬高或降下、左右轉動,並改變
   const high = def.pose(0, "high").parts;
   assert.ok(high.mirror.position[1] > low.mirror.position[1], "抬升");
   assert.notDeepEqual(def.pose(0, "turned").parts.mirror.rotation, high.mirror.rotation, "左右轉動");
-  assert.notDeepEqual(def.pose(0.3, "high").parts.mirror.rotation, high.mirror.rotation, "改變傾角");
+  assert.notDeepEqual(def.pose(-0.3, "high").parts.mirror.rotation, high.mirror.rotation, "改變傾角");
+});
+
+// 第 382 種:零件的一塊換到世界座標(零件不轉時)
+const at382 = (q, origin) => ({ ...q, at: add(origin, q.at ?? [0, 0, 0]) });
+
+test("第 382 種:玻璃以鉸鏈接在支柱上——鉸鏈裝在鏡背中央的直條上,鏡子中心約在鉸鏈的高度;從鏡背斜看(原圖)", () => {
+  const def = m382.default;
+  const mirror = part(def, "mirror");
+  const stem = part(def, "stem");
+  const glass = mirror.pieces.find((q) => q.role === "glass");
+  const strap = mirror.pieces.find((q) => q.role === "strap");
+  assert.ok(glass && strap, "鏡子有玻璃與鏡背的直條");
+  // 鏡子的局部原點就是鉸鏈軸
+  const g = pieceBox(glass);
+  assert.ok(Math.abs((g.lo[1] + g.hi[1]) / 2) < 0.1, `鏡子中心在鉸鏈的高度(差 ${((g.lo[1] + g.hi[1]) / 2).toFixed(2)})`);
+  assert.ok(g.lo[2] > 0 && g.lo[2] < 0.35, `鉸鏈緊貼在鏡背(鏡背離鉸鏈軸 ${g.lo[2].toFixed(2)})`);
+  const s = pieceBox(strap);
+  assert.ok(Math.abs(s.lo[0] + s.hi[0]) < 1e-9 && s.hi[1] - s.lo[1] > 0.9 * (g.hi[1] - g.lo[1]), "直條在鏡背中央、由上到下");
+  assert.ok(s.lo[2] < g.lo[2] && s.hi[2] <= g.lo[2] + 0.06, "直條在玻璃的背面");
+  const pose = def.pose(0, "high").parts;
+  const pin = stem.pieces.find((q) => q.role === "hingePin");
+  const knuckles = mirror.pieces.filter((q) => q.role === "knuckle");
+  assertShaftInBearings(at382(pin, pose.stem.position), knuckles.map((q) => at382(q, pose.mirror.position)), "鉸鏈銷");
+  assertOnePiece(mirror, "鏡框、玻璃、直條與鉸鏈筒連成一件");
+  assertOnePiece(stem, "支柱、鉸鏈座與鉸鏈銷連成一件");
+  assert.ok(def.view.direction[2] < 0, "預設視角從鏡背看(原圖從背面畫,鉸鏈與固定螺絲是重點)");
+});
+
+test("第 382 種:在鉸鏈處施加固定螺絲將其鎖緊——螺絲和鉸鏈銷同軸,頭頂著鉸鏈筒的端面", () => {
+  const def = m382.default;
+  const stem = part(def, "stem");
+  const pin = stem.pieces.find((q) => q.role === "hingePin");
+  const screw = stem.pieces.find((q) => q.role === "hingeScrew");
+  assert.ok(pin && screw, "鉸鏈處有固定螺絲");
+  assert.deepEqual(screw.axis, pin.axis, "螺絲和鉸鏈銷同軸");
+  close(screw.at[1], pin.at[1], "螺絲和鉸鏈銷同高");
+  close(screw.at[2], pin.at[2], "螺絲和鉸鏈銷同深");
+  const pose = def.pose(0, "high").parts;
+  const head = pieceBox(screw, pose.stem.position);
+  const ends = part(def, "mirror").pieces.filter((q) => q.role === "knuckle").map((q) => pieceBox(q, pose.mirror.position));
+  assert.ok(ends.some((k) => Math.abs(head.lo[0] - k.hi[0]) < 1e-6 || Math.abs(head.hi[0] - k.lo[0]) < 1e-6), "螺絲頭頂著鉸鏈筒的端面");
+});
+
+test("第 382 種:改變傾斜角度——上緣往後仰可調 30°;往前傾時鏡框下緣碰到支柱就停(範圍的上限)", () => {
+  const def = m382.default;
+  const [lo, hi] = m382.RANGE;
+  assert.ok(lo <= deg(-29.9), "上緣往後仰到 30°");
+  const rod = part(def, "stem").pieces.find((q) => q.role === "rod");
+  assert.ok(rod, "支柱");
+  // 鏡子下半部、橫過支柱(x = 0)的各塊外框角點:繞鉸鏈轉 t 後離支柱軸線(深度 0)的距離
+  const corners = part(def, "mirror")
+    .pieces.map((q) => pieceBox(q))
+    .filter((b) => b.lo[0] <= 0 && 0 <= b.hi[0] && b.lo[1] < -0.3)
+    .flatMap((b) => [b.lo[1], b.hi[1]].flatMap((y) => [b.lo[2], b.hi[2]].map((z) => [y, z])))
+    .filter(([y]) => y < -0.3);
+  const clearance = (t) => Math.min(...corners.map(([y, z]) => y * Math.sin(t) + z * Math.cos(t))) - rod.radius;
+  assert.ok(clearance(hi) >= 0, `傾到上限時下緣還沒碰到支柱(間隙 ${clearance(hi).toFixed(3)})`);
+  assert.ok(clearance(hi + deg(5)) < 0, "再往前傾 5° 下緣就碰到支柱");
 });
 
 test("第 383 種:布從一個滾筒繞到另一個,中間的圓筒(刷子)處理布面", () => {
@@ -2501,12 +2703,90 @@ test("第 383 種:布從一個滾筒繞到另一個,中間的圓筒(刷子)處�
   close(Math.abs(c.mid) * 1.0, m383.BRUSH * c.travel, "中間圓筒的表面比布快");
 });
 
+test("第 383 種:布照原圖 S 形繞過圓筒的左半邊(包角大於 90°),從上滾筒的右側放出、捲到下滾筒的右側,布面貼著三個輪", () => {
+  const def = m383.default;
+  const { TOP, MID, LOW } = m383.ROLLS;
+  const cloth = part(def, "cloth");
+  assert.ok(cloth.kind === "belt" && cloth.width != null, "布畫成有寬度的布面(扁帶)");
+  const roller = part(def, "topRoller").pieces.find((q) => q.role === "roll");
+  close(cloth.width, roller.length, "布寬等於滾筒長");
+  const lift = (cloth.thickness ?? 0.08) / 2;
+  const pts = def.pose(0).paths.cloth.points;
+  const r = (c, p) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1]);
+  close(r(TOP, pts[0]), TOP.r + lift, "布從上滾筒的面上放出", 1e-6);
+  close(r(LOW, pts.at(-1)), LOW.r + lift, "布捲到下滾筒的面上", 1e-6);
+  assert.ok(pts[0][0] > 0 && pts.at(-1)[0] > 0, "上下兩端都在滾筒的右側");
+  const ds = pts.map((p) => r(MID, p));
+  close(Math.min(...ds), MID.r + lift, "布面貼著圓筒", 1e-6);
+  const angles = pts.filter((p, i) => ds[i] < MID.r + lift + 1e-6).map((p) => Math.atan2(p[1] - MID.center[1], p[0] - MID.center[0]));
+  const a = angles.map((t) => (t < 0 ? t + TAU : t));
+  const wrap = Math.max(...a) - Math.min(...a);
+  assert.ok(wrap > Math.PI / 2, `布在圓筒上的包角大於 90°(${((wrap * 180) / Math.PI).toFixed(0)}°)`);
+  assert.ok(Math.min(...a) > Math.PI / 2 && Math.max(...a) < (3 * Math.PI) / 2, "包在圓筒的左半邊");
+});
+
 test("第 385 種:俄羅斯關門裝置:開門時兩銷靠近、重物被抬起;重物下壓肘節,把兩銷撐開而關門", () => {
   const [closed, open] = m385.RANGE;
   assert.ok(m385.toggle(open).joint[1] > m385.toggle(closed).joint[1], "開門時重物被抬起");
   for (const x of sweep(open, 8, closed)) {
     const t = m385.toggle(x);
     close(Math.hypot(t.joint[0] - t.x, t.joint[1] + 0.4), 2.2, "桿長不變", 1e-9);
+  }
+});
+
+test("第 385 種:重物以 S 形掛鉤掛在肘節接頭的銷上——銷穿過兩根桿的接頭往前伸出,掛鉤的上彎從上面勾住伸出的那段,全程貼著銷", () => {
+  const def = m385.default;
+  const pin = part(def, "barR").pieces?.find((q) => q.role === "jointPin");
+  const hook = part(def, "weight").pieces?.find((q) => q.role === "hook");
+  assert.ok(pin && hook, "接頭有銷、重物頂上有掛鉤");
+  for (const x of sweep(m385.RANGE[1], 8, m385.RANGE[0])) {
+    const p = def.pose(x).parts;
+    close(dist(p.barL.to, p.barR.to), 0, "兩根桿在接頭相接", 1e-9);
+    close(pin.at[0], dist(p.barR.from, p.barR.to), "銷在桿端的接頭上", 1e-9);
+    const j = p.barR.to;
+    const w = p.weight.position;
+    const outline = hook.shape.outline.map(([u, v]) => [u + w[0] + hook.at[0], v + w[1] + hook.at[1]]);
+    const pinPoly = circlePolygon(j, pin.radius, 48);
+    assert.ok(penetrationDepth(pinPoly, outline) < 2e-3, `門上的銷在 ${x.toFixed(2)}:掛鉤沒有穿進銷`);
+    const gap = Math.min(...pinPoly.map((q) => (pointInPolygon(q, outline) ? 0 : edgeDistance(q, outline))));
+    assert.ok(gap < 3e-3, `門上的銷在 ${x.toFixed(2)}:掛鉤貼著銷(間隙 ${gap.toFixed(4)})`);
+    assert.ok(pointInPolygon([j[0], j[1] + pin.radius + 0.005], outline), "掛鉤的上彎在銷的上面(吊著)");
+    const pz = [j[2] + pin.at[2] - pin.length / 2, j[2] + pin.at[2] + pin.length / 2];
+    const hz = [w[2] + hook.at[2] - hook.thickness / 2, w[2] + hook.at[2] + hook.thickness / 2];
+    for (const id of ["barL", "barR"]) {
+      const t = part(def, id).thickness;
+      const bz = [p[id].to[2] - t / 2, p[id].to[2] + t / 2];
+      assert.ok(pz[0] <= bz[0] + 1e-9 && bz[1] <= pz[1] + 1e-9, `銷穿過 ${id} 的接頭`);
+      assert.ok(hz[0] >= bz[1] - 1e-9, `掛鉤在 ${id} 的前面`);
+    }
+    assert.ok(pz[0] <= hz[0] && hz[1] <= pz[1], "掛鉤掛在銷往前伸出的那段上");
+  }
+});
+
+test("第 385 種:重物懸在接頭下方,全程不碰兩根桿", () => {
+  const def = m385.default;
+  const weight = part(def, "weight");
+  const body = weight.pieces?.find((q) => q.role === "body") ?? weight;
+  for (const x of sweep(m385.RANGE[1], 24, m385.RANGE[0])) {
+    const p = def.pose(x).parts;
+    const o = add(p.weight.position, body === weight ? [0, 0, 0] : body.at);
+    // 重物本體(沿 Y 的旋轉體)的正面輪廓
+    const right = body.profile.map(([rr, y]) => [o[0] + rr, o[1] + y]);
+    const left = body.profile.map(([rr, y]) => [o[0] - rr, o[1] + y]).reverse();
+    const silhouette = [...right, ...left];
+    for (const id of ["barL", "barR"]) {
+      const { from, to } = p[id];
+      const u = norm(sub(to, from));
+      const n = [-u[1], u[0]];
+      const h = part(def, id).width / 2; // 桿寬的一半,也是桿端圓頭的半徑
+      const bar = [
+        [from[0] - u[0] * h + n[0] * h, from[1] - u[1] * h + n[1] * h],
+        [to[0] + u[0] * h + n[0] * h, to[1] + u[1] * h + n[1] * h],
+        [to[0] + u[0] * h - n[0] * h, to[1] + u[1] * h - n[1] * h],
+        [from[0] - u[0] * h - n[0] * h, from[1] - u[1] * h - n[1] * h],
+      ];
+      assert.ok(!polygonsOverlap(silhouette, bar), `門上的銷在 ${x.toFixed(2)}:重物本體碰到 ${id}`);
+    }
   }
 });
 
