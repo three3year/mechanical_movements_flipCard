@@ -10,7 +10,7 @@
 import { X, Y, Z, TAU, deg, add, sub, clamp, rotateAbout, quatFromBasis } from "./kit.js";
 import { bevelGear, bevelContact, meshAngle, rackOffset, circularPitch } from "./gears.js";
 import { pedestalX } from "./supports.js";
-import { rect, shape } from "./shapes.js";
+import { rect, shape, circle } from "./shapes.js";
 
 const CYL = { center: [-0.4, -1.3, 0], r: 0.9, h: 2.4 };
 const BOARD = { top: 0.3, bottom: 0.05, x: [-1.75, 3.05], z: [-0.8, 0.6] };
@@ -58,7 +58,7 @@ const sleeveWall = (x0, x1, z0, z1) => ({ kind: "box", size: [x1 - x0, SLEEVE.to
 const LIP_Z = ROD_Z - 0.035 - 0.02;
 const rail = (x0, x1, z0, z1) => ({ kind: "box", size: [x1 - x0, BOARD.bottom - FLOOR, z1 - z0], at: [(x0 + x1) / 2, (BOARD.bottom + FLOOR) / 2, (z0 + z1) / 2] });
 const POST = (x) => ({ kind: "box", size: [0.15, BOARD.bottom - FLOOR, 0.15], at: [x, (BOARD.bottom + FLOOR) / 2, BOARD.z[0] + 0.15] });
-const CYL_SHAFT = { y0: FLOOR + 0.05, y1: HORIZ.center[1] + BEVEL.width / 2 }; // 直立軸:底座的軸承到傘齒輪頂
+const CYL_SHAFT = { y0: FLOOR + 0.05, y1: HORIZ.center[1] + BEVEL.width / 2, r: 0.08 }; // 直立軸:底座的軸承到傘齒輪頂
 const toLocalX = (x) => VERT.center[0] - x; // 世界 x → 主動件的局部 z(主動件的軸是 −X)
 const CRANK_X = 2.6;
 
@@ -69,8 +69,8 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        // 板(原圖的水平板,兩端切在圖外):開一道讓齒條穿過的槽
-        { kind: "plate", axis: Y, thickness: BOARD.top - BOARD.bottom, at: [0, (BOARD.top + BOARD.bottom) / 2, 0], shape: shape(boardRect(BOARD.x[0], BOARD.x[1], BOARD.z[0], BOARD.z[1]), [boardRect(SLOT.x[0], SLOT.x[1], SLOT.z[0], SLOT.z[1]).reverse()]) },
+        // 板(原圖的水平板,兩端切在圖外):開一道讓齒條穿過的槽,和直立軸穿過的孔
+        { kind: "plate", axis: Y, thickness: BOARD.top - BOARD.bottom, at: [0, (BOARD.top + BOARD.bottom) / 2, 0], shape: shape(boardRect(BOARD.x[0], BOARD.x[1], BOARD.z[0], BOARD.z[1]), [boardRect(SLOT.x[0], SLOT.x[1], SLOT.z[0], SLOT.z[1]).reverse(), circle(CYL_SHAFT.r, CYL.center[0], -CYL.center[2]).reverse()]) },
         // 槽上的導套(推斷):圍住齒條四面
         sleeveWall(SLOT.x[0] - SLEEVE.wall, SLOT.x[0], SLOT.z[0] - SLEEVE.wall, SLOT.z[1] + SLEEVE.wall),
         sleeveWall(SLOT.x[1], SLOT.x[1] + SLEEVE.wall, SLOT.z[0] - SLEEVE.wall, SLOT.z[1] + SLEEVE.wall),
@@ -79,8 +79,8 @@ export default {
         // 水平軸的兩個軸承座(原圖),立在板上
         ...pedestalX({ x: 0.95, y: SHAFT_Y, z: 0, bore: SHAFT_R, floor: BOARD.top + 0.18 }),
         ...pedestalX({ x: 2.2, y: SHAFT_Y, z: 0, bore: SHAFT_R, floor: BOARD.top + 0.18 }),
-        // 水平傘齒輪底下的軸承座(原圖),直立軸穿過它與板
-        { kind: "box", size: [0.6, 0.2, 0.6], at: [CYL.center[0], BOARD.top + 0.1, 0] },
+        // 水平傘齒輪底下的軸承座(原圖),直立軸穿過它的孔與板
+        { kind: "plate", axis: Y, thickness: 0.2, at: [CYL.center[0], BOARD.top + 0.1, CYL.center[2]], shape: shape(rect(0.6, 0.6), [circle(CYL_SHAFT.r).reverse()]) },
         // 板下齒條背後的直立導槽、板的立柱與底座(推斷;原圖只畫到板與圓筒),底座上撐直立軸下端的軸承
         rail(SLOT.x[0] - SLEEVE.wall, SLOT.x[1] + SLEEVE.wall, SLOT.z[0] - SLEEVE.wall, SLOT.z[0]),
         rail(SLOT.x[0] - SLEEVE.wall, SLOT.x[0], SLOT.z[0], LIP_Z),
@@ -88,7 +88,8 @@ export default {
         POST(BOARD.x[0] + 0.15),
         POST(BOARD.x[1] - 0.15),
         { kind: "box", size: [BOARD.x[1] - BOARD.x[0], 0.2, BOARD.z[1] - BOARD.z[0]], at: [(BOARD.x[0] + BOARD.x[1]) / 2, FLOOR - 0.1, (BOARD.z[0] + BOARD.z[1]) / 2] },
-        { kind: "box", size: [0.4, 0.15, 0.4], at: [CYL.center[0], FLOOR + 0.075, 0] },
+        // 底座上的軸承:直立軸的下端插在它的孔裡
+        { kind: "plate", axis: Y, thickness: 0.15, at: [CYL.center[0], FLOOR + 0.075, CYL.center[2]], shape: shape(rect(0.4, 0.4), [circle(CYL_SHAFT.r).reverse()]) },
       ],
     },
     // 圓筒:吊在水平傘齒輪的直立軸上(和傘齒輪一起轉)
@@ -101,7 +102,7 @@ export default {
       spinOffset: CYL.h / 2 - 0.08,
       pieces: [
         { kind: "cylinder", radius: CYL.r, length: CYL.h },
-        { kind: "cylinder", radius: 0.08, length: CYL_SHAFT.y1 - CYL_SHAFT.y0, at: [0, 0, (CYL_SHAFT.y0 + CYL_SHAFT.y1) / 2 - CYL.center[1]], mark: true },
+        { kind: "cylinder", radius: CYL_SHAFT.r, length: CYL_SHAFT.y1 - CYL_SHAFT.y0, at: [0, 0, (CYL_SHAFT.y0 + CYL_SHAFT.y1) / 2 - CYL.center[1]], mark: true },
         bevel(HORIZ, [0, 0, HORIZ.center[1] - CYL.center[1]]),
       ],
     },

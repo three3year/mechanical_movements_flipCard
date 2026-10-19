@@ -23,6 +23,14 @@ const AXLE_DX = 0.5; // 小車輪離小車中線
 const AXLE_Y = WHEEL.center[1] + Math.sqrt((WHEEL.r + CART_W) ** 2 - AXLE_DX ** 2); // 小車輪軸的高度(小車在正中時)
 const BOARD = { y: -0.1, h: 0.08, len: 1.84 }; // 車斗底板(小車座標)
 const CART = [WHEEL.center[0], AXLE_Y + CART_W + 0.05 + BOARD.h / 2 - BOARD.y, 0]; // 輪頂和底板留 0.05
+const BED = 0.375; // 車斗頂(小車座標;車斗是 cart 的第一塊)
+// 五袋重物(局部座標的原點在車斗頂):每袋斜放,最低的角剛好貼著車斗頂
+const SACKS = Array.from({ length: 5 }, (_, i) => {
+  const angle = deg(-20 + i * 10);
+  const size = [0.25, 0.22, 0.4];
+  const half = (size[1] / 2) * Math.cos(angle) + (size[0] / 2) * Math.abs(Math.sin(angle));
+  return { kind: "box", size, at: [-0.5 + i * 0.25, half, 0], angle };
+});
 const AXLE_LOCAL = AXLE_Y - CART[1]; // 輪軸在小車座標裡的高度
 const LUG = [0.9, AXLE_LOCAL, -0.12]; // 直桿接在小車右端的耳上(輪軸的高度,原圖)
 const BELT_Z = 0.3; // 皮帶的深度
@@ -183,7 +191,7 @@ export default {
       arrow: false,
       posed: true,
       pieces: [
-        { kind: "box", size: [1.4, 0.45, 0.6], at: [0, 0.15, 0] },
+        { kind: "box", size: [1.4, 0.45, 0.6], at: [0, BED - 0.45 / 2, 0] }, // 車斗
         { kind: "box", role: "board", size: [BOARD.len, BOARD.h, 0.7], at: [0, BOARD.y, 0] },
         ...["cartWheelL", "cartWheelR"].flatMap((id, i) => [-1, 1].map((side) => hanger(id, (2 * i - 1) * AXLE_DX, side * 0.3))),
         // 直桿的耳:從底板右端垂到輪軸的高度,銷孔接直桿(直桿在耳的後面)
@@ -197,7 +205,8 @@ export default {
         },
       ],
     },
-    { id: "load", kind: "group", center: [CART[0], CART[1] + 0.45, 0], arrow: false, posed: true, pieces: Array.from({ length: 5 }, (_, i) => ({ kind: "box", size: [0.25, 0.22, 0.4], at: [-0.5 + i * 0.25, 0.05, 0], angle: deg(-20 + i * 10) })) },
+    // 載重:五袋重物排在車斗頂上(原點在車斗頂,每袋最低的角貼著它);輕 / 重以沿 y 的縮放表示,底面跟著留在車斗頂
+    { id: "load", kind: "group", center: [CART[0], CART[1] + BED, 0], arrow: false, posed: true, pieces: SACKS },
     // 小車輪壓在大輪的輪面上;輪軸跟著輪轉,兩端套在軸架的孔裡
     ...[-1, 1].map((s) => ({
       id: s < 0 ? "cartWheelL" : "cartWheelR",
@@ -280,7 +289,7 @@ export default {
         drivePulley: { angle: a },
         wheel: { angle: wheel },
         cart: { position: turn(CART, b), angle: b },
-        load: { position: turn([CART[0], CART[1] + 0.45, 0], b), angle: b, scale: [1, LOADS[state] / 1.7 + 0.4, 1] },
+        load: { position: turn([CART[0], CART[1] + BED, 0], b), angle: b, scale: [1, LOADS[state] / 1.7 + 0.4, 1] },
         cartWheelL: { position: turn([CART[0] - AXLE_DX, AXLE_Y, 0], b), angle: spin },
         cartWheelR: { position: turn([CART[0] + AXLE_DX, AXLE_Y, 0], b), angle: spin },
         rod: { from: P, to: E },
@@ -301,5 +310,5 @@ export default {
       readouts: [],
     };
   },
-  waivers: [{ check: "interference", parts: ["cart", "load"], reason: "簡化畫法:載重放在車斗裡,重物的底面陷進車斗 0.06" }],
+  waivers: [],
 };
