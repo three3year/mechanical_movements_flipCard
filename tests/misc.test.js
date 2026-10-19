@@ -1,8 +1,9 @@
 // 第十六章「雜項裝置」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, pieceBox, plateLayers, guidedBetween, assertOnePiece } from "./helpers.js";
-import { deg, quatMul, quatRotate, partPoint, add, sub, scale, dot, dist, len, lerp3, rot2, X, Y, Z } from "../models/kit.js";
+import { close, sweep, part, turned, pieceBox, plateLayers, guidedBetween, assertOnePiece } from "./helpers.js";
+import { deg, quatMul, quatRotate, partPoint, rotateAbout, add, sub, scale, dot, cross, dist, len, lerp3, rot2, X, Y, Z } from "../models/kit.js";
+import { rackShape } from "../models/shapes.js";
 
 import * as m350 from "../models/fig350.js";
 import * as m351 from "../models/fig351.js";
@@ -725,11 +726,170 @@ test("第 367 種:連桿的四個鉸點都有鉚釘:尺葉上的鉚釘穿過連�
   }
 });
 
-test("第 368 種:在圓筒上畫螺旋線:圓筒轉動,同一個正齒輪帶齒條使標記點從一端移到另一端,每轉移動一個螺距", () => {
-  close(m368.marker(-2 * Math.PI) - m368.marker(0), m368.PITCH, "每轉一個螺距");
-  const pts = m368.default.pose(-4 * Math.PI).paths.helix.points;
-  const ys = pts.map((p) => p[1]);
-  assert.ok(ys.every((y, i) => i === 0 || y >= ys[i - 1] - 1e-12), "螺旋線沿圓筒單調上升");
+// 第 368 種的零件:主動件(水平軸)上的正齒輪與垂直傘齒輪、圓筒上的水平傘齒輪與筒身、齒條上的齒與尖端
+function parts368() {
+  const def = m368.default;
+  const drv = part(def, def.driver.part);
+  const cyl = part(def, "cylinder");
+  const rack = part(def, "rack");
+  const gearsOf = (p) => (p.pieces ?? []).filter((q) => q.kind === "gear");
+  const spur = gearsOf(drv).find((q) => !q.cone);
+  const bevelV = gearsOf(drv).find((q) => q.cone);
+  const bevelH = gearsOf(cyl).find((q) => q.cone);
+  const body = cyl.pieces.filter((q) => q.kind === "cylinder").reduce((a, b) => (a.radius >= b.radius ? a : b));
+  const teeth = rack.pieces.find((q) => q.kind === "rack");
+  const tip = rack.pieces.find((q) => q.kind === "lathe");
+  return { def, drv, cyl, rack, spur, bevelV, bevelH, body, teeth, tip };
+}
+// 群組零件上的一點(局部座標)在零件轉角 angle 時的世界位置
+const at368 = (p, angle, local) => partPoint(p.center, p.axis, angle, local);
+// 標記桿尖端的世界位置(lathe 的剖面從半徑 0 的尖端起;齒條只平移)
+const tip368 = (v) => add(m368.default.pose(v).parts.rack.position, parts368().tip.at);
+// 點到圓筒軸線的水平距離(圓筒的軸直立)
+const fromAxis368 = (q) => Math.hypot(q[0] - parts368().cyl.center[0], q[2] - parts368().cyl.center[2]);
+
+test("第 368 種:正齒輪帶動傘齒輪、藉此讓圓筒旋轉:正齒輪與垂直傘齒輪裝在同一根水平軸上,垂直傘齒輪咬著板上的水平傘齒輪,水平傘齒輪與圓筒同軸", () => {
+  const { def, drv, cyl, spur, bevelV, bevelH, body } = parts368();
+  assert.ok(spur && bevelV, "主動的水平軸上有正齒輪與傘齒輪");
+  close(drv.axis[1], 0, "主動件的軸水平");
+  const onAxis = (q) => !q.axis && Math.abs(q.at?.[0] ?? 0) < 1e-12 && Math.abs(q.at?.[1] ?? 0) < 1e-12;
+  assert.ok(onAxis(spur) && onAxis(bevelV), "正齒輪與傘齒輪都在水平軸的軸線上");
+  assert.ok(bevelH, "圓筒的直立軸上有傘齒輪");
+  close(Math.abs(cyl.axis[1]), 1, "圓筒的軸直立");
+  assert.ok(onAxis(bevelH) && onAxis(body), "水平傘齒輪與圓筒同軸");
+  // 兩個傘齒輪的節錐頂重合、兩軸垂直、錐距相等:兩節錐沿一條母線相貼
+  const apex = (p, q) => at368(p, 0, add(q.at ?? [0, 0, 0], [0, 0, q.radius / Math.tan(q.cone) - q.width / 2]));
+  assert.ok(dist(apex(drv, bevelV), apex(cyl, bevelH)) < 1e-9, "兩個傘齒輪的節錐頂重合(兩軸相交)");
+  close(dot(drv.axis, cyl.axis), 0, "兩軸垂直");
+  close(bevelV.cone + bevelH.cone, Math.PI / 2, "兩節錐角和為直角");
+  close(bevelV.radius / Math.sin(bevelV.cone), bevelH.radius / Math.sin(bevelH.cone), "錐距相等");
+  // 接觸點的節圓速度相等:正齒輪(與垂直傘齒輪)轉一圈,圓筒轉「齒數比」圈
+  const ratio = bevelV.teeth / bevelH.teeth;
+  for (const v of sweep(def.driver.range[0], 12)) {
+    close(Math.abs(turned(def, "cylinder", 0, v)), Math.abs(turned(def, def.driver.part, 0, v)) * ratio, `主動量 ${v.toFixed(2)}:圓筒轉角 = 正齒輪轉角 × 傘齒輪齒數比`);
+  }
+});
+
+test("第 368 種:同一個正齒輪也與齒條嚙合:齒條的節線與正齒輪的節圓相切、齒距相同,正齒輪轉一圈齒條移動節圓周長", () => {
+  const { def, drv, spur, teeth } = parts368();
+  close(teeth.pitch, (2 * Math.PI * spur.radius) / spur.teeth, "齒條的齒距 = 正齒輪的節圓齒距");
+  const line = add(def.pose(0).parts.rack.position, teeth.at ?? [0, 0, 0]); // 齒條節線上的一點
+  const along = quatRotate(teeth.rotation, X); // 齒條的長度方向
+  close(Math.abs(along[1]), 1, "齒條直立");
+  // 節線與正齒輪軸是兩條垂直的直線:公垂線長 = 節圓半徑,齒朝著正齒輪的軸
+  const n = cross(drv.axis, along);
+  const d = dot(sub(at368(drv, 0, spur.at), line), scale(n, 1 / len(n)));
+  close(Math.abs(d), spur.radius, "齒條節線到正齒輪軸的距離 = 節圓半徑");
+  close(dot(quatRotate(teeth.rotation, Y), scale(n, Math.sign(d) / len(n))), 1, "齒條的齒朝著正齒輪");
+  for (const v of sweep(def.driver.range[0] + 2 * Math.PI, 6)) {
+    const move = sub(def.pose(v - 2 * Math.PI).parts.rack.position, def.pose(v).parts.rack.position);
+    close(Math.abs(move[1]), 2 * Math.PI * spur.radius, `主動量 ${v.toFixed(2)}:正齒輪轉一圈,齒條移動節圓周長`);
+    close(Math.hypot(move[0], move[2]), 0, "齒條只沿直立方向移動");
+  }
+});
+
+test("第 368 種:標記點從圓筒的一端橫移至另一端:尖端全程在筒面上(不埋進圓筒)", () => {
+  const { def, tip, body, cyl } = parts368();
+  assert.ok(tip.profile[0][0] === 0 && tip.profile[0][1] === 0, "尖端在剖面的起點、半徑 0");
+  const bottom = cyl.center[1] + (body.at?.[2] ?? 0) - body.length / 2;
+  const top = bottom + body.length;
+  const [from, to] = def.driver.range;
+  for (const v of sweep(from, 96, to)) {
+    const q = tip368(v);
+    const r = fromAxis368(q);
+    assert.ok(r >= body.radius - 1e-9 && r <= body.radius + 0.01, `主動量 ${v.toFixed(2)}:尖端在筒面上(離軸 ${r.toFixed(4)},筒半徑 ${body.radius})`);
+    assert.ok(q[1] > bottom && q[1] < top, `主動量 ${v.toFixed(2)}:尖端在筒的高度以內`);
+  }
+  const ys = [tip368(from)[1], tip368(to)[1]].sort((a, b) => a - b);
+  assert.ok(ys[0] - bottom < 0.3 && top - ys[1] < 0.3, `尖端從靠近一端走到靠近另一端(${ys[0].toFixed(2)}..${ys[1].toFixed(2)},筒 ${bottom.toFixed(2)}..${top.toFixed(2)})`);
+});
+
+test("第 368 種:於圓筒上描繪螺旋線:線從尖端畫出、在筒面上隨圓筒轉、單調上升,每圈的升距約筒徑的 0.7 倍(決定 (b):照原圖筒面的螺旋線斜度)", () => {
+  const { def, body, cyl } = parts368();
+  const [from] = def.driver.range;
+  for (const v of sweep(from, 8).slice(1)) {
+    const pts = def.pose(v).paths.helix.points;
+    assert.ok(dist(pts.at(-1), tip368(v)) < 1e-9, `主動量 ${v.toFixed(2)}:線的最新一點就是尖端`);
+    for (const q of pts) assert.ok(Math.abs(fromAxis368(q) - body.radius) <= 0.01, "線在筒面上");
+    const ys = pts.map((q) => q[1]);
+    assert.ok(ys.every((y, i) => i === 0 || y > ys[i - 1]), "螺旋線沿圓筒單調上升");
+    // 主動量 0 時畫下的第一點,跟著圓筒轉過的角度移動
+    const start = add(cyl.center, rotateAbout(sub(tip368(0), cyl.center), cyl.axis, turned(def, "cylinder", 0, v)));
+    assert.ok(dist(pts[0], start) < 1e-9, `主動量 ${v.toFixed(2)}:畫上去的線跟著圓筒轉`);
+  }
+  const rise = Math.abs(tip368(from)[1] - tip368(0)[1]);
+  const turns = Math.abs(turned(def, "cylinder", 0, from)) / (2 * Math.PI);
+  const lead = rise / turns;
+  assert.ok(lead > 0.6 * 2 * body.radius && lead < 0.8 * 2 * body.radius, `每圈升距 ${lead.toFixed(3)} 約筒徑 ${2 * body.radius} 的 0.7 倍`);
+  assert.ok(turns > 1.4, `筒高內繞超過一圈半(${turns.toFixed(2)} 圈)`);
+});
+
+test("第 368 種:齒條穿過板上的導槽往下伸(原圖),全程在槽裡、槽只比齒條大一點", () => {
+  const { def, rack } = parts368();
+  const board = part(def, "frame").pieces.find((q) => q.kind === "plate" && q.axis?.[1] === 1 && q.shape.holes?.length);
+  assert.ok(board, "機架有一塊水平的板,開了槽");
+  const [y0, y1] = [board.at[1] - board.thickness / 2, board.at[1] + board.thickness / 2];
+  // 槽:板件的局部 y 對到世界的 −z
+  const slot = board.shape.holes[0].map(([u, v]) => [board.at[0] + u, board.at[2] - v]);
+  const sx = [Math.min(...slot.map((p) => p[0])), Math.max(...slot.map((p) => p[0]))];
+  const sz = [Math.min(...slot.map((p) => p[1])), Math.max(...slot.map((p) => p[1]))];
+  // 齒條各塊的世界外框(齒條只平移)
+  const boxOf = (q, pos) => {
+    if (q.kind === "box" || q.kind === "cylinder") return pieceBox(q, pos);
+    if (q.kind !== "rack") return null;
+    const pts = rackShape(q).outline.flatMap(([u, v]) => [-q.width / 2, q.width / 2].map((w) => add(add(pos, q.at ?? [0, 0, 0]), quatRotate(q.rotation, [u, v, w]))));
+    return { lo: [0, 1, 2].map((k) => Math.min(...pts.map((p) => p[k]))), hi: [0, 1, 2].map((k) => Math.max(...pts.map((p) => p[k]))) };
+  };
+  const [from, to] = def.driver.range;
+  for (const v of sweep(from, 48, to)) {
+    const pos = def.pose(v).parts.rack.position;
+    const boxes = rack.pieces.map((q) => boxOf(q, pos)).filter(Boolean);
+    assert.ok(Math.min(...boxes.map((b) => b.lo[1])) < y0 && Math.max(...boxes.map((b) => b.hi[1])) > y1, `主動量 ${v.toFixed(2)}:齒條穿過板`);
+    const inBoard = boxes.filter((b) => b.lo[1] < y1 && b.hi[1] > y0);
+    for (const b of inBoard) assert.ok(b.lo[0] >= sx[0] && b.hi[0] <= sx[1] && b.lo[2] >= sz[0] && b.hi[2] <= sz[1], `主動量 ${v.toFixed(2)}:板的高度上齒條在槽裡`);
+    const lo = [0, 2].map((k) => Math.min(...inBoard.map((b) => b.lo[k])));
+    const hi = [0, 2].map((k) => Math.max(...inBoard.map((b) => b.hi[k])));
+    assert.ok(lo[0] - sx[0] <= 0.02 && sx[1] - hi[0] <= 0.02 && lo[1] - sz[0] <= 0.02 && sz[1] - hi[1] <= 0.02, `主動量 ${v.toFixed(2)}:槽只比齒條大一點(導引齒條)`);
+  }
+});
+
+test("第 368 種:齒條在板下的那一段沿背後的直立導槽走(下端的導座):背面與兩側都貼著導槽", () => {
+  const { def, rack } = parts368();
+  const frame = part(def, "frame");
+  const board = frame.pieces.find((q) => q.kind === "plate" && q.axis?.[1] === 1);
+  const under = board.at[1] - board.thickness / 2;
+  const boxes = frame.pieces.filter((q) => q.kind === "box").map((q) => pieceBox(q));
+  const bar = rack.pieces.filter((q) => q.kind === "box").reduce((a, b) => (a.size[1] >= b.size[1] ? a : b)); // 齒段以下的齒條身
+  const [from, to] = def.driver.range;
+  for (const v of sweep(from, 24, to)) {
+    const b = pieceBox(bar, def.pose(v).parts.rack.position);
+    const [y0, y1] = [b.lo[1], Math.min(b.hi[1], under)]; // 齒條身在板下的那一段
+    assert.ok(y1 - y0 > 0.3, `主動量 ${v.toFixed(2)}:齒條身有一段在板下`);
+    const spans = (g) => g.lo[1] <= y0 + 1e-9 && g.hi[1] >= y1 - 1e-9;
+    const zOver = (g) => g.lo[2] < b.hi[2] && g.hi[2] > b.lo[2];
+    const back = boxes.find((g) => spans(g) && g.lo[0] <= b.lo[0] && g.hi[0] >= b.hi[0] && g.hi[2] <= b.lo[2] + 1e-9 && b.lo[2] - g.hi[2] <= 0.02);
+    const left = boxes.find((g) => spans(g) && zOver(g) && g.hi[0] <= b.lo[0] + 1e-9 && b.lo[0] - g.hi[0] <= 0.02);
+    const right = boxes.find((g) => spans(g) && zOver(g) && g.lo[0] >= b.hi[0] - 1e-9 && g.lo[0] - b.hi[0] <= 0.02);
+    assert.ok(back && left && right, `主動量 ${v.toFixed(2)}:齒條身的背面(${!!back})、左側(${!!left})、右側(${!!right})貼著導槽`);
+  }
+});
+
+test("第 368 種:水平軸由板上的兩個軸承座撐著(原圖),軸穿過軸承環", () => {
+  const { drv } = parts368();
+  const shaft = drv.pieces.filter((q) => q.kind === "cylinder" && !q.axis && !q.inner).reduce((a, b) => (a.length >= b.length ? a : b));
+  const [s0, s1] = [-1, 1].map((s) => dot(at368(drv, 0, add(shaft.at ?? [0, 0, 0], [0, 0, (s * shaft.length) / 2])), drv.axis)).sort((a, b) => a - b);
+  const line = at368(drv, 0, [0, 0, 0]);
+  const rings = part(m368.default, "frame").pieces.filter((q) => {
+    if (q.kind !== "cylinder" || !q.inner || Math.abs(Math.abs(dot(q.axis ?? Z, drv.axis)) - 1) > 1e-9) return false;
+    const d = sub(q.at, line);
+    return len(sub(d, scale(drv.axis, dot(d, drv.axis)))) < 1e-9;
+  });
+  assert.ok(rings.length >= 2, `水平軸上有兩個軸承環(${rings.length})`);
+  for (const q of rings) {
+    const c = dot(q.at, drv.axis);
+    assert.ok(s0 <= c - q.length / 2 && c + q.length / 2 <= s1, "軸穿過整個軸承環");
+    assert.ok(q.inner - shaft.radius >= -1e-9 && q.inner - shaft.radius <= 0.01, `軸(半徑 ${shaft.radius})套在軸承環的孔裡(孔 ${q.inner})`);
+  }
 });
 
 test("第 369 種:擺線擺:擺錘沿擺線運動(擺線的長度不變,擺錘始終在擺線上)", () => {
