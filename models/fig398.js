@@ -1,145 +1,101 @@
-// 第 398 種:把連續的圓周運動變成間歇的圓周運動——凸輪 C 是主動件。三瓣的凸輪夾在一個方框形的滑塊(軛)裡,
-// 凸輪轉動時方框左右往復(凸輪是等寬的,所以一直夾著);方框經一根連桿帶動右邊大輪頂上的棘爪,
-// 方框往復一次,大輪被撥轉一下、又停一下。主動件是凸輪 C。
-// 推斷:連桿末端鉸著一個棘爪,搭在大輪頂上的棘齒(原圖右邊大輪上的小爪);方框往左拉時棘爪推著大輪轉,
-// 往右回時棘爪滑過齒,大輪不動,所以大輪間歇地朝同一方向轉。
+// 第 398 種:把連續的圓周運動變成間歇的圓周運動——凸輪 C 是主動件。
+// 照 525 px 原圖與 507movements 的動畫重讀(2026-10-14 決定 (a)):凸輪 C 是一個圓盤,盤面上開了一道三瓣形的溝槽;
+// 溝裡的銷裝在滑塊的桿端,滑塊夾在上下兩條導軌之間左右滑(兩端各一塊、中間是凹腰的軸身);滑塊右端的銷接一根長連桿,
+// 連桿的另一端接在右邊大輪軸上的曲柄。凸輪等速轉,滑塊照溝槽往復,經連桿帶著曲柄與大輪轉——溝槽每一瓣讓滑塊往復一次、
+// 大輪轉一圈;溝槽上有同心的一段時,滑塊停住,大輪也停住(間歇)。主動件是凸輪 C,目標件是大輪。
 //
-// 由接觸算(2026-10-07 複查,原本棘爪和連桿是一體的、大輪照「方框往左走多少就轉多少」的進度表轉):
-// - 棘爪鉸在連桿末端的銷上,爪尖朝左下、靠自重搭在大輪的鋸齒上(陡面朝右)。連桿往左時,銷在後面推著爪,
-//   爪尖頂著陡面把大輪往逆時針推;爪身是斜撐,陡面頂回來的力只會把爪壓得更緊。連桿往右時爪尖沿斜背滑過,
-//   越過齒尖後靠自重落進下一齒(加速落下)。大輪轉多少、停在哪裡都由爪尖與齒相碰決定;換向時有一段空程。
-// - 補上凸輪軸的軸承座、連桿的方形導套與立柱、大輪軸的軸承座(原圖沒畫,推斷)。
-import { TAU } from "./kit.js";
-import { outlineForRoller } from "./cams.js";
-import { shape, circle, rect, ratchetShape, thickLine } from "./shapes.js";
-import { ratchetRadius } from "./ratchets.js";
-import { pedestal, squareGuide } from "./supports.js";
+// 溝槽的形狀由「大輪要怎麼轉」反算:先給曲柄的轉角(轉、停、轉、停),由滑塊曲柄的幾何算出滑塊該在哪裡,
+// 銷在凸輪上走過的曲線就是溝槽的中心線。所以銷的位置、連桿的長度、曲柄的轉角三者精確地一致。
+// - 停在哪裡(推斷):每轉半圈停一次,停在剛過死點 DELTA 的地方。停在死點上的話,滑塊再動時曲柄往哪邊轉都可以
+//   (停住的飛輪沒有慣性可以帶);停在死點之後,滑塊一動,曲柄只能順著原方向轉。經過死點時大輪還在轉,靠大輪
+//   (飛輪)的慣性帶過去——死點的兩側溝槽都是平緩的(滑塊在行程端點附近幾乎不動)。
+// - 大輪的轉向(推斷):溝槽只決定滑塊,不決定曲柄往哪邊轉;取順時針(和凸輪同向)。507movements 的動畫只有兩張
+//   靜止的畫面,看不出方向。
+// - 比例(偏離插圖):原圖的曲柄比溝槽的行程的一半長,照原圖的比例曲柄轉不了整圈(507 的動畫也是:曲柄半徑 1.55、
+//   滑塊行程 1.91,大輪只能來回擺)。照原文「間歇性圓周運動」,曲柄半徑取行程的一半;溝槽的三瓣比原圖淺一些,
+//   讓溝的轉彎處不比銷還尖(溝中心線的轉彎半徑至少 0.125,溝的半寬 0.07),壓力角(溝壁的法線和滑塊行進方向的夾角)
+//   最大約 57°。凸輪盤、大輪的大小與兩者的距離照原圖。
+// - 補上的機架(原圖沒畫,推斷):一塊底座、凸輪軸與大輪軸的軸承座、導架(兩條導軌固定在背板上,背板下面一根立柱)。
+// - 動力重演:只推凸輪,滑塊是沿導軌的自由滑塊,只被溝的兩壁推(連桿與大輪照模型走)。
+import { TAU, X } from "./kit.js";
+import { shape, circle, offsetLoop, arcPoints, spanBox, zCylinder } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
-const CAM = { center: [-1.6, 0, 0] };
-const A = 0.9;
-const B = 0.22;
-const pitchAt = (phi) => A + B * Math.cos(3 * phi);
-const OUTLINE = outlineForRoller(pitchAt, 0.001);
-const WHEEL = { center: [2.4, -0.6, 0], r: 1.3 };
-const RATCHET = { teeth: 45, outer: WHEEL.r, inner: WHEEL.r - 0.12, dir: 1 }; // 齒要夠密:爪尖每程相對大輪走得比一齒多,才抓得到下一齒
-export const PITCH = TAU / RATCHET.teeth;
-const ROD_X0 = CAM.center[0] + A + 0.85; // 連桿的位置(方框在中間時)
-const ROD_END = [2.3, 0.95]; // 連桿末端(鉸銷)在連桿局部的位置
-const PAWL = { len: 0.46 };
-// 爪的外形(鉸銷在原點,爪尖在 (len, 0)),與爪身上取來量離齒面多遠的點
-const PAWL_OUTLINE = [[-0.05, -0.035], [PAWL.len - 0.14, -0.035], [PAWL.len, 0], [PAWL.len - 0.14, 0.035], [-0.05, 0.035]];
-const PROBES = [[PAWL.len, 0], ...Array.from({ length: 15 }, (_, i) => { const b = (i + 1) * 0.035; const h = 0.035 * Math.min(1, b / 0.14); return [[PAWL.len - b, -h], [PAWL.len - b, h]]; }).flat()];
-const FALL = 300; // 爪靠自重落下的角加速度(主動量的單位)
+const CAM = { center: [-2.6, 0, 0], radius: 1.42 };
+const CRANK = 0.25; // 曲柄半徑 = 滑塊行程的一半
+const ROD = 2.33; // 連桿長(滑塊的銷到曲柄銷)
+const R_MIN = 0.8; // 溝槽中心線離凸輪軸心最近的距離(滑塊在最左)
+const EYE = 2.0; // 滑塊上,溝裡的銷到右端的銷
+const WHEEL = { center: [CAM.center[0] + R_MIN + EYE + CRANK + ROD, 0, 0], r: 1.54 };
+const PIN = 0.06; // 溝裡的銷的半徑
+const HALF = PIN + 0.01; // 溝的半寬
 
-/** 凸輪轉 theta → 方框的位移(右側從動面) */
-export const yokeX = (theta) => pitchAt(theta) - A;
-const pinAt = (theta) => [ROD_X0 + yokeX(theta) + ROD_END[0], ROD_END[1]];
+// 曲柄轉一圈(凸輪轉 1/3 圈)的時程:停 DWELL、轉半圈、停 DWELL、轉半圈;轉的那一段先加速 A1、末段減速 A2
+const DWELL = 0.1;
+const A1 = 0.3;
+const A2 = 0.5;
+const DELTA = 0.3; // 停在剛過死點多少(弧度,約 17°)
+const START = Math.PI - DELTA; // 起始:曲柄在左上方、剛過左死點,停著(原圖的曲柄也在左上方)
 
-// 爪尖在大輪局部的方位、半徑;離齒面多遠(負的是壓進去)
-const tipLocal = (pin, psi, wheel) => {
-  const x = pin[0] + PAWL.len * Math.cos(psi) - WHEEL.center[0];
-  const y = pin[1] + PAWL.len * Math.sin(psi) - WHEEL.center[1];
-  return { a: Math.atan2(y, x) - wheel, r: Math.hypot(x, y) };
-};
-const gapOf = (pin, psi, wheel) => {
-  const [c, s] = [Math.cos(psi), Math.sin(psi)];
-  let g = Infinity;
-  for (const [px, py] of PROBES) {
-    const x = pin[0] + px * c - py * s - WHEEL.center[0];
-    const y = pin[1] + px * s + py * c - WHEEL.center[1];
-    g = Math.min(g, Math.hypot(x, y) - ratchetRadius(RATCHET, Math.atan2(y, x) - wheel));
-  }
-  return g - 0.012; // 留一點間隙:探測點之間的邊不會切到齒尖
-};
-
-// 依接觸逐步算:(1) 爪尖在齒根、又跑到陡面前面(連桿往左推)→ 大輪被推到陡面剛好貼著爪尖;
-// (2) 爪被齒面壓進去(往右時斜背頂上來)就往上讓開;沒碰到就靠自重往下擺(越擺越快),碰到齒面就停
-const FACE = 0.02; // 陡面的根部在一齒中的位置(齒距的比例,與 ratchetShape 一致)
-const PERIOD = TAU / 3; // 凸輪轉三分之一圈,方框往復一次
-const SAMPLES = 480;
-function simulate(periods) {
-  let wheel = 0;
-  let psi = Math.PI + 0.2;
-  let w = 0;
-  const dv = PERIOD / SAMPLES;
-  const run = [];
-  for (let i = 0; i <= periods * SAMPLES; i++) {
-    const pin = pinAt(-i * dv); // 主動件往負方向轉(速度 −0.8)
-    const t = tipLocal(pin, psi, wheel);
-    if (t.r < RATCHET.inner + 0.7 * (RATCHET.outer - RATCHET.inner)) {
-      const f = (((t.a / PITCH) % 1) + 1) % 1;
-      if (f > FACE && f < FACE + 0.3) wheel += (f - FACE) * PITCH;
-    }
-    if (gapOf(pin, psi, wheel) < 0) {
-      let d = 0;
-      while (gapOf(pin, psi - d, wheel) < 0 && d < 1) d += 0.002;
-      let [lo, hi] = [psi - d, psi - d + 0.002];
-      for (let j = 0; j < 30; j++) {
-        const mid = (lo + hi) / 2;
-        if (gapOf(pin, mid, wheel) >= 0) lo = mid;
-        else hi = mid;
-      }
-      psi = lo;
-      w = 0;
-    } else {
-      w += FALL * dv;
-      const span = w * dv;
-      const n = Math.max(1, Math.ceil(span / 0.004));
-      let next = psi + span;
-      for (let j = 1; j <= n; j++) {
-        const q = psi + (span * j) / n;
-        if (gapOf(pin, q, wheel) < 0) {
-          let [lo, hi] = [psi + (span * (j - 1)) / n, q];
-          for (let m = 0; m < 30; m++) {
-            const mid = (lo + hi) / 2;
-            if (gapOf(pin, mid, wheel) >= 0) lo = mid;
-            else hi = mid;
-          }
-          next = lo;
-          w = 0;
-          break;
-        }
-      }
-      psi = next;
-    }
-    run.push({ wheel, psi });
-  }
-  return run;
+// 轉的那一段:進度 f(0–1)→ 轉過的比例;速度是升餘弦的加速、等速、升餘弦的減速
+const TOTAL = 1 - (A1 + A2) / 2;
+function ease(f) {
+  if (f <= A1) return (f / 2 - (A1 / (2 * Math.PI)) * Math.sin((Math.PI * f) / A1)) / TOTAL;
+  if (f <= 1 - A2) return (A1 / 2 + f - A1) / TOTAL;
+  const g = 1 - f;
+  return 1 - (g / 2 - (A2 / (2 * Math.PI)) * Math.sin((Math.PI * g) / A2)) / TOTAL;
 }
 
-// 先空走兩次往復,取第三次當作週期;每次推過整數個齒,逐步推的微小誤差按比例攤掉
-const { TABLE, STEP } = (() => {
-  const run = simulate(3);
-  const table = run.slice(2 * SAMPLES);
-  const [w0, raw] = [table[0].wheel, table[SAMPLES].wheel - table[0].wheel];
-  const step = Math.round(raw / PITCH) * PITCH;
-  return { TABLE: table.map((s) => ({ ...s, wheel: w0 + ((s.wheel - w0) * step) / raw })), STEP: step };
-})();
-/** 方框往復一次,大輪被推過的角度(整數個齒) */
-export const perStroke = STEP;
-
-/** 凸輪轉 theta(主動件往負方向轉)→ 方框的位移、大輪的轉角(只朝一個方向累計)、棘爪的角度 */
-export function intermittent(theta) {
-  const v = -theta;
-  const k = Math.floor(v / PERIOD);
-  const x = ((v - k * PERIOD) / PERIOD) * SAMPLES;
-  const i = Math.max(0, Math.min(SAMPLES - 1, Math.floor(x)));
-  const t = x - i;
-  const [a, b] = [TABLE[i], TABLE[i + 1]];
-  const abs = k * STEP + a.wheel + (b.wheel - a.wheel) * t;
-  return { x: yokeX(theta), wheel: abs - TABLE[0].wheel, abs, psi: a.psi + (b.psi - a.psi) * t };
+const LOBE = TAU / 3; // 溝槽的一瓣:凸輪轉 1/3 圈
+/** 凸輪往順時針轉過 v → 曲柄(大輪)的轉角(順時針為負,一路累計) */
+export function crankAngle(v) {
+  const k = Math.floor(v / LOBE);
+  const u = v / LOBE - k;
+  const move = 0.5 - DWELL;
+  let a;
+  if (u < DWELL) a = 0;
+  else if (u < 0.5) a = Math.PI * ease((u - DWELL) / move);
+  else if (u < 0.5 + DWELL) a = Math.PI;
+  else a = Math.PI + Math.PI * ease((u - 0.5 - DWELL) / move);
+  return START - (k * TAU + a);
 }
 
-/** 檢查用:爪(整個外形上取的點)離齒面多遠 */
-export const pawlOutlineAt = (theta) => {
-  const s = intermittent(theta);
-  const pin = pinAt(theta);
-  return PAWL_OUTLINE.map(([x, y]) => [pin[0] + x * Math.cos(s.psi) - y * Math.sin(s.psi), pin[1] + x * Math.sin(s.psi) + y * Math.cos(s.psi)]);
-};
-export const wheelOutlineAt = (theta) => {
-  const a = intermittent(theta).abs;
-  return ratchetShape(RATCHET).outline.map(([x, y]) => [WHEEL.center[0] + x * Math.cos(a) - y * Math.sin(a), WHEEL.center[1] + x * Math.sin(a) + y * Math.cos(a)]);
-};
+// 滑塊右端的銷離大輪軸心多遠(往左為負):滑塊曲柄的幾何
+const eyeX = (psi) => CRANK * Math.cos(psi) - Math.sqrt(ROD * ROD - (CRANK * Math.sin(psi)) ** 2);
+/** 凸輪往順時針轉過 v → 溝裡的銷離凸輪軸心的距離(溝槽中心線的極座標半徑) */
+export const pitchRadius = (v) => R_MIN + eyeX(crankAngle(v)) - eyeX(Math.PI);
+/** 凸輪轉 theta(主動件往負方向轉)→ 滑塊的位移(溝裡的銷的 x) */
+export const sliderX = (theta) => CAM.center[0] + pitchRadius(-theta);
+
+// 溝槽中心線(凸輪的局部座標,逆時針):凸輪轉 θ 時銷在世界角 0,也就是凸輪局部角 −θ
+const N = 720;
+const PITCH = Array.from({ length: N }, (_, i) => {
+  const a = (i / N) * TAU;
+  const r = pitchRadius(a);
+  return [r * Math.cos(a), r * Math.sin(a)];
+});
+
+// 深度(z):凸輪盤底 −0.14..0,溝的那一層 0..0.12;滑塊的桿在凸輪前面,連桿再往前,曲柄臂在連桿後面
+const Z = { slider: 0.24, block: [0.06, 0.42], arm: [0.34, 0.42], link: 0.5 };
+const FLOOR = -1.9;
+const GUIDE = { x0: -1.0, x1: 0.9, gap: 0.36, rail: 0.14, back: [-0.22, -0.1] }; // 導架:導軌的內側離中線 gap
+
+// 滑塊的局部座標:原點在溝裡的銷的軸線上(z 是世界深度)
+const BLOCK_W = 0.22;
+const LEFT = 0.85; // 左端塊的左面
+const RIGHT = 1.9; // 右端塊的右面
+// 凹腰的軸身(繞 x 的旋轉體):兩端半徑 0.3,中間收到 0.16
+const SPOOL_HALF = (RIGHT - LEFT) / 2 - BLOCK_W;
+const spoolProfile = [[0, -SPOOL_HALF], ...Array.from({ length: 17 }, (_, i) => {
+  const z = -SPOOL_HALF + (2 * SPOOL_HALF * i) / 16;
+  return [0.16 + 0.14 * (z / SPOOL_HALF) ** 2, z];
+}), [0, SPOOL_HALF]];
+
+// 曲柄臂(大輪的局部座標):轂端圓、銷端圓,兩圓的外公切線圍成的外形
+function crankArm(r0, r1, len) {
+  const s = Math.asin((r0 - r1) / len);
+  return [...arcPoints(r1, -Math.PI / 2 + s, Math.PI / 2 - s, len, 0), ...arcPoints(r0, Math.PI / 2 - s, (3 * Math.PI) / 2 + s)];
+}
 
 export default {
   figure: 398,
@@ -148,59 +104,92 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        ...pedestal({ at: [CAM.center[0], CAM.center[1]], z: -0.45, bore: 0.1, floor: -1.6 }),
-        ...pedestal({ at: [WHEEL.center[0], WHEEL.center[1]], z: -0.45, bore: 0.09, floor: -2.2 }),
-        // 連桿的方形導套與托著它的立柱
-        ...squareGuide({ at: [1.0, 0, 0.13], width: 0.1, thickness: 0.06, length: 0.3 }),
-        { kind: "box", size: [0.1, 1.4, 0.06], at: [1.0, -0.77, 0.13] },
-        { kind: "box", size: [0.6, 0.12, 0.6], at: [1.0, -1.5, 0.13] },
+        spanBox(CAM.center[0] - 0.9, WHEEL.center[0] + 0.9, FLOOR - 0.18, FLOOR, -0.75, 0.25), // 底座
+        ...pedestal({ at: [CAM.center[0], 0], z: -0.45, bore: 0.12, floor: FLOOR }),
+        ...pedestal({ at: [WHEEL.center[0], 0], z: -0.45, bore: 0.1, floor: FLOOR }),
+        // 導架:上下兩條導軌固定在背板前面,背板下面一根立柱站在底座上
+        { ...spanBox(GUIDE.x0, GUIDE.x1, GUIDE.gap, GUIDE.gap + GUIDE.rail, GUIDE.back[1], Z.block[1]), role: "rail" },
+        { ...spanBox(GUIDE.x0, GUIDE.x1, -GUIDE.gap - GUIDE.rail, -GUIDE.gap, GUIDE.back[1], Z.block[1]), role: "rail" },
+        spanBox(GUIDE.x0, GUIDE.x1, -GUIDE.gap - GUIDE.rail, GUIDE.gap + GUIDE.rail, GUIDE.back[0], GUIDE.back[1]),
+        spanBox((GUIDE.x0 + GUIDE.x1) / 2 - 0.15, (GUIDE.x0 + GUIDE.x1) / 2 + 0.15, FLOOR, -GUIDE.gap - GUIDE.rail, GUIDE.back[0], GUIDE.back[1]),
       ],
     },
-    { id: "cam", kind: "plate", center: CAM.center, shape: shape(OUTLINE, [circle(0.1).reverse()]), thickness: 0.2, hub: 0.25, mark: [0.6, 0], markSize: 0.06, spin: A + B, label: "C", labelOffset: [-0.95, 0, 0.3], pieces: [{ kind: "cylinder", radius: 0.1, length: 0.55, at: [0, 0, -0.25] }] },
     {
-      id: "yoke",
+      id: "cam",
+      kind: "group",
+      center: CAM.center,
+      spin: CAM.radius,
+      label: "C",
+      labelOffset: [-0.95, 0.35, 0.3],
+      pieces: [
+        { kind: "plate", shape: shape(circle(CAM.radius)), thickness: 0.14, at: [0, 0, -0.07] }, // 盤底(溝底)
+        { kind: "plate", shape: shape(circle(CAM.radius), [offsetLoop(PITCH, HALF).reverse()]), thickness: 0.12, at: [0, 0, 0.06] }, // 溝的外圈
+        { kind: "plate", shape: shape(offsetLoop(PITCH, -HALF)), thickness: 0.12, at: [0, 0, 0.06] }, // 溝的內島
+        { kind: "cylinder", radius: 0.2, length: 0.04, at: [0, 0, 0.14] }, // 盤面中心的軸端(原圖的圓)
+        { kind: "cylinder", radius: 0.12, length: 0.62, at: [0, 0, -0.31], role: "shaft" }, // 軸:往後伸進軸承座
+      ],
+    },
+    {
+      id: "slider",
       kind: "group",
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape(rect(2 * A + 0.5, 2.4), [rect(2 * A, 2.0).reverse()]), thickness: 0.18, at: [CAM.center[0], 0, -0.05] },
-        { kind: "box", size: [0.5, 0.35, 0.3], at: [CAM.center[0] + A + 0.6, 0, 0] },
+        { ...zCylinder(0.02, Z.slider + 0.05, PIN), role: "groovePin", accent: true }, // 伸進溝裡的銷
+        zCylinder(Z.slider - 0.05, Z.slider + 0.05, 0.1), // 桿端
+        spanBox(0, LEFT, -0.05, 0.05, Z.slider - 0.05, Z.slider + 0.05), // 桿
+        { ...spanBox(LEFT, LEFT + BLOCK_W, -GUIDE.gap, GUIDE.gap, Z.block[0], Z.block[1]), role: "block" },
+        { kind: "lathe", axis: X, profile: spoolProfile, at: [(LEFT + RIGHT) / 2, 0, Z.slider] }, // 凹腰的軸身
+        { ...spanBox(RIGHT - BLOCK_W, RIGHT, -GUIDE.gap, GUIDE.gap, Z.block[0], Z.block[1]), role: "block" },
+        zCylinder(Z.block[0], Z.block[1], 0.13, [EYE, 0]), // 右端的銷座
+        { ...zCylinder(Z.block[1] - 0.12, Z.link + 0.08, 0.045, [EYE, 0]), role: "eyePin" }, // 往前穿過連桿
       ],
     },
-    // 連桿(隨方框平移),末端的銷往後伸到棘爪那一層
-    { id: "rod", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: shape(thickLine([[0, 0], [1.6, 0], ROD_END], 0.1)), thickness: 0.06 }, { kind: "cylinder", radius: 0.03, length: 0.2, at: [ROD_END[0], ROD_END[1], -0.08] }] },
-    { id: "pawl", kind: "plate", shape: shape(PAWL_OUTLINE), thickness: 0.06, arrow: false },
-    { id: "axle", kind: "cylinder", center: [WHEEL.center[0], WHEEL.center[1], -0.15], radius: 0.09, length: 0.75 }, // 輪的固定軸(推斷)
-    { id: "wheel", kind: "group", center: WHEEL.center, spin: WHEEL.r, pieces: [{ kind: "plate", shape: { ...ratchetShape(RATCHET), holes: [circle(0.1).reverse()] }, thickness: 0.15, circles: [0.8] }, { kind: "box", size: [0.15, 0.15, 0.2], at: [WHEEL.r - 0.4, 0, 0], accent: true }] },
+    { id: "link", kind: "link", width: 0.12, thickness: 0.08, pins: false },
+    {
+      id: "wheel",
+      kind: "group",
+      center: WHEEL.center,
+      spin: WHEEL.r,
+      pieces: [
+        { kind: "plate", shape: shape(circle(WHEEL.r)), thickness: 0.18 },
+        zCylinder(0.09, 0.12, 0.09, [-0.76, 0]), // 原圖輪面上的一點(在曲柄的對面):看得出大輪轉、停
+        { kind: "cylinder", radius: 0.1, length: 0.65, at: [0, 0, -0.325], role: "shaft" }, // 軸:往後伸進軸承座
+        zCylinder(0.09, Z.arm[0], 0.16), // 轂
+        { kind: "plate", shape: shape(crankArm(0.17, 0.09, CRANK)), thickness: Z.arm[1] - Z.arm[0], at: [0, 0, (Z.arm[0] + Z.arm[1]) / 2], accent: true }, // 曲柄臂
+        { ...zCylinder(Z.arm[0], Z.link + 0.08, 0.045, [CRANK, 0]), role: "crankPin", accent: true }, // 曲柄銷:往前穿過連桿
+      ],
+    },
   ],
-  // 動力重演:只推凸輪(方框、連桿照模型走);棘爪鉸在連桿末端、靠自重搭在齒上,大輪只被棘爪推動
+  // 動力重演:只推凸輪;滑塊沿導軌自由滑動,只被溝的兩壁推
   replay: {
-    to: -3 * PERIOD,
-    seconds: 20,
-    free: { pawl: { pivot: [...pinAt(0), 0], on: "rod" }, wheel: { hold: true, gravity: false } },
-    ignore: [["wheel", "axle"]],
+    to: -LOBE,
+    seconds: 16,
+    free: { slider: { slide: [1, 0, 0], gravity: false } },
+    ignore: [["slider", "link"], ["slider", "frame"]],
     expect: [
-      { at: -PERIOD, part: "wheel", label: "方框往復一次,大輪被撥轉一下、又停住", quote: "將連續圓周運動轉換為間歇性圓周運動" },
-      { part: "wheel", label: "往復三次,大輪朝同一方向一下一下轉" },
+      { at: -LOBE * 0.08, part: "slider", label: "溝的同心段:滑塊停著", quote: "將連續圓周運動轉換為間歇性圓周運動" },
+      { at: -LOBE * 0.3, part: "slider", label: "溝把銷往外推,滑塊往右(大輪轉過上方)" },
+      { at: -LOBE * 0.55, part: "slider", label: "滑塊到右端附近停住" },
+      { at: -LOBE * 0.8, part: "slider", label: "溝把銷往內拉,滑塊往左" },
+      { part: "slider", label: "凸輪轉 1/3 圈,滑塊回到起點" },
     ],
   },
   driver: { part: "cam", type: "rotation", speed: -0.8 },
   target: "wheel",
   view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
-    const i = intermittent(theta);
-    const pin = pinAt(theta);
+    const psi = crankAngle(-theta);
+    const x = sliderX(theta);
+    const eye = [x + EYE, 0, Z.link];
+    const crank = [WHEEL.center[0] + CRANK * Math.cos(psi), CRANK * Math.sin(psi), Z.link];
     return {
       parts: {
         cam: { angle: theta },
-        yoke: { position: [i.x, 0, 0] },
-        rod: { position: [ROD_X0 + i.x, 0, 0.13] },
-        pawl: { position: [pin[0], pin[1], 0], angle: i.psi },
-        wheel: { angle: i.abs }, // 逐步算出的絕對轉角(和爪的位置對得上)
+        slider: { position: [x, 0, 0] },
+        link: { from: eye, to: crank },
+        wheel: { angle: psi },
       },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["cam", "yoke"], reason: "接合處的簡化畫法:凸輪在叉形框裡轉;框與凸輪前後錯開的量不夠,重疊 0.14" },
-  ],
 };

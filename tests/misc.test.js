@@ -3289,15 +3289,126 @@ test("第 397 種:連續圓周運動 → 間歇的直線往復運動;擺桿的�
   }
 });
 
-test("第 398 種:連續圓周運動 → 間歇圓周運動,凸輪 C 為驅動端;棘爪推大輪由接觸算", () => {
-  const ws = sweep(-2 * Math.PI, 720).map((t) => m398.intermittent(t).wheel);
-  assert.ok(ws.every((w, i) => i === 0 || w >= ws[i - 1] - 1e-9), "大輪只朝一個方向轉");
-  const still = ws.slice(1).filter((w, i) => Math.abs(w - ws[i]) < 1e-9).length;
-  assert.ok(still > 200, "間歇:有停住的時候");
-  close(m398.perStroke, m398.PITCH, "方框往復一次,大輪被推一齒");
-  close(m398.intermittent(-2 * Math.PI).wheel, 3 * m398.PITCH, "凸輪轉一圈(三瓣),推三齒", 1e-9);
-  for (const t of sweep(2 * Math.PI, 12)) close(m398.yokeX(t) + m398.yokeX(t + Math.PI), 0, "等寬凸輪:方框兩側始終夾著", 1e-9);
-  for (const t of sweep(-2 * Math.PI, 240)) assert.ok(!polygonsOverlap(m398.pawlOutlineAt(t), m398.wheelOutlineAt(t)), `主動量 ${t.toFixed(2)}:爪壓進齒裡`);
+// 第 398 種:槽凸輪 C → 導架裡的滑塊 → 連桿 → 大輪軸上的曲柄(2026-10-14 決定 (a))
+const at398 = (def, t) => {
+  const p = def.pose(t).parts;
+  const slider = part(def, "slider");
+  const wheel = part(def, "wheel");
+  const pin = (role) => slider.pieces.find((q) => q.role === role);
+  const crankPin = wheel.pieces.find((q) => q.role === "crankPin");
+  const [cx, cy] = rot2(crankPin.at, p.wheel.angle);
+  return {
+    p,
+    groovePin: [p.slider.position[0] + pin("groovePin").at[0], p.slider.position[1] + pin("groovePin").at[1]],
+    eye: [p.slider.position[0] + pin("eyePin").at[0], p.slider.position[1] + pin("eyePin").at[1]],
+    crank: [wheel.center[0] + cx, wheel.center[1] + cy],
+  };
+};
+
+test("第 398 種:凸輪 C 為驅動端;盤面的溝槽帶著滑塊的銷,銷全程在溝裡、兩側都貼著溝壁、不穿入", () => {
+  const def = m398.default;
+  assert.equal(def.driver.part, "cam", "凸輪 C 為驅動端");
+  assert.equal(part(def, "cam").label, "C");
+  const cam = part(def, "cam");
+  const layers = plateLayers(cam);
+  const pin = part(def, "slider").pieces.find((q) => q.role === "groovePin");
+  const floor = Math.max(...layers.filter((l) => l.solid.holes.length === 0 && l.z0 < 0).map((l) => l.z1)); // 盤底(溝底)
+  for (const t of sweep(-TAU, 360)) {
+    const { p, groovePin } = at398(def, t);
+    const tip = p.slider.position[2] + pin.at[2] - pin.length / 2;
+    assert.ok(tip > floor + 0.005, `主動量 ${t.toFixed(2)}:銷頭沒有頂到溝底`);
+    const z = tip + 0.005;
+    const solids = layers.filter((l) => l.z0 <= z && z <= l.z1).map((l) => l.solid);
+    assert.ok(solids.length, `主動量 ${t.toFixed(2)}:銷伸進盤面有溝的那一層`);
+    const c = rot2([groovePin[0] - cam.center[0], groovePin[1] - cam.center[1]], -p.cam.angle);
+    const g = guidedBetween(c, pin.radius, solids);
+    assert.ok(g.open && g.depth < 0.005, `主動量 ${t.toFixed(2)}:銷在溝裡、不穿進溝壁(穿入 ${g.depth.toFixed(3)})`);
+    assert.ok(g.sides, `主動量 ${t.toFixed(2)}:溝的兩側都貼著銷`);
+  }
+});
+
+test("第 398 種:滑塊夾在上下兩條導軌之間,只沿導軌左右滑", () => {
+  const def = m398.default;
+  const blocks = part(def, "slider").pieces.filter((q) => q.role === "block");
+  const rails = part(def, "frame").pieces.filter((q) => q.role === "rail");
+  assert.equal(blocks.length, 2, "滑塊兩端各一塊");
+  assert.equal(rails.length, 2, "上下兩條導軌");
+  const box = (q, [ox, oy, oz] = [0, 0, 0]) => ({ lo: q.at.map((v, k) => v + [ox, oy, oz][k] - q.size[k] / 2), hi: q.at.map((v, k) => v + [ox, oy, oz][k] + q.size[k] / 2) });
+  const [top, bottom] = [...rails].sort((a, b) => b.at[1] - a.at[1]).map((q) => box(q));
+  const xs = [];
+  for (const t of sweep(-TAU, 240)) {
+    const pos = def.pose(t).parts.slider.position;
+    close(pos[1], 0, "滑塊不上下動", 1e-12);
+    close(pos[2], 0, "滑塊不前後動", 1e-12);
+    xs.push(pos[0]);
+    for (const b of blocks.map((q) => box(q, pos))) {
+      close(top.lo[1] - b.hi[1], 0, `主動量 ${t.toFixed(2)}:滑塊頂貼著上導軌`, 1e-9);
+      close(b.lo[1] - bottom.hi[1], 0, `主動量 ${t.toFixed(2)}:滑塊底貼著下導軌`, 1e-9);
+      assert.ok(b.lo[0] >= top.lo[0] - 1e-9 && b.hi[0] <= top.hi[0] + 1e-9, `主動量 ${t.toFixed(2)}:滑塊在導軌的長度之內`);
+      assert.ok(b.lo[2] < top.hi[2] && top.lo[2] < b.hi[2], "滑塊與導軌在同一個深度");
+    }
+  }
+  assert.ok(Math.max(...xs) - Math.min(...xs) > 0.3, "滑塊左右往復一段看得出的行程");
+});
+
+test("第 398 種:連桿長不變,兩端接在滑塊的銷與大輪軸上的曲柄銷", () => {
+  const def = m398.default;
+  const lengths = sweep(-TAU, 360).map((t) => {
+    const { p, eye, crank } = at398(def, t);
+    close(dist([...p.link.from.slice(0, 2), 0], [...eye, 0]), 0, `主動量 ${t.toFixed(2)}:連桿左端在滑塊的銷上`, 1e-9);
+    close(dist([...p.link.to.slice(0, 2), 0], [...crank, 0]), 0, `主動量 ${t.toFixed(2)}:連桿右端在曲柄銷上`, 1e-9);
+    return dist(eye.concat(0), crank.concat(0));
+  });
+  for (const l of lengths) close(l, lengths[0], "連桿長不變", 1e-9);
+  const wheel = part(def, "wheel");
+  const crankPin = wheel.pieces.find((q) => q.role === "crankPin");
+  const eyePin = part(def, "slider").pieces.find((q) => q.role === "eyePin");
+  const z = def.pose(0).parts.link.from[2];
+  for (const q of [crankPin, eyePin]) assert.ok(q.at[2] - q.length / 2 < z && z < q.at[2] + q.length / 2, "銷穿過連桿的那一層");
+});
+
+test("第 398 種:將連續圓周運動轉換為間歇性圓周運動——凸輪等速轉一圈,大輪朝同一方向轉三圈、停六次", () => {
+  const def = m398.default;
+  assert.equal(def.target, "wheel", "目標件是右邊的大輪");
+  const n = 3600;
+  const ws = sweep(-TAU, n).map((t) => def.pose(t).parts.wheel.angle);
+  const d = ws.slice(1).map((w, i) => w - ws[i]);
+  assert.ok(d.every((x) => x <= 1e-12), "大輪只朝一個方向轉(順時針)");
+  close(ws[n] - ws[0], -3 * TAU, "凸輪轉一圈(三瓣溝槽),大輪轉三圈", 1e-6);
+  const still = d.map((x) => Math.abs(x) < 1e-12);
+  const stops = still.filter((s, i) => s && !still[(i + n - 1) % n]).length;
+  assert.equal(stops, 6, "一圈停六次(大輪每轉半圈停一下)");
+  assert.ok(still.filter(Boolean).length > 0.12 * n, "停住的時間看得出來");
+});
+
+test("第 398 種:大輪停住時曲柄不在死點(滑塊再動時只能往同一方向帶),經過死點時大輪還在轉(飛輪帶過死點)", () => {
+  const def = m398.default;
+  const n = 3600;
+  const ts = sweep(-TAU, n);
+  const ws = ts.map((t) => def.pose(t).parts.wheel.angle);
+  for (let i = 1; i <= n; i++) {
+    const moving = Math.abs(ws[i] - ws[i - 1]) > 1e-12;
+    const { eye, crank } = at398(def, ts[i]);
+    const c = part(def, "wheel").center;
+    const arm = [crank[0] - c[0], crank[1] - c[1]];
+    const rod = [crank[0] - eye[0], crank[1] - eye[1]];
+    const sin = Math.abs(arm[0] * rod[1] - arm[1] * rod[0]) / (Math.hypot(...arm) * Math.hypot(...rod));
+    if (!moving) assert.ok(sin > Math.sin(deg(10)), `主動量 ${ts[i].toFixed(3)}:停住時曲柄離死點 10° 以上(sin ${sin.toFixed(3)})`);
+    if (sin < 0.01) assert.ok(moving, `主動量 ${ts[i].toFixed(3)}:曲柄在死點時大輪仍在轉`);
+  }
+});
+
+test("第 398 種:機架、凸輪各是一件;凸輪軸與大輪軸穿過機架的軸承座", () => {
+  const def = m398.default;
+  const frame = part(def, "frame");
+  assertOnePiece(frame, "機架(底座、兩個軸承座、導架)連成一件");
+  const cam = part(def, "cam");
+  assertOnePiece(cam, "凸輪(盤、溝的外圈與內島、軸)是一件");
+  for (const id of ["cam", "wheel"]) {
+    const p = part(def, id);
+    const shaft = p.pieces.find((q) => q.role === "shaft");
+    assertShaftInBearings({ ...shaft, at: add(p.center, shaft.at) }, frame.pieces, `${id} 的軸`);
+  }
 });
 
 test("第 399 種:修理鏈條:每一半的螺絲旋進另一半的螺帽,轉動螺帽把兩半拉近", () => {
