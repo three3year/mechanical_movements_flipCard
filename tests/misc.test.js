@@ -62,6 +62,7 @@ import * as m400 from "../models/fig400.js";
 import * as m401 from "../models/fig401.js";
 import * as m402 from "../models/fig402.js";
 import { penetrationDepth, polygonsOverlap, pointInPolygon, circlePolygon, edgeDistance, placeOutline } from "../models/contact.js";
+import { assertWeightDrive } from "./helpers.js"; // 第 396 種的重錘驅動
 
 /**
  * 螺紋的物理定義(viewer/parts.js 的 worm:hand +1 是右旋——螺紋沿局部 +z 往前時繞 +z 正轉):螺桿在固定的螺孔裡
@@ -3586,21 +3587,80 @@ test("第 395 種:閥塞的兩道通道各從一個口彎到相鄰的口;通道�
   assert.ok(HALF_W > 0 && disc.z1 <= Math.min(...layers.slice(1).map((l) => l.z0)) + 1e-9, "通道壁在盤面前面");
 });
 
-test("第 396 種:Reed 擒縱:圓盤銷撥槓桿換邊;擺輪一個來回,叉瓦放走擒縱輪一齒(由接觸算)", () => {
+test("第 396 種:Reed 擒縱:圓盤銷撥槓桿換邊、出叉口後靠擋銷;擺輪一個來回,擒縱輪放走一齒(由接觸算)", () => {
   const S = m396.SWING;
+  const P = m396.PERIOD;
   // 圓盤銷只在擺過中間時撥動槓桿,其餘時間槓桿靠在擋銷上
   assert.ok(m396.reed(0).lever * m396.reed(2 * S).lever < 0, "擺過去,槓桿換邊");
   close(m396.reed(S / 2).lever, m396.reed(0).lever, "擺輪擺出叉口後,槓桿不動", 1e-12);
-  const P = 4 * S; // 擺輪一個來回
-  close(m396.reed(P).wheel - m396.reed(0).wheel, -m396.PITCH, "鎖定與解鎖,一個來回放走一齒(順時針)", 1e-9);
+  close(m396.reed(P).wheel - m396.reed(0).wheel, -m396.PITCH, "一個來回放走一齒(順時針)", 1e-9);
   close(m396.reed(3 * P).wheel - m396.reed(0).wheel, -3 * m396.PITCH, "三個來回放走三齒", 1e-9);
-  // 槓桿靠在擋銷上時,擒縱輪被叉瓦鎖住不動
+  // 槓桿靠在擋銷上、擺輪在外側擺動時,擒縱輪被叉瓦鎖住不動
   const locked = sweep(S / 2, 30).map((v) => m396.reed(2 * S + v).wheel); // 擺輪從 +140° 擺回 +70°
   assert.ok(Math.max(...locked) - Math.min(...locked) < 1e-6, "擺輪在外側擺動時,輪鎖住");
-  for (const v of sweep(P, 120)) {
+  for (const v of sweep(P, 240)) {
     const c = m396.contactAt(v);
-    for (const p of c.pallets) for (const t of c.teeth) assert.ok(penetrationDepth(p, t) < 2e-3, `主動量 ${v.toFixed(3)}:叉瓦壓進輪齒`);
+    for (const p of [...c.pallets, c.impulse]) for (const t of c.teeth) assert.ok(penetrationDepth(p, t) < 2e-3, `主動量 ${v.toFixed(3)}:叉瓦壓進輪齒`);
   }
+  // 圓盤銷在叉口裡撥槓桿,出叉口(槓桿靠上擋銷)後從口退出,整個來回不穿過叉口的兩片
+  for (const v of sweep(P, 720)) {
+    const c = m396.contactAt(v);
+    for (const p of c.prongs) assert.ok(penetrationDepth(c.pin, p) < 2e-3, `主動量 ${v.toFixed(3)}:圓盤銷穿進叉口(${penetrationDepth(c.pin, p).toFixed(3)})`);
+  }
+  const mid = m396.contactAt(S); // 擺輪居中:銷夾在叉口的兩片之間
+  for (const p of mid.prongs) assert.ok(polyGap(mid.pin, p) < 0.02, "擺輪居中時,圓盤銷在叉口裡、兩邊都貼近叉口");
+});
+
+test("第 396 種:往一個方向擺時衝量經槓桿傳來,往另一個方向擺時齒直接推擺輪滾子上的衝量叉瓦;鎖住與放開只在每次衝量時各一次", () => {
+  const P = m396.PERIOD;
+  const n = 1440;
+  const vs = sweep(P, n);
+  const gap = (a, ts) => Math.min(...ts.map((t) => polyGap(a, t)));
+  // 每一小步:輪往前轉了多少、當時誰貼著輪齒(間隙 < 0.003)
+  const steps = vs.slice(1).map((v, i) => {
+    const c = m396.contactAt(v);
+    return { half: v <= P / 2 ? "ccw" : "cw", turn: m396.reed(vs[i]).wheel - m396.reed(v).wheel, impulse: gap(c.impulse, c.teeth), lever: Math.min(...c.pallets.map((p) => gap(p, c.teeth))) };
+  });
+  const sum = (half, by) => steps.filter((s) => s.half === half && s.turn > 0 && by(s)).reduce((t, s) => t + s.turn, 0);
+  // 前半個來回擺輪逆時針擺(滾子的右緣往上,和擒縱輪左緣的齒同向):齒追上衝量叉瓦、推著它走
+  const direct = sum("ccw", (s) => s.impulse < 0.003 && s.lever > 0.003);
+  assert.ok(direct > 0.4 * m396.PITCH, `逆時針擺:輪推著衝量叉瓦轉過 ${(direct / m396.PITCH).toFixed(2)} 齒,這時槓桿的叉瓦都沒碰齒——衝量直接給衝量叉瓦(原文:另一個方向的衝量直接給天文台計時器的衝量叉瓦)`);
+  // 後半個來回(順時針擺回):衝量叉瓦從兩齒之間通過、不碰齒;輪推著槓桿叉瓦的斜衝擊面走
+  const cw = steps.filter((s) => s.half === "cw");
+  assert.ok(Math.min(...cw.map((s) => s.impulse)) > 0.005, "順時針擺回:衝量叉瓦從兩齒之間通過,不碰齒");
+  const viaLever = sum("cw", (s) => s.lever < 0.003);
+  assert.ok(viaLever > 0.15 * m396.PITCH, `順時針擺回:輪推著槓桿叉瓦的衝擊面轉過 ${(viaLever / m396.PITCH).toFixed(2)} 齒——衝量全部經槓桿(原文:往一個方向擺時得到的衝量全部經槓桿傳來)`);
+  // 鎖住與放開各一次:一個來回裡輪停住的段落只有兩段(鎖在一個叉瓦上、鎖在另一個叉瓦上),每段之後轉一次
+  const still = steps.map((s) => Math.abs(s.turn) < 1e-9);
+  const rests = still.filter((s, i) => s && !still[(i - 1 + still.length) % still.length]).length;
+  assert.equal(rests, 2, "一個來回只鎖住兩次(每次衝量之後各一次)");
+  for (const half of ["ccw", "cw"]) {
+    const h = steps.filter((s) => s.half === half);
+    const moving = h.map((s) => Math.abs(s.turn) > 1e-9);
+    const starts = moving.filter((m, i) => m && (i === 0 || !moving[i - 1])).length;
+    assert.ok(starts <= 2, `${half === "ccw" ? "逆" : "順"}時針擺的那半個來回只放開一次(輪開始轉 ${starts} 次;落到叉瓦上的停頓不算放開)`);
+  }
+});
+
+test("第 396 種:槓桿身、叉口、錨形件與叉瓦連成一件,套筒套在夾板上的樞軸上(槓桿身那一層也有軸)", () => {
+  const def = m396.default;
+  const lever = part(def, "lever");
+  assertOnePiece(lever, "槓桿身、叉口、錨形件與叉瓦相連");
+  const z = (q) => [pieceBox(q).lo[2], pieceBox(q).hi[2]];
+  const span = [Math.min(...lever.pieces.map((q) => z(q)[0])), Math.max(...lever.pieces.map((q) => z(q)[1]))];
+  const sleeve = lever.pieces.find((q) => q.kind === "cylinder" && q.inner && Math.hypot(...(q.at ?? [0, 0]).slice(0, 2)) < 1e-9);
+  assert.ok(sleeve, "槓桿在樞軸處有一個套筒");
+  // 夾板條上和槓桿同軸、伸得最前面的圓柱就是樞軸(凸台也同軸,但只在夾板條那一層)
+  const coaxial = part(def, "plate").pieces.filter((q) => q.kind === "cylinder" && Math.hypot(q.at[0] - lever.center[0], q.at[1] - lever.center[1]) < 1e-9);
+  const arbor = coaxial.reduce((a, q) => (!a || z(q)[1] > z(a)[1] ? q : a), null);
+  assert.ok(arbor, "夾板條上有槓桿的樞軸");
+  assertShaftInBearings({ ...arbor, at: [0, 0, arbor.at[2]] }, [sleeve], "槓桿的樞軸");
+  assert.ok(z(arbor)[1] >= span[1] - 1e-9 && z(sleeve)[0] <= span[0] + 0.02 && z(sleeve)[1] >= span[1] - 1e-9, "套筒從叉瓦那一層貫穿到槓桿身那一層,樞軸伸到槓桿身的頂面");
+});
+
+test("第 396 種:推斷的重錘驅動——擒縱輪軸上的鼓放出繩、吊著重錘,重錘隨輪下降,降到底時捲回(錶用發條,重錘是示意)", () => {
+  const { drum, every } = m396.WEIGHT_DRIVE;
+  assertWeightDrive(m396.default, { drum, wheel: (v) => m396.reed(v).wheel, period: m396.PERIOD, every }); // 輪順時針往前轉(繞鼓軸 −1,drum.sense)
 });
 
 test("第 397 種:連續圓周運動 → 間歇的直線往復運動;擺桿的角度由曲柄銷在槽裡的位置決定", () => {
