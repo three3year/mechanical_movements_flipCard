@@ -1015,7 +1015,8 @@ test("第 335 種:機架是一件——軸承座撐著樑的軸、固定臂從�
   const frame = m335.default.parts.find((p) => p.id === "frame").pieces;
   // 各塊的外接盒(盒子不轉;圓柱沿 z),兩盒相貼或重疊就算相連
   const boxOf = (q) => {
-    const h = q.kind === "box" ? q.size.map((s) => s / 2) : [q.radius, q.radius, q.length / 2];
+    const axis = q.axis ?? [0, 0, 1];
+    const h = q.kind === "box" ? q.size.map((s) => s / 2) : axis.map((a) => (Math.abs(a) > 0.5 ? q.length / 2 : q.radius));
     return [q.at.map((c, i) => c - h[i]), q.at.map((c, i) => c + h[i])];
   };
   const boxes = frame.map(boxOf);
@@ -1165,9 +1166,152 @@ test("第 340 種:樑架在搖動立柱支座 B–F 上,支座繞中心 F 擺動
   straightish(sweep(m340.RANGE[1], 30, m340.RANGE[0]).map((v) => m340.beam(v).C), 0.01);
 });
 
+/**
+ * 群組零件的各塊(沒有轉角的方塊、沿座標軸的圓柱、沿 z 的板件)以外框判斷相貼或重疊,回傳和第一塊連不起來的塊的編號
+ * (第 340–343 種的機架:牆、托架、立柱要接到底座)
+ */
+function looseBlocks340(p) {
+  const c = p.center ?? [0, 0, 0];
+  const boxes = p.pieces.map((q) => {
+    const at = (q.at ?? [0, 0, 0]).map((v, k) => v + c[k]);
+    assert.ok(!q.angle && !q.rotation && (!q.axis || (q.kind === "cylinder" && q.axis.filter((a) => a !== 0).length === 1)), "方塊、板件沿 z、不轉;圓柱沿座標軸");
+    if (q.kind === "plate") {
+      const xs = q.shape.outline.map((v) => v[0]);
+      const ys = q.shape.outline.map((v) => v[1]);
+      const h = (q.thickness ?? 0.2) / 2;
+      return { lo: [at[0] + Math.min(...xs), at[1] + Math.min(...ys), at[2] - h], hi: [at[0] + Math.max(...xs), at[1] + Math.max(...ys), at[2] + h] };
+    }
+    const axis = q.axis ?? [0, 0, 1];
+    const h = q.kind === "box" ? q.size.map((s) => s / 2) : axis.map((a) => (Math.abs(a) > 0.5 ? q.length / 2 : q.radius));
+    return { lo: at.map((v, k) => v - h[k]), hi: at.map((v, k) => v + h[k]) };
+  });
+  const touch = (a, b) => [0, 1, 2].every((k) => a.lo[k] <= b.hi[k] + 1e-9 && b.lo[k] <= a.hi[k] + 1e-9);
+  const reached = new Set([0]);
+  const queue = [0];
+  while (queue.length) {
+    const i = queue.shift();
+    boxes.forEach((b, j) => {
+      if (!reached.has(j) && touch(boxes[i], b)) {
+        reached.add(j);
+        queue.push(j);
+      }
+    });
+  }
+  return boxes.map((_, i) => i).filter((i) => !reached.has(i));
+}
+
+test("第 340 種:D 端的桿是會擺的連桿:上端以銷接在樑端 D,下端的銷在固定的鉛直導槽裡滑(推斷)", () => {
+  const def = m340.default;
+  const rod = part(def, "rodD");
+  assert.equal(rod.kind, "link", "D 端的桿是連桿(不是只平移的方塊)");
+  const pin = rod.pieces.find((q) => q.kind === "cylinder");
+  const values = sweep(m340.RANGE[1], 16, m340.RANGE[0]);
+  const first = def.pose(values[0]).parts.rodD;
+  const length = dist(first.from, first.to);
+  const angles = [];
+  for (const v of values) {
+    const b = m340.beam(v);
+    const s = def.pose(v).parts.rodD;
+    close(Math.hypot(s.from[0] - b.D[0], s.from[1] - b.D[1]), 0, "桿的上端在 D", 1e-9);
+    close(dist(s.from, s.to), length, "桿長不變", 1e-9);
+    close(s.to[0], first.to[0], "下端走固定的鉛直線", 1e-9);
+    angles.push(Math.atan2(s.to[0] - s.from[0], s.from[1] - s.to[1]));
+    assertPinned(def, v, b.D, [["beam"], ["rodD"]], "D 端");
+    assertPinned(def, v, s.to, [["rodD"]], "桿的下端");
+    const [z0, z1] = zSpan(pin, s.from[2]);
+    const slots = plateLayers(part(def, "ground")).filter((l) => l.z0 >= z0 - 1e-9 && l.z1 <= z1 + 1e-9).map((l) => l.solid);
+    assert.ok(slots.length, "下端的銷伸進導槽那一層");
+    const g = guidedBetween(s.to, pin.radius, slots);
+    assert.ok(g.open && g.sides && g.depth < 0.005, `主動量 ${v.toFixed(3)}:下端的銷在導槽裡,兩側有壁、不穿入(${g.depth.toFixed(4)})`);
+  }
+  assert.ok(Math.max(...angles) - Math.min(...angles) > deg(15), "桿跟著 D 斜擺");
+});
+
+test("第 340 種:樑套在立柱頂 B 的粗軸上(原圖 B 是打斜線的軸),A、C 以銷接半徑桿與活塞桿,E 的銷穿過半徑桿", () => {
+  const def = m340.default;
+  const holeR = Math.max(...plateLayers(part(def, "beam"))[0].solid.holes[0].map((p) => Math.hypot(p[0], p[1])));
+  const rod = part(def, "pistonRod");
+  for (const v of sweep(m340.RANGE[1], 8, m340.RANGE[0])) {
+    const b = m340.beam(v);
+    const pose = def.pose(v).parts;
+    const shaft = pinsOf(def, v).find((q) => Math.hypot(q.at[0] - b.B[0], q.at[1] - b.B[1]) < 1e-6 && q.r >= holeR - 1e-3);
+    assert.ok(shaft, "B 有和樑孔一樣粗的軸");
+    assertPinned(def, v, b.B, [["beam"], ["pillar"]], "B ");
+    assertPinned(def, v, b.A, [["beam"], ["radiusBar"]], "A ");
+    assertPinned(def, v, m340.geometry.E, [["radiusBar"]], "E ");
+    assertPinned(def, v, b.C, [["beam"]], "C ");
+    const pinC = pinsOf(def, v).find((q) => Math.hypot(q.at[0] - b.C[0], q.at[1] - b.C[1]) < 1e-6);
+    const z = pose.pistonRod.position[2];
+    assert.ok(pinC.z0 <= z - rod.size[2] / 2 + 1e-9 && pinC.z1 >= z + rod.size[2] / 2 - 1e-9, "C 的銷穿過活塞桿那一層");
+    assert.ok(pose.pistonRod.position[1] + rod.size[1] / 2 >= b.C[1] + pinC.r - 1e-9, "活塞桿的頂端包住 C 的銷");
+    const [r0, r1] = [z - rod.size[2] / 2, z + rod.size[2] / 2];
+    const [b0, b1] = layerOf(def, pose, "beam");
+    assert.ok(r0 >= b1 || r1 <= b0, "活塞桿不伸進樑的板");
+  }
+});
+
+test("第 340 種:E 的樞軸裝在從牆伸出的托架上,牆站在底座上(固定件連成一塊)", () => {
+  const def = m340.default;
+  assert.deepEqual(looseBlocks340(part(def, "ground")), [], "固定件的每一塊都連到底座");
+  const E = m340.geometry.E;
+  assert.ok(pinsOf(def, 0).some((q) => Math.hypot(q.at[0] - E[0], q.at[1] - E[1]) < 1e-6), "E 有銷");
+});
+
 test("第 341 種:蚱蜢式樑式引擎:樑的一端在搖動立柱 A 上,半徑桿 B 讓活塞桿端走近似直線", () => {
   straightish(sweep(1, 40).map((p) => m341.grasshopper(p).C), 0.01);
   steamPushes(m341.default, sweep(1, 8));
+});
+
+test("第 341 種:半徑桿 B 的固定樞軸在牆上的托架、銷穿過半徑桿,另一端以銷接在樑的中點;牆站在底座上", () => {
+  const def = m341.default;
+  assert.deepEqual(looseBlocks340(part(def, "frame")), [], "機架的每一塊(牆、托架、軸承座)都連到底座");
+  for (const p of sweep(1, 8)) {
+    const g = m341.grasshopper(p);
+    assertPinned(def, p, m341.geometry.E, [["radiusB"]], "半徑桿的固定樞軸");
+    assert.ok(pinsOf(def, p).some((q) => Math.hypot(q.at[0] - m341.geometry.E[0], q.at[1] - m341.geometry.E[1]) < 1e-6 && part(def, "frame").pieces.some((f) => f.kind === "cylinder" && f.radius === q.r)), "固定樞軸的銷屬於機架");
+    assertPinned(def, p, g.mid, [["beam"], ["radiusB"]], "樑的中點");
+  }
+});
+
+test("第 341 種:曲柄軸跟著曲柄轉,從軸承座穿過圓盤伸到曲柄臂的背面(曲柄臂、銷不懸空)", () => {
+  const def = m341.default;
+  const crank = part(def, "crank");
+  assert.deepEqual(looseBlocks340(crank), [], "曲柄的每一塊(軸、圓盤、臂、銷)連成一件");
+  const shaft = crank.pieces.find((q) => q.kind === "cylinder" && !q.inner && Math.hypot(q.at[0], q.at[1]) < 1e-9 && q.length > 0.3);
+  assert.ok(shaft, "曲柄群組裡有曲柄軸");
+  const arm = crank.pieces.find((q) => q.kind === "box");
+  const [s0, s1] = zSpan(shaft, crank.center[2]);
+  assert.ok(s1 >= zSpan(arm, crank.center[2])[0] - 1e-9, "軸伸到曲柄臂的背面");
+  const frame = part(def, "frame");
+  const at = (q) => Math.hypot(q.at[0] - crank.center[0], q.at[1] - crank.center[1]) < 1e-9;
+  const bearing = frame.pieces.find((q) => q.kind === "cylinder" && q.inner === shaft.radius && at(q));
+  assert.ok(bearing, "軸承座的環的孔等於軸徑");
+  const [b0, b1] = zSpan(bearing);
+  assert.ok(s0 <= b0 + 1e-9 && s1 >= b1 - 1e-9, "軸穿過整個軸承環");
+  assert.ok(!frame.pieces.some((q) => q.kind === "cylinder" && !q.inner && at(q)), "機架裡沒有不轉的曲柄軸");
+});
+
+test("第 341 種:半徑桿在樑後面一層(原圖右段畫虛線);活塞桿頂以銷穿過樑在 C 的孔,活塞桿不伸進樑的板", () => {
+  const def = m341.default;
+  const holeR = Math.max(...plateLayers(part(def, "beam"))[0].solid.holes[0].map((p) => Math.hypot(p[0], p[1])));
+  const rod = part(def, "pistonRod");
+  for (const p of sweep(1, 8)) {
+    const g = m341.grasshopper(p);
+    const pose = def.pose(p).parts;
+    const [b0, b1] = layerOf(def, pose, "beam");
+    assert.ok(layerOf(def, pose, "radiusB")[1] <= b0 + 1e-9, "半徑桿在樑後面");
+    const pinC = pinsOf(def, p).find((q) => Math.hypot(q.at[0] - g.C[0], q.at[1] - g.C[1]) < 1e-6 && q.r >= holeR - 1e-3);
+    assert.ok(pinC, "C 有和樑孔一樣粗的銷");
+    assertPinned(def, p, g.C, [["beam"]], "C ");
+    const z = pose.pistonRod.position[2];
+    const [r0, r1] = [z - rod.size[2] / 2, z + rod.size[2] / 2];
+    assert.ok(pinC.z0 <= r0 + 1e-9 && pinC.z1 >= r1 - 1e-9, "C 的銷伸進活塞桿那一層");
+    // 活塞桿走汽缸中心線,C 偏離它不到 0.001:頂端的眼比銷粗,把這點偏差包住
+    const eye = rod.pieces.find((q) => q.kind === "cylinder");
+    const at = [pose.pistonRod.position[0] + eye.at[0], pose.pistonRod.position[1] + eye.at[1]];
+    assert.ok(Math.hypot(at[0] - g.C[0], at[1] - g.C[1]) + pinC.r < eye.radius, "活塞桿頂的眼套住 C 的銷");
+    assert.ok(r0 >= b1 || r1 <= b0, "活塞桿不伸進樑的板");
+  }
 });
 
 test("第 342 種:大氣壓力引擎:蒸汽進入時配重抬起活塞;冷凝後大氣壓力把活塞推下", () => {
@@ -1185,9 +1329,142 @@ test("第 342 種:大氣壓力引擎:蒸汽進入時配重抬起活塞;冷凝後
   assert.ok(def.pose(0.6).flows.some((f) => f.fluid === "water"), "噴水冷凝");
 });
 
+/** 第 342 種:零件(方塊與它的方塊附件)在姿勢下的外框:{ lo, hi }(世界 xy),以及最高點 */
+function boxes342(def, pose, id) {
+  const p = part(def, id);
+  const c = pose[id].position;
+  return [p, ...(p.pieces ?? []).filter((q) => q.kind === "box")].map((q) => {
+    const at = q === p ? [0, 0, 0] : q.at;
+    return rect(q.size[0], q.size[1], c[0] + at[0], c[1] + at[1]);
+  });
+}
+const polylineLength342 = (pts) => pts.slice(1).reduce((sum, q, i) => sum + dist(q, pts[i]), 0);
+// 第 342 種:樑的各塊板件在姿勢下的外形(世界 xy)
+const beamPlates342 = (def, psi) => {
+  const b = part(def, "beam");
+  return b.pieces.filter((q) => q.kind === "plate").map((q) => q.shape.outline.map((v) => {
+    const [x, y] = rot2(v, psi);
+    return [x + b.center[0], y + b.center[1]];
+  }));
+};
+
+/** 鏈條(chainId)長度不變、最後一段鉛直垂下夠長,下端接在桿(rodId)頂端的接頭上,桿和鏈條同一條直線、同深度,桿不碰樑 */
+function chainHangs342(chainId, rodId) {
+  const def = m342.default;
+  let length = null;
+  for (const p of sweep(1, 40)) {
+    const pose = def.pose(p);
+    const pts = pose.paths[chainId].points;
+    const L = polylineLength342(pts);
+    length ??= L;
+    close(L, length, `進程 ${p.toFixed(3)}:${chainId} 長度不變`, 2e-3);
+    const [a, end] = pts.slice(-2);
+    close(a[0], end[0], "最後一段鉛直", 1e-9);
+    assert.ok(a[1] - end[1] > 0.4, `進程 ${p.toFixed(3)}:${chainId} 垂下段 ${(a[1] - end[1]).toFixed(3)} 夠長`);
+    const rod = pose.parts[rodId].position;
+    const boxes = boxes342(def, pose.parts, rodId);
+    close(Math.max(...boxes.flatMap((r) => r.map((v) => v[1]))), end[1], "鏈條下端接在桿頂的接頭上", 1e-9);
+    close(rod[0], end[0], "桿在鏈條的直線上", 1e-9);
+    close(rod[2], end[2], "桿和鏈條同深度", 1e-9);
+    const psi = pose.parts.beam.angle;
+    for (const r of boxes) for (const plate of beamPlates342(def, psi)) assert.ok(!polygonsOverlap(r, plate), `進程 ${p.toFixed(3)}:${rodId} 不伸進樑`);
+  }
+}
+
+test("第 342 種:活塞桿與弓頭以鏈條相連:鏈條長度不變、全程從弓頭垂下,下端接活塞桿頂,活塞桿在鏈條的直線上、走汽缸中心線", () => {
+  chainHangs342("chain", "pistonRod");
+  const def = m342.default;
+  for (const p of sweep(1, 8)) close(def.pose(p).parts.pistonRod.position[0], part(def, "cylinder").center[0], "活塞桿走汽缸中心線", 1e-9);
+});
+
+test("第 342 種:樑另一端的抽水桿:蒸汽進入時抽水桿的重量讓它下降、抬起活塞;大氣壓力把活塞推下時抽水桿被拉起", () => {
+  const def = m342.default;
+  assert.equal(def.target, "pumpRod", "目標件是抽水桿");
+  chainHangs342("pumpChain", "pumpRod");
+  const y = (p) => def.pose(p).parts.pumpRod.position[1];
+  for (const [a, b] of [[0.05, 0.3], [0.3, 0.5]]) {
+    assert.ok(m342.atmospheric(b).piston > m342.atmospheric(a).piston && y(b) < y(a), "蒸汽進入時活塞上升、抽水桿下降");
+  }
+  for (const [a, b] of [[0.7, 0.8], [0.8, 0.95]]) {
+    assert.ok(m342.atmospheric(b).piston < m342.atmospheric(a).piston && y(b) > y(a), "活塞被推下、抽水桿被拉起");
+  }
+  // 抽水桿下端的桶在泵筒裡上下(推斷的泵筒)
+  const rod = part(def, "pumpRod");
+  const bucket = rod.pieces.find((q) => q.kind === "cylinder");
+  const barrel = part(def, "frame").pieces.find((q) => q.kind === "cylinder" && q.inner && q.axis?.[1] === 1);
+  assert.ok(barrel && bucket.radius <= barrel.inner, "桶比泵筒的內徑細");
+  for (const p of sweep(1, 20)) {
+    const c = def.pose(p).parts.pumpRod.position;
+    close(c[0], barrel.at[0], "抽水桿在泵筒的中心線上", 1e-9);
+    const by = c[1] + bucket.at[1];
+    assert.ok(by - bucket.length / 2 >= barrel.at[1] - barrel.length / 2 && by + bucket.length / 2 <= barrel.at[1] + barrel.length / 2, `進程 ${p.toFixed(2)}:桶在泵筒裡`);
+  }
+});
+
+test("第 342 種:機架落地:牆、樑台、立柱與汽缸台座連成一塊,汽缸座在台座上,樑的軸穿過牆頂軸承座的環", () => {
+  const def = m342.default;
+  const frame = part(def, "frame");
+  assert.deepEqual(looseBlocks340(frame), [], "機架的每一塊都連到地面");
+  const cyl = part(def, "cylinder");
+  const bottom = cyl.center[1] + Math.min(...cyl.profile.map(([, h]) => h));
+  const x = cyl.center[0];
+  const under = frame.pieces.filter((q) => q.kind === "box" && Math.abs(q.at[0] - x) <= q.size[0] / 2 && q.at[1] + q.size[1] / 2 <= bottom + 1e-9);
+  close(Math.max(...under.map((q) => q.at[1] + q.size[1] / 2)), bottom, "汽缸底與台座頂面相貼", 1e-9);
+  const beam = part(def, "beam");
+  const axle = beam.pieces.find((q) => q.kind === "cylinder" && !q.axis && q.length > 0.6);
+  const ring = frame.pieces.find((q) => q.kind === "cylinder" && q.inner === axle?.radius && Math.hypot(q.at[0] - beam.center[0], q.at[1] - beam.center[1]) < 1e-9);
+  assert.ok(axle && ring, "樑的軸在軸承座的環裡");
+  const [a0, a1] = zSpan(axle, beam.center[2]);
+  const [r0, r1] = zSpan(ring);
+  assert.ok(a0 <= r0 + 1e-9 && a1 >= r1 - 1e-9, "軸穿過整個環");
+});
+
+test("第 342 種:兩端的弓頭都接上樑臂(樑身與斜撐伸進弓頭)", () => {
+  const plates = part(m342.default, "beam").pieces.filter((q) => q.kind === "plate").map((q) => q.shape.outline);
+  const arches = plates.filter((o) => o.every(([x]) => Math.abs(x) > 1.5));
+  assert.equal(arches.length, 2, "兩個弓頭");
+  const arms = plates.filter((o) => !arches.includes(o));
+  for (const arch of arches) {
+    assert.ok(arms.filter((o) => polygonsOverlap(o, arch)).length >= 2, "弓頭和樑身、斜撐都重疊");
+  }
+});
+
 test("第 343 種:直立式引擎:半徑桿 A、A 接在活塞桿頂的擺動件上,活塞桿頂走近似直線", () => {
-  straightish(sweep(1, 40).map((p) => m343.upright(p).P), 0.03);
+  straightish(sweep(1, 40).map((p) => m343.upright(p).P), 0.005);
   steamPushes(m343.default, sweep(1, 8));
+});
+
+test("第 343 種:平行運動的擺動範圍對稱於中位(兩根半徑桿水平時,活塞桿頂在行程中點)", () => {
+  const alphas = sweep(1, 96).map((p) => m343.upright(p).alpha);
+  const [lo, hi] = [Math.min(...alphas), Math.max(...alphas)];
+  assert.ok(Math.abs(lo + hi) < deg(1), `半徑桿擺角 ${(lo / deg(1)).toFixed(1)}°~${(hi / deg(1)).toFixed(1)}° 對稱`);
+  const ys = sweep(1, 96).map((p) => m343.upright(p).P[1]);
+  close(m343.watt(0).P[1], (Math.min(...ys) + Math.max(...ys)) / 2, "中位在行程中點", 0.02);
+});
+
+test("第 343 種:擺動件在活塞桿頂部:P 的銷穿過活塞桿頂、擺動件與連桿;半徑桿兩端的銷不伸進活塞桿那一層", () => {
+  const def = m343.default;
+  const rod = part(def, "pistonRod");
+  for (const p of sweep(1, 12)) {
+    const u = m343.upright(p);
+    const pose = def.pose(p).parts;
+    const z = pose.pistonRod.position[2];
+    const [r0, r1] = [z - rod.size[2] / 2, z + rod.size[2] / 2];
+    assertPinned(def, p, u.P, [["vibrating"], ["rod"]], "P ");
+    const pinP = pinsOf(def, p).find((q) => Math.hypot(q.at[0] - u.P[0], q.at[1] - u.P[1]) < 1e-6 && q.z0 <= r0 + 1e-9);
+    assert.ok(pinP && pinP.z1 >= r1, "P 的銷往後穿過活塞桿那一層");
+    assert.ok(pose.pistonRod.position[1] + rod.size[1] / 2 >= u.P[1] + pinP.r - 1e-9, "活塞桿頂包住 P 的銷");
+    for (const [at, id] of [[u.B, "radiusL"], [u.R, "radiusR"], [m343.watt.O1, "radiusL"], [m343.watt.O2, "radiusR"]]) {
+      assertPinned(def, p, at, [[id]], `${id} 的端頭`);
+    }
+    for (const [at] of [[u.B], [u.R]]) {
+      for (const q of pinsOf(def, p).filter((q) => Math.hypot(q.at[0] - at[0], q.at[1] - at[1]) < 1e-6)) assert.ok(q.z0 >= r1 - 1e-9, "B、R 的銷不伸進活塞桿那一層");
+    }
+  }
+});
+
+test("第 343 種:機架的立柱與托架都站在底座上(固定件連成一塊)", () => {
+  assert.deepEqual(looseBlocks340(part(m343.default, "frame")), [], "機架的每一塊都連到底座");
 });
 
 for (const [n, m] of [[344, m344], [345, m345]]) {

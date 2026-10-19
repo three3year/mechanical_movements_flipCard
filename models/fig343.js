@@ -2,19 +2,34 @@
 // 兩根半徑桿從左右兩側伸來,擺動件中點(活塞桿頂)走的是近似直線(瓦特直線連桿)。活塞桿頂經連桿接到頂上的曲柄。
 // 主動件是虛擬的「進程」(下方汽缸的蒸汽推動);汽缸內的蒸汽以流體示意。
 // 推斷:各桿長依原圖比例;連桿接在擺動件的中點。後方的大輪是曲柄軸上的飛輪(依原圖,跟著曲柄轉);
-// 曲柄軸穿過頂上橫樑中間的軸承(原圖橫樑上的方塊)。
+// 曲柄軸穿過頂上橫樑中間的軸承(原圖橫樑上的方塊)。半徑桿的固定樞軸是立柱上伸出的托架(原圖),銷往前穿過半徑桿。
+// 兩個樞軸的高度讓擺動範圍對稱於中位:兩根半徑桿水平時活塞桿頂在行程中點,直線最直(原圖在下死點附近的相位,
+// 兩根半徑桿都往中間下斜)。各層由後往前:活塞桿(汽缸中心線)、半徑桿、擺動件、連桿;擺動件中點 P 的銷從活塞桿頂
+// 穿過擺動件到連桿的眼,兩端 B、R 的銷只往後穿過半徑桿,不伸進活塞桿那一層。
 import { TAU } from "./kit.js";
 import { solve } from "./linkage.js";
 import { wattLinkage } from "./parallel-motion.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
-import { shape, thickLine, arcPoints, circle } from "./shapes.js";
+import { shape, arcPoints, circle, stadium } from "./shapes.js";
 
-export const watt = wattLinkage({ line: 0, y1: 0.75, y2: -0.35, a: 1.4, b: 1.4, beamSide: -1 });
+export const watt = wattLinkage({ line: 0, y1: 1.05, y2: -0.05, a: 1.4, b: 1.4, beamSide: -1 });
 const CRANK = [0, 2.75, 0];
 const CR = 0.4;
 const ROD = 2.25;
 const PISTON_ROD = 2.0;
 const CYL = { x: 0, top: -0.95, length: 1.15, radius: 0.42, seat: -2.91 };
+// 各層的 z
+const Z_PISTON = 0; // 活塞桿(厚 0.08)
+const Z_RADIUS = 0.15; // 半徑桿(厚 0.06)
+const Z_VIB = 0.22; // 擺動件(厚 0.06)
+const Z_ROD = 0.29; // 連桿(厚 0.06)
+const PIN = 0.04;
+const vibPin = (x, z0, z1) => ({ kind: "cylinder", radius: PIN, length: z1 - z0, at: [x, 0, (z0 + z1) / 2 - Z_VIB] });
+// 半徑桿的固定樞軸:立柱上的托架,銷往前穿過半徑桿
+const bracket = (O, side) => [
+  { kind: "box", size: [0.12, 0.16, 0.25], at: [O[0] + side * 0.04, O[1], -0.225] },
+  { kind: "cylinder", radius: PIN, length: Z_RADIUS + 0.03 - -0.2, at: [O[0], O[1], (Z_RADIUS + 0.03 + -0.2) / 2] },
+];
 
 /** 進程 p → 曲柄角、曲柄銷、左半徑桿的角(使連桿長度不變)與連桿機構各點 */
 export function upright(p) {
@@ -37,15 +52,16 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [0.3, 5.6, 0.3], at: [-1.6, -0.1, -0.3] },
-        { kind: "box", size: [0.3, 5.6, 0.3], at: [1.6, -0.1, -0.3] },
+        // 兩根立柱從底座頂面(−2.91)立起
+        { kind: "box", size: [0.3, 5.61, 0.3], at: [-1.6, -0.105, -0.3] },
+        { kind: "box", size: [0.3, 5.61, 0.3], at: [1.6, -0.105, -0.3] },
         // 頂上橫樑:中間是曲柄軸的軸承(軸承座的方塊開著軸孔)
         { kind: "box", size: [1.45, 0.3, 0.3], at: [-1.075, 2.75, -0.3] },
         { kind: "box", size: [1.45, 0.3, 0.3], at: [1.075, 2.75, -0.3] },
         { kind: "plate", shape: shape([[-0.35, -0.3], [0.35, -0.3], [0.35, 0.3], [-0.35, 0.3]], [circle(0.13).reverse()]), thickness: 0.4, at: [0, 2.75, -0.2] },
         { kind: "box", size: [3.6, 0.18, 0.8], at: [0, -3.0, 0] },
-        { kind: "cylinder", radius: 0.1, length: 0.4, at: watt.O1 },
-        { kind: "cylinder", radius: 0.1, length: 0.4, at: watt.O2 },
+        ...bracket(watt.O1, -1),
+        ...bracket(watt.O2, 1),
       ],
     },
     { id: "pipe", ...steamPipe(CYL) },
@@ -64,10 +80,17 @@ export default {
         ...[0, 1, 2].map((i) => ({ kind: "box", size: [4.9, 0.12, 0.08], at: [0, 0, -0.7], angle: (i * Math.PI) / 3 + 0.3 })),
       ],
     },
-    { id: "rod", kind: "link", width: 0.1, thickness: 0.06 },
-    { id: "radiusL", kind: "link", width: 0.1, thickness: 0.06, label: "A", labelOffset: [0.6, -0.2, 0.3] },
-    { id: "radiusR", kind: "link", width: 0.1, thickness: 0.06, label: "A", labelOffset: [-0.6, 0.2, 0.3] },
-    { id: "vibrating", kind: "plate", shape: shape(thickLine([[0, 0], [1.1, 0]], 0.12)), thickness: 0.06, arrow: false },
+    { id: "rod", kind: "link", width: 0.1, thickness: 0.06, pins: false },
+    { id: "radiusL", kind: "link", width: 0.1, thickness: 0.06, pins: false, label: "A", labelOffset: [0.6, -0.2, 0.3] },
+    { id: "radiusR", kind: "link", width: 0.1, thickness: 0.06, pins: false, label: "A", labelOffset: [-0.6, 0.2, 0.3] },
+    {
+      id: "vibrating",
+      kind: "plate",
+      shape: stadium(watt.c, 0.14),
+      thickness: 0.06,
+      arrow: false,
+      pieces: [vibPin(0, Z_RADIUS - 0.03, Z_VIB + 0.03), vibPin(watt.c, Z_RADIUS - 0.03, Z_VIB + 0.03), vibPin(watt.c * watt.k, Z_PISTON - 0.04, Z_ROD + 0.03)],
+    },
     { id: "pistonRod", kind: "box", size: [0.08, PISTON_ROD, 0.08] },
   ],
   powered: ["piston"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
@@ -81,19 +104,16 @@ export default {
     return {
       parts: {
         crank: { angle: u.theta },
-        rod: { from: z(u.pin, 0.29), to: z(u.P, 0.29) },
-        radiusL: { from: z(watt.O1, 0.15), to: z(u.B, 0.15) },
-        radiusR: { from: z(watt.O2, 0.15), to: z(u.R, 0.15) },
-        vibrating: { position: z(u.B, 0.22), angle: Math.atan2(u.R[1] - u.B[1], u.R[0] - u.B[0]) },
-        pistonRod: { position: [u.P[0], u.P[1] - PISTON_ROD / 2, 0.08] },
+        rod: { from: z(u.pin, Z_ROD), to: z(u.P, Z_ROD) },
+        radiusL: { from: z(watt.O1, Z_RADIUS), to: z(u.B, Z_RADIUS) },
+        radiusR: { from: z(watt.O2, Z_RADIUS), to: z(u.R, Z_RADIUS) },
+        vibrating: { position: z(u.B, Z_VIB), angle: Math.atan2(u.R[1] - u.B[1], u.R[0] - u.B[0]) },
+        // 活塞桿頂多伸出一個銷的半徑,包住 P 的銷
+        pistonRod: { position: [u.P[0], u.P[1] + PIN + 0.02 - PISTON_ROD / 2, Z_PISTON] },
         ...cyl.parts,
       },
       flows: cyl.flows,
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["radiusR", "pistonRod"], reason: "接合處的簡化畫法:半徑桿的端頭鉸接在活塞桿上,軸眼與桿重疊 0.04" },
-    { check: "interference", parts: ["piston", "pistonRod"], reason: "接合處的簡化畫法:活塞桿的下端伸進活塞 0.11(桿與活塞一起走,桿另外隨平行運動略為擺動)" },
-  ],
 };
