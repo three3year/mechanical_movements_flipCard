@@ -17,9 +17,11 @@ const PIPE = { r: 0.15, bore: 0.11, chest: 0.21 };
 /**
  * pivot:槓桿樞軸 [x, y](心軸在 x = 0,叉臂的銷在樞軸右方 −pivot[0] 處);rodAt:閥桿接在槓桿上離樞軸多遠;
  * crank:閥軸上曲柄的半徑;drop:閥桿長;groove:{ top(槽頂離套筒中心,負的)、height(槽寬)、neck(槽底半徑)、
- * outer(槽下凸緣的半徑,也是套筒本體的半徑)};range:[最低, 最高] 套筒高度;floor:地面;pipeZ:蒸汽管所在的深度。
+ * outer(槽下凸緣的半徑,也是套筒本體的半徑)};range:[最低, 最高] 套筒高度;floor:地面;
+ * postFloor:槓桿立柱的下端(立柱立在機架上時;省略時立在地面);pipeZ:蒸汽管所在的深度;
+ * pipeEnds:[左, 右] 蒸汽管兩端往下轉進地面的地方(省略時緊靠樞軸與閥室兩側)。
  */
-export function throttle({ pivot: [px, py], rodAt = 0.55, crank = 0.22, drop = 0.9, groove, range, floor, pipeZ = -0.5 }) {
+export function throttle({ pivot: [px, py], rodAt = 0.55, crank = 0.22, drop = 0.9, groove, range, floor, postFloor = floor, pipeZ = -0.5, pipeEnds }) {
   const L = -px; // 樞軸到叉臂銷的距離
   const pinR = groove.height / 2 - PIN_CLEAR;
   const armZ = groove.outer + ARM.out;
@@ -47,15 +49,14 @@ export function throttle({ pivot: [px, py], rodAt = 0.55, crank = 0.22, drop = 0
     return { lever, crank: crankA, disc, opening: 1 - Math.sin(clamp(disc, 0, Math.PI / 2)) };
   }
 
-  const pipeLeft = px - 0.45;
-  const pipeRight = O[0] + 0.55;
+  const [pipeLeft, pipeRight] = pipeEnds ?? [px - 0.45, O[0] + 0.55];
   const sleevePieces = (extra = {}) => [
     { kind: "cylinder", axis: Y, radius: groove.neck, length: groove.height, at: [0, groove.top - groove.height / 2, 0], role: "groove", ...extra }, // 環槽的槽底(上下兩壁是套筒本體與下凸緣)
     { kind: "cylinder", axis: Y, radius: groove.outer, length: 0.07, at: [0, groove.top - groove.height - 0.035, 0], ...extra }, // 環槽下面的凸緣
   ];
   const framePieces = [
     // 槓桿樞軸的立柱(在槓桿後面)與樞軸銷
-    { kind: "box", size: [0.16, py + 0.1 - floor, 0.1], at: [px, (py + 0.1 + floor) / 2, -0.13] },
+    { kind: "box", size: [0.16, py + 0.1 - postFloor, 0.1], at: [px, (py + 0.1 + postFloor) / 2, -0.13] },
     { kind: "cylinder", radius: 0.045, length: 0.3, at: [px, py, -0.04] },
     // 蒸汽管:從地面下(鍋爐)上來,經節流閥,再回到地面下(往汽缸);閥室比管子粗
     { kind: "cylinder", axis: X, radius: PIPE.r, inner: PIPE.bore, length: pipeRight - pipeLeft, at: [(pipeLeft + pipeRight) / 2, O[1], pipeZ] },
