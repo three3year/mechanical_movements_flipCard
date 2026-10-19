@@ -7,6 +7,8 @@
 // 由接觸算(models/escapement.js 的 escapeByContact,兩個輪分開算):在每個輪的平面上,半圓板的截面是一根直條,
 // 上緣的高度是「輪的位置 × tan(擺軸的轉角)」;輪受重錘的固定力矩逆時針轉,齒碰上翹起的那一端就停,
 // 那一端降到齒尖下面時齒滑過去,輪加速轉到另一個輪的齒碰上另一端為止。
+// 半圓叉瓦的大小照 525 px 原圖第 301 種的側視圖:半徑約兩輪間距一半的 2 倍,兩端遠遠伸出兩輪之外(伸出的部分傾斜時
+// 只在輪的外側,不碰任何零件;接觸只看兩輪平面上的截面);底座跟著放低到半圓最低點的下方。
 // 推斷:齒數與擺幅(525 px 原圖數得約 18–20 個鉤形齒,取 20;每擺一次放走半個齒距 9°)、擺軸的高度(在齒尖圓的最低點);
 // 擺軸與輪軸的軸承(原圖沒畫):輪軸只從後面支著——後輪與鼓之間一個軸承(L 形托架往右接到立柱)、軸的後端一個軸承
 // (L 形托架往左接到立柱,也托著滑輪),立柱都站在底座上;前輪前面不放軸承,前視圖(第 300 種)裡齒、半圓叉瓦與
@@ -30,7 +32,7 @@ const C = [0, 1.0];
 const R = 1.75;
 const ROOT = R - 0.45;
 const GAP = 0.45; // 兩輪離中間的距離
-const DISC = GAP + 0.08; // 半圓板的半徑
+const DISC = 2 * GAP; // 半圓板的半徑:照 525 px 原圖(第 301 種側視)約兩輪間距一半的 2 倍,兩端遠遠伸出兩輪之外
 const STAFF_Y = C[1] - R; // 擺軸:在齒尖圓的最低點高度(擺軸在兩輪之間,不碰齒)
 const PALLET_X = 0.08; // 半圓板的厚度(沿擺軸)的一半
 
@@ -73,8 +75,8 @@ const PULLEY_R = 0.15;
 const PULLEY = { center: [BRACKET_X, C[1] + DRUM.radius - PULLEY_R - ROPE_R, DRUM.center[2]], axis: Z, radius: PULLEY_R + ROPE_R, sense: -1 };
 const REWIND = N * 4 * SWING; // 輪轉一圈上鍊一次
 const WEIGHT = { radius: 0.17, height: 0.4 };
-const FLOOR = STAFF_Y - 0.56; // 底座頂面
-const BASE = { x0: -2.65, x1: INNER_X + 0.1, z: 1.75, slot: [0.15, 0.35] }; // 底座:中央開口(x ±0.15、z ±0.35)讓擺桿穿過
+const FLOOR = STAFF_Y - DISC - 0.2; // 底座頂面:在半圓板最低點下方
+const BASE = { x0: -2.65, x1: INNER_X + 0.1, z: 1.75, slot: [0.15, 0.5] }; // 底座:中央開口(x ±0.15、z ±0.5)讓擺桿穿過
 const PENDULUM = { rod: 2.0, bob: 0.3 }; // 擺(推斷):擺軸到擺錘中心、擺錘半徑
 const hang = weightDrive({
   drum: DRUM,
@@ -137,7 +139,7 @@ export function twinWheels(figure, direction) {
         pieces: [
           // 擺軸兩端的軸承立在底座上;輪軸的兩個軸承都在後輪後面,各由一支 L 形托架(橫臂 + 立柱)接到底座(原圖沒畫)
           ...[-1, 1].map((s) => ({ kind: "cylinder", axis: X, radius: 0.13, inner: 0.06, length: 0.12, at: [s * 2.06, STAFF_Y, 0] })),
-          ...[-1, 1].map((s) => ({ kind: "box", size: [0.14, 0.5, 0.14], at: [s * 2.06, STAFF_Y - 0.31, 0] })),
+          ...[-1, 1].map((s) => ({ kind: "box", size: [0.14, STAFF_Y - 0.06 - FLOOR, 0.14], at: [s * 2.06, (STAFF_Y - 0.06 + FLOOR) / 2, 0] })),
           ...[[-AXLE_Z, BRACKET_X], [INNER_Z, INNER_X]].flatMap(([z, x]) => [
             { kind: "cylinder", radius: 0.15, inner: 0.08, length: 0.12, at: [C[0], C[1], z] },
             { kind: "box", size: [Math.abs(x - C[0]) + 0.07, 0.14, 0.12], at: [(C[0] + x + Math.sign(x - C[0]) * 0.07) / 2, C[1], z] },

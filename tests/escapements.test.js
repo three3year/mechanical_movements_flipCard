@@ -630,7 +630,7 @@ test("第 300–301 種:同一機構的前視與側視圖;叉瓦交替地由兩�
 
 /**
  * 從正面(+z)看,零件的一塊在 xy 平面上蓋住哪裡:回傳 { zmin, has(x, y) }。center、angle 是零件(軸沿 z 的群組)的位置與轉角;
- * 只處理這三張圖用到的塊:方塊(可繞 z 轉)、圓柱(軸沿 x、y 或 z;沿 z 的環不算內孔)、平板(軸沿 z)。
+ * 只處理這幾張圖用到的塊:方塊(可繞 z 轉)、圓柱(軸沿 x、y 或 z;沿 z 的環不算內孔)、平板(軸沿 z)、球。
  */
 function cover299(piece, center = [0, 0, 0], angle = 0) {
   const at = piece.at ?? [0, 0, 0];
@@ -648,6 +648,7 @@ function cover299(piece, center = [0, 0, 0], angle = 0) {
     return { zmin: z - piece.radius, has: (x, y) => Math.abs(x - cx) <= hx && Math.abs(y - cy) <= hy };
   }
   if (piece.kind === "plate") return { zmin: z - piece.thickness / 2, has: (x, y) => pointInPolygon(local(x, y, angle), piece.shape.outline) };
+  if (piece.kind === "sphere") return { zmin: z - piece.radius, has: (x, y) => Math.hypot(x - cx, y - cy) <= piece.radius };
   return { zmin: Infinity, has: () => false };
 }
 /** 多邊形 poly(正面看的 xy)裡被 z 在 zFront 之前的塊蓋住的比例(格點取樣) */
@@ -1273,4 +1274,196 @@ test("第 312 種:小輪裝在輪軸上;叉爪銷 E、F 照原圖在輪轂兩旁
   assert.ok(E[0] < W[0] && E[1] < W[1], "E 在輪轂的左下方");
   assert.ok(F[0] > W[0] && F[1] > E[1], "F 在輪轂的右邊、比 E 高");
   for (const b of s.beats) assert.ok(Math.min(...s.rod.map((r) => gap309(b, r))) < 0.1, "E、F 夾著擺(擺在正中時離擺桿不遠)");
+});
+
+// ── 第 301–304 種(model-audit-fixes-3 票 05)──
+
+test("第 301 種:側視圖的半圓叉瓦照原圖約兩輪間距一半的 2 倍大,兩端伸出兩輪之外;傾斜到盡頭也不碰底座", () => {
+  const { GAP, DISC, FLOOR, STAFF_Y } = twin.geometry;
+  const staff = part(fig301, "staff");
+  const disc = staff.pieces.find((p) => p.kind === "plate");
+  const radius = Math.max(...disc.shape.outline.map(([x, y]) => Math.hypot(x, y)));
+  close(radius, DISC, "半圓板的半徑", 1e-6);
+  assert.ok(DISC / GAP > 1.8 && DISC / GAP < 2.2, `半圓半徑 / 兩輪間距的一半 = ${(DISC / GAP).toFixed(2)}(525 px 原圖約 1.97)`);
+  for (const v of sweep(4 * twin.SWING, 24)) {
+    const angle = fig301.pose(v).parts.staff.angle;
+    const lowest = Math.min(...disc.shape.outline.map(([x, y]) => partPoint(staff.center, staff.axis, angle, [x, y, 0])[1]));
+    assert.ok(lowest > FLOOR + 0.05, `主動量 ${v.toFixed(3)}:半圓板最低點(y ${lowest.toFixed(2)})在底座頂面(y ${FLOOR.toFixed(2)})之上`);
+  }
+  assert.ok(Math.abs(staff.center[1] - STAFF_Y) < 1e-9);
+});
+
+test("第 303 種:輪照 525 px 原圖——約 24 齒、齒短(齒高約齒尖半徑的 15%)、十字的兩根輪輻;軸 C 在輪心上方約 1.5–1.7 倍齒尖半徑", () => {
+  const { RW, ROOT, C, WHEEL } = m303.geometry;
+  assert.ok(m303.N >= 22 && m303.N <= 26, `齒數 ${m303.N}(原圖齒距約 14.9°,約 24 齒)`);
+  const tooth = (RW - ROOT) / RW;
+  assert.ok(tooth > 0.1 && tooth < 0.2, `齒高 / 齒尖半徑 = ${tooth.toFixed(2)}(原圖約 0.14)`);
+  const spokes = part(m303.default, "wheel").pieces.filter((p) => p.kind === "box" && !p.accent);
+  assert.equal(spokes.length, 2, "兩根直條交成十字(4 根輪輻)");
+  const height = (C[1] - WHEEL[1]) / RW;
+  assert.ok(height > 1.45 && height < 1.75, `C 在輪心上方 ${height.toFixed(2)} 倍齒尖半徑(原圖約 1.58)`);
+});
+
+test("第 303 種:輪輻接到輪緣、標記方塊裝在輪緣上;擺桿 PEN. 接在錨形件 C 的轂上(輪與錨形件各是一件)", () => {
+  const wheel = part(m303.default, "wheel");
+  const rim = wheel.pieces[0];
+  const hole = Math.max(...rim.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  for (const s of wheel.pieces.filter((p) => p.kind === "box" && !p.accent)) assert.ok(s.size[0] / 2 > hole + 0.01, `輪輻(半長 ${(s.size[0] / 2).toFixed(3)})伸進輪緣(孔半徑 ${hole.toFixed(3)})`);
+  const mark = wheel.pieces.find((p) => p.accent);
+  assert.ok(Math.hypot(mark.at[0], mark.at[1]) - mark.size[0] / 2 >= hole - 1e-9, "標記方塊在輪緣上,不懸在孔裡");
+  const anchor = part(m303.default, "anchor");
+  const hub = anchor.pieces.find((p) => p.kind === "cylinder" && p.inner);
+  const rod = anchor.pieces.find((p) => p.kind === "box" && p.size[1] > 3);
+  assert.ok(depthsMeet294(depth294(rod), depth294(hub)), `擺桿(z ${depth294(rod).map((z) => z.toFixed(2)).join("..")})和 C 的轂(z ${depth294(hub).map((z) => z.toFixed(2)).join("..")})在同一深度相接`);
+  assert.ok(rod.at[1] + rod.size[1] / 2 >= 0 && Math.abs(rod.at[0]) < 1e-9, "擺桿從 C 往下");
+});
+
+test("第 303 種:推斷的重錘驅動——擒縱輪軸上的鼓放出繩、經滑輪吊著重錘,重錘的拉力讓輪順時針轉", () => {
+  const { DRUM, REWIND } = m303.geometry;
+  assertWeightDrive(m303.default, { drum: DRUM, wheel: m303.escapement.angle, period: 4 * m303.SWING, every: REWIND, dir: -1 });
+});
+
+test("第 304 種:銷做成原文說較佳的「右側」那一種——原圖右下 B 的楔形(梯形截面,沿半徑長,朝前的一面窄);B 標在右下的銷旁", () => {
+  const def = m304.default;
+  const wheel = part(def, "wheel");
+  const pins = wheel.pieces.filter((p) => p.kind === "plate" && !p.shape.holes?.length);
+  assert.equal(pins.length, m304.PINS);
+  for (const pin of pins) {
+    const pts = pin.shape.outline;
+    assert.equal(pts.length, 4, "銷的截面是四邊形");
+    const c = [pts.reduce((s, p) => s + p[0], 0) / 4, pts.reduce((s, p) => s + p[1], 0) / 4];
+    const u = [c[0] / Math.hypot(...c), c[1] / Math.hypot(...c)];
+    const t = [u[1], -u[0]]; // 順時針轉時銷往前走的方向
+    const along = (p, d) => (p[0] - c[0]) * d[0] + (p[1] - c[1]) * d[1];
+    const radial = Math.max(...pts.map((p) => along(p, u))) - Math.min(...pts.map((p) => along(p, u)));
+    const tangential = Math.max(...pts.map((p) => along(p, t))) - Math.min(...pts.map((p) => along(p, t)));
+    assert.ok(radial > 1.5 * tangential, `銷沿半徑長(徑向 ${radial.toFixed(2)}、切向 ${tangential.toFixed(2)})`);
+    const sorted = [...pts].sort((a, b) => along(a, t) - along(b, t));
+    const face = ([a, b]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    assert.ok(face(sorted.slice(2)) < 0.7 * face(sorted.slice(0, 2)), `朝前的一面(${face(sorted.slice(2)).toFixed(2)})比後面(${face(sorted.slice(0, 2)).toFixed(2)})窄:楔形`);
+  }
+  const label = part(def, "labelB");
+  const W = wheel.center;
+  const at = [label.center[0] + (label.labelOffset?.[0] ?? 0) - W[0], label.center[1] + (label.labelOffset?.[1] ?? 0) - W[1]];
+  const angle = Math.atan2(at[1], at[0]);
+  assert.ok(angle < 0 && angle > -Math.PI / 2, `B 標在輪的右下(方位 ${((angle * 180) / Math.PI).toFixed(0)}°)`);
+});
+
+test("第 304 種:照原圖上面的叉瓦從銷圈外往裡伸、下面的從銷圈裡往外伸;約 20 個銷、5 根輪輻", () => {
+  assert.ok(m304.PINS >= 18 && m304.PINS <= 22, `銷數 ${m304.PINS}(原圖銷距約 17.6°,約 20 個)`);
+  const { W, R } = m304.geometry;
+  const stops = m304.escapement.at(0).stops;
+  const centroid = (poly) => [poly.reduce((s, p) => s + p[0], 0) / poly.length, poly.reduce((s, p) => s + p[1], 0) / poly.length];
+  const polar = (poly) => {
+    const c = centroid(poly);
+    return { r: Math.hypot(c[0] - W[0], c[1] - W[1]), a: Math.atan2(c[1] - W[1], c[0] - W[0]) };
+  };
+  const [upper, lower] = stops.map(polar).sort((p, q) => q.a - p.a);
+  assert.ok(upper.r > R, `上面的叉瓦在銷圈外(重心半徑 ${upper.r.toFixed(2)},銷圈 ${R})`);
+  assert.ok(lower.r < R, `下面的叉瓦在銷圈裡(重心半徑 ${lower.r.toFixed(2)},銷圈 ${R})`);
+  const wheel = part(m304.default, "wheel");
+  const spokes = wheel.pieces.filter((p) => p.kind === "box");
+  assert.equal(spokes.length, 5, "5 根輪輻");
+});
+
+test("第 304 種:推斷的擺——錨形件的軸往後穿過夾板條的軸座,軸端吊著擺桿與擺錘(擺錘在輪的下方、擺在夾板條後面)", () => {
+  const def = m304.default;
+  const { W, R } = m304.geometry;
+  const { rod, bob } = pendulum297(def, "anchor", { below: W[1] - R - 0.25 });
+  const frame = part(def, "frame");
+  const anchor = part(def, "anchor");
+  const boss = frame.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - anchor.center[0], p.at[1] - anchor.center[1]) < 1e-9);
+  const axle = anchor.pieces.find((p) => p.kind === "cylinder" && !p.inner && !(p.at?.[0] || p.at?.[1]) && depthsMeet294(depth294(p), depth294(boss)));
+  assert.ok(axle, "錨形件的軸插進夾板條的軸座");
+  assert.ok(depthsMeet294(depth294(axle), depth294(rod)), "軸伸到擺桿那一層(擺裝在錨形件的軸上)");
+  const plateBack = Math.min(...frame.pieces.map((p) => depth294(p)[0]));
+  for (const p of [rod, bob]) assert.ok(depth294(p)[1] < plateBack, "擺在夾板條後面");
+});
+
+test("第 304 種:目標件的擒縱輪有轉向箭頭;推斷的重錘驅動——輪軸上的鼓放出繩、吊著重錘,重錘的拉力讓輪順時針轉", () => {
+  assert.notEqual(part(m304.default, "wheel").arrow, false, "擒縱輪(目標件)顯示轉向箭頭");
+  const { DRUM, REWIND } = m304.geometry;
+  assertWeightDrive(m304.default, { drum: DRUM, wheel: m304.escapement.angle, period: 4 * m304.SWING, every: REWIND, dir: -1 });
+});
+
+test("第 302 種:叉瓦與立軸照原圖的比例(叉瓦約輪半徑的 0.26、立軸在齒尖上方約 0.2 倍半徑、兩叉瓦張開約 65°),從正面看叉瓦 A 不被前面的零件蓋住", () => {
+  const def = m302.default;
+  const { R, STAFF_Y, TIPS } = m302.geometry;
+  const balance = part(def, "balanceC");
+  const pallets = balance.pieces.filter((p) => p.kind === "plate" && Math.abs(Math.abs(p.at[2]) - R) < 0.1);
+  assert.equal(pallets.length, 2, "叉瓦 A(前)、B(後)");
+  const [A, B] = [...pallets].sort((p, q) => q.at[2] - p.at[2]);
+  const reach = (p) => Math.max(...p.shape.outline.map(([x, y]) => Math.hypot(x, y)));
+  assert.ok(reach(A) / R > 0.22 && reach(A) / R < 0.32, `叉瓦長 / 輪半徑 = ${(reach(A) / R).toFixed(2)}(原圖約 0.26)`);
+  const height = (STAFF_Y - TIPS) / R;
+  assert.ok(height > 0.15 && height < 0.3, `立軸在齒尖上方 ${height.toFixed(2)} 倍輪半徑(原圖約 0.23)`);
+  const dirOf = (p) => {
+    const far = p.shape.outline.reduce((m, q) => (Math.hypot(...q) > Math.hypot(...m) ? q : m));
+    return Math.atan2(far[1], far[0]);
+  };
+  let open = Math.abs(dirOf(A) - dirOf(B));
+  if (open > Math.PI) open = 2 * Math.PI - open;
+  assert.ok(open > (55 * Math.PI) / 180 && open < (80 * Math.PI) / 180, `兩叉瓦張開 ${((open * 180) / Math.PI).toFixed(0)}°(原圖約 65°)`);
+  const zFront = A.at[2] + A.thickness / 2;
+  for (const v of sweep(4 * m302.SWING, 16)) {
+    const angle = def.pose(v).parts.balanceC.angle;
+    const covers = [
+      ...part(def, "frame").pieces.map((p) => cover299(p)),
+      ...balance.pieces.filter((p) => p !== A && p !== B).map((p) => cover299(p, balance.center, angle)),
+    ];
+    const share = hiddenShare299(placePoly(A.shape.outline, balance.center, angle), zFront, covers);
+    assert.ok(share < 0.15, `主動量 ${v.toFixed(3)}:叉瓦 A 被前面的零件蓋住 ${(share * 100).toFixed(0)}%`);
+  }
+});
+
+test("第 302 種:擺輪 C 在冠狀輪後面(原圖擺桿的下段被輪緣蓋住),擺桿居中時照原圖斜約 18°(下端朝右下)", () => {
+  const def = m302.default;
+  const { R } = m302.geometry;
+  const balance = part(def, "balanceC");
+  const balls = balance.pieces.filter((p) => p.kind === "sphere");
+  assert.equal(balls.length, 2, "擺桿兩端的球");
+  const rod = balance.pieces.find((p) => p.kind === "plate" && Math.max(...p.shape.outline.map(([x, y]) => Math.hypot(x, y))) > 1.5);
+  for (const p of [rod, ...balls]) {
+    const front = p.kind === "sphere" ? p.at[2] + p.radius : p.at[2] + p.thickness / 2;
+    assert.ok(front < -R, `擺輪的一塊(前緣 z ${front.toFixed(2)})在冠狀輪(z ≥ ${(-R).toFixed(2)})後面`);
+  }
+  const staff = balance.pieces.find((p) => p.kind === "cylinder" && !(p.at?.[0] || p.at?.[1]) && p.radius < 0.08);
+  assert.ok(depth294(staff)[0] <= depth294(rod)[0], "立軸伸到擺桿那一層(擺輪裝在立軸的後端)");
+  // 兩叉瓦對稱(擺到中間)的那一刻,下面那顆球在立軸的右下方,離鉛直約 18°
+  const v = m302.SWING;
+  close(m302.balanceSwing(v), 0, "擺到中間");
+  const angle = def.pose(v).parts.balanceC.angle;
+  const lower = balls.map((b) => placePoly([[b.at[0], b.at[1]]], [0, 0], angle)[0]).reduce((m, q) => (q[1] < m[1] ? q : m));
+  const tilt = (Math.atan2(lower[0], -lower[1]) * 180) / Math.PI;
+  assert.ok(tilt > 12 && tilt < 24, `擺桿下端離鉛直往右 ${tilt.toFixed(0)}°(原圖約 18°)`);
+});
+
+test("第 302 種:冠狀輪軸固定在輪盤上、下軸承坐在底座上;立軸的套環固定在立軸上", () => {
+  const def = m302.default;
+  const crown = part(def, "crownD");
+  const disc = crown.pieces.find((p) => p.kind === "plate" && p.shape.holes?.length);
+  const hole = Math.max(...disc.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  const axle = crown.pieces.find((p) => p.kind === "cylinder" && !p.inner && p.at && p.at[2] < 0);
+  assert.ok(hole <= axle.radius + 1e-6, `輪盤的孔(半徑 ${hole.toFixed(3)})等於軸徑(${axle.radius})`);
+  const balance = part(def, "balanceC");
+  const staff = balance.pieces.find((p) => p.kind === "cylinder" && !p.inner && !(p.at?.[0] || p.at?.[1]) && p.radius < 0.08);
+  const collar = balance.pieces.find((p) => p.kind === "cylinder" && p.inner);
+  assert.ok(collar.inner <= staff.radius + 1e-6, `套環內徑 ${collar.inner} 等於立軸半徑 ${staff.radius}`);
+  const frame = part(def, "frame").pieces;
+  const bearing = frame.find((p) => p.kind === "cylinder" && p.axis && p.axis[1] === 1 && Math.hypot(p.at[0], p.at[2]) < 1e-9);
+  const top = (p) => p.at[1] + p.size[1] / 2;
+  const base = frame.filter((p) => p.kind === "box" && Math.abs(p.at[0]) <= p.size[0] / 2 && Math.abs(p.at[2]) <= p.size[2] / 2 && top(p) <= bearing.at[1]);
+  const seat = Math.max(...base.map(top));
+  close(bearing.at[1] - bearing.length / 2, seat, `冠狀輪軸的下軸承坐在底座上(底面 y ${(bearing.at[1] - bearing.length / 2).toFixed(3)},底座頂面 ${seat.toFixed(3)})`, 1e-6);
+  assert.ok(axle.at[2] - axle.length / 2 < bearing.at[1] + bearing.length / 2 - 0.05, "冠狀輪軸往下伸進下軸承");
+});
+
+test("第 302 種:推斷的輪系——冠狀輪軸下端的小齒輪由一個輪帶動(轉速比 = 齒數反比),那個輪的軸上的鼓放出繩、經滑輪吊著重錘", () => {
+  const def = m302.default;
+  const { PINION, TRAIN, DRUM, REWIND } = m302.geometry;
+  close(Math.hypot(TRAIN.center[0] - PINION.center[0], TRAIN.center[2] - PINION.center[2]), TRAIN.radius + PINION.radius, "輪與小齒輪咬合(中心距 = 兩節圓半徑和)", 1e-9);
+  close(TRAIN.center[1], PINION.center[1], "同一高度", 1e-9);
+  const [a, b] = [0.3, 2.6].map((v) => def.pose(v).parts);
+  close((b.train.angle - a.train.angle) / (b.crownD.angle - a.crownD.angle), -PINION.teeth / TRAIN.teeth, "輪反向轉、轉速比是齒數反比", 1e-9);
+  assertWeightDrive(def, { drum: DRUM, wheel: (v) => def.pose(v).parts.train.angle, period: 4 * m302.SWING, every: REWIND });
 });
