@@ -1,7 +1,7 @@
 // 第十六章「雜項裝置」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, pieceBox, plateLayers, guidedBetween, assertOnePiece } from "./helpers.js";
+import { close, sweep, part, pieceBox, plateLayers, guidedBetween, assertOnePiece, assertShaftInBearings } from "./helpers.js";
 import { deg, quatMul, quatRotate, rot2 } from "../models/kit.js";
 
 import * as m350 from "../models/fig350.js";
@@ -508,8 +508,113 @@ test("第 366 種:鑽床:大傘齒輪帶動鑽桿旋轉;踩下踏板時鑽桿被
   const up = def.pose(1.3, "up").parts.spindle;
   const down = def.pose(1.3, "down").parts.spindle;
   close(up.angle, down.angle, "鑽桿在小傘齒輪中滑動,仍一起轉");
-  close(up.position[1] - down.position[1], m366.PRESS, "踩下踏板,鑽桿下降");
+  assert.ok(up.position[1] - down.position[1] > 0.3, `踩下踏板,鑽桿下降(${(up.position[1] - down.position[1]).toFixed(3)})`);
   close(Math.abs(m366.drill(1) - m366.drill(0)), 30 / 12, "轉速比 = 齒數比", 1e-9);
+});
+
+// ── 第 366 種(model-audit-fixes-3 票 30) ──
+
+/** 繞 z 轉的零件(板件、群組)在姿勢下:局部的點換到世界座標 */
+const toWorld = (pose, [x, y]) => {
+  const [u, v] = rot2([x, y], pose.angle ?? 0);
+  return [u + pose.position[0], v + pose.position[1]];
+};
+const near = (a, b, eps = 1e-9) => Math.hypot(a[0] - b[0], a[1] - b[1]) < eps;
+/** 穿過 z0..z1 整個深度的銷 */
+const spanning = (pins, z0, z1) => pins.filter((p) => p.z0 <= z0 + 1e-9 && p.z1 >= z1 - 1e-9);
+/** 板件零件在姿勢下佔的深度 */
+const depthOf = (p, pose) => [pose.position[2] - p.thickness / 2, pose.position[2] + p.thickness / 2];
+
+test("第 366 種:踩下踏板(長的右端往下),短的左端抬起、經直桿推起槓桿左端,槓桿右端把鑽桿壓下(原文「透過連接於上方槓桿的踏板加以下壓」;原圖槓桿支點在中間、踏板支點在左邊地上)", () => {
+  const def = m366.default;
+  const lever = part(def, "lever");
+  const treadle = part(def, "treadle");
+  assert.equal(lever.kind, "plate", "槓桿是一塊繞支點轉的板");
+  assert.equal(treadle.kind, "plate", "踏板是一塊繞支點轉的板");
+  const framePins = zPins(part(def, "frame"));
+  const at = (state) => {
+    const pose = def.pose(0.7, state).parts;
+    const rod = pose.rodToTreadle;
+    // 直桿兩端各套在槓桿、踏板往前伸的銷上
+    const pinOn = (p, end) => zPins(p).find((q) => near(toWorld(pose[p.id], q.c), end) && q.z1 + pose[p.id].position[2] >= end[2]);
+    const L = pinOn(lever, rod.from);
+    const T = pinOn(treadle, rod.to);
+    assert.ok(L && T, `${state}:直桿上端套在槓桿的銷上、下端套在踏板的銷上`);
+    // 槓桿與踏板都繞機架上的銷擺
+    assert.ok(spanning(framePins, ...depthOf(lever, pose.lever)).some((q) => near(q.c, pose.lever.position)), `${state}:槓桿的支點是機架上穿過槓桿的銷`);
+    assert.ok(spanning(framePins, ...depthOf(treadle, pose.treadle)).some((q) => near(q.c, pose.treadle.position)), `${state}:踏板的支點是機架上穿過踏板的銷`);
+    // 鑽桿頂的套環上的銷,穿在槓桿右端的長孔裡
+    const swivel = spanning(zPins(part(def, "swivel"), pose.swivel.position), ...depthOf(lever, pose.lever));
+    assert.equal(swivel.length, 1, `${state}:套環上有一根銷穿過槓桿`);
+    const S = toLocal(pose.lever, swivel[0].c);
+    const g = guidedBetween(S, swivel[0].r, [lever.shape]);
+    assert.ok(g.open && g.depth < 0.005 && g.sides, `${state}:套環的銷在槓桿的長孔裡、兩側貼著孔壁(穿入 ${g.depth.toFixed(3)})`);
+    return { pose, rod, L: toWorld(pose.lever, L.c), T: toWorld(pose.treadle, T.c), lx: L.c[0], tx: T.c[0], sx: S[0], S: swivel[0].c };
+  };
+  const up = at("up");
+  const down = at("down");
+  const length = (r) => Math.hypot(...[0, 1, 2].map((k) => r.to[k] - r.from[k]));
+  close(length(down.rod), length(up.rod), "直桿長度不變", 1e-9);
+  // 支點在中間:槓桿的支點在直桿的銷與長孔之間;踏板的支點在直桿的銷與腳踩的一端之間,腳踩的那一臂長
+  assert.ok(up.lx < 0 && up.sx > 0, "槓桿的支點在左端(直桿)與右端(鑽桿頂)之間");
+  const foot = Math.max(...treadle.shape.outline.map(([x]) => x));
+  assert.ok(up.tx < 0 && foot > 3 * -up.tx, "踏板的支點在左端(直桿)與右端(腳踩)之間,腳踩的一臂長得多");
+  // 踩下:右端往下 → 左端往上 → 直桿推起槓桿左端 → 槓桿右端往下壓鑽桿
+  const footY = (s) => toWorld(s.pose.treadle, [foot, 0])[1];
+  assert.ok(footY(down) < footY(up) - 0.5, "踩下時踏板的右端往下");
+  assert.ok(down.T[1] > up.T[1] + 0.2, "踏板的左端抬起");
+  assert.ok(down.L[1] > up.L[1] + 0.2, "直桿推起槓桿的左端");
+  assert.ok(down.S[1] < up.S[1] - 0.3, "槓桿右端(套環的銷)往下");
+  assert.ok(Math.abs(down.sx - up.sx) > 0.005, "套環的銷沿長孔滑(槓桿端走圓弧、鑽桿走直線)");
+  const drop = up.pose.spindle.position[1] - down.pose.spindle.position[1];
+  close(drop, up.S[1] - down.S[1], "鑽桿和套環一起下降", 1e-9);
+  close(up.pose.swivel.position[0], up.pose.spindle.position[0], "套環套在鑽桿上", 1e-9);
+});
+
+test("第 366 種:小傘齒輪在大齒輪上方、齒朝下(原圖);踏板放開或踩下,鍵條都在小傘齒輪的輪轂裡(原文「透過鍵條與溝槽使其與傘齒輪一同旋轉」)", () => {
+  const def = m366.default;
+  const small = part(def, "smallGear");
+  assert.ok(small.center[1] > m366.APEX[1] && small.axis[1] < 0, "小傘齒輪在錐頂上方,齒朝下");
+  // 小齒輪(連輪轂)沿鑽桿佔的高度:局部 z 朝下(axis −y)
+  const along = [{ z: 0, h: small.pieces[0].width }, ...small.pieces.slice(1).filter((q) => q.kind === "cylinder").map((q) => ({ z: q.at[2], h: q.length }))];
+  const gearY = [Math.min(...along.map((q) => small.center[1] - q.z - q.h / 2)), Math.max(...along.map((q) => small.center[1] - q.z + q.h / 2))];
+  const key = part(def, "spindle").pieces.find((q) => q.kind === "box" && q.accent);
+  for (const state of ["up", "down"]) {
+    const y = def.pose(0, state).parts.spindle.position[1] + key.at[2];
+    const overlap = Math.min(gearY[1], y + key.size[2] / 2) - Math.max(gearY[0], y - key.size[2] / 2);
+    assert.ok(overlap > 0.2, `${state}:鍵條伸進小傘齒輪的輪轂(重疊 ${overlap.toFixed(3)})`);
+  }
+});
+
+test("第 366 種:大齒輪的軸只從輪轂往右穿出機架接曲柄,不伸到鑽桿;鑽桿穿過機架上下橫樑的軸承", () => {
+  const def = m366.default;
+  const big = part(def, "bigGear");
+  // 大齒輪的局部 z 朝 −x:每一塊的 x 範圍
+  const xs = big.pieces.filter((q) => q.kind === "cylinder").map((q) => big.center[0] - (q.at?.[2] ?? 0) - q.length / 2);
+  const keyR = Math.max(...part(def, "spindle").pieces.filter((q) => q.kind === "box").map((q) => Math.abs(q.at[0]) + q.size[0] / 2));
+  assert.ok(Math.min(...xs) >= big.center[0] - 1e-9, "軸從輪的中心往右伸,不穿過錐頂");
+  assert.ok(big.center[0] - big.pieces[0].width / 2 > keyR + 0.03, "大齒輪的小端離鑽桿的鍵條有間隙");
+  const frame = part(def, "frame").pieces;
+  const shaft = big.pieces.find((q) => q.kind === "cylinder" && q.radius < 0.1 && !q.accent);
+  assertShaftInBearings({ at: [big.center[0] - shaft.at[2], big.center[1], big.center[2]], axis: [1, 0, 0], radius: shaft.radius, length: shaft.length }, frame, "大齒輪的軸");
+  const spindleShaft = part(def, "spindle").pieces[0];
+  for (const state of ["up", "down"]) {
+    const y = def.pose(0, state).parts.spindle.position[1];
+    assertShaftInBearings({ at: [0, y + spindleShaft.at[2], 0], axis: [0, 1, 0], radius: spindleShaft.radius, length: spindleShaft.length }, frame, `${state}:鑽桿`);
+    assert.equal(frame.filter((q) => q.inner && q.axis?.[1] === 1).length, 2, "上下橫樑各有一個軸承環");
+  }
+  assertOnePiece(part(def, "frame"), "機架(含槓桿支柱、踏板托架、底座)是一件");
+});
+
+test("第 366 種:夾頭套在鑽桿下端,鑽頭接在夾頭的底面", () => {
+  const def = m366.default;
+  const [shaft, chuck] = part(def, "spindle").pieces;
+  const bit = part(def, "spindle").pieces.find((q) => q.kind === "lathe");
+  const span = (q) => [q.at[2] - q.length / 2, q.at[2] + q.length / 2];
+  const [c0, c1] = span(chuck);
+  assert.ok(span(shaft)[0] > c0 && span(shaft)[0] < c1, "鑽桿下端伸進夾頭");
+  close(Math.max(...bit.profile.map(([, z]) => z)), c0, "鑽頭的上端在夾頭的底面", 1e-9);
+  assert.ok(Math.max(...bit.profile.map(([r]) => r)) <= chuck.radius, "鑽頭不比夾頭粗");
 });
 
 test("第 367 種:平行尺:尺葉保持平行,刻度指示兩尺葉之間的寬度", () => {
