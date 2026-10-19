@@ -719,7 +719,55 @@ function lineDeviation(points) {
   return Math.max(...points.map((p) => Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / len));
 }
 
-for (const [n, m, tol] of [[332, m332, 1e-12], [336, m336, 0.02]]) {
+test("第 332 種:F、C 為半徑桿——F 是固定樞軸,C 繞 F 擺;C 在從側槓桿中段往上經 C 到 D 的直桿上;所有桿都是剛性的", () => {
+  const rows = sweep(1, 40).map((p) => m332.motion(p));
+  const { A, F } = m332;
+  const lengths = (r) => [dist(F, r.C), dist(r.M, r.C), dist(r.M, r.D), dist(r.D, r.E), dist(r.S, r.E), dist(A, r.M), dist(A, r.S)];
+  const first = lengths(rows[0]);
+  for (const r of rows) {
+    lengths(r).forEach((l, i) => close(l, first[i], "桿長不變", 1e-6));
+    const [u, w] = [sub(r.C, r.M), sub(r.D, r.M)];
+    close(u[0] * w[1] - u[1] * w[0], 0, "M、C、D 在同一根直桿上", 1e-9);
+    assert.ok(dist(r.M, r.C) < dist(r.M, r.D), "C 在槓桿中段 M 與 D 之間");
+  }
+  const cs = rows.map((r) => r.C[1]);
+  assert.ok(Math.max(...cs) - Math.min(...cs) > 0.3, "C 繞 F 擺");
+  for (const p of sweep(1, 8)) {
+    const { radiusBar } = m332.default.pose(p).parts;
+    close(dist(radiusBar.from, [F[0], F[1], radiusBar.from[2]]), 0, "半徑桿的一端在固定樞軸 F", 1e-9);
+  }
+});
+
+test("第 332 種:十字頭 E 的直線是這組連桿造成的:偏離汽缸中心線不到行程的 2%,活塞往復、蒸汽推活塞", () => {
+  const es = sweep(1, 60).map((p) => m332.motion(p).E);
+  const ys = es.map((e) => e[1]);
+  const stroke = Math.max(...ys) - Math.min(...ys);
+  assert.ok(stroke > 0.8, "活塞往復");
+  assert.ok(verticalDeviation(es) < 0.02 * stroke, `十字頭近似直線(偏離 ${verticalDeviation(es).toFixed(4)},行程 ${stroke.toFixed(2)})`);
+  const cyl = part(m332.default, "cylinder");
+  assert.ok(es.every((e) => Math.abs(e[0] - cyl.center[0]) < 0.02 * stroke), "十字頭在汽缸中心線上");
+  steamPushes(m332.default, sweep(1, 8));
+});
+
+test("第 332 種:每個接頭有銷穿過相接的零件;F 的托架站在汽缸蓋上", () => {
+  const def = m332.default;
+  for (const v of sweep(1, 6)) {
+    const r = m332.motion(v);
+    assertPinned(def, v, r.M, [["upright"]], "槓桿中段 M 與直桿");
+    assertPinned(def, v, r.S, [["sideRod"]], "槓桿右端與側桿");
+    assertPinned(def, v, r.C, [["radiusBar"]], "直桿上的 C 與半徑桿");
+    assertPinned(def, v, r.D, [["parallelBar"]], "直桿頂端 D 與平行桿");
+    assertPinned(def, v, r.E, [["sideRod"], ["parallelBar"]], "十字頭 E 與側桿、平行桿");
+    assertPinned(def, v, m332.F, [["radiusBar"]], "固定樞軸 F 與半徑桿");
+  }
+  const cyl = part(def, "cylinder");
+  const cover = cyl.center[1] + Math.max(...cyl.profile.map(([, h]) => h));
+  const bracket = part(def, "bracket");
+  const bottom = Math.min(...bracket.pieces.filter((q) => q.kind === "box").map((q) => bracket.center[1] + q.at[1] - q.size[1] / 2));
+  close(bottom, cover, "托架的底貼著汽缸蓋頂面", 1e-9);
+});
+
+for (const [n, m, tol] of [[336, m336, 0.02]]) {
   test(`第 ${n} 種:船舶側槓桿引擎:平行運動導引十字頭,活塞桿沿直線往復`, () => {
     const es = sweep(1, 60).map((p) => m.motion(p).E);
     assert.ok(verticalDeviation(es) < tol, "十字頭沿汽缸中心線");
