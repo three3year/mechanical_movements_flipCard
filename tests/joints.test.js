@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { penetrationDepth, circlePolygon, pointInPolygon, polygonsOverlap, placeOutline, edgeDistance } from "../models/contact.js";
-import { close, turned, part, sweep, plateLayers } from "./helpers.js";
+import { close, turned, part, sweep, plateLayers, assertThrottle } from "./helpers.js";
 
 import fig243, { turns as turns243 } from "../models/fig243.js";
 import * as m254 from "../models/fig254.js";
@@ -2992,49 +2992,6 @@ test("第 287 種:彈簧屈服於球的離心力而抬起套筒;離心力減小�
   assert.ok(fast.sleeve > slow.sleeve, "高速時套筒較高");
   for (const s of [0, 4, 10]) close(m287.springLength(s), m287.springLength(0), "彈簧長度不變", 1e-6);
 });
-
-// 調速器的被調節對象(第 274、287 種,推斷):量叉臂的銷、套筒的環槽、閥桿與曲柄、閥板的實際外形
-function assertThrottle(def, values) {
-  const lever = part(def, "lever");
-  const valve = part(def, "valve");
-  const groove = part(def, "sleeve").pieces.find((p) => p.role === "groove");
-  const pins = lever.pieces.filter((p) => p.role === "forkPin");
-  const rodPin = lever.pieces.find((p) => p.role === "rodPin");
-  const crankPin = valve.pieces.find((p) => p.role === "crankPin");
-  const disc = valve.pieces.find((p) => p.role === "disc");
-  assert.equal(pins.length, 2, "叉臂兩邊各一支銷");
-  const world = (center, piece, angle) => {
-    const [x, y] = rot2(piece.at, angle);
-    return [center[0] + x, center[1] + y];
-  };
-  const rows = values.map((v) => {
-    const pose = def.pose(v).parts;
-    const sy = pose.sleeve.position[1];
-    const top = sy + groove.at[1] + groove.length / 2;
-    const bottom = sy + groove.at[1] - groove.length / 2;
-    for (const pin of pins) {
-      const [, y] = world(lever.center, pin, pose.lever.angle);
-      const above = top - (y + pin.radius);
-      const below = y - pin.radius - bottom;
-      assert.ok(above >= -1e-9 && above < 0.006, `主動量 ${v.toFixed(2)}:叉臂的銷頂著環槽的上壁(間隙 ${above.toFixed(4)})`);
-      assert.ok(below >= -1e-9 && below < 0.006, `主動量 ${v.toFixed(2)}:叉臂的銷頂著環槽的下壁(間隙 ${below.toFixed(4)})`);
-    }
-    const A = world(lever.center, rodPin, pose.lever.angle);
-    const C = world(valve.center, crankPin, pose.valve.angle);
-    close(Math.hypot(pose.valveRod.from[0] - A[0], pose.valveRod.from[1] - A[1]), 0, "閥桿上端接在槓桿的銷上", 1e-9);
-    close(Math.hypot(pose.valveRod.to[0] - C[0], pose.valveRod.to[1] - C[1]), 0, "閥桿下端接在曲柄銷上", 1e-9);
-    const n = rot2(disc.axis, pose.valve.angle);
-    return { v, sleeve: sy, rod: Math.hypot(A[0] - C[0], A[1] - C[1]), opening: 1 - Math.abs(n[0]) };
-  });
-  for (const r of rows) close(r.rod, rows[0].rod, "閥桿長度不變", 1e-9);
-  const bySleeve = [...rows].sort((a, b) => a.sleeve - b.sleeve);
-  for (let i = 1; i < bySleeve.length; i++) {
-    if (bySleeve[i].sleeve - bySleeve[i - 1].sleeve < 1e-9) continue;
-    assert.ok(bySleeve[i].opening < bySleeve[i - 1].opening, `套筒越高,節流閥開得越小(套筒 ${bySleeve[i].sleeve.toFixed(3)})`);
-  }
-  assert.ok(bySleeve[0].opening > 0.95, "套筒在最低處時閥全開");
-  assert.ok(bySleeve[bySleeve.length - 1].opening < 0.15, "套筒在最高處時閥幾乎關上");
-}
 
 test("第 274 種(推斷):套筒的環槽經叉形槓桿與閥桿拉節流閥,閥的開度跟著套筒高度變", () => {
   assertThrottle(m274.default, sweep(m274.PERIOD, 96));

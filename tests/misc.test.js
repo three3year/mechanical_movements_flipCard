@@ -1,8 +1,8 @@
 // 第十六章「雜項裝置」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
-import { deg, quatMul, quatRotate } from "../models/kit.js";
+import { close, sweep, part, assertThrottle } from "./helpers.js";
+import { deg, quatMul, quatRotate, add, sub, scale, cross, dot, len, norm, partPoint, TAU } from "../models/kit.js";
 
 import * as m350 from "../models/fig350.js";
 import * as m351 from "../models/fig351.js";
@@ -160,11 +160,195 @@ test("第 356 種:三個環之間的樞銷都伸進相接的兩個環(樞銷的�
   }
 });
 
-test("第 357 種:陀螺儀調速器:轉得越快,越能克服彈簧 L,B 的外端被抬得越高,經 C、D 拉動閥桿", () => {
-  const slow = m357.governor(2);
-  const fast = m357.governor(9);
-  assert.ok(fast.end[1] > slow.end[1], "B 的外端升高");
-  assert.ok(fast.valve > slow.valve, "閥桿被拉起");
+// 第 357 種:量各零件姿勢下的實際位置(四元數擺放的軸、群組上的銷),斷言對到原文
+const def357 = m357.default;
+const P357 = m357.PERIOD;
+/** 零件 id 上局部座標 local 的點在世界中的位置 */
+function at357(pose, id, local) {
+  const pp = pose.parts[id];
+  const pt = part(def357, id);
+  const center = pp.position ?? pt.center ?? [0, 0, 0];
+  if (pp.rotation) return add(center, quatRotate(pp.rotation, local));
+  return partPoint(center, pt.axis ?? [0, 0, 1], pp.angle ?? 0, local);
+}
+const axis357 = (pose, id, local = [0, 0, 1]) => quatRotate(pose.parts[id].rotation, local);
+const lineGap = (p, a, dir) => len(cross(sub(p, a), norm(dir)));
+// 叉的兩股(局部 x 離軸線的兩塊)
+const prongs357 = (id) => part(def357, id).pieces.filter((pc) => pc.kind === "box" && Math.abs(pc.at[0]) > 0.1);
+
+test("第 357 種:輪 A 的傾向是變為垂直位置;調速器越快,傾向越強——B 的傾角隨轉速一路減小、趨近垂直而不越過", () => {
+  const speeds = sweep(m357.RANGE[1], 40);
+  const tilts = speeds.map((s) => m357.governor(s).psi);
+  for (let i = 1; i < tilts.length; i++) assert.ok(tilts[i] < tilts[i - 1], `轉速 ${speeds[i]}:越快越接近垂直`);
+  assert.ok(tilts[0] > deg(15), "靜止時明顯傾斜");
+  assert.ok(tilts[tilts.length - 1] > 0 && tilts[tilts.length - 1] < deg(3), "最快時接近垂直、沒有越過");
+  // 畫面上的輪軸:轉速升高的半輪裡,輪軸(B)與水平的夾角一路減小、始終是外端朝下
+  const ps = sweep(P357 / 2, 48);
+  const shown = ps.map((p) => Math.asin(-axis357(def357.pose(p), "shaftB")[1]));
+  for (let i = 1; i < shown.length; i++) assert.ok(shown[i] < shown[i - 1] && shown[i] > 0, `進程 ${ps[i].toFixed(2)}:輪面往垂直轉、不越過`);
+});
+
+test("第 357 種:B 於中點以鉸接裝在 H 上,輪 A 在鉸接處;照原圖萬向接頭與 I 在左、B 的外端在右", () => {
+  const { R_J, OUTER, D_I } = m357.geometry;
+  const cradle = part(def357, "cradle");
+  const trunnion = cradle.pieces.find((pc) => pc.kind === "cylinder" && !pc.axis && pc.at[2] < -0.5);
+  assert.ok(trunnion, "托架往後伸出的鉸接軸");
+  const bearing = part(def357, "frameH").pieces.find((pc) => pc.kind === "cylinder" && !pc.axis && pc.inner);
+  close(Math.hypot(bearing.at[0] - cradle.center[0], bearing.at[1] - cradle.center[1]), 0, "鉸接軸的軸承在 H 上、和鉸接同軸");
+  assert.ok(trunnion.at[2] - trunnion.length / 2 < bearing.at[2] - bearing.length / 2 && trunnion.at[2] + trunnion.length / 2 > bearing.at[2] + bearing.length / 2, "鉸接軸穿過 H 的軸承");
+  close(R_J, OUTER, "鉸接在 B 的中點:到萬向接頭與到外端一樣遠");
+  for (const p of sweep(P357, 24)) {
+    const pose = def357.pose(p);
+    const hinge = cradle.center;
+    const u = axis357(pose, "shaftB");
+    close(len(sub(pose.parts.shaftB.position, hinge)), 0, "輪 A 的中心在鉸接軸的軸線上", 1e-9);
+    const joint = pose.parts.cross.position;
+    const end = at357(pose, "collar", [OUTER, 0, 0]);
+    close(len(sub(joint, sub(hinge, scale(u, R_J)))), 0, "萬向接頭在 B 的內端", 1e-9);
+    close(len(sub(end, add(hinge, scale(u, OUTER)))), 0, "外端軸環在 B 上", 1e-9);
+    assert.ok(joint[0] < 0 && end[0] > 0, "萬向接頭在左、外端在右");
+    assert.ok(at357(pose, "shaftB1", [0, 0, -D_I])[0] < -1.5, "小齒輪 I 在左");
+  }
+});
+
+test("第 357 種:部件 B 透過桿 C、D 與閥桿相連——外端升高時經 C 把閥桿 D 往上拉;C 的兩端套在銷上", () => {
+  const { OUTER, C_Z, LC, LD, GUIDE } = m357.geometry;
+  const rows = sweep(P357, 96).map((p) => {
+    const pose = def357.pose(p);
+    const pin = at357(pose, "collar", [OUTER, 0, C_Z]);
+    const lower = at357(pose, "rodC", [0, 0, 0]);
+    const upper = at357(pose, "rodC", [LC, 0, 0]);
+    const bottom = at357(pose, "valveD", [0, -LD, C_Z]);
+    close(len(sub(lower, pin)), 0, "C 的下端套在外端軸環的銷上", 1e-9);
+    close(len(sub(upper, bottom)), 0, "C 的上端套在閥桿下端的銷上", 1e-9);
+    close(pose.parts.valveD.position[0], 0, "閥桿沿罩頂導套的軸線上下", 1e-12);
+    return { s: m357.speedAt(p), end: pin[1], valve: pose.parts.valveD.position[1] };
+  });
+  for (const r of rows) assert.ok(r.valve - LD < GUIDE[0] && r.valve > GUIDE[1], "閥桿全程穿過罩頂的導套");
+  rows.sort((a, b) => a.s - b.s);
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i].s - rows[i - 1].s < 1e-9) continue;
+    assert.ok(rows[i].end > rows[i - 1].end, "轉得越快,B 的外端越高");
+    assert.ok(rows[i].valve > rows[i - 1].valve, "外端升高,閥桿跟著被拉起");
+  }
+});
+
+test("第 357 種:彈簧 L 透過槓桿 N 與桿 P 連接於閥桿上,抵抗輪 A 變垂直的傾向——閥桿越高,彈簧被壓得越短", () => {
+  const { N_SHORT, N_LONG, P_Z, N_Z, SPRING_FOOT } = m357.geometry;
+  const n = part(def357, "leverN");
+  assert.ok(part(def357, "casing").pieces.some((pc) => pc.kind === "cylinder" && !pc.axis && Math.hypot(pc.at[0] - n.center[0], pc.at[1] - n.center[1]) < 1e-9), "N 的樞軸銷在外殼(罩)上");
+  const rest = def357.pose(0).parts;
+  const rows = sweep(P357, 96).map((p) => {
+    const pose = def357.pose(p);
+    const parts = pose.parts;
+    close(len(sub(parts.rodP.from, at357(pose, "leverN", [...N_SHORT, P_Z - N_Z]))), 0, "P 的一端套在 N 短臂的銷上", 1e-9);
+    close(len(sub(parts.rodP.to, at357(pose, "valveD", [0, 0, P_Z]))), 0, "P 的另一端套在閥桿上端的銷上", 1e-9);
+    close(len(sub(parts.rodP.to, parts.rodP.from)), len(sub(rest.rodP.to, rest.rodP.from)), "桿 P 長度不變", 1e-9);
+    close(len(sub(parts.springL.to, at357(pose, "leverN", [...N_LONG, 0]))), 0, "彈簧 L 的上端接在 N 長臂的末端", 1e-9);
+    close(len(sub(parts.springL.from, [...SPRING_FOOT, N_Z])), 0, "彈簧 L 的下端固定在外殼的耳上", 1e-12);
+    return { valve: parts.valveD.position[1], spring: len(sub(parts.springL.to, parts.springL.from)) };
+  });
+  rows.sort((a, b) => a.valve - b.valve);
+  for (let i = 1; i < rows.length; i++) if (rows[i].valve - rows[i - 1].valve > 1e-9) assert.ok(rows[i].spring < rows[i - 1].spring, "閥桿越高,彈簧被壓得越短(彈簧抵抗)");
+  assert.ok(rows[0].spring - rows[rows.length - 1].spring > 0.15, "彈簧的伸縮看得出來");
+  assert.ok(rows[rows.length - 1].spring > 0.6, "最快時彈簧也沒被壓到底");
+});
+
+test("第 357 種(進程型):框架 H 由引擎透過傘齒輪傳動驅動——轉速一輪之內起伏,立軸照轉速的積分轉,水平軸經傘齒輪咬合帶動", () => {
+  assert.equal(def357.driver.mode, "progress");
+  const P = P357;
+  const speeds = sweep(P, 480).map(m357.speedAt);
+  close(m357.speedAt(P), m357.speedAt(0), "一輪之後轉速回到原值", 1e-9);
+  assert.ok(Math.max(...speeds) > Math.min(...speeds) + 5, "轉速起伏看得出來");
+  const spin = (p) => def357.pose(p).parts.spindle.angle;
+  close(spin(P) - spin(0), TAU * P, `一輪恰好轉 ${P} 圈`, 1e-9);
+  const h = 1e-4;
+  const rate = (p) => (spin(p + h) - spin(p - h)) / (2 * h) / m357.speedAt(p);
+  for (const p of sweep(P, 37).slice(1, -1)) close(rate(p), rate(P / 3), `進程 ${p.toFixed(2)}:立軸的轉角增量和轉速成正比`, 1e-5);
+  const { spindle: gs, contact } = m357.gears;
+  const r = sub(contact, gs.apex);
+  for (const p of sweep(P, 24)) {
+    const [a, b] = [def357.pose(p).parts, def357.pose(p + h).parts];
+    const vs = cross([0, b.spindle.angle - a.spindle.angle, 0], r);
+    const vd = cross([b.driveShaft.angle - a.driveShaft.angle, 0, 0], r);
+    close(len(sub(vs, vd)), 0, `進程 ${p.toFixed(2)}:兩個傘齒輪在咬合處的節圓線速度相等`, 1e-9 + 1e-6 * len(vs));
+  }
+});
+
+test("第 357 種:小齒輪 I 繞著靜止的齒環 G 旋轉,輪 A 便繞自己的軸快速旋轉——I 照 H 轉過的角度沿 G 滾,A 經萬向接頭跟著 B¹ 轉", () => {
+  const { D_I } = m357.geometry;
+  const h = 2e-4;
+  // 繞軸 axis 從方向 a 轉到方向 b 的角度
+  const twist = (a, b, axis) => Math.atan2(dot(cross(a, b), axis), dot(a, b));
+  let spinB1 = 0;
+  let spinB = 0;
+  let spinH = 0;
+  const ps = sweep(P357, 2400);
+  for (let i = 1; i < ps.length; i++) {
+    const [a, b] = [def357.pose(ps[i - 1]), def357.pose(ps[i])];
+    spinB1 += twist(axis357(a, "shaftB1", [1, 0, 0]), axis357(b, "shaftB1", [1, 0, 0]), axis357(b, "shaftB1"));
+    spinB += twist(axis357(a, "shaftB", [1, 0, 0]), axis357(b, "shaftB", [1, 0, 0]), axis357(b, "shaftB"));
+    spinH += b.parts.spindle.angle - a.parts.spindle.angle;
+  }
+  close(spinB1 / spinH, m357.G.teeth / m357.I.teeth, "H 轉一圈,I 沿 G 滾、自轉 G 與 I 的齒數比那麼多圈", 1e-3);
+  assert.ok(Math.abs(spinB - spinB1) < 1, "萬向接頭:A 和 B¹ 轉的圈數一樣(只有一圈之內的快慢起伏)");
+  assert.ok(spinB / spinH > 7, "輪 A 轉得比 H 快得多");
+  // 滾而不滑:I 和 G 接觸處(I 節圓的最低點),H 帶著它繞立軸走的速度,被 I 自轉的速度抵掉
+  for (const p of sweep(P357, 24)) {
+    const [a, b] = [def357.pose(p), def357.pose(p + h)];
+    const axis = axis357(a, "shaftB1");
+    const center = at357(a, "shaftB1", [0, 0, -D_I]);
+    const down = norm(sub([0, -1, 0], scale(axis, -axis[1])));
+    const contact = add(center, scale(down, m357.I.radius));
+    const wI = twist(axis357(a, "shaftB1", [1, 0, 0]), axis357(b, "shaftB1", [1, 0, 0]), axis);
+    const orbit = cross([0, b.parts.spindle.angle - a.parts.spindle.angle, 0], contact);
+    const roll = cross(scale(axis, wI), sub(contact, center));
+    assert.ok(len(add(orbit, roll)) < 0.04 * len(orbit), `進程 ${p.toFixed(2)}:I 在 G 上滾、不打滑(差 ${(len(add(orbit, roll)) / len(orbit)).toFixed(3)})`);
+  }
+});
+
+test("第 357 種:B、B¹ 以萬向接頭相連——十字頭的兩支銷互相垂直、各穿過一支叉的兩股;B¹ 穿過 H 上的球面軸套", () => {
+  const { R_J } = m357.geometry;
+  const ball = part(def357, "bushing");
+  const seat = part(def357, "frameH").pieces.find((pc) => pc.kind === "cylinder" && pc.axis && pc.inner === ball.radius);
+  assert.ok(seat && len(sub(seat.at, ball.center)) < 1e-9, "球面軸套坐在 H 的座裡");
+  for (const p of sweep(P357, 48)) {
+    const pose = def357.pose(p);
+    const J = pose.parts.cross.position;
+    const [x, y] = [axis357(pose, "cross", [1, 0, 0]), axis357(pose, "cross", [0, 1, 0])];
+    close(dot(x, y), 0, "十字頭的兩支銷互相垂直", 1e-9);
+    close(dot(x, axis357(pose, "shaftB1")), 0, "穿過 B¹ 叉的銷垂直於 B¹", 1e-9);
+    close(dot(y, axis357(pose, "shaftB")), 0, "穿過 B 叉的銷垂直於 B", 1e-9);
+    for (const pc of prongs357("shaftB1")) close(lineGap(at357(pose, "shaftB1", [pc.at[0], 0, 0]), J, x), 0, "B¹ 叉的兩股套在十字頭的一支銷上", 1e-9);
+    for (const pc of prongs357("shaftB")) close(lineGap(at357(pose, "shaftB", [pc.at[0], 0, -R_J]), J, y), 0, "B 叉的兩股套在十字頭的另一支銷上", 1e-9);
+    close(lineGap(ball.center, J, axis357(pose, "shaftB1")), 0, "B¹ 的軸線穿過球面軸套的中心", 1e-9);
+  }
+});
+
+test("第 357 種:I 全程咬在冠狀齒環 G 上(I 隨 B 的傾角擺動、沿軸滑,節圓最低點離 G 的節面不到 0.025)", () => {
+  const { D_I } = m357.geometry;
+  const G = m357.G;
+  const pitchY = G.top + G.depth / 2;
+  for (const p of sweep(P357, 48)) {
+    const pose = def357.pose(p);
+    const axis = axis357(pose, "shaftB1");
+    const center = at357(pose, "shaftB1", [0, 0, -D_I]);
+    const lowest = center[1] - m357.I.radius * Math.hypot(axis[0], axis[2]);
+    assert.ok(Math.abs(lowest - pitchY) < 0.025, `進程 ${p.toFixed(2)}:I 的節圓貼著 G 的節面(差 ${(lowest - pitchY).toFixed(3)})`);
+    const r = Math.hypot(center[0], center[2]);
+    assert.ok(r - m357.I.width / 2 > G.inner && r + m357.I.width / 2 < G.outer + 0.02, "I 的齒寬落在 G 的齒圈上");
+  }
+});
+
+test("第 357 種(推斷):閥桿上段的環槽經叉形槓桿與閥桿拉節流閥;轉得太快時閥桿升高、關小節流閥,滑桿每一段都看得出變化", () => {
+  assertThrottle(def357, sweep(P357, 96), "valveD");
+  assert.equal(def357.target, "valve", "目標件是被調節的節流閥");
+  close(m357.opening(P357), m357.opening(0), "一輪之後節流閥回到原處", 1e-9);
+  const travel = def357.pose(P357 / 2).parts.valveD.position[1] - def357.pose(0).parts.valveD.position[1];
+  for (let i = 0; i < 12; i++) {
+    const seg = sweep(((i + 1) * P357) / 12, 10, (i * P357) / 12).map((p) => def357.pose(p).parts.valveD.position[1]);
+    assert.ok(Math.max(...seg) - Math.min(...seg) > 0.08 * travel, `滑桿第 ${i + 1}/12 段:閥桿有看得出的升降`);
+  }
 });
 
 test("第 363 種:蹺蹺板:長板繞支點作有限的擺動", () => {
