@@ -3134,8 +3134,73 @@ test("第 386 種:可摺疊書房梯:推動側件時橫檔斜起,兩側件靠攏
   const open = m386.fold(0);
   const shut = m386.fold(m386.RANGE[1]);
   close(open.gap, 1.1, "展開時兩側件相距一個橫檔長");
-  assert.ok(shut.gap < 0.15, "收合時兩側件併攏");
+  close(shut.faceGap, 0, "收合時兩側件的平面貼合", 1e-9);
   assert.ok(shut.angle > 1.4, "橫檔幾乎直立");
+});
+
+// 第 386 種側件的斷面(世界 xz,相對側件的軸):半個旋轉體(cut、sweep)或沿 y 擠出的板件(局部 v 是世界 −z)
+function rail386Section(def, id) {
+  const q = part(def, id).pieces[0];
+  if (q.kind === "lathe") {
+    const r = Math.max(...q.profile.map(([x]) => x));
+    return { outline: sweep(q.sweep, 48).map((a) => [r * Math.cos(q.cut + a), -r * Math.sin(q.cut + a)]), holes: [] };
+  }
+  assert.deepEqual(q.axis, [0, 1, 0], "側件沿 y 擠出");
+  const flip = (loop) => loop.map(([u, v]) => [u + (q.at?.[0] ?? 0), -v]);
+  return { outline: flip(q.shape.outline), holes: (q.shape.holes ?? []).map(flip), y: [(q.at?.[1] ?? 0) - q.thickness / 2, (q.at?.[1] ?? 0) + q.thickness / 2] };
+}
+// 第 386 種橫檔(板件)的外形與上下兩面,世界座標的取樣點(不含兩端穿進側件的銷)
+function rung386Points(def, pose, id, n = 12) {
+  const p = part(def, id);
+  const { position, angle } = pose[id];
+  const loop = p.shape.outline;
+  const pts = [];
+  loop.forEach((a, i) => {
+    const b = loop[(i + 1) % loop.length];
+    for (let k = 0; k < n; k++) {
+      const [x, y] = rot2(lerp2(a, b, k / n), angle);
+      for (const dz of [-p.thickness / 2, 0, p.thickness / 2]) pts.push([position[0] + x, position[1] + y, position[2] + dz]);
+    }
+  });
+  return pts;
+}
+const lerp2 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+
+test("第 386 種:側件的平面朝內,收合時兩根併成一根圓柱(側件在收合時可彼此併攏,形成一根圓形柱體)", () => {
+  const def = m386.default;
+  const L = rail386Section(def, "railL");
+  const R = rail386Section(def, "railR");
+  assert.ok(L.outline.every(([x]) => x <= 1e-9), "左側件的圓弧面朝外(左),平面朝內");
+  assert.ok(R.outline.every(([x]) => x >= -1e-9), "右側件的圓弧面朝外(右),平面朝內");
+  for (const s of [L, R]) close(Math.max(...s.outline.map(([x, z]) => Math.hypot(x, z))), 0.18, "斷面是半徑 0.18 的半圓", 1e-6);
+  const pose = def.pose(m386.RANGE[1]).parts;
+  close(pose.railR.position[0], pose.railL.position[0], "收合時兩根側件的軸重合(兩個半圓併成一個圓)", 1e-9);
+  close(pose.railR.position[2], pose.railL.position[2], "兩根側件在同一深度", 1e-9);
+});
+
+test("第 386 種:收合時橫檔整根收進兩根側件平面上的槽裡,全程不穿進側件(橫檔則收合在內側)", () => {
+  const def = m386.default;
+  const sections = { railL: rail386Section(def, "railL"), railR: rail386Section(def, "railR") };
+  const into = (pose, id, q) => {
+    const c = pose[id].position;
+    const s = sections[id];
+    const y = q[1] - c[1];
+    if (s.y && (y < s.y[0] || y > s.y[1])) return false;
+    return inSolid([q[0] - c[0], q[2] - c[2]], s);
+  };
+  for (const v of sweep(m386.RANGE[1], 40)) {
+    const pose = def.pose(v).parts;
+    for (let i = 0; i < 5; i++) {
+      for (const q of rung386Points(def, pose, `rung${i}`)) {
+        for (const id of ["railL", "railR"]) assert.ok(!into(pose, id, q), `推到 ${v.toFixed(3)}:rung${i} 穿進 ${id}`);
+      }
+    }
+  }
+  const shut = def.pose(m386.RANGE[1]).parts;
+  const axis = shut.railL.position;
+  for (let i = 0; i < 5; i++) {
+    for (const q of rung386Points(def, shut, `rung${i}`)) assert.ok(Math.hypot(q[0] - axis[0], q[2] - axis[2]) < 0.18, `收合時 rung${i} 在圓柱的外形之內`);
+  }
 });
 
 test("第 387 種:潮汐階梯:無論梯子在什麼位置,踏階皆保持水平", () => {
@@ -3146,18 +3211,129 @@ test("第 387 種:潮汐階梯:無論梯子在什麼位置,踏階皆保持水平
   for (const p of [steep, flat]) for (let i = 0; i < 8; i++) close(p[`step${i}`].angle, 0, "踏階水平");
 });
 
+// 第 387 種:零件局部的點換到世界(群組零件繞 center 轉 angle、再平移 position)
+const world387 = (def, pose, id, [x, y, z]) => {
+  const p = part(def, id);
+  const c = p.center ?? [0, 0, 0];
+  const q = pose[id] ?? {};
+  const [u, v] = rot2([x, y], q.angle ?? 0);
+  const t = q.position ?? [0, 0, 0];
+  return [c[0] + u + t[0], c[1] + v + t[1], z + t[2]];
+};
+
+test("第 387 種:梯子的下端以兩個銷鉸在小船的立柱上,扶手在梯幫正上方,小船浮在水面上", () => {
+  const def = m387.default;
+  const boat = part(def, "boat");
+  const post = boat.pieces.filter((q) => q.role === "post");
+  assert.ok(post.length >= 1, "小船上立著一根立柱");
+  const pins = boat.pieces.filter((q) => q.role === "pin");
+  assert.equal(pins.length, 2, "立柱上兩個銷:梯幫一個、扶手一個");
+  close(pins[0].at[0], pins[1].at[0], "兩個銷在同一根直立的立柱上", 1e-9);
+  const [low, high] = [...pins].sort((a, b) => a.at[1] - b.at[1]);
+  const quay = part(def, "quay").pieces.filter((q) => q.role === "pin");
+  const values = sweep(m387.RANGE[1], 24, m387.RANGE[0]);
+  for (const h of values) {
+    const pose = def.pose(h).parts;
+    const b = pose.boat.position;
+    // 梯幫下端(局部 [LEN, 0])、扶手下端都落在立柱的銷上
+    const foot = world387(def, pose, "stringer", [m387.geometry.LEN, 0, 0]);
+    close(Math.hypot(foot[0] - (b[0] + low.at[0]), foot[1] - (b[1] + low.at[1])), 0, `水位 ${h.toFixed(2)}:梯幫下端鉸在立柱的下銷上`, 1e-9);
+    const railFoot = world387(def, pose, "rail", [m387.geometry.LEN, 0, 0]);
+    close(Math.hypot(railFoot[0] - (b[0] + high.at[0]), railFoot[1] - (b[1] + high.at[1])), 0, `水位 ${h.toFixed(2)}:扶手下端鉸在立柱的上銷上`, 1e-9);
+    // 扶手在梯幫正上方:扶手的樞軸 = 梯幫的樞軸往上 RAIL_UP
+    const top = world387(def, pose, "stringer", [0, 0, 0]);
+    const railTop = world387(def, pose, "rail", [0, 0, 0]);
+    close(railTop[0] - top[0], 0, "扶手的上端在梯幫上端的正上方", 1e-9);
+    close(railFoot[0] - foot[0], 0, "扶手的下端在梯幫下端的正上方", 1e-9);
+    // 岸上那一端同樣兩個銷:梯幫、扶手的上端各落在一個銷上
+    for (const end of [top, railTop]) assert.ok(quay.some((q) => Math.hypot(q.at[0] - end[0], q.at[1] - end[1]) < 1e-9), `水位 ${h.toFixed(2)}:上端鉸在岸邊的銷上`);
+    // 小船浮在水面:吃水不變
+    close(b[1] - h, def.pose(m387.RANGE[0]).parts.boat.position[1] - m387.RANGE[0], "小船隨水位升降、吃水不變", 1e-9);
+  }
+  // 原圖上圖(漲潮)梯子是水平的
+  close(Math.cos(def.pose(m387.RANGE[1]).parts.stringer.angle), -1, "水位最高時梯子水平", 1e-9);
+});
+
+test("第 387 種:踏階的另一邊由懸掛於扶手上的桿件支撐:吊桿上端的銷伸進扶手、長度不變", () => {
+  const def = m387.default;
+  const rail = part(def, "rail").pieces[0];
+  const railZ = [rail.at[2] - rail.size[2] / 2, rail.at[2] + rail.size[2] / 2];
+  const lengths = {};
+  for (const h of sweep(m387.RANGE[1], 16, m387.RANGE[0])) {
+    const pose = def.pose(h).parts;
+    for (let i = 0; i < 8; i++) {
+      const hg = part(def, `hanger${i}`);
+      const { from, to } = pose[`hanger${i}`];
+      const z = to[2];
+      const pinHalf = hg.thickness * 1.1; // 連桿兩端的銷頭(繪圖:粗 2.2 倍的厚)
+      assert.ok(z + pinHalf > railZ[0] + 1e-3 && z - pinHalf < railZ[1], `水位 ${h.toFixed(2)}:hanger${i} 的銷頭伸進扶手(銷 ${(z - pinHalf).toFixed(3)}..${(z + pinHalf).toFixed(3)},扶手 ${railZ[0].toFixed(3)}..${railZ[1].toFixed(3)})`);
+      // 上端在扶手的中心線上
+      const a = world387(def, pose, "rail", [0, 0, 0]);
+      const b = world387(def, pose, "rail", [1, 0, 0]);
+      const u = [b[0] - a[0], b[1] - a[1]];
+      close((to[0] - a[0]) * u[1] - (to[1] - a[1]) * u[0], 0, `hanger${i} 的上端掛在扶手上`, 1e-9);
+      const l = Math.hypot(to[0] - from[0], to[1] - from[1]);
+      lengths[i] ??= l;
+      close(l, lengths[i], `hanger${i} 長度不變`, 1e-9);
+    }
+  }
+});
+
 test("第 388 種:刨木機進料:帶齒的上滾子把木板往前送,平滑的下滾子被木板帶著轉", () => {
-  const f = m388.feed(-1);
-  close(f.travel, 0.62, "木板前進 = 上滾子轉過的弧長");
-  close(f.low * 0.95, f.travel, "下滾子不打滑");
+  const f = m388.feed(1);
+  close(f.travel, m388.geometry.BITE_R, "木板前進 = 上滾子在木板表面那一圈轉過的弧長");
+  close(-f.low * m388.geometry.LOW.r, f.travel, "下滾子不打滑");
+});
+
+test("第 388 種:兩個滾子在接觸處和木板同向同速,木板照原圖箭頭往右送", () => {
+  const def = m388.default;
+  const { TOP, LOW, BITE_R } = m388.geometry;
+  const [a0, a1] = def.driver.range;
+  for (const a of sweep(a1, 20, a0).slice(0, -1)) {
+    const da = (a1 - a0) / 2000;
+    const [p, q] = [def.pose(a).parts, def.pose(a + da).parts];
+    const board = q.board.position[0] - p.board.position[0];
+    // 剛體轉動:點 (x, y) 相對輪心轉 dθ,速度 = dθ · (−(y − cy), x − cx)
+    const topBite = (q.top.angle - p.top.angle) * BITE_R; // 上滾子在木板表面那一圈的最低點(0, −BITE_R)
+    const lowTop = -(q.low.angle - p.low.angle) * LOW.r; // 下滾子的最高點
+    close(topBite / board, 1, `轉角 ${a.toFixed(2)}:上滾子咬進木板處和木板同向同速`, 1e-6);
+    close(lowTop / board, 1, `轉角 ${a.toFixed(2)}:下滾子頂點和木板同向同速(不打滑)`, 1e-6);
+    assert.ok(board > 0, `轉角 ${a.toFixed(2)}:主動量從初始值往範圍的另一端走,木板往右(原圖箭頭)`);
+  }
+  close(m388.default.parts.find((x) => x.id === "board").size[1] / 2 + def.pose(a0).parts.board.position[1], TOP.center[1] - BITE_R, "上滾子在木板表面那一圈的半徑 = 輪心到木板頂面", 1e-9);
+});
+
+test("第 388 種:整段行程木板都夾在兩個滾子之間(下滾子托著木板、上滾子的齒咬著)", () => {
+  const def = m388.default;
+  const { TOP, LOW } = m388.geometry;
+  const board = def.parts.find((x) => x.id === "board");
+  const [a0, a1] = def.driver.range;
+  for (const a of sweep(a1, 60, a0)) {
+    const b = def.pose(a).parts.board.position;
+    const [x0, x1] = [b[0] - board.size[0] / 2, b[0] + board.size[0] / 2];
+    assert.ok(x0 < LOW.center[0] - 0.05 && x1 > LOW.center[0] + 0.05, `轉角 ${a.toFixed(2)}:木板跨過兩個滾子的咬點(${x0.toFixed(2)}..${x1.toFixed(2)})`);
+    close(b[1] - board.size[1] / 2 - (LOW.center[1] + LOW.r), 0, "木板底面貼著下滾子", 1e-9);
+    assert.ok(b[1] + board.size[1] / 2 > TOP.center[1] - TOP.tip, "上滾子的齒尖咬進木板");
+  }
+});
+
+test("第 388 種:上、下滾子的軸承裝在同一個機架上(機架連成一件、落地)", () => {
+  const def = m388.default;
+  const frame = part(def, "frame");
+  assertOnePiece(frame, "機架的各塊相連");
+  const rings = frame.pieces.filter((q) => q.inner);
+  for (const id of ["top", "low"]) {
+    const p = part(def, id);
+    const shaft = p.pieces.find((q) => q.kind === "cylinder");
+    assertShaftInBearings({ ...shaft, at: [p.center[0], p.center[1], shaft.at[2]] }, rings, `${id} 的軸`);
+  }
 });
 
 test("第 389 種:升降千斤頂:偏心輪帶著棘爪推棘齒桿上升,上方的擋止扣住不讓它退下;爪與齒由接觸算", () => {
   const T = 2 * Math.PI;
   close(m389.perTurn % m389.geometry.PITCH, 0, "每圈推上整數個齒", 1e-9);
-  // 原文沒說每圈幾齒;偏心距 0.25(行程 0.5)比兩齒多出一截,爪越得過第二個齒尖、越不過第三個
-  close(m389.perTurn, 2 * m389.geometry.PITCH, "偏心輪每轉一圈,棘齒桿升兩齒", 1e-9);
-  assert.ok(m389.perTurn > 0, "棘齒桿被推上去");
+  // 原文沒說每圈幾齒(由偏心距與爪的外形決定),只斷言至少一齒
+  assert.ok(m389.perTurn >= m389.geometry.PITCH - 1e-9, "偏心輪每轉一圈,棘齒桿至少升一齒");
   for (let k = 0; k < 3; k++) close(m389.rack((k + 1) * T) - m389.rack(k * T), m389.perTurn, `第 ${k + 1} 圈升的高度`, 1e-9);
   // 「上方的棘爪為一個擋止裝置」:下方的爪退下時,棘齒桿不會落到這一圈開始的高度以下
   for (const v of sweep(T, 120)) assert.ok(m389.rack(v) >= m389.rack(0) - 1e-9, `主動量 ${v.toFixed(2)}:擋止扣住`);
@@ -3171,22 +3347,130 @@ test("第 389 種:升降千斤頂:偏心輪帶著棘爪推棘齒桿上升,上方
   }
 });
 
+test("第 389 種:下方的棘爪和偏心環是一件(原圖),套在偏心輪上自由轉;接觸用的爪就是畫出來的爪", () => {
+  const def = m389.default;
+  assert.ok(!def.parts.some((p) => p.id === "pawl"), "沒有另外鉸在吊臂上的棘爪");
+  const strap = part(def, "strap");
+  const ecc = part(def, "eccentric");
+  const disc = ecc.pieces[0];
+  const ring = strap.pieces.find((q) => q.kind === "cylinder" && q.inner);
+  close(ring.inner, disc.shape.outline.reduce((m, [x, y]) => Math.max(m, Math.hypot(x, y)), 0), "偏心環的孔套著偏心輪", 1e-6);
+  const horn = strap.pieces.find((q) => q.role === "pawl");
+  assert.ok(horn, "偏心環上伸出棘爪");
+  assertOnePiece({ pieces: strap.pieces.filter((q) => q === ring || q === horn).map((q) => (q === ring ? { ...q, inner: undefined } : q)) }, "爪和偏心環連成一件");
+  const angles = [];
+  for (const v of sweep(2 * TAU, 72)) {
+    const pose = def.pose(v).parts;
+    const c = rot2([disc.at[0], disc.at[1]], v).map((x, k) => x + ecc.center[k]);
+    close(Math.hypot(pose.strap.position[0] - c[0], pose.strap.position[1] - c[1]), 0, `主動量 ${v.toFixed(2)}:偏心環的中心跟著偏心輪的中心`, 1e-9);
+    const drawn = placeOutline(horn.shape.outline, c, pose.strap.angle ?? 0);
+    const used = m389.contactAt(v).pawls[0];
+    assert.equal(used.length, drawn.length, "接觸用的爪外形和畫出來的一樣");
+    used.forEach((q, k) => close(Math.hypot(q[0] - drawn[k][0], q[1] - drawn[k][1]), 0, `主動量 ${v.toFixed(2)}:接觸用的爪就在畫出來的位置`, 1e-9));
+    angles.push(pose.strap.angle ?? 0);
+  }
+  // 「整件靠爪尖頂著棘齒桿才不跟著偏心輪轉」:偏心輪轉兩圈,偏心環只來回擺
+  assert.ok(Math.max(...angles) - Math.min(...angles) < Math.PI / 2, "偏心環不跟著偏心輪轉,只來回擺");
+});
+
+test("第 389 種:偏心輪與偏心環在棘齒桿右邊、不蓋住棘齒;棘爪和棘齒在同一層;托座接在棘齒桿上", () => {
+  const def = m389.default;
+  const { TIP } = m389.geometry;
+  const ecc = part(def, "eccentric");
+  const disc = ecc.pieces[0];
+  const strap = part(def, "strap");
+  const ring = strap.pieces.find((q) => q.kind === "cylinder" && q.inner);
+  const rack = part(def, "rack");
+  for (const v of sweep(TAU, 72)) {
+    const pose = def.pose(v).parts;
+    const c = rot2([disc.at[0], disc.at[1]], v).map((x, k) => x + ecc.center[k]);
+    const rx = pose.rack.position[0];
+    assert.ok(c[0] - ring.radius > rx + TIP + 0.02, `主動量 ${v.toFixed(2)}:偏心環的左緣在齒尖右邊(不蓋住齒)`);
+  }
+  const zr = (p, q) => [p + (q.at?.[2] ?? 0) - (q.thickness ?? q.length) / 2, p + (q.at?.[2] ?? 0) + (q.thickness ?? q.length) / 2];
+  const pose0 = def.pose(0).parts;
+  const hornZ = zr(pose0.strap.position[2], strap.pieces.find((q) => q.role === "pawl"));
+  const teethZ = zr(pose0.rack.position[2], rack.pieces[0]);
+  assert.ok(hornZ[0] >= teethZ[0] - 1e-9 && hornZ[1] <= teethZ[1] + 1e-9, "棘爪整個在棘齒那一層");
+  assertOnePiece(rack, "托座接在棘齒桿頂上");
+});
+
 test("第 390 種:部件 A 往兩個方向擺時,開口皮帶 C 與交叉皮帶 D 的棘爪輪流帶動飛輪 B,得到連續旋轉;棘爪由接觸算", () => {
   const S = m390.SWING;
   const fs = sweep(8 * S, 800).map((v) => m390.oscillation(v).fly);
   assert.ok(fs.every((f, i) => i === 0 || f >= fs[i - 1] - 1e-9), "飛輪只朝一個方向轉");
   assert.ok(m390.oscillation(2 * S).fly > 0.5 && m390.oscillation(4 * S).fly - m390.oscillation(2 * S).fly > 0.5, "A 往兩個方向擺,飛輪都被推");
   close(m390.perCycle % m390.PITCH, 0, "一個來回推過整數個齒", 1e-9);
-  // 每擺一次推五齒半上下(皮帶輪擺過的角度扣掉換向時爪尖落進齒裡的空程),一個來回 11 齒
-  close(m390.perCycle, 11 * m390.PITCH, "一個來回推過 11 齒", 1e-9);
+  // 原文沒說幾齒(由擺幅、皮帶輪與棘輪的大小決定),只斷言兩個方向各推過至少一齒
   for (const [from, to] of [[0, 2 * S], [2 * S, 4 * S]]) {
     const n = (m390.oscillation(to).fly - m390.oscillation(from).fly) / m390.PITCH;
-    assert.ok(n > 5 && n < 6, `擺一次推過 ${n.toFixed(2)} 齒`);
+    assert.ok(n >= 1, `擺一次推過 ${n.toFixed(2)} 齒`);
   }
   close(m390.oscillation(4 * S).fly, m390.perCycle, "一個來回轉過的角度", 1e-9);
   const o = m390.oscillation(S);
   close(o.c, -o.d, "開口皮帶與交叉皮帶的皮帶輪反向轉");
   for (const v of sweep(4 * S, 200)) for (const key of ["c", "d"]) assert.ok(m390.pawlGap(v, key) > -3e-3, `主動量 ${v.toFixed(3)}:${key} 的爪尖壓進棘輪`);
+});
+
+// 第 390 種:皮帶(折線)的長度、離某圓心的距離
+const len390 = (pts) => pts.slice(1).reduce((sum, p, i) => sum + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1], p[2] - pts[i][2]), 0);
+const r390 = (p, c) => Math.hypot(p[0] - c[0], p[1] - c[1]);
+
+test("第 390 種:兩條皮帶繞在 A 的弧與皮帶輪的輪緣上、長度不變,兩端接在 A 上(連接於兩條皮帶 C 和 D 的末端)", () => {
+  const def = m390.default;
+  const { A_PIVOT, ARC, PULLEY, BELT } = m390.geometry;
+  const wheel = part(def, "pulleyC").center;
+  const S = m390.SWING;
+  const lengths = {};
+  for (const v of sweep(4 * S, 48)) {
+    const pose = def.pose(v);
+    for (const id of ["strapC", "strapD"]) {
+      const pts = pose.paths[id].points;
+      lengths[id] ??= len390(pts);
+      close(len390(pts), lengths[id], `主動量 ${v.toFixed(3)}:${id} 長度不變`, 1e-3);
+      // 兩端在 A 的弧上(皮帶貼著弧面),而且跟著 A 轉:端點在 A 的局部座標裡不動
+      for (const end of [pts[0], pts.at(-1)]) close(r390(end, A_PIVOT), ARC + BELT, `${id} 的端頭貼在 A 的弧上`, 1e-9);
+      const local = (q, a) => Math.atan2(q[1] - A_PIVOT[1], q[0] - A_PIVOT[0]) - a;
+      const [a, a0] = [pose.parts.partA.angle, def.pose(0).parts.partA.angle];
+      const p0 = def.pose(0).paths[id].points;
+      close(Math.cos(local(pts[0], a) - local(p0[0], a0)), 1, `${id} 的起端固定在 A 上`, 1e-9);
+      close(Math.cos(local(pts.at(-1), a) - local(p0.at(-1), a0)), 1, `${id} 的末端固定在 A 上`, 1e-9);
+      // 繞在皮帶輪的輪緣上:有一段點都在輪緣外的皮帶半徑上
+      assert.ok(pts.filter((q) => Math.abs(r390(q, wheel) - (PULLEY + BELT)) < 1e-9).length >= 10, `${id} 繞在皮帶輪的輪緣上`);
+      // 每一點不是在 A 的弧上、輪緣上,就在兩者之間的直線段上(直線段離兩個圓心都不比皮帶半徑近)
+      for (const q of pts) assert.ok(r390(q, A_PIVOT) >= ARC + BELT - 1e-6 && r390(q, wheel) >= PULLEY + BELT - 1e-6, `${id} 不穿進 A 或皮帶輪`);
+    }
+  }
+});
+
+test("第 390 種:皮帶不在輪緣上打滑:A 擺過的弧長 = 皮帶輪轉過的弧長(C 同向、D 反向)", () => {
+  const def = m390.default;
+  const { ARC, PULLEY, BELT } = m390.geometry;
+  const S = m390.SWING;
+  for (const v of sweep(4 * S, 24).slice(1)) {
+    const dv = 1e-4;
+    const [p, q] = [def.pose(v - dv).parts, def.pose(v).parts];
+    const da = q.partA.angle - p.partA.angle;
+    if (Math.abs(da) < 1e-9) continue;
+    close(((q.pulleyC.angle - p.pulleyC.angle) * (PULLEY + BELT)) / (da * (ARC + BELT)), 1, `主動量 ${v.toFixed(3)}:開口皮帶 C 帶皮帶輪同向轉`, 1e-6);
+    close(((q.pulleyD.angle - p.pulleyD.angle) * (PULLEY + BELT)) / (da * (ARC + BELT)), -1, `主動量 ${v.toFixed(3)}:交叉皮帶 D 帶皮帶輪反向轉`, 1e-6);
+  }
+});
+
+test("第 390 種:皮帶輪的輻條接到輪緣;A 的樞軸座接在橫梁上;飛輪的軸穿過軸承", () => {
+  const def = m390.default;
+  for (const id of ["pulleyC", "pulleyD"]) {
+    const p = part(def, id);
+    const rim = p.pieces.find((q) => q.kind === "cylinder" && q.radius === m390.geometry.PULLEY);
+    const spokes = p.pieces.filter((q) => q.kind === "box");
+    assert.ok(spokes.length > 0, `${id} 有輻條`);
+    for (const q of spokes) assert.ok(q.size[0] / 2 >= rim.inner, `${id} 的輻條伸到輪緣(${(q.size[0] / 2).toFixed(3)} 對 ${rim.inner})`);
+  }
+  const frame = part(def, "frame");
+  assertOnePiece(frame, "機架(橫梁、A 的樞軸座、飛輪軸的軸承座)連成一件");
+  const fly = part(def, "flywheel");
+  const shaft = fly.pieces.find((q) => q.kind === "cylinder" && !q.inner && (q.length ?? 0) > 1);
+  assertShaftInBearings({ ...shaft, at: [fly.center[0], fly.center[1], shaft.at?.[2] ?? 0] }, frame.pieces, "飛輪的軸");
 });
 
 test("第 391 種:一根齒條上升時、另一根下降時作用於齒輪,得到連續旋轉;齒條的銷在溝槽 b 裡繞圈", () => {

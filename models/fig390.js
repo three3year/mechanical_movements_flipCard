@@ -2,6 +2,11 @@
 // 軸上的兩個鬆套皮帶輪,C 是開口的、D 是交叉的。兩個皮帶輪上都有棘爪,與固定在飛輪軸上的兩個棘輪咬合。A 往一個方向擺時,
 // 一個皮帶輪的棘爪帶動棘輪;往另一個方向擺時換另一個,飛輪軸因此連續朝同一方向轉。主動件是部件 A(累計擺動)。
 // 推斷:皮帶輪的半徑與擺幅;兩個皮帶輪前後並排。
+// 皮帶(2026-10-20 改):兩條皮帶的兩端都固定在 A 的弧上,從端頭沿 A 的弧繞到切點、沿公切線直下到皮帶輪、沿輪緣繞過、
+// 再沿另一條公切線上去、沿 A 的弧繞到另一端(C 是外公切線、繞過皮帶輪的下半;D 是內公切線、兩段在中間交叉、
+// 繞過皮帶輪的大半圈)。A 的弧以 a 為圓心,切點在空間裡不動,A 擺過 Δ 時一側的弧上多繞 (ARC + BELT)·Δ、另一側少繞一樣多,
+// 皮帶長度不變,皮帶輪轉 (ARC + BELT)·Δ / (PULLEY + BELT)(皮帶的中心線半徑,不打滑)。A 的弧做寬,兩條皮帶都繞在上面。
+// 機架(推斷):A 的樞軸座接在上方的橫梁下,橫梁由兩根立柱撐在地上;飛輪軸往後伸,穿過地上的兩個軸承座(原圖只畫到軸)。
 //
 // 由接觸算(2026-10-07 複查,原本沒有畫棘爪,飛輪照「哪個皮帶輪往前轉就跟著它」的進度表轉):
 // - 兩個棘輪(鋸齒:推的一面陡、背面斜)固定在飛輪軸上,各在一個皮帶輪的後面一層;每個皮帶輪的背面伸出一根銷,
@@ -12,21 +17,27 @@
 import { TAU, deg, swingPhase } from "./kit.js";
 import { ratchetShape, shape, circle, arcPoints } from "./shapes.js";
 import { ratchetRadius } from "./ratchets.js";
+import { pedestal } from "./supports.js";
 
 const A_PIVOT = [0, 2.0, 0];
 const ARC = 1.8; // 半圓部件的半徑(皮帶繞在它的外緣)
 const WHEEL = { center: [0.2, -0.75, 0], r: 1.55 };
 const PULLEY = 0.45;
-export const SWING = deg(18);
+const BELT = 0.05; // 皮帶的半徑(圓帶;中心線離輪緣、弧面這麼遠)
+const RA = ARC + BELT; // A 上皮帶中心線的半徑
+const RP = PULLEY + BELT; // 皮帶輪上皮帶中心線的半徑
+export const SWING = deg(19.5); // 擺幅:每個來回剛好推過整數個齒(推斷)
 const RATCHET = { teeth: 14, outer: 0.38, inner: 0.28, dir: 1 };
 export const PITCH = TAU / RATCHET.teeth;
 const PAWL = { at: 0.44, angle: deg(-90), len: 0.2 }; // 棘爪的銷在皮帶輪局部的位置(半徑、方位)與爪長
 const Z = { C: 0, D: 0.3 }; // 兩個棘輪(與棘爪)那一層
+const SHAFT = { r: 0.08, z0: -1.5, z1: 0.55 }; // 飛輪軸
+const FLOOR = -2.5;
 
 /** 累計擺動 v → A 的角度、兩個皮帶輪的轉角(開口皮帶 C 與 A 同向,交叉皮帶 D 反向) */
 function pulleys(v) {
   const { at } = swingPhase(v, -SWING, SWING);
-  const strap = ((at + SWING) * ARC) / PULLEY; // A 擺過的弧長帶動皮帶輪
+  const strap = ((at + SWING) * RA) / RP; // A 擺過的弧長帶動皮帶輪(皮帶不打滑)
   return { a: at, c: strap, d: -strap };
 }
 
@@ -155,14 +166,66 @@ export function pawlGap(v, key) {
   return gapOf(key === "c" ? o.c : o.d, key === "c" ? o.pawlC : o.pawlD, o.absFly) + 0.006;
 }
 
+// 兩條皮帶的公切線:A 的弧(圓心 A_PIVOT、半徑 RA)與皮帶輪(圓心 WHEEL.center、半徑 RP)。
+// 切線 m·x = k(m 單位向量):m·A − k = RA、m·P − k = s·RP;外公切線 s = +1(C)、內公切線 s = −1(D)。
+// 回傳兩個切點的方位角(A 上、皮帶輪上);side 選左右兩條之一
+function tangent(s, side) {
+  const d = [A_PIVOT[0] - WHEEL.center[0], A_PIVOT[1] - WHEEL.center[1]];
+  const L = Math.hypot(...d);
+  const [u, n] = [[d[0] / L, d[1] / L], [-d[1] / L, d[0] / L]];
+  const c = (RA - s * RP) / L;
+  const q = side * Math.sqrt(1 - c * c);
+  const m = [c * u[0] + q * n[0], c * u[1] + q * n[1]];
+  return { onA: Math.atan2(-m[1], -m[0]), onPulley: Math.atan2(-s * m[1], -s * m[0]) };
+}
+const TAN = { cLeft: tangent(1, -1), cRight: tangent(1, 1), dLeft: tangent(-1, -1), dRight: tangent(-1, 1) };
+// 皮帶的兩端在 A 局部的方位角:擺到兩頭,端頭到切點之間的弧上都還繞著一段(至少約 5°)
+const ENDS = { c: [deg(189), deg(359.5)], d: [deg(205), deg(340)] };
+const BELT_SAMPLES = { onA: 12, onPulley: 32 };
+const arcOf = (c, r, a0, a1, n, z) => Array.from({ length: n + 1 }, (_, i) => [c[0] + r * Math.cos(a0 + ((a1 - a0) * i) / n), c[1] + r * Math.sin(a0 + ((a1 - a0) * i) / n), z]);
+const norm2 = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+/** A 轉到 a 時皮帶的路徑:A 上左端 → 左切點 →(直線)→ 皮帶輪 → 繞輪緣 →(直線)→ A 上右切點 → 右端 */
+function beltPath(key, a, z) {
+  const [left, right] = key === "c" ? [TAN.cLeft, TAN.cRight] : [TAN.dLeft, TAN.dRight];
+  const [e0, e1] = ENDS[key].map((e) => e + a);
+  const toLeft = e0 + norm2(left.onA - e0); // A 上從左端往逆時針繞到左切點
+  const fromRight = right.onA + norm2(e1 - right.onA);
+  // 皮帶輪上:C 從左切點逆時針繞過下半到右切點;D 從右上的切點順時針繞過大半圈到左上的切點
+  const p0 = left.onPulley;
+  let p1 = right.onPulley;
+  if (key === "c") while (p1 < p0) p1 += TAU;
+  else while (p1 > p0) p1 -= TAU;
+  return [
+    ...arcOf(A_PIVOT, RA, e0, toLeft, BELT_SAMPLES.onA, z),
+    ...arcOf(WHEEL.center, RP, p0, p1, BELT_SAMPLES.onPulley, z),
+    ...arcOf(A_PIVOT, RA, right.onA, fromRight, BELT_SAMPLES.onA, z),
+  ];
+}
+
 // 棘爪:銷在原點,爪身沿局部 +x,爪尖是尖的
 const pawlShape = shape(PAWL_OUTLINE);
+// 輻條從輪轂伸到輪緣(輪緣的孔 0.4)
+const SPOKES = [deg(30), deg(120)].map((angle) => ({ kind: "box", size: [0.81, 0.05, 0.04], angle }));
 const pin = (z) => ({ kind: "cylinder", radius: 0.025, length: 0.22, at: [PAWL.at * Math.cos(PAWL.angle), PAWL.at * Math.sin(PAWL.angle), z] });
 
 export default {
   figure: 390,
   parts: [
-    { id: "frame", kind: "group", pieces: [{ kind: "box", size: [5.0, 0.15, 0.4], at: [0, A_PIVOT[1] + 0.25, -0.3] }, { kind: "cylinder", radius: 0.15, length: 0.5, at: A_PIVOT }] },
+    {
+      id: "frame",
+      kind: "group",
+      pieces: [
+        // 上方的橫梁、A 的樞軸座(貼在橫梁下)、撐著橫梁的兩根立柱與地上的橫木(推斷)
+        { kind: "box", size: [5.0, 0.15, 0.4], at: [0, A_PIVOT[1] + 0.15 + 0.075, -0.3] },
+        { kind: "cylinder", radius: 0.15, length: 0.5, at: A_PIVOT },
+        { kind: "box", size: [0.15, A_PIVOT[1] + 0.15 - FLOOR, 0.4], at: [-2.4, (A_PIVOT[1] + 0.15 + FLOOR) / 2, -0.3] },
+        { kind: "box", size: [0.15, A_PIVOT[1] + 0.15 - FLOOR, 0.4], at: [2.4, (A_PIVOT[1] + 0.15 + FLOOR) / 2, -0.3] },
+        { kind: "box", size: [5.0, 0.18, 0.4], at: [0, FLOOR - 0.09, -0.3] },
+        // 飛輪軸的兩個軸承座,在飛輪後面
+        ...pedestal({ at: [WHEEL.center[0], WHEEL.center[1]], z: -0.8, bore: SHAFT.r, floor: FLOOR }),
+        ...pedestal({ at: [WHEEL.center[0], WHEEL.center[1]], z: -1.3, bore: SHAFT.r, floor: FLOOR }),
+      ],
+    },
     {
       id: "partA",
       kind: "group",
@@ -170,7 +233,8 @@ export default {
       arrow: false,
       label: "A",
       labelOffset: [1.75, -0.6, 0.3],
-      pieces: [{ kind: "plate", shape: shape([...arcPoints(ARC, deg(180), deg(360)), ...arcPoints(ARC - 0.18, deg(360), deg(180))]), thickness: 0.2 }, { kind: "box", size: [2 * ARC, 0.12, 0.15] }],
+      // 弧做寬(z −0.1..0.5),兩條皮帶都繞在它的外緣上
+      pieces: [{ kind: "plate", shape: shape([...arcPoints(ARC, deg(180), deg(360)), ...arcPoints(ARC - 0.18, deg(360), deg(180))]), thickness: 0.6, at: [0, 0, 0.2] }, { kind: "box", size: [2 * ARC, 0.12, 0.15] }],
     },
     { id: "labela", kind: "group", center: A_PIVOT, label: "a", labelOffset: [0, 0.4, 0.3] },
     {
@@ -185,12 +249,12 @@ export default {
         ...[0, 1, 2].map((i) => ({ kind: "box", size: [2 * WHEEL.r - 0.3, 0.12, 0.1], at: [0, 0, -0.45], angle: (i * Math.PI) / 3 })),
         { kind: "plate", shape: ratchetShape(RATCHET), thickness: 0.08, at: [0, 0, Z.C] },
         { kind: "plate", shape: ratchetShape(RATCHET), thickness: 0.08, at: [0, 0, Z.D] },
-        { kind: "cylinder", radius: 0.08, length: 1.2 },
+        { kind: "cylinder", radius: SHAFT.r, length: SHAFT.z1 - SHAFT.z0, at: [0, 0, (SHAFT.z0 + SHAFT.z1) / 2] }, // 往後伸進兩個軸承座
       ],
     },
     // 兩個皮帶輪鬆套在軸上(輪轂、輻條),背面伸出一根銷鉸著棘爪
-    { id: "pulleyC", kind: "group", center: [WHEEL.center[0], WHEEL.center[1], 0.12], spin: PULLEY, label: "C", labelOffset: [0.9, 0.2, 0.3], pieces: [{ kind: "cylinder", radius: PULLEY, inner: 0.4, length: 0.12, mark: true }, { kind: "cylinder", radius: 0.14, inner: 0.08, length: 0.1 }, { kind: "box", size: [0.62, 0.05, 0.04], angle: deg(30) }, pin(-0.1)] },
-    { id: "pulleyD", kind: "group", center: [WHEEL.center[0], WHEEL.center[1], 0.42], spin: PULLEY, label: "D", labelOffset: [-0.6, 0.55, 0.3], pieces: [{ kind: "cylinder", radius: PULLEY, inner: 0.4, length: 0.12, mark: true }, { kind: "cylinder", radius: 0.14, inner: 0.08, length: 0.1 }, { kind: "box", size: [0.62, 0.05, 0.04], angle: deg(30) }, pin(-0.1)] },
+    { id: "pulleyC", kind: "group", center: [WHEEL.center[0], WHEEL.center[1], 0.12], spin: PULLEY, label: "C", labelOffset: [0.9, 0.2, 0.3], pieces: [{ kind: "cylinder", radius: PULLEY, inner: 0.4, length: 0.12, mark: true }, { kind: "cylinder", radius: 0.14, inner: 0.08, length: 0.1 }, ...SPOKES, pin(-0.1)] },
+    { id: "pulleyD", kind: "group", center: [WHEEL.center[0], WHEEL.center[1], 0.42], spin: PULLEY, label: "D", labelOffset: [-0.6, 0.55, 0.3], pieces: [{ kind: "cylinder", radius: PULLEY, inner: 0.4, length: 0.12, mark: true }, { kind: "cylinder", radius: 0.14, inner: 0.08, length: 0.1 }, ...SPOKES, pin(-0.1)] },
     { id: "pawlC", kind: "plate", shape: pawlShape, thickness: 0.06, arrow: false },
     { id: "pawlD", kind: "plate", shape: pawlShape, thickness: 0.06, arrow: false },
     { id: "strapC", kind: "belt" },
@@ -220,9 +284,6 @@ export default {
   view: { direction: [0.15, 0.08, 1] },
   pose(v) {
     const o = oscillation(v);
-    const p = WHEEL.center;
-    // 兩條皮帶的兩端都固定在 A 的弧緣上,中間繞過飛輪軸上的皮帶輪(C 開口、D 交叉:兩條的繞向相反)
-    const ptA = (ang, z) => [A_PIVOT[0] + ARC * Math.cos(ang), A_PIVOT[1] + ARC * Math.sin(ang), z];
     return {
       parts: {
         partA: { angle: o.a },
@@ -233,14 +294,14 @@ export default {
         pawlD: { position: [...pinAt(o.d), Z.D], angle: o.pawlD },
       },
       paths: {
-        strapC: { points: [ptA(o.a - deg(55), 0.12), [p[0] + PULLEY, p[1], 0.12], [p[0], p[1] - PULLEY, 0.12], [p[0] - PULLEY, p[1], 0.12], ptA(o.a + deg(-125), 0.12)], closed: false, phase: o.c * PULLEY },
-        strapD: { points: [ptA(o.a - deg(125), 0.42), [p[0] + PULLEY, p[1], 0.42], [p[0], p[1] - PULLEY, 0.42], [p[0] - PULLEY, p[1], 0.42], ptA(o.a - deg(55), 0.42)], closed: false, phase: o.d * PULLEY },
+        // 兩端固定在 A 上:路徑的起點就是皮帶的端頭,離起點的弧長就是材料座標(記號跟著皮帶走,不用另給相位)
+        strapC: { points: beltPath("c", o.a, 0.12), closed: false },
+        strapD: { points: beltPath("d", o.a, 0.42), closed: false },
       },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["pulleyC", "strapC"], reason: "帶子的端頭繫在輪緣上:帶子的第一段貼著輪面,中心線落在輪緣內 0.05" },
-    { check: "interference", parts: ["pulleyD", "strapD"], reason: "帶子的端頭繫在輪緣上:帶子的第一段貼著輪面,中心線落在輪緣內 0.06" },
-  ],
 };
+
+// 測試用
+export const geometry = { A_PIVOT, ARC, PULLEY, BELT };
