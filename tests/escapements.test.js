@@ -1203,8 +1203,132 @@ test("第 311 種:雙三腳式重力擒縱:兩個叉瓦交替被抬起,鎖定輪
   const S = m311.SWING;
   const base = 2 * m311.escapement.period;
   assert.ok(m311.doubleThree(base + 2 * S).right > 0.02 && m311.doubleThree(base + 4 * S).left > 0.02, "兩叉瓦交替被抬起");
-  escapes(m311.escapement, 2 * m311.STEP, 1);
+  escapes(m311.escapement, 2 * m311.STEP, -1); // 順時針:原圖 A 的腳尖由上往下壓在 D 的上端
   noPenetration(m311.escapement);
+});
+
+// ── 第 311 種照原圖重排(model-audit-fixes-3 票 11)──
+
+/** 腳(對自己的中線對稱的多邊形)相對輪心 W 的方位角:取頂點的平均 */
+const tipAngle311 = (leg, W) => {
+  const c = [0, 1].map((k) => leg.reduce((t, q) => t + q[k], 0) / leg.length);
+  return Math.atan2(c[1] - W[1], c[0] - W[0]);
+};
+const wrap311 = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+const deg311 = (d) => (d * Math.PI) / 180;
+
+test("第 311 種:照原圖,前輪的腳由右臂肘角的止動齒 D 擋住、後輪的腳由左臂肘角的止動齒 E 擋住,兩輪的腳錯開 60°", () => {
+  // 原文「第一個鎖定輪的齒由其中一個擒縱叉瓦上的止動齒 D 所擋住,另一個鎖定輪的齒則由另一個擒縱叉瓦上的止動齒 E 所擋住」;
+  // 525 px 原圖:D 在右臂的肘角(實線,前層)、E 在左臂的肘角(虛線,後層),擋住的腳尖在輪心上方約 30° 與 150°
+  const e = m311.escapement;
+  const W = part(m311.default, "wheel").center;
+  const seen = { D: [], E: [] };
+  const n = 720;
+  for (let i = 0; i < n; i++) {
+    const v = 2 * e.period + (e.period * i) / n;
+    if (Math.abs(e.angle(v + e.period / n) - e.angle(v)) > 1e-12) continue; // 只看輪鎖住的時候
+    const s = e.at(v);
+    for (const [j, name] of [[0, "D"], [1, "E"]]) {
+      const x = s.stops[j].reduce((t, q) => t + q[0], 0) / s.stops[j].length;
+      s.teeth.forEach((t, k) => {
+        if (s.layers[k] === s.stopLayers[j] && gap309(s.stops[j], t) < 2e-3) seen[name].push({ layer: s.layers[k], at: tipAngle311(t, W), x });
+      });
+    }
+  }
+  assert.ok(seen.D.length > 20 && seen.E.length > 20, `D、E 都擋住過腳(${seen.D.length}、${seen.E.length} 個取樣)`);
+  for (const c of seen.D) {
+    assert.equal(c.layer, "front", "D 擋前輪的腳");
+    assert.ok(c.x > W[0], "D 在右臂");
+    assert.ok(Math.abs(wrap311(c.at - deg311(30))) < deg311(10), `D 擋住的腳尖在輪心上方約 30°(實際 ${((c.at * 180) / Math.PI).toFixed(1)}°)`);
+  }
+  for (const c of seen.E) {
+    assert.equal(c.layer, "back", "E 擋後輪的腳");
+    assert.ok(c.x < W[0], "E 在左臂");
+    assert.ok(Math.abs(wrap311(c.at - deg311(150))) < deg311(10), `E 擋住的腳尖在輪心上方約 150°(實際 ${((c.at * 180) / Math.PI).toFixed(1)}°)`);
+  }
+  const s = e.at(0);
+  const front = s.teeth.filter((_, k) => s.layers[k] === "front").map((t) => tipAngle311(t, W));
+  const back = s.teeth.filter((_, k) => s.layers[k] === "back").map((t) => tipAngle311(t, W));
+  for (const b of back) close(Math.min(...front.map((f) => Math.abs(wrap311(b - f)))), deg311(60), "後輪的每隻腳和最近的前輪腳錯開 60°", 1e-6);
+  assert.ok(part(m311.default, "labelD").center[0] > W[0] && part(m311.default, "labelE").center[0] < W[0], "字母 D 標在右臂、E 標在左臂");
+  // 止動齒擋腳的面以臂軸為圓心:擺把臂推開、止動齒滑開腳尖之前,腳一直被擋著、輪完全不動(不沿著止動齒往前滑)
+  let held = 0;
+  let crept = 0;
+  for (let i = 0; i < n; i++) {
+    const v = 2 * e.period + (e.period * i) / n;
+    const touch = (s) => [0, 1].some((j) => s.teeth.some((t, k) => s.layers[k] === s.stopLayers[j] && gap309(s.stops[j], t) < 1e-4));
+    if (![-1, 0, 1, 2].every((k) => touch(e.at(v + (k * e.period) / n)))) continue; // 前後都擋著(不含碰上與放開的那一步)
+    held++;
+    crept += Math.abs(e.angle(v + e.period / n) - e.angle(v));
+  }
+  assert.ok(held > n / 3, `止動齒擋著腳的取樣 ${held}`);
+  assert.ok(crept < 1e-4, `止動齒擋著腳時輪不動(一個來回裡共滑了 ${((crept * 180) / Math.PI).toFixed(4)}°)`);
+});
+
+test("第 311 種:擺返回時,叉瓦臂貼著擺落下、由重量給擺衝量(臂不比擺先落下);輪鎖住時不回退", () => {
+  fallsWithPendulum309(m311.escapement, m311.SWING, (v) => [m311.doubleThree(v).right, m311.doubleThree(v).left]);
+  forwardOnly309(m311.escapement, -1);
+});
+
+test("第 311 種:兩臂靠重量往內倒時靠在擋銷上(擋銷在臂內側、立在機架的橫條上);臂的軸與擺的懸點都接到機架", () => {
+  const def = m311.default;
+  const frame = part(def, "frame").pieces;
+  const mounted = (p, x, y) => frame.some((f) => cover299(f).has(x, y) && meet309(depth309(f), depth309(p)));
+  const stops = part(def, "armStops").pieces.filter((p) => p.kind === "cylinder");
+  const rail = part(def, "armStops").pieces.find((p) => p.kind === "box"); // 擋銷的橫條
+  assert.ok(rail && mounted(rail, rail.at[0], rail.at[1]), "擋銷的橫條貼在機架上");
+  for (const [id, sign] of [["armR", -1], ["armL", 1]]) {
+    const arm = part(def, id);
+    const bar = arm.pieces[0];
+    const at = (a) => placePoly(bar.shape.outline, arm.center, a);
+    const touching = stops.filter((s) => edgeDistance([s.at[0], s.at[1]], at(0)) < s.radius + 0.002 && meet309(depth309(s), depth309(bar)));
+    assert.ok(touching.length > 0, `${id} 落到底(角度 0)時貼著擋銷`);
+    const pin = disc309(touching[0].at, touching[0].radius);
+    assert.ok(polygonsOverlap(pin, at(sign * 0.01)), `${id} 再往內倒就碰到擋銷(擋銷在臂往內倒的那一側)`);
+    assert.ok(!polygonsOverlap(pin, at(-sign * 0.01)), `${id} 抬起時離開擋銷`);
+    assert.ok(cover299(rail).has(touching[0].at[0], touching[0].at[1]) && meet309(depth309(rail), depth309(touching[0])), "擋銷往後伸到橫條");
+    const axle = arm.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9);
+    assert.ok(axle && mounted(axle, arm.center[0], arm.center[1]), `${id} 的軸往後伸進機架`);
+  }
+  const pend = part(def, "pendulum");
+  const pivot = pend.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9 && p.radius < 0.06);
+  assert.ok(pivot && frame.some((f) => cover299(f).has(pend.center[0], pend.center[1]) && meet309(depth309(f), depth309(pivot, pend.center[2]))), "擺的懸點插進機架的懸掛座");
+});
+
+test("第 311 種:擺桿不蓋住輪心、抬升銷與兩個叉瓦(看得到抬升銷把叉瓦抬起)", () => {
+  const W = part(m311.default, "wheel").center;
+  const faces = (v) => m311.escapement.at(v).stops.slice(2);
+  const share = hiddenByPendulum309(m311.default, m311.escapement, (v) => [disc309(W, 0.35), ...faces(v)], -0.3);
+  assert.equal(share, 0, `輪心、抬升銷與叉瓦被擺蓋住 ${(share * 100).toFixed(0)}%`);
+});
+
+test("第 311 種:腳的字母跟著輪轉——A、B、C 一直標在前輪同一隻腳的腳尖旁,a、b、c 標在後輪的腳尖旁", () => {
+  const def = m311.default;
+  const e = m311.escapement;
+  for (const [ids, layer] of [[["A", "B", "C"], "front"], [["a", "b", "c"], "back"]]) {
+    for (const text of ids) {
+      const label = def.parts.find((p) => p.label === text);
+      assert.ok(label, `有字母 ${text}`);
+      let first;
+      for (const v of sweep(2 * e.period, 24)) {
+        const p = def.pose(v).parts[label.id]?.position;
+        assert.ok(p, `${text} 的位置由 pose 給(跟著輪轉)`);
+        const s = e.at(v);
+        const legs = s.teeth.filter((_, k) => s.layers[k] === layer);
+        const d = legs.map((t) => Math.min(...t.map((q) => Math.hypot(q[0] - p[0], q[1] - p[1]))));
+        const k = d.indexOf(Math.min(...d));
+        assert.ok(d[k] < 0.35, `${text} 在${layer === "front" ? "前" : "後"}輪的腳尖旁(離 ${d[k].toFixed(2)})`);
+        if (first === undefined) first = k;
+        else assert.equal(k, first, `${text} 一直標著同一隻腳`);
+      }
+    }
+  }
+});
+
+test("第 311 種:補上擺錘(推斷),擺錘在輪的下方;推斷的重錘驅動——輪軸上的鼓放出繩、經滑輪吊著重錘,拉力讓輪順時針轉", () => {
+  bob309(m311.default, -1.4);
+  const { DRUM, REWIND } = m311.geometry;
+  assertWeightDrive(m311.default, { drum: DRUM, wheel: m311.escapement.angle, period: m311.escapement.period, every: REWIND, dir: -1 });
 });
 
 test("第 312 種:布洛克桑重力擒縱:擺推開一個叉瓦、放開擋止,輪每擺一次轉半個齒距", () => {
