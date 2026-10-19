@@ -26,8 +26,10 @@
 // 推斷的驅動(原文沒說輪為什麼往前轉;共用 weight-drive.js,照第 291、313 種):擒縱輪軸往後伸,輪與夾板之間有一個鼓,繩從
 // 鼓的右側垂下吊著重錘,重錘的重量就是讓輪順時針轉的固定力矩;輪轉多少重錘降多少,被叉瓦擋住時重錘也停。重錘每降一段
 // (擺輪來回八次)捲回最高處一次(上鍊,畫面上一下子回到上面)。錶實際上用發條經輪系帶動,這裡用重錘只是示意。
+// 繩不經滑輪、直接從鼓上垂下(和同樣是錶的第 291、313、314 種一樣):鼓在輪與夾板條之間,鼓的右側往下沒有東西擋
+// (擒縱輪在前面一層,夾板條與擺輪在後面)。全書加滑輪的(第 288、309 種等)是繩要繞到輪緣外,或鼓軸直立、要把繩轉成往下。
 import { TAU, deg, swing, Y, Z as ZAXIS } from "./kit.js";
-import { shape, circle, rect, thickLine } from "./shapes.js";
+import { shape, circle, rect, thickLine, zCylinder } from "./shapes.js";
 import { circlePolygon } from "./contact.js";
 import { escapeWheel, deadBeatPallet, palletRoot } from "./dead-beat-anchor.js";
 import { placePoly, fall, anyOverlap, periodic } from "./escapement.js";
@@ -131,7 +133,7 @@ export const contactAt = (v) => {
   return { ...stopsAt(v), teeth: teethAt(RUN.at(v).w), pin: circlePolygon(pinAt(b), PIN, 24), prongs: PRONGS.map((p) => placePoly(p, LEVER, leverAngle(b))) };
 };
 
-// 推斷的重錘驅動:鼓在擒縱輪軸上、輪與夾板之間,繩從鼓的右側垂下吊著重錘
+// 推斷的重錘驅動:鼓在擒縱輪軸上、輪與夾板之間,繩從鼓的右側直接垂下吊著重錘(不經滑輪,理由見檔頭)
 const ROPE_R = 0.035;
 const DRUM_R = 0.15;
 const DRUM_Z = -0.3;
@@ -150,7 +152,6 @@ const weightAt = rewound(hang, (v) => -reed(v).wheel, REWIND); // 輪往前(順�
 export const WEIGHT_DRIVE = { drum: DRUM, every: REWIND };
 
 const root = PALLETS.map(palletRoot);
-const span = (z0, z1) => ({ length: z1 - z0, z: (z0 + z1) / 2 }); // 沿 z 的圓柱:從 z0 到 z1
 
 export default {
   figure: 396,
@@ -161,8 +162,8 @@ export default {
       pieces: [
         // 夾板條(各軸往後插進凸台)、槓桿的樞軸(伸到槓桿身那一層)與擋住槓桿短尾的兩根擋銷(推斷)
         ...plateBar({ points: [BAL, WHEEL, LEVER, [LEVER[0] + TAIL + 0.05, LEVER[1]]], z: PLATE_Z, width: 0.32, boss: 0.2 }),
-        { kind: "cylinder", radius: 0.05, length: span(PLATE_Z, ZF + 0.04).length, at: [LEVER[0], LEVER[1], span(PLATE_Z, ZF + 0.04).z] },
-        ...[1, -1].map((s) => ({ kind: "cylinder", radius: 0.035, length: span(PLATE_Z, ZF + 0.04).length, at: [LEVER[0] + TAIL - 0.06, s * ((TAIL - 0.06) * Math.tan(LEV) + 0.04 / Math.cos(LEV) + 0.038), span(PLATE_Z, ZF + 0.04).z] })),
+        zCylinder(PLATE_Z, ZF + 0.04, 0.05, LEVER),
+        ...[1, -1].map((s) => zCylinder(PLATE_Z, ZF + 0.04, 0.035, [LEVER[0] + TAIL - 0.06, s * ((TAIL - 0.06) * Math.tan(LEV) + 0.04 / Math.cos(LEV) + 0.038)])),
       ],
     },
     {
@@ -175,13 +176,13 @@ export default {
         { kind: "plate", shape: shape(circle(1.75), [circle(1.62).reverse()]), thickness: 0.08, at: [0, 0, ZB] },
         { kind: "box", size: [3.3, 0.06, 0.06], at: [0, 0, ZB] },
         { kind: "cylinder", radius: 0.1, length: 0.1, at: [0, 0, ZB] },
-        { kind: "cylinder", radius: 0.05, length: span(ZB - 0.05, ZP + 0.03).length, at: [0, 0, span(ZB - 0.05, ZP + 0.03).z] },
+        zCylinder(ZB - 0.05, ZP + 0.03, 0.05),
         // 滾子與衝量叉瓦(和擒縱輪同一層)
         { kind: "plate", shape: shape(circle(ROLLER)), thickness: 0.1, at: [0, 0, Z] },
         { kind: "plate", shape: shape(IMPULSE), thickness: 0.12, at: [0, 0, Z], accent: true },
         // 圓盤(從擺輪軸伸到圓盤銷的臂,在槓桿身前面)與圓盤銷:從圓盤往後伸到叉口那一層
         { kind: "plate", shape: shape(thickLine([[0, 0], [PIN_R, 0]], 0.08)), thickness: 0.05, at: [0, 0, ZP] },
-        { kind: "cylinder", radius: PIN, length: span(ZF - 0.06, ZP).length, at: [PIN_R, 0, span(ZF - 0.06, ZP).z], accent: true },
+        { ...zCylinder(ZF - 0.06, ZP, PIN, [PIN_R, 0]), accent: true },
       ],
     },
     {
@@ -194,7 +195,7 @@ export default {
         ...[0, 1, 2].map((i) => ({ kind: "box", size: [0.5, 0.08, 0.08], at: [0.18 * Math.cos((i * TAU) / 3), 0.18 * Math.sin((i * TAU) / 3), Z], angle: (i * TAU) / 3 })),
         { kind: "cylinder", radius: 0.1, length: 0.16, at: [0, 0, Z] }, // 輪轂不碰到從前面掠過的槓桿身
         { kind: "box", size: [0.12, 0.12, 0.12], at: [0.3, 0.12, Z + 0.06], accent: true },
-        { kind: "cylinder", radius: 0.05, length: span(PLATE_Z, Z).length, at: [0, 0, span(PLATE_Z, Z).z] }, // 輪軸,往後插進夾板
+        zCylinder(PLATE_Z, Z, 0.05), // 輪軸,往後插進夾板
         { kind: "cylinder", radius: DRUM_R, length: 0.2, at: [0, 0, DRUM_Z] }, // 繞繩的鼓(推斷)
       ],
     },
@@ -210,7 +211,7 @@ export default {
         { kind: "box", size: [FORK.to - FORK.from, 0.05, 0.06], at: [(FORK.from + FORK.to) / 2, FORK.half + 0.025, ZF] },
         { kind: "box", size: [FORK.to - FORK.from, 0.05, 0.06], at: [(FORK.from + FORK.to) / 2, -FORK.half - 0.025, ZF] },
         // 樞軸處的套筒:從錨形件那一層貫穿到槓桿身,套在夾板的樞軸上
-        { kind: "cylinder", radius: 0.09, inner: 0.055, length: span(Z - 0.05, ZF + 0.03).length, at: [0, 0, span(Z - 0.05, ZF + 0.03).z] },
+        { ...zCylinder(Z - 0.05, ZF + 0.03, 0.09), inner: 0.055 },
         // 錨形件與兩個叉瓦(和擒縱輪同一層)
         { kind: "plate", shape: shape(thickLine([root[0], [0, 0], root[1]], 0.08), [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, Z] },
         ...PALLETS.map((poly) => ({ kind: "plate", shape: shape(poly), thickness: 0.1, at: [0, 0, Z] })),

@@ -3922,7 +3922,7 @@ test("第 396 種:往一個方向擺時衝量經槓桿傳來,往另一個方向�
     const h = steps.filter((s) => s.half === half);
     const moving = h.map((s) => Math.abs(s.turn) > 1e-9);
     const starts = moving.filter((m, i) => m && (i === 0 || !moving[i - 1])).length;
-    assert.ok(starts <= 2, `${half === "ccw" ? "逆" : "順"}時針擺的那半個來回只放開一次(輪開始轉 ${starts} 次;落到叉瓦上的停頓不算放開)`);
+    assert.equal(starts, 1, `${half === "ccw" ? "逆" : "順"}時針擺的那半個來回只放開一次(輪開始轉 ${starts} 次)`);
   }
 });
 
@@ -4025,19 +4025,13 @@ test("第 397 種:機架是一件:滑桿的導軌與曲柄的軸承柱都站在�
 });
 
 // 第 398 種:槽凸輪 C → 導架裡的滑塊 → 連桿 → 大輪軸上的曲柄(2026-10-14 決定 (a))
+// 主動量 t 時溝裡的銷、接連桿的銷(滑塊只平移)與曲柄銷(跟著大輪轉)在世界中的位置(平面 x、y)
 const at398 = (def, t) => {
   const p = def.pose(t).parts;
-  const slider = part(def, "slider");
+  const local = (id, role) => part(def, id).pieces.find((q) => q.role === role).at;
   const wheel = part(def, "wheel");
-  const pin = (role) => slider.pieces.find((q) => q.role === role);
-  const crankPin = wheel.pieces.find((q) => q.role === "crankPin");
-  const [cx, cy] = rot2(crankPin.at, p.wheel.angle);
-  return {
-    p,
-    groovePin: [p.slider.position[0] + pin("groovePin").at[0], p.slider.position[1] + pin("groovePin").at[1]],
-    eye: [p.slider.position[0] + pin("eyePin").at[0], p.slider.position[1] + pin("eyePin").at[1]],
-    crank: [wheel.center[0] + cx, wheel.center[1] + cy],
-  };
+  const onSlider = (role) => partPoint(p.slider.position, Z, 0, local("slider", role)).slice(0, 2);
+  return { p, groovePin: onSlider("groovePin"), eye: onSlider("eyePin"), crank: partPoint(wheel.center, wheel.axis ?? Z, p.wheel.angle, local("wheel", "crankPin")).slice(0, 2) };
 };
 
 test("第 398 種:凸輪 C 為驅動端;盤面的溝槽帶著滑塊的銷,銷全程在溝裡、兩側都貼著溝壁、不穿入", () => {
@@ -4068,15 +4062,14 @@ test("第 398 種:滑塊夾在上下兩條導軌之間,只沿導軌左右滑", (
   const rails = part(def, "frame").pieces.filter((q) => q.role === "rail");
   assert.equal(blocks.length, 2, "滑塊兩端各一塊");
   assert.equal(rails.length, 2, "上下兩條導軌");
-  const box = (q, [ox, oy, oz] = [0, 0, 0]) => ({ lo: q.at.map((v, k) => v + [ox, oy, oz][k] - q.size[k] / 2), hi: q.at.map((v, k) => v + [ox, oy, oz][k] + q.size[k] / 2) });
-  const [top, bottom] = [...rails].sort((a, b) => b.at[1] - a.at[1]).map((q) => box(q));
+  const [top, bottom] = [...rails].sort((a, b) => b.at[1] - a.at[1]).map((q) => pieceBox(q));
   const xs = [];
   for (const t of sweep(-TAU, 240)) {
     const pos = def.pose(t).parts.slider.position;
     close(pos[1], 0, "滑塊不上下動", 1e-12);
     close(pos[2], 0, "滑塊不前後動", 1e-12);
     xs.push(pos[0]);
-    for (const b of blocks.map((q) => box(q, pos))) {
+    for (const b of blocks.map((q) => pieceBox(q, pos))) {
       close(top.lo[1] - b.hi[1], 0, `主動量 ${t.toFixed(2)}:滑塊頂貼著上導軌`, 1e-9);
       close(b.lo[1] - bottom.hi[1], 0, `主動量 ${t.toFixed(2)}:滑塊底貼著下導軌`, 1e-9);
       assert.ok(b.lo[0] >= top.lo[0] - 1e-9 && b.hi[0] <= top.hi[0] + 1e-9, `主動量 ${t.toFixed(2)}:滑塊在導軌的長度之內`);
@@ -4156,13 +4149,12 @@ test("第 399 種:修理鏈條:每一半的螺絲旋進另一半的螺帽,轉動
   close(b.nutU.angle, 2 * Math.PI, "螺帽轉一圈");
 });
 
-// 第 399 種:半個鏈節的一塊在世界中的 x、y 範圍(上半不轉;下半轉半圈,局部的 x、y 反號)
+// 第 399 種:半個鏈節的一塊在世界中的 x、y 範圍(上半不轉;下半的姿勢是繞 z 轉半圈的四元數):外框的八個角照姿勢擺到世界
 function linkPieceRange(pose, q) {
   const { lo, hi } = pieceBox(q);
-  const flip = pose.rotation && Math.abs(pose.rotation[2]) > 0.5;
-  const [x0, x1] = flip ? [-hi[0], -lo[0]] : [lo[0], hi[0]];
-  const [y0, y1] = flip ? [-hi[1], -lo[1]] : [lo[1], hi[1]];
-  return { x: [x0 + pose.position[0], x1 + pose.position[0]], y: [y0 + pose.position[1], y1 + pose.position[1]] };
+  const corners = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => add(pose.position, (pose.rotation ? (v) => quatRotate(pose.rotation, v) : (v) => v)([0, 1, 2].map((k) => ((i >> k) & 1 ? hi : lo)[k]))));
+  const range = (k) => [Math.min(...corners.map((c) => c[k])), Math.max(...corners.map((c) => c[k]))];
+  return { x: range(0), y: range(1) };
 }
 // 旋轉螺帽(長圓環)兩端的橫條在世界中的 y 範圍:環在 xy 平面,上下對稱
 function swivelBars(def, pose, id) {
@@ -4226,19 +4218,16 @@ test("第 399 種:旋轉螺帽是長圓環:一端以頸套在一半的端頭上(
   close(screw.at[1] + screw.length / 2, leg.at[1] - leg.size[1] / 2, "螺絲接在側桿的下端");
 });
 
-// 第 400 種:凸輪 C 上的局部點在世界中的位置;世界點在凸輪局部座標裡的位置(局部 z 沿凸輪軸)
-const camWorld400 = (def, theta, local) => {
-  const cam = part(def, "cam");
-  return partPoint(cam.center, cam.axis, theta, local);
-};
-function camLocal400(def, theta, p) {
-  const o = camWorld400(def, theta, [0, 0, 0]);
-  const d = sub(p, o);
-  return [X, Y, Z].map((e) => dot(d, sub(camWorld400(def, theta, e), o)));
+// 第 400 種:世界點在凸輪 C 局部座標裡的位置(局部 z 沿凸輪軸;局部 → 世界用 partPoint)
+const cam400 = part(m400.default, "cam");
+function camLocal400(theta, p) {
+  const at = (local) => partPoint(cam400.center, cam400.axis, theta, local);
+  const o = at([0, 0, 0]);
+  return [X, Y, Z].map((e) => dot(sub(p, o), sub(at(e), o)));
 }
 // 凸輪一塊(沿軸擠出的板件)在世界中的 x 範圍
-const camSlabX400 = (def, theta, q) => {
-  const xs = [-1, 1].map((k) => camWorld400(def, theta, [0, 0, (q.at?.[2] ?? 0) + (k * q.thickness) / 2])[0]);
+const camSlabX400 = (theta, q) => {
+  const xs = [-1, 1].map((k) => partPoint(cam400.center, cam400.axis, theta, [0, 0, (q.at?.[2] ?? 0) + (k * q.thickness) / 2])[0]);
   return [Math.min(...xs), Math.max(...xs)];
 };
 // 折線多邊形被鉛直線 x 切到的最低點
@@ -4255,8 +4244,20 @@ function lowestAt400(outline, x) {
 test("第 400 種:凸輪 C 的軸和桿平行;同一片凸輪的徑向凸起抬起 B,同時兩根桿被一起往前帶", () => {
   const def = m400.default;
   close(Math.abs(dot(norm(part(def, "cam").axis ?? Z), X)), 1, "凸輪軸沿桿 A、B 的方向");
-  const turning = def.parts.filter((p) => def.pose(0).parts[p.id]?.angle !== undefined && sweep(TAU, 24).some((t) => Math.abs(turned(def, p.id, 0, t)) > 1e-9)).map((p) => p.id);
-  assert.deepEqual(turning.sort(), ["barB", "cam"], "跟著轉的只有凸輪與 B(沒有另一片往前推的輪廓)");
+  // 同一片凸輪:往前推的斜側面長在抬起 B 的徑向凸起上——升程輪廓凸出基圓的是連續的一段角度,斜側面每一層開始加厚的那一端
+  // (轉到上面最早、推凸塊的那一段)都在這段角度裡(各層的另一端一起延到凸起轉過去,B 落下時仍頂著凸塊)
+  const cam = part(def, "cam");
+  const lift = cam.pieces.find((p) => p.role === "lift").shape.outline;
+  const polarOf = ([x, y]) => ({ r: Math.hypot(x, y), a: Math.atan2(y, x) });
+  const bump = lift.map(polarOf).filter((p) => p.r > m400.CAM_BASE + 1e-4).map((p) => p.a);
+  const [b0, b1] = [Math.min(...bump), Math.max(...bump)];
+  assert.ok(bump.length > 0 && lift.map(polarOf).filter((p) => p.r <= m400.CAM_BASE + 1e-4).every((p) => p.a < b0 || p.a > b1), "升程輪廓上有一段連續的徑向凸起,其餘是基圓");
+  const ramps = cam.pieces.filter((p) => p.role === "ramp");
+  assert.ok(ramps.length > 0, "凸輪上有往前推的斜側面");
+  for (const q of ramps) {
+    const lead = Math.max(...q.shape.outline.map((p) => polarOf(p).a)); // 凸輪往上轉,角度大的那一端先轉到上面
+    assert.ok(lead > b0 && lead < b1, `斜側面開始加厚的地方在徑向凸起上(${((lead * 180) / Math.PI).toFixed(1)}°,凸起 ${((b0 * 180) / Math.PI).toFixed(1)}°–${((b1 * 180) / Math.PI).toFixed(1)}°)`);
+  }
   const q = (f) => m400.fourMotion(f * TAU);
   const both = sweep(1, 400).filter((f) => q(f + 0.0025).lift > q(f).lift + 1e-6 && q(f + 0.0025).feed > q(f).feed + 1e-6);
   assert.ok(both.length > 20, `B 被抬起的同時兩根桿往前走(同時的取樣 ${both.length} 個)`);
@@ -4299,13 +4300,13 @@ test("第 400 種:B 靠自重坐在凸輪 C 上:在凸輪的左面,B 的底面�
   const cam = part(def, "cam");
   const lift = cam.pieces.find((p) => p.role === "lift");
   const pad = part(def, "barB").pieces.find((p) => p.role === "pad");
-  const [xe] = camSlabX400(def, 0, lift);
+  const [xe] = camSlabX400(0, lift);
   const h = pad.thickness / 2;
   for (const t of sweep(TAU, 96)) {
     const pose = def.pose(t).parts;
     assert.ok(pose.barB.angle > -1e-12, `凸輪轉 ${t.toFixed(2)}:B 的底面往右升高,碰到凸輪的是凸輪的左面`);
     const yb = lowestAt400(placeOutline(pad.shape.outline, pose.barB.position, pose.barB.angle), xe);
-    const section = (drop) => [[-h, yb - drop], [h, yb - drop], [h, yb + 0.05], [-h, yb + 0.05]].map(([z, y]) => camLocal400(def, t, [xe, y, z]).slice(0, 2));
+    const section = (drop) => [[-h, yb - drop], [h, yb - drop], [h, yb + 0.05], [-h, yb + 0.05]].map(([z, y]) => camLocal400(t, [xe, y, z]).slice(0, 2));
     assert.ok(penetrationDepth(section(0), lift.shape.outline) < 5e-3, `凸輪轉 ${t.toFixed(2)}:凸輪沒有穿入 B`);
     assert.ok(polygonsOverlap(section(0.004), lift.shape.outline), `凸輪轉 ${t.toFixed(2)}:B 坐在凸輪上`);
   }
@@ -4329,10 +4330,10 @@ test("第 400 種:往前推的是凸輪凸起的斜側面:兩根桿往前走時,
     for (const ly of sweep(ly1, 10, ly0)) {
       const [[x, y], [xr]] = placeOutline([[lx0, ly], [lx1, ly]], pose.barB.position, pose.barB.angle);
       for (const z of sweep(h, 12, -h)) {
-        const [u, v] = camLocal400(def, t, [x, y, z]);
+        const [u, v] = camLocal400(t, [x, y, z]);
         for (const s of solids) {
           if (!pointInPolygon([u, v], s.shape.outline)) continue;
-          const [s0, s1] = camSlabX400(def, t, s);
+          const [s0, s1] = camSlabX400(t, s);
           if (s0 < xr && s1 > x) deepest = Math.max(deepest, Math.min(s1 - x, xr - s0));
           else if (s1 <= x) nearest = Math.min(nearest, x - s1);
         }
@@ -4356,7 +4357,7 @@ test("第 400 種:台面、吊在台面下的導架、彈簧座、擋塊與凸�
   const shaft = part(def, "cam").pieces.find((p) => p.role === "shaft");
   const bearings = bed.pieces.filter((p) => p.kind === "cylinder" && p.inner && Math.abs(dot(norm(p.axis ?? Z), X)) > 0.999 && p.role !== "seat");
   assert.equal(bearings.length, 2, "凸輪軸兩端各一個軸承");
-  assertShaftInBearings({ at: camWorld400(def, 0, shaft.at), axis: X, radius: shaft.radius, length: shaft.length }, bearings, "凸輪軸");
+  assertShaftInBearings({ at: partPoint(cam400.center, cam400.axis, 0, shaft.at), axis: X, radius: shaft.radius, length: shaft.length }, bearings, "凸輪軸");
 });
 
 test("第 400 種:彈簧在 A 左端的鉤的右邊,是裝在座裡的壓縮彈簧:A 往前時被壓短,把 A 推回到擋塊", () => {

@@ -21,7 +21,7 @@
 //   (平底從動件的接觸點會前後移)都落在 B 的底面上;叉的兩片跟著往外放。
 import { TAU, smooth, rot2 } from "./kit.js";
 import { falling } from "./jumps.js";
-import { shape, rect, circle } from "./shapes.js";
+import { shape, rect, circle, spanBox } from "./shapes.js";
 
 export const LIFT = 0.1; // 凸起把 B 底面(在凸輪左面)頂起的高度
 export const FEED = 0.2; // 進料步幅(原文沒有給步幅)
@@ -195,20 +195,19 @@ export function fourMotion(theta) {
   return { lift: SPUR_TIP[0] * Math.sin(a) + SPUR_TIP[1] * (Math.cos(a) - 1), feed: f };
 }
 
-const box = (x0, x1, y0, y1, z0, z1, extra = {}) => ({ kind: "box", ...extra, size: [x1 - x0, y1 - y0, z1 - z0], at: [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2] });
 const BED_Y = [0.3, 0.4];
 const OPENING = { x0: 0.5, x1: 2.25, z: 0.22 }; // 台面上讓進料齒升上來的開口
 // 凸輪軸的軸承吊架:從台面後面吊下的板、往前伸到軸的臂、套著軸的軸承環
 const hanger = (x) => [
-  box(x - 0.05, x + 0.05, CAM[1] - 0.08, BED_Y[0], -0.6, -0.5),
-  box(x - 0.05, x + 0.05, CAM[1] - 0.08, CAM[1] + 0.08, -0.5, -0.14),
+  spanBox(x - 0.05, x + 0.05, CAM[1] - 0.08, BED_Y[0], -0.6, -0.5),
+  spanBox(x - 0.05, x + 0.05, CAM[1] - 0.08, CAM[1] + 0.08, -0.5, -0.14),
   { kind: "cylinder", axis: [1, 0, 0], radius: 0.17, inner: 0.08, length: 0.1, at: [x, CAM[1], 0] },
 ];
 // 托著 A 的導架:兩片側板從台面吊下,底下托著 A(左邊托 A 的實心段;右邊兩條托著叉的兩片,中間讓 B 通過)
 const guide = (x0, x1, split) => [
-  box(x0, x1, -0.06, BED_Y[0], 0.29, 0.35),
-  box(x0, x1, -0.06, BED_Y[0], -0.35, -0.29),
-  ...(split ? [box(x0, x1, -0.06, 0, 0.19, 0.35), box(x0, x1, -0.06, 0, -0.35, -0.19)] : [box(x0, x1, -0.06, 0, -0.35, 0.35)]),
+  spanBox(x0, x1, -0.06, BED_Y[0], 0.29, 0.35),
+  spanBox(x0, x1, -0.06, BED_Y[0], -0.35, -0.29),
+  ...(split ? [spanBox(x0, x1, -0.06, 0, 0.19, 0.35), spanBox(x0, x1, -0.06, 0, -0.35, -0.19)] : [spanBox(x0, x1, -0.06, 0, -0.35, 0.35)]),
 ];
 const CAM_SHAFT = { x0: -0.2, x1: 1.0 };
 
@@ -220,18 +219,18 @@ export default {
       kind: "group",
       pieces: [
         // 台面(推斷),在進料齒的位置開口
-        box(-2.7, OPENING.x0, ...BED_Y, -0.7, 0.7),
-        box(OPENING.x1, 2.5, ...BED_Y, -0.7, 0.7),
-        box(OPENING.x0, OPENING.x1, ...BED_Y, OPENING.z, 0.7),
-        box(OPENING.x0, OPENING.x1, ...BED_Y, -0.7, -OPENING.z),
+        spanBox(-2.7, OPENING.x0, ...BED_Y, -0.7, 0.7),
+        spanBox(OPENING.x1, 2.5, ...BED_Y, -0.7, 0.7),
+        spanBox(OPENING.x0, OPENING.x1, ...BED_Y, OPENING.z, 0.7),
+        spanBox(OPENING.x0, OPENING.x1, ...BED_Y, -0.7, -OPENING.z),
         ...guide(-1.9, -1.7, false),
         ...guide(0.7, 0.85, true),
         // 彈簧座:吊在左導架底下的套筒,開口朝左對著鉤,彈簧的右端坐在套筒底
         { kind: "cylinder", role: "seat", axis: [1, 0, 0], radius: SEAT.r, inner: SEAT.inner, length: SEAT.x1 - SEAT.x0, at: [(SEAT.x0 + SEAT.x1) / 2, SPRING_Y, 0] },
         { kind: "cylinder", axis: [1, 0, 0], radius: SEAT.r, length: 0.06, at: [SEAT.x1 + 0.03, SPRING_Y, 0] },
         // 擋塊:從台面後面吊下,伸到鉤的左邊;A 被彈簧推回時鉤靠在它上面
-        box(STOP_X - 0.15, STOP_X, -0.34, BED_Y[0], -0.43, -0.37),
-        box(STOP_X - 0.15, STOP_X, -0.34, -0.12, -0.37, 0.1, { role: "stop" }),
+        spanBox(STOP_X - 0.15, STOP_X, -0.34, BED_Y[0], -0.43, -0.37),
+        spanBox(STOP_X - 0.15, STOP_X, -0.34, -0.12, -0.37, 0.1, { role: "stop" }),
         ...hanger(-0.1),
         ...hanger(0.9),
       ],
@@ -243,12 +242,12 @@ export default {
       label: "A",
       labelOffset: [-2.3, 0.22, 0.3],
       pieces: [
-        box(-2.45, -1.65, 0, 0.12, -0.27, 0.27),
+        spanBox(-2.45, -1.65, 0, 0.12, -0.27, 0.27),
         // 左端往下彎的鉤:右面頂著彈簧,左面靠在擋塊上
-        box(HOOK.x0, HOOK.x1, HOOK.y0, 0, -0.27, 0.27, { role: "hook" }),
+        spanBox(HOOK.x0, HOOK.x1, HOOK.y0, 0, -0.27, 0.27, { role: "hook" }),
         // 叉:從叉根往右分成前後兩片,B 夾在中間、以銷鉸在叉根
-        box(-1.65, 0.95, 0, 0.12, 0.19, 0.27),
-        box(-1.65, 0.95, 0, 0.12, -0.27, -0.19),
+        spanBox(-1.65, 0.95, 0, 0.12, 0.19, 0.27),
+        spanBox(-1.65, 0.95, 0, 0.12, -0.27, -0.19),
       ],
     },
     { id: "pinB", kind: "cylinder", radius: 0.05, length: 0.6 },
