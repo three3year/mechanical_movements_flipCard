@@ -1,7 +1,7 @@
 // 第十六章「雜項裝置」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, turned, inSolid, pieceBox, plateLayers, guidedBetween, assertOnePiece, assertThrottle, assertShaftInBearings } from "./helpers.js";
+import { close, sweep, part, turned, inSolid, polyGap, pieceBox, plateLayers, guidedBetween, assertOnePiece, assertThrottle, assertShaftInBearings } from "./helpers.js";
 import { deg, quatMul, quatRotate, partPoint, rotateAbout, add, sub, scale, cross, dot, dist, len, norm, lerp3, rot2, polar, X, Y, Z, TAU } from "../models/kit.js";
 import { rackShape } from "../models/shapes.js";
 import { pathLength } from "../models/flow.js";
@@ -1668,6 +1668,31 @@ test("第 368 種:水平軸由板上的兩個軸承座撐著(原圖),軸穿過�
   }
 });
 
+test("第 368 種:直立軸往下穿過水平傘齒輪底下的軸承座與板,下端進底座的軸承:軸經過的機架都開了孔(孔徑等於軸徑)", () => {
+  const { def, cyl } = parts368();
+  const shaft = cyl.pieces.filter((q) => q.kind === "cylinder").reduce((a, b) => (a.radius <= b.radius ? a : b));
+  const [y0, y1] = [cyl.center[1] + shaft.at[2] - shaft.length / 2, cyl.center[1] + shaft.at[2] + shaft.length / 2]; // 圓筒的局部 z 沿世界 y
+  const [ax, az] = [cyl.center[0], cyl.center[2]];
+  let crossed = 0;
+  for (const q of part(def, "frame").pieces) {
+    if (q.kind === "plate" && q.axis?.[1] === 1) {
+      const [p0, p1] = [q.at[1] - q.thickness / 2, q.at[1] + q.thickness / 2];
+      const local = [ax - q.at[0], -(az - q.at[2])]; // 板件的局部 y 對到世界的 −z
+      if (p1 <= y0 || p0 >= y1 || !pointInPolygon(local, q.shape.outline)) continue;
+      crossed++;
+      assert.ok(!inSolid(local, q.shape), `軸穿過的板件(y ${p0.toFixed(2)}–${p1.toFixed(2)})在軸的地方開了孔`);
+      const hole = q.shape.holes.find((h) => pointInPolygon(local, h));
+      const r = Math.min(...hole.map(([u, v]) => Math.hypot(u - local[0], v - local[1])));
+      assert.ok(r >= shaft.radius - 1e-9 && r <= shaft.radius + 0.01, `孔(${r.toFixed(3)})套著軸(${shaft.radius})`);
+    } else if (q.kind === "box") {
+      const b = pieceBox(q);
+      const through = b.lo[1] < y1 && b.hi[1] > y0 && b.lo[0] < ax && b.hi[0] > ax && b.lo[2] < az && b.hi[2] > az;
+      assert.ok(!through, `軸不穿過實心的方塊(y ${b.lo[1].toFixed(2)}–${b.hi[1].toFixed(2)})`);
+    }
+  }
+  assert.ok(crossed >= 3, `軸穿過軸承座、板與底座的軸承(${crossed})`);
+});
+
 test("第 369 種:擺線擺:擺錘沿擺線運動(擺線的長度不變,擺錘始終在擺線上)", () => {
   for (const p of sweep(1, 36)) {
     const { bob, phi, side } = m369.pendulum(p);
@@ -1725,6 +1750,64 @@ test("第 370 種:拋光鏡面:長桿有縱向與擺動運動,棘輪(鏡面)由�
   const movedWhileIdle = ps.filter((p, i) => i > 0 && !p.engaged && !ps[i - 1].engaged && Math.abs(rel[i] - rel[i - 1]) > 1e-12);
   assert.equal(movedWhileIdle.length, 0, "制動爪沒頂著齒面時,棘輪不動(間歇)");
   assert.ok(ps.some((p) => p.engaged) && ps.some((p) => !p.engaged), "每圈有推、有停");
+});
+
+// 第 370 種的制動爪與棘輪:世界座標的外形(棘輪可以多轉 extra)
+function pawl370(t, extra = 0) {
+  const def = m370.default;
+  const p = def.pose(t).parts;
+  const pawl = placeOutline(part(def, "pawl").shape.outline, p.pawl.position, p.pawl.angle);
+  const wheel = placeOutline(part(def, "ratchet").shape.outline, p.ratchet.position, p.ratchet.angle + extra);
+  const c = p.ratchet.position;
+  return { pawl, wheel, r: (q) => Math.hypot(q[0] - c[0], q[1] - c[1]), polar: (q) => Math.atan2(q[1] - c[1], q[0] - c[0]), engaged: m370.polish(t).engaged };
+}
+
+test("第 370 種:制動爪是鉤形(原圖):爪身繞在齒尖外、只有鉤尖伸進一個齒間;推動時鉤尖落到齒根、頂著齒面推(棘輪少轉一點就穿入),全程不穿進棘輪", () => {
+  const { inner, outer, STEP } = m370.geometry;
+  let pushes = 0;
+  for (const t of sweep(-2 * Math.PI, 144)) {
+    const { pawl, wheel, r, polar, engaged } = pawl370(t);
+    assert.ok(penetrationDepth(pawl, wheel) < 0.005, `曲柄轉 ${t.toFixed(2)}:爪不穿進棘輪(${penetrationDepth(pawl, wheel).toFixed(4)})`);
+    const inside = pawl.filter((q) => r(q) < outer);
+    const a0 = polar(inside[0] ?? pawl[0]);
+    const spread = inside.map((q) => Math.atan2(Math.sin(polar(q) - a0), Math.cos(polar(q) - a0)));
+    assert.ok(Math.max(0, ...spread) - Math.min(0, ...spread) < STEP, `曲柄轉 ${t.toFixed(2)}:伸進齒尖圓內的只有鉤尖(在一個齒間裡)`);
+    if (!engaged) continue;
+    pushes++;
+    assert.ok(Math.min(...pawl.map(r)) < inner + 0.15 * (outer - inner), `曲柄轉 ${t.toFixed(2)}:推動時鉤落到齒根(齒深的 15% 以內)`);
+    assert.ok(polyGap(pawl, wheel) < 0.005, `曲柄轉 ${t.toFixed(2)}:推動時鉤尖貼著齒面`);
+    // 照原圖的方向,棘輪被推得逆時針轉(轉角增加):少轉一點,齒面就壓進鉤尖
+    const less = pawl370(t, -0.03);
+    assert.ok(penetrationDepth(less.pawl, less.wheel) > 0.005, `曲柄轉 ${t.toFixed(2)}:棘輪少轉 0.03 就穿進鉤尖(是爪推的)`);
+  }
+  assert.ok(pushes > 10, "有推動的相位");
+});
+
+test("第 370 種:止回爪(推斷)擋住棘輪往回轉:鉸在長桿的托架上,全程不穿進棘輪;制動爪沒推的時候,棘輪往回轉一點(間隙加 0.01)就頂到止回爪", () => {
+  const def = m370.default;
+  const { backlash } = m370.geometry;
+  const rod = part(def, "rod");
+  const pin = rod.pieces.find((q) => q.kind === "cylinder");
+  let idle = 0;
+  for (const t of sweep(-2 * Math.PI, 72)) {
+    const p = def.pose(t).parts;
+    const detent = placeOutline(part(def, "detent").shape.outline, p.detent.position, p.detent.angle);
+    const wheel = (extra) => placeOutline(part(def, "ratchet").shape.outline, p.ratchet.position, p.ratchet.angle + extra);
+    const at = add(p.rod.position, [...rot2([pin.at[0], pin.at[1]], p.rod.angle), 0]);
+    close(dist([at[0], at[1], 0], [p.detent.position[0], p.detent.position[1], 0]), 0, `曲柄轉 ${t.toFixed(2)}:止回爪鉸在托架的銷上`, 1e-9);
+    assert.ok(penetrationDepth(detent, wheel(0)) < 0.005, `曲柄轉 ${t.toFixed(2)}:止回爪不穿進棘輪`);
+    if (m370.polish(t).engaged) continue;
+    idle++;
+    assert.ok(penetrationDepth(detent, wheel(-(backlash + 0.01))) > 0.005, `曲柄轉 ${t.toFixed(2)}:棘輪往回轉就頂到止回爪`);
+  }
+  assert.ok(idle > 10, "有制動爪沒推的相位");
+});
+
+test("第 370 種:曲柄從哪個相位起轉一圈都推一格:爪一程掃過的角度比一齒多出約半齒(推程先空走一段、退回時越過下一齒),又不到兩齒", () => {
+  const { SWEEP, STEP } = m370.geometry;
+  assert.ok(SWEEP - STEP > 0.35 * STEP, `多出的量 ${((SWEEP - STEP) / STEP).toFixed(2)} 齒,要大於 0.35 齒`);
+  assert.ok(2 * STEP - SWEEP > 0.35 * STEP, `離兩齒還有 ${((2 * STEP - SWEEP) / STEP).toFixed(2)} 齒,要大於 0.35 齒`);
+  for (const s of sweep(-2 * Math.PI, 8)) close(m370.polish(s - 2 * Math.PI).rel - m370.polish(s).rel, m370.STEP, `從 ${s.toFixed(2)} 起轉一圈推一格`, 1e-9);
 });
 
 // 零件一塊的 z 範圍
@@ -1955,7 +2038,7 @@ test("第 372 種:懷特氏測功計:框架靜止時運動經水平齒輪傳到�
   close(free.carrier, 0.5, "框架跟著轉(負載擋住另一個齒輪時,轉一半)");
 });
 
-test("第 372 種:環形框架是垂直於軸的環,輪轂在軸的中點(兩立柱正中),四個傘齒輪都在環裡,齒輪照原圖佔兩立柱間距的大半", () => {
+test("第 372 種:環形框架是垂直於軸的環,輪轂在軸的中點(兩立柱正中),四個傘齒輪都在環裡,齒輪照原圖佔兩立柱間距約八成;輪轂套在軸上", () => {
   const def = m372.default;
   const frame = part(def, "frame");
   const hoop = frame.pieces.find((q) => q.role === "hoop");
@@ -1971,7 +2054,11 @@ test("第 372 種:環形框架是垂直於軸的環,輪轂在軸的中點(兩立
   const reach = Math.SQRT2 * (m372.R + m372.M);
   assert.ok(reach < inner, `傘齒輪都在環裡(齒頂 ${reach.toFixed(3)}、環內緣 ${inner.toFixed(3)})`);
   const span = Math.abs(pillars[1] - pillars[0]);
-  assert.ok((2 * (m372.R + m372.M)) / span > 0.55, "四個傘齒輪圍成的方框佔兩立柱間距的大半(原圖約八成)");
+  const ratio = (2 * (m372.R + m372.M)) / span;
+  assert.ok(ratio > 0.7, `四個傘齒輪圍成的方框佔兩立柱間距約八成(原圖約八成,這裡 ${ratio.toFixed(2)})`);
+  // 輪轂套在軸上:空心,軸從孔裡穿過
+  const shaft = part(def, "shaft").pieces.find((q) => q.kind === "cylinder" && q.length > 4);
+  assert.ok(hub.inner >= shaft.radius && hub.inner < shaft.radius + 0.01, `輪轂的孔套著軸(孔 ${hub.inner}、軸 ${shaft.radius})`);
 });
 
 test("第 372 種:兩個水平傘齒輪裝在框架上:框架的徑向軸從輪轂穿過行星齒輪伸進環,框架轉時行星齒輪跟著公轉", () => {
@@ -2027,11 +2114,29 @@ test("第 372 種:框架保持靜止時,繫在環周圍的皮帶吊著重錘,重
   assert.equal(free.paths.band.visible, false, "皮帶也拿掉");
 });
 
-test("第 372 種:右傘齒輪在軸上鬆轉,輪轂上的皮帶輪接被量測的機器:皮帶隨右齒輪走(不打滑)", () => {
+test("第 372 種:右傘齒輪在軸上鬆轉,套筒上的皮帶輪接被量測的機器:皮帶繞在皮帶輪的輪緣上,輪緣走多少皮帶就走多少(不打滑)", () => {
   const def = m372.default;
+  const sun2 = part(def, "sun2");
+  const shaft = part(def, "shaft").pieces.find((q) => q.kind === "cylinder" && q.length > 4);
+  const sleeve = sun2.pieces.find((q) => q.kind === "cylinder" && q.inner);
+  assert.ok(sleeve && sleeve.inner >= shaft.radius && sleeve.inner < shaft.radius + 0.01, "右齒輪的套筒套在軸上(空心)");
+  // 皮帶輪:套筒上最大的圓柱(兩片擋邊除外);世界座標的軸線沿 x、過原點
+  const pulley = sun2.pieces.filter((q) => q.kind === "cylinder" && q.length > 0.1).sort((a, b) => b.radius - a.radius)[0];
+  const px = sun2.center[0] - pulley.at[2]; // 局部 z 沿 −x
   for (const state of ["held", "free"]) {
-    const [p0, p1] = [def.pose(0, state), def.pose(1, state)];
-    close(p1.paths.loadBelt.phase - p0.paths.loadBelt.phase, m372.LOAD_PULLEY * (p1.parts.sun2.angle - p0.parts.sun2.angle), `${state}:皮帶的移動 = 皮帶輪半徑 × 右齒輪轉角`, 1e-9);
+    const pose = def.pose(0, state);
+    const pts = pose.paths.loadBelt.points;
+    const wrapped = pts.filter((q) => Math.abs(q[0] - px) < 1e-9 && Math.abs(Math.hypot(q[1], q[2]) - pulley.radius) < 0.03);
+    assert.ok(wrapped.length >= pts.length - 2, `${state}:除了往下伸出圖外的兩端,皮帶都貼在輪緣上(${wrapped.length}/${pts.length})`);
+    // 皮帶內面貼著的輪緣頂點轉一點走的距離(沿皮帶在頂點的方向)= 皮帶走的距離
+    const top = pts.reduce((a, b) => (b[1] > a[1] ? b : a));
+    const i = pts.indexOf(top);
+    const along = norm(sub(pts[i + 1], pts[i - 1]));
+    const rim = [top[0], top[1] * (pulley.radius / Math.hypot(top[1], top[2])), top[2] * (pulley.radius / Math.hypot(top[1], top[2]))];
+    const p1 = def.pose(0.01, state);
+    const turn = p1.parts.sun2.angle - pose.parts.sun2.angle;
+    const moved = sub(rotateAbout(rim, sun2.axis, turn), rim);
+    close(p1.paths.loadBelt.phase - pose.paths.loadBelt.phase, dot(moved, along), `${state}:皮帶跟著輪緣走`, 1e-5);
   }
 });
 
@@ -2189,6 +2294,23 @@ test("第 373 種:小車輪有輪軸,軸穿過車斗下兩片軸架的孔;輪頂
       }
       const local = toLocal(pose.cart, c);
       assert.ok(boardBottom - (local[1] + w.radius) >= 0.03, `${s} ${id}:輪頂和底板留間隙`);
+    }
+  }
+});
+
+test("第 373 種:載重放在車斗上:兩個狀態每一袋重物的底都貼著車斗頂(間隙接近 0、不穿入),重物跟著小車傾斜", () => {
+  const box = part(d373, "cart").pieces[0];
+  const top = box.at[1] + box.size[1] / 2;
+  for (const s of STATES373) {
+    const pose = d373.pose(0.7, s).parts;
+    close(pose.load.angle, pose.cart.angle, `${s}:重物跟著小車傾斜`, 1e-12);
+    const [, dy] = toLocal(pose.cart, pose.load.position);
+    const sy = pose.load.scale?.[1] ?? 1;
+    for (const q of part(d373, "load").pieces) {
+      const a = q.angle ?? 0;
+      const half = (q.size[1] / 2) * Math.cos(a) + (q.size[0] / 2) * Math.abs(Math.sin(a));
+      const bottom = dy + sy * ((q.at?.[1] ?? 0) - half);
+      assert.ok(Math.abs(bottom - top) < 0.005, `${s}:重物的底貼著車斗頂(${(bottom - top).toFixed(4)})`);
     }
   }
 });
