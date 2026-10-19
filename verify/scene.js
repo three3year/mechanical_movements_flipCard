@@ -6,7 +6,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { PATH_KINDS } from "../models/kinds.js";
 import { placement } from "../viewer/placement.js";
 import { pathRadius, isFlat, flatAcross } from "../viewer/paths.js";
-import { buildSolid } from "./solids.js";
+import { buildSolid, unique } from "./solids.js";
 
 await RAPIER.init();
 
@@ -19,18 +19,32 @@ const tmpV = new THREE.Vector3();
 const tmpA2 = new THREE.Vector3();
 const tmpN = new THREE.Vector3();
 const tmpM = new THREE.Matrix4();
+const tmpD = new THREE.Vector3();
+const tmpU = new THREE.Vector3();
+const tmpW = new THREE.Vector3();
+const tmpO = new THREE.Vector3();
+const tmpC = new THREE.Vector3();
+const RING = 8; // 查「圍著」時繞軸取的點數
+const SECTIONS = 9; // 每一塊沿軸取的截面數
+const STEP = 0.005; // 截面位置取到這個間隔(相近的截面只查一次)
+const INNER = 0.5; // 裡面那一圈離軸幾倍半徑:軸的芯被圍著就算(比對方的桿寬一點的銷仍算裝在孔裡,鼓輪、圓筒的芯露在外面就不算)
+const OUTER = 1.04; // 圓柱面外面那一圈離軸幾倍半徑(再加 0.002):畫出來的孔與圓柱的多邊形誤差在這以內
 
 /** 不參與實體驗證的零件:存量填色、作圖軌跡(流體示意本來就不是零件) */
 export const isSolidPart = (part) => part.kind !== "fill" && part.kind !== "trace";
 
-// 一塊凸塊:碰撞體與外框
+// 一塊凸塊:碰撞體與外框。點集有重複的頂點時物理引擎偶爾建不起凸包(那一塊就會悄悄少掉),去掉重複的點再建一次
 function makePiece(world, hull, scale) {
-  const points = new Float32Array(hull.length);
-  const n = hull.length / 3;
+  return buildPiece(world, hull, hull, scale) ?? buildPiece(world, hull, unique(hull), scale);
+}
+
+function buildPiece(world, hull, source, scale) {
+  const points = new Float32Array(source.length);
+  const n = source.length / 3;
   for (let i = 0; i < n; i++) {
-    points[i * 3] = hull[i * 3] * scale.x;
-    points[i * 3 + 1] = hull[i * 3 + 1] * scale.y;
-    points[i * 3 + 2] = hull[i * 3 + 2] * scale.z;
+    points[i * 3] = source[i * 3] * scale.x;
+    points[i * 3 + 1] = source[i * 3 + 1] * scale.y;
+    points[i * 3 + 2] = source[i * 3 + 2] * scale.z;
   }
   const desc = RAPIER.ColliderDesc.convexHull(points);
   if (!desc) return null; // 沒有體積(共面、共線)
@@ -104,6 +118,7 @@ export class Scene {
           m.scaleKey = key;
         }
         for (const piece of m.pieces) {
+          piece.matrix = m.matrix;
           piece.collider.setTranslation(tmpP);
           piece.collider.setRotation(tmpQ);
           boxOf(piece, m.matrix);
@@ -220,9 +235,89 @@ export class Scene {
     return piece.collider.castRay(new RAPIER.Ray(tmpP, tmpV), 200, true) >= 0;
   }
 
+  /** 軸這一段(兩個端點之間,不是延長的直線)是不是整根穿過這個零件:這一段打到它的某一塊,而且兩個端點都露在它外面 */
+  segmentPasses(axle, part) {
+    const length = axle.from.distanceTo(axle.to);
+    if (length < 1e-9) return false;
+    tmpV.subVectors(axle.to, axle.from).divideScalar(length);
+    const ray = new RAPIER.Ray(axle.from, tmpV);
+    return part.pieces.some((piece) => piece.collider.castRay(ray, length, true) >= 0) && !part.pieces.some((piece) => piece.collider.containsPoint(axle.from) || piece.collider.containsPoint(axle.to));
+  }
+
   /** 軸(導桿、螺桿)是不是整根穿過這個零件:軸線穿過它的某一塊,而且兩個端點都露在它外面 */
   passesThrough(axle, part) {
     return part.pieces.some((piece) => this.lineHits(axle, piece)) && !part.pieces.some((piece) => piece.collider.containsPoint(axle.from) || piece.collider.containsPoint(axle.to));
+  }
+
+  /**
+   * 圓柱凸塊 piece 是不是被零件 part 圍著(裝在它的孔裡):沿軸在和 part 重疊的那一段取幾個截面,某個截面上繞軸一圈的點
+   * 都在 part 的實體裡——軸的芯外面一圈(孔沒畫出來:軸埋在實心的輪轂、軸眼、軸承座裡),或緊貼圓柱面外面的一圈
+   * (畫出來的孔,和圓柱只差多邊形的誤差)。大圓柱(鼓輪、圓筒)沿自己的軸向滑進、或轉著穿過沒圍住它的零件
+   * (立柱、標記桿的尖端)時兩圈都不成立。球(球心)不查
+   */
+  surrounds(piece, part) {
+    const { axle } = piece;
+    const length = axle.from.distanceTo(axle.to);
+    if (length < 1e-9) return true;
+    const dir = tmpD.subVectors(axle.to, axle.from).divideScalar(length);
+    tmpU.set(1, 0, 0);
+    if (Math.abs(dir.x) > 0.9) tmpU.set(0, 1, 0);
+    tmpU.addScaledVector(dir, -dir.dot(tmpU)).normalize();
+    tmpW.crossVectors(dir, tmpU);
+    const radii = [axle.radius * INNER, axle.radius * OUTER + 0.002];
+    const near = part.pieces.filter((q) => !apart(q.box, piece.box, radii[1])); // 只有圓柱附近的那幾塊可能圍著它
+    const inside = (p) => near.some((q) => inBox(q.box, p) && q.collider.containsPoint(p));
+    // 從 from 量起 t 處的截面,離軸 r 的一圈點是否都在 part 的實體裡
+    const ring = (t, r) => {
+      const c = tmpC.copy(axle.from).addScaledVector(dir, t);
+      for (let k = 0; k < RING; k++) {
+        const a = (k / RING) * Math.PI * 2;
+        if (!inside(tmpO.copy(c).addScaledVector(tmpU, r * Math.cos(a)).addScaledVector(tmpW, r * Math.sin(a)))) return false;
+      }
+      return true;
+    };
+    // 截面的位置:每一塊沿軸佔的那一段(外框的八個角投影到軸上)和圓柱本身的交集裡均勻取幾個;位置相近的只查一次
+    const sections = new Set();
+    for (const q of near) {
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let k = 0; k < 8; k++) {
+        tmpO.set(q.box[k & 1 ? 3 : 0], q.box[k & 2 ? 4 : 1], q.box[k & 4 ? 5 : 2]).sub(axle.from);
+        const t = tmpO.dot(dir);
+        lo = Math.min(lo, t);
+        hi = Math.max(hi, t);
+      }
+      lo = Math.max(lo, 0);
+      hi = Math.min(hi, length);
+      for (let i = 0; i < SECTIONS && lo <= hi; i++) sections.add(Math.round((lo + ((hi - lo) * (i + 0.5)) / SECTIONS) / STEP) * STEP);
+    }
+    for (const t of sections) if (radii.some((r) => ring(t, r))) return true;
+    return false;
+  }
+
+  /**
+   * 凸塊 q 是不是穿在圓柱凸塊 piece 的孔裡(軸、鍵條穿過輪轂):q 整個在圓柱的半徑以內,
+   * 而且沿圓柱的軸從某一端伸出去。鼓輪滑進立柱、標記桿埋進圓筒時,對方從圓柱外面伸進來,不成立
+   */
+  threads(q, piece) {
+    const { axle } = piece;
+    const length = axle.from.distanceTo(axle.to);
+    if (length < 1e-9) return false;
+    const dir = tmpD.subVectors(axle.to, axle.from).divideScalar(length);
+    let lo = Infinity;
+    let hi = -Infinity;
+    // q 的頂點(實體零件的凸塊);線狀零件的一段沒有頂點,取外框的八個角
+    const n = q.hull ? q.hull.length / 3 : 8;
+    for (let k = 0; k < n; k++) {
+      if (q.hull) tmpO.set(q.hull[k * 3], q.hull[k * 3 + 1], q.hull[k * 3 + 2]).applyMatrix4(q.matrix);
+      else tmpO.set(q.box[k & 1 ? 3 : 0], q.box[k & 2 ? 4 : 1], q.box[k & 4 ? 5 : 2]);
+      tmpO.sub(axle.from);
+      const t = tmpO.dot(dir);
+      if (tmpO.addScaledVector(dir, -t).length() > axle.radius) return false;
+      lo = Math.min(lo, t);
+      hi = Math.max(hi, t);
+    }
+    return lo < 0 || hi > length;
   }
 
   dispose() {
@@ -242,6 +337,7 @@ function nudged(a, b, prediction) {
 }
 
 // 軸對齊的外框 [minX, minY, minZ, maxX, maxY, maxZ]
+const inBox = (b, p) => p.x >= b[0] && p.x <= b[3] && p.y >= b[1] && p.y <= b[4] && p.z >= b[2] && p.z <= b[5];
 const apart = (p, q, margin) =>
   p[0] - q[3] > margin || q[0] - p[3] > margin || p[1] - q[4] > margin || q[1] - p[4] > margin || p[2] - q[5] > margin || q[2] - p[5] > margin;
 

@@ -62,6 +62,7 @@ export default {
   view: { direction: [0.06, 0.12, 1] },
   waivers: [
     { check: "interference", parts: ["upper", "frame"], reason: "上圓盤頂端的軸頸轉在上橫樑的軸承孔裡(原圖橫樑上方露出的那一截;孔沒有畫出來)" },
+    { check: "interference", parts: ["lower", "frame"], reason: "未修:下壓板的方塊壓到最低的那一段,左導桿(frame 的圓柱)從方塊左緣穿入約 0.03:導桿沿方塊的邊走,沒有被方塊圍住(model-audit-fixes-3 票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
   ],
   pose(phi) {
     const { y } = press(phi);

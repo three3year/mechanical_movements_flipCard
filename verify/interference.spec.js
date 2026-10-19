@@ -71,6 +71,39 @@ test("軸、銷裝在沒畫出來的孔裡:會動的零件繞著它轉或沿著�
   assert.equal(interference(model([wheel, shaft(0)])).length, 1, "兩個都固定不動:簡化的機架,要寫豁免");
 });
 
+test("大圓柱沿自己的軸向滑進、或繞自己的軸轉著穿過沒圍住它的零件,不是裝在孔裡,照報", () => {
+  // 鼓輪沿軸向橫移,一端穿進立柱(第 362 種):鼓輪的軸線在立柱座標裡始終是同一條,但立柱沒有圍住鼓輪
+  const drum = { id: "drum", kind: "cylinder", center: [0, 0, 0], axis: [1, 0, 0], radius: 0.85, length: 1.25 };
+  const post = { id: "post", kind: "box", size: [0.3, 3, 0.3], center: [1, 0, 0] };
+  const traverse = (v) => ({ drum: { position: [v * 0.5, 0, 0], angle: v * 6 } });
+  const [found] = interference(model([drum, post], traverse));
+  assert.ok(found, "鼓輪穿進立柱");
+  assert.ok(found.severity > 0.1, `穿入 ${found.severity}`);
+  // 標記桿的尖端埋在轉動的圓筒裡、沿圓筒的軸向移動(第 368 種)
+  const barrel = { id: "barrel", kind: "cylinder", center: [0, 0, 0], axis: [0, 1, 0], radius: 0.5, length: 2 };
+  const marker = { id: "marker", kind: "box", size: [0.5, 0.1, 0.1], center: [0.6, 0, 0] };
+  assert.equal(interference(model([barrel, marker], (v) => ({ barrel: { angle: v * 6 }, marker: { position: [0.6, v - 0.5, 0] } }))).length, 1, "尖端埋在筒裡");
+  // 圍住它的仍是孔:輪轂套在粗軸上沿軸滑、粗的活塞在實心的汽缸裡沿軸滑
+  const cylinder = { id: "cylinder", kind: "cylinder", center: [0, 0, 0], axis: [0, 1, 0], radius: 0.6, length: 2 };
+  const piston = { id: "piston", kind: "cylinder", center: [0, 0, 0], axis: [0, 1, 0], radius: 0.5, length: 0.3 };
+  assert.deepEqual(interference(model([piston, cylinder], (v) => ({ piston: { position: [0, v - 0.5, 0] } }))), [], "活塞在汽缸裡");
+  // 離合器的半邊(大圓盤)沿方軸滑:方軸才是裝在孔裡的那一個
+  const disc = { id: "disc", kind: "cylinder", center: [0, 0, 0], axis: [1, 0, 0], radius: 1.2, length: 0.4 };
+  const square = { id: "square", kind: "box", size: [3, 0.14, 0.14], center: [0, 0, 0] };
+  assert.deepEqual(interference(model([disc, square], (v) => ({ disc: { position: [v * 0.6, 0, 0] } }))), [], "圓盤沿方軸滑");
+  // 鍵條的一端停在滑動的輪轂裡(第 48 種的離合器):鍵條在輪轂的半徑以內、從輪轂一端伸出去,是輪轂孔裡的東西
+  const key = { id: "key", kind: "box", size: [1.5, 0.1, 0.1], center: [0.8, 0.3, 0] };
+  assert.deepEqual(interference(model([disc, key], (v) => ({ disc: { position: [v * 0.4, 0, 0] } }))), [], "輪轂沿鍵條滑");
+});
+
+test("每個凸塊都建得起來:細長圓柱轉到某些朝向時(凸包點集有重複的頂點)也不會悄悄少掉", () => {
+  // 第 356 種的球軸:半徑 0.05、長 3.2,以這個四元數擺放時曾經整根沒有實體
+  const q = [0.13656807201942758, 0.8279239750987187, -0.06726745816082524, 0.53978342160001];
+  const axle = { id: "axle", kind: "group", center: [0, 0, 0], pieces: [{ kind: "cylinder", radius: 0.05, length: 3.2 }] };
+  const block = { id: "block", kind: "box", size: [3, 3, 3], center: [0, 0, 0] };
+  assert.equal(interference(model([axle, block], () => ({ axle: { rotation: q } }))).length, 1, "兩個都固定不動、互相穿過");
+});
+
 test("一起動、彼此沒有相對運動的兩個零件是同一個剛體,重疊不算干涉;有相對運動才算", () => {
   const piston = { id: "piston", kind: "cylinder", center: [0, 0, 0], axis: [0, 1, 0], radius: 0.6, length: 0.3 };
   const rod = { id: "rod", kind: "box", size: [0.1, 2, 0.1], center: [0, 1, 0] };

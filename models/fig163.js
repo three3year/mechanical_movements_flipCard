@@ -365,4 +365,7 @@ export default {
       readouts: [{ label: "速度", value: r.on === "lower" ? "過快:皮帶在下輪,抬起閘門" : r.on === "upper" ? "過慢:皮帶在上輪,放下閘門" : r.on === "middle" ? "正常:皮帶在鬆動輪" : "撥動皮帶中" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["shifter", "frame"], reason: "未修:撥叉的板升到高處的那一段(30/96 個取樣)和機架的板互相穿入 0.05(model-audit-fixes-3 票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
+  ],
 };

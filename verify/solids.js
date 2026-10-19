@@ -56,6 +56,19 @@ function convexPieces(geometry) {
   return cache.get(geometry);
 }
 
+/** 去掉重複的點(圓柱接縫、端面的頂點):重複的點偶爾讓物理引擎的凸包建不起來,建不起來時改用這一份再建 */
+export function unique(points) {
+  const seen = new Set();
+  const out = [];
+  for (let i = 0; i < points.length; i += 3) {
+    const key = `${points[i]},${points[i + 1]},${points[i + 2]}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(points[i], points[i + 1], points[i + 2]);
+  }
+  return out.length === points.length ? points : new Float32Array(out);
+}
+
 function decompose(geometry) {
   const pos = geometry.attributes.position;
   if (!pos) return [];

@@ -143,8 +143,15 @@ function staticChecks(def, scene, opt) {
               const hole = holes.get(piece) ?? new Map();
               holes.set(piece, hole);
               const seen = hole.get(other);
-              if (!seen) hole.set(other, { line, fixed: true });
-              else if (seen.fixed && !sameLine(seen.line, line)) seen.fixed = false;
+              // 圓柱沿自己的軸在對方座標裡的位置(兩端中點投影到軸上),看它有沒有沿軸滑
+              const dir = seen?.dir ?? line[1].clone().sub(line[0]).normalize();
+              const at = line[0].clone().add(line[1]).multiplyScalar(0.5).dot(dir);
+              if (!seen) hole.set(other, { line, dir, fixed: true, lo: at, hi: at });
+              else {
+                if (seen.fixed && !sameLine(seen.line, line)) seen.fixed = false;
+                seen.lo = Math.min(seen.lo, at);
+                seen.hi = Math.max(seen.hi, at);
+              }
             }
           }
           if (hit.depth > opt.tolerance || hit.pins?.length) {
@@ -203,12 +210,18 @@ function staticChecks(def, scene, opt) {
       // 圓柱(軸、銷、輪轂、連桿的軸眼)伸進別的零件:兩者之中有會動的,而圓柱在對方座標裡的軸線始終是
       // 同一條(繞自己的軸轉、沿軸滑),就是機構裡裝在孔中的軸承、鉸接或導桿——孔沒畫出來,不算干涉;
       // 球心在對方座標裡不動的球是球接頭,同理。軸線會移動的(銷掃過對方的實體)算;
-      // 兩個都固定不動的也算(簡化的機架,要寫豁免)
+      // 兩個都固定不動的也算(簡化的機架,要寫豁免)。
+      // 沿軸滑的圓柱還要被對方圍著(見 Scene.surrounds):鼓輪沿軸向橫移、一端滑進沒圍住它的立柱,
+      // 標記桿的尖端沿轉動圓筒的軸向移動、埋進筒裡,都不是孔裡的軸
+      const SLIDE = 1e-3;
       const { moves, rigid } = relativeMotion(placed, ...o.parts);
       // 兩個零件一起動、彼此之間始終沒有相對運動:是固定在一起的同一個剛體(活塞與活塞桿、臂與臂端的球),
       // 和同一個零件自己的各部分一樣不查。兩個都固定不動的不在此列
       if (moves && rigid) continue;
-      const inHole = ([piece, other]) => moves && holes.get(piece)?.get(other)?.fixed;
+      const inHole = ([piece, other, surrounded]) => {
+        const hole = holes.get(piece)?.get(other);
+        return moves && hole?.fixed && (surrounded || hole.hi - hole.lo <= SLIDE);
+      };
       o.depth = 0;
       o.count = 0;
       for (const pose of o.poses) {
@@ -276,6 +289,12 @@ function measure(scene, a, b, prediction, tolerance) {
   }
   // 圓柱、球與對方的重疊另外記下,等整個狀態走完再判斷它是不是裝在孔裡
   const pins = [];
+  // 圓柱被對方圍著嗎(同一根圓柱和對方好幾塊相碰時只算一次;圓柱屬於 a 或 b,對方就是另一個)
+  const enclosed = new Map();
+  const surrounds = (piece, part) => {
+    if (!enclosed.has(piece)) enclosed.set(piece, scene.surrounds(piece, part));
+    return enclosed.get(piece);
+  };
   scene.contacts(a, b, prediction, (pa, pb, d, n) => {
     if (gap == null || d < gap) gap = d;
     if (d >= 0) return;
@@ -284,19 +303,24 @@ function measure(scene, a, b, prediction, tolerance) {
     const ra = pa.axle && !pa.axle.bar && !(pa.axle.thread && !scene.passesThrough(pa.axle, b)) ? pa.axle : null;
     const rb = pb.axle && !pb.axle.bar && !(pb.axle.thread && !scene.passesThrough(pb.axle, a)) ? pb.axle : null;
     if (ra || rb) {
-      // 兩塊都是圓柱時,只有細的那個可能是裝在對方孔裡的軸
+      // 兩塊都是圓柱時,只有細的那個可能是裝在對方孔裡的軸;順便記下它是不是真的在孔裡(沿軸滑的才用到):
+      // 對方圍著它,或對方這一塊反過來穿在它的孔裡(軸、鍵條穿過沿它滑的輪轂)
       const fits = [];
-      if (ra && !(rb && rb.radius < ra.radius)) fits.push([pa, b]);
-      if (rb && !(ra && ra.radius < rb.radius)) fits.push([pb, a]);
+      if (ra && !(rb && rb.radius < ra.radius)) fits.push([pa, b, surrounds(pa, b) || scene.threads(pb, pa)]);
+      if (rb && !(ra && ra.radius < rb.radius)) fits.push([pb, a, surrounds(pb, a) || scene.threads(pa, pb)]);
+      // 圓的輪轂、圓盤套在方軸上(沿方軸滑的離合器):方軸才是裝在孔裡的那一個——方軸這一段要整根穿過輪轂
+      // (只看延長線的話,端頭停在圓桿旁邊的桿也會被當成穿過去)
+      if (!rb && pb.axle?.bar && scene.segmentPasses(pb.axle, a)) fits.push([pb, a, true]);
+      if (!ra && pa.axle?.bar && scene.segmentPasses(pa.axle, b)) fits.push([pa, b, true]);
       pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}` });
     } else if (d < solid) {
       // 鉸接處的軸眼:某根軸(任一方的圓柱)的軸線同時穿過這兩塊,而且那根軸是裝在孔裡的鉸接軸,
       // 那麼這兩塊在軸周圍的重疊是鉸接處互相套著的軸眼(連桿端頭疊在槓桿上),和軸本身一樣等走完再判斷
       // 長條方桿伸進對方:可能是在沒畫出來的方孔裡滑動的導桿(軸線始終是同一條才算),同樣等走完再判斷
-      const fits = d < -tolerance ? knuckles(scene, a, b, pa, pb) : [];
+      const fits = d < -tolerance ? knuckles(scene, a, b, pa, pb, surrounds) : [];
       if (d < -tolerance) {
-        if (pa.axle?.bar && scene.passesThrough(pa.axle, b)) fits.push([pa, b]);
-        if (pb.axle?.bar && scene.passesThrough(pb.axle, a)) fits.push([pb, a]);
+        if (pa.axle?.bar && scene.passesThrough(pa.axle, b)) fits.push([pa, b, true]);
+        if (pb.axle?.bar && scene.passesThrough(pb.axle, a)) fits.push([pb, a, true]);
       }
       if (fits.length) pins.push({ depth: -d, fits, where: `${describe(a, pa)} 與 ${describe(b, pb)}${along(n)}` });
       else {
@@ -308,13 +332,13 @@ function measure(scene, a, b, prediction, tolerance) {
   return gap == null ? null : { gap, depth: -solid, pins, where };
 }
 
-// 軸線同時穿過凸塊 pa、pb 的那些軸(a 或 b 的圓柱凸塊),各配上「它裝在哪個零件的孔裡」
-function knuckles(scene, a, b, pa, pb) {
+// 軸線同時穿過凸塊 pa、pb 的那些軸(a 或 b 的圓柱凸塊),各配上「它裝在哪個零件的孔裡」與那個零件有沒有圍著它
+function knuckles(scene, a, b, pa, pb, surrounds) {
   const fits = [];
   for (const [owner, other] of [[a, b], [b, a]]) {
     for (const axle of owner.pieces) {
       if (!axle.axle || axle.axle.bar || axle.axle.from.distanceTo(axle.axle.to) < 1e-6) continue;
-      if (scene.lineHits(axle.axle, pa) && scene.lineHits(axle.axle, pb)) fits.push([axle, other]);
+      if (scene.lineHits(axle.axle, pa) && scene.lineHits(axle.axle, pb)) fits.push([axle, other, surrounds(axle, other)]);
     }
   }
   return fits;

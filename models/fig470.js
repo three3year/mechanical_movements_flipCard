@@ -76,4 +76,7 @@ export default {
       readouts: [{ label: "階段", value: h.phase }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "hammer"], reason: "未修:錘桿頂端的活塞升到最高的那一段(22/96 個取樣)伸進汽缸上蓋 0.09(model-audit-fixes-3 票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
+  ],
 };

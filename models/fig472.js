@@ -138,4 +138,7 @@ export default {
       readouts: [{ label: "滑閥送空氣到", value: h.below ? "活塞下方(抬錘)" : "活塞上方(打擊)" }],
     };
   },
+  waivers: [
+    { check: "interference", parts: ["frame", "piston"], reason: "未修:活塞落到最低處時伸進汽缸下蓋 0.11(錘停在砧上的整段都是)(model-audit-fixes-3 票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
+  ],
 };

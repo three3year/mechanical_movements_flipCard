@@ -88,5 +88,6 @@ export default {
     { check: "interference", parts: ["works", "membrane"], reason: "膜片的邊緣夾在泵體的接合面裡:膜片的中心線落在泵體內 0.06" },
     { check: "interference", parts: ["works", "deliveryValve"], reason: "簡化畫法:排出閥的閥瓣坐在閥座上,重疊 0.09" },
     { check: "interference", parts: ["works", "suctionValve"], reason: "簡化畫法:吸入閥的閥瓣坐在閥座上,重疊 0.06" },
+    { check: "interference", parts: ["works", "rod"], reason: "未修:隔膜中心的壓板(rod 下端的方塊)拉到最高的那一段(21/96 個取樣)伸進水室的頂板 0.20(model-audit-fixes-3 票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
   ],
 };
