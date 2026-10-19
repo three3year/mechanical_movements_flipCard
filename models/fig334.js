@@ -1,39 +1,65 @@
 // 第 334 種:某些舊式單動式樑式引擎的平行運動。活塞桿本身是一根直的齒條 B,與樑端的齒形扇形段 C 咬合;
 // 齒條的背面抵著滾子 A 運行,所以活塞桿只能直上直下。樑繞 F 擺動,另一個弧形段 D 也裝在樑上。
 // 主動件是樑。
-// 推斷:D 是樑上的弓頭(原文沒有說明):原圖 D 的弧上畫著一串鏈節,下面垂著一根桿,判讀為以鏈條吊著抽水桿的弓頭,
-// 抽水桿隨樑上下(位移 = 弓頭半徑 × 樑的轉角)。齒數依原圖。樑的樞軸 F 架在軸承座上,滾子 A 的軸由托架撐著(推斷)。
+// 推斷:D 是樑上的弓頭(原文沒有說明):原圖 D 的弧上畫著一串鏈節,下面垂著一根桿,判讀為以鏈條吊著空氣泵(冷凝器)
+// 泵桿的弓頭——單動式樑式引擎在汽缸這一側、樑的中段吊的是空氣泵,主抽水泵在樑的另一端(原圖沒畫到)。
+// 泵桿隨樑上下(位移 = 弓頭半徑 × 樑的轉角)。樑的樞軸 F 架在軸承座上,滾子 A 的軸由托架撐著(推斷)。
+// 齒照 525 px 原圖量的比例:齒距約為扇形段半徑的 0.048(一圈 130 齒),齒段約 59°(21 齒);齒條 31 齒、
+// 長約 1.5 倍扇形段半徑(原圖約 30 齒、1.45 倍;取奇數齒:中間一齒在齒條的原點,和原本的 23 齒同一個相位),
+// 下端接一段沒有齒的桿(B)。扇形段照原圖只是一條齒弧,由桁架(斜撐)接到樑上。
+// 原圖畫的是樑左端抬到最高(主動量 −0.31、齒條在最上面)的姿勢。
 import { deg, clamp } from "./kit.js";
 import { rackOffset, circularPitch } from "./gears.js";
-import { shape, thickLine, arcPoints } from "./shapes.js";
+import { shape, thickLine, arcPoints, sectorShape, gearSize } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
 const F = [1.55, -1.25, 0];
-const SECTOR = { teeth: 60, radius: 2.85 };
+export const SECTOR = { teeth: 130, radius: 2.85, span: [deg(150.5), deg(209.5)] };
 const sectorGear = { center: F, teeth: SECTOR.teeth, radius: SECTOR.radius };
 const RACK = { origin: [F[0] - SECTOR.radius, F[1], 0], dir: [0, 1, 0], pitch: circularPitch(sectorGear) };
+const RACK_TEETH = 31;
+const RACK_DEPTH = 0.18; // 齒根到齒條背面
+const RACK_SHIFT = 5 * RACK.pitch; // 齒條的中點在接觸點上方幾個齒距(原圖接觸點以上的齒比以下多)
+const TAIL = 0.88; // 齒條下端沒有齒的一段(到 B)
 export const RANGE = [deg(-18), deg(18)];
 const ARCH = 1.35; // 弓頭 D 的半徑(鏈條貼在它的外緣)
 const ANCHOR = deg(118); // 鏈條上端固定在弓頭上的位置(樑的局部角)
 const CHAIN = 2.1; // 鏈條全長
 const PUMP_ROD = 1.6;
-const Z_FRONT = 0.22; // 弓頭、鏈條、抽水桿在扇形段的前面
-const ROLLER_C = [F[0] - SECTOR.radius - 0.62, F[1] + 0.35, 0];
+const Z_FRONT = 0.22; // 弓頭、鏈條、泵桿在扇形段的前面
+// 滾子 A:和接觸點同高(原圖),輪緣貼著齒條背面(齒根往後 RACK_DEPTH)
+const ROLLER_R = 0.32;
+const ROLLER_C = [RACK.origin[0] - 1.2 * (RACK.pitch / Math.PI) /* 齒根(rackShape) */ - RACK_DEPTH - ROLLER_R, F[1], 0];
 
-/** 樑從原圖位置轉 psi → 扇形段角、齒條(活塞桿)位移 */
+// 扇形段:節圓外的齒與齒根內一條窄弧(樑的局部座標,F 為原點)
+const ROOT = SECTOR.radius - gearSize(SECTOR.radius, SECTOR.teeth).dedendum;
+const BAND = 0.18;
+const bandShape = shape([
+  ...sectorShape(SECTOR).outline.slice(1), // 去掉圓心那一點,只留齒與齒根弧
+  ...arcPoints(ROOT - BAND, SECTOR.span[1], SECTOR.span[0]),
+]);
+// 桁架:齒弧上端與下端各一根斜撐接到樑的左端上角,下端再一根斜撐接到樑的下緣(原圖的三角形桁架)
+const polar = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
+const TRUSS_R = ROOT - BAND + 0.04;
+const TRUSS_TOP = polar(TRUSS_R, deg(154));
+const TRUSS_BOT = polar(TRUSS_R, deg(206));
+const BEAM_CORNER = [-2.1, 0.15];
+const BEAM_LOW = [-1.2, -0.15];
+
+/** 樑從水平(主動量 0)轉 psi → 扇形段角、齒條(活塞桿)位移 */
 export function rack(psi0) {
   const psi = clamp(psi0, ...RANGE);
   return { psi, offset: rackOffset(sectorGear, RACK, psi) };
 }
 
-/** 樑轉 psi → 抽水桿頂端的高度(鏈條從弓頭的固定點繞到最左的切點,再垂直往下) */
+/** 樑轉 psi → 空氣泵泵桿頂端的高度(鏈條從弓頭的固定點繞到最左的切點,再垂直往下) */
 export function pumpTop(psi0) {
   const psi = clamp(psi0, ...RANGE);
   const wrapped = ARCH * (Math.PI - ANCHOR - psi);
   return F[1] - (CHAIN - wrapped);
 }
 
-// 鏈條:上端固定在弓頭上(隨樑轉),沿弓頭外緣繞到最左的切點,再垂直往下到抽水桿頂
+// 鏈條:上端固定在弓頭上(隨樑轉),沿弓頭外緣繞到最左的切點,再垂直往下到泵桿頂
 function chainPoints(psi) {
   const a0 = ANCHOR + psi;
   const wrapped = Array.from({ length: 9 }, (_, i) => {
@@ -55,8 +81,8 @@ export default {
         { kind: "box", size: [5.6, 0.12, 0.6], at: [0.3, -1.85, -0.5] },
         { kind: "cylinder", radius: 0.2, inner: 0.08, length: 0.2, at: [ROLLER_C[0], ROLLER_C[1], -0.25] },
         { kind: "box", size: [0.2, ROLLER_C[1] - 0.15 + 1.79, 0.2], at: [ROLLER_C[0], (ROLLER_C[1] - 0.15 - 1.79) / 2, -0.25] },
-        // 抽水桿的導套
-        // (托架從導套往右繞到扇形段掃不到的地方,再往後、往上接底板)
+        // 泵桿的導套
+        // (托架從導套往右繞到扇形段與桁架掃不到的地方,再往後、往上接底板)
         { kind: "cylinder", axis: [0, 1, 0], radius: 0.16, inner: 0.08, length: 0.25, at: [F[0] - ARCH - 0.07, -2.6, Z_FRONT] },
         { kind: "box", size: [0.6, 0.1, 0.1], at: [F[0] - ARCH + 0.38, -2.6, Z_FRONT] },
         { kind: "box", size: [0.1, 0.1, 0.6], at: [F[0] - ARCH + 0.63, -2.6, -0.05] },
@@ -73,7 +99,6 @@ export default {
       pieces: [
         // 樑:從 F 往左上伸到扇形段,往右也伸出一段
         { kind: "plate", shape: shape(thickLine([[1.6, 0.6], [0, 0], [-2.2, 0]], 0.5)), thickness: 0.16, at: [0, 0, -0.1] },
-        { kind: "plate", shape: shape(thickLine([[-2.7, 0.0], [-1.8, 1.1], [-0.6, 0.5]], 0.14)), thickness: 0.1, at: [0, 0, -0.1] },
         // 弧形段 D(樑上的另一段弧)
         { kind: "plate", shape: shape([...arcPoints(ARCH, deg(115), deg(200)), ...arcPoints(ARCH - 0.2, deg(200), deg(115))]), thickness: 0.14, at: [0, 0, Z_FRONT] },
         { kind: "plate", shape: shape(thickLine([[0, 0], [1.25 * Math.cos(deg(150)), 1.25 * Math.sin(deg(150))]], 0.12)), thickness: 0.1, at: [0, 0, Z_FRONT - 0.1] },
@@ -81,10 +106,37 @@ export default {
         { kind: "cylinder", radius: 0.1, length: 0.5, at: [0, 0, -0.45] }, // 樞軸,往後伸進軸承座
       ],
     },
-    { id: "sectorC", kind: "gear", center: F, teeth: SECTOR.teeth, radius: SECTOR.radius, span: [deg(156), deg(204)], width: 0.16, arrow: false, label: "C", labelOffset: [-2.3, 0.9, 0.3] },
-    { id: "rackB", kind: "rack", teeth: 23, pitch: RACK.pitch, width: 0.16, depth: 0.22, arrow: false, label: "B", labelOffset: [-0.4, -1.5, 0.3] },
-    { id: "rollerA", kind: "pulley", style: "disc", center: ROLLER_C, radius: 0.32, width: 0.2, label: "A", labelOffset: [-0.45, 0, 0.3], pieces: [{ kind: "cylinder", radius: 0.08, length: 0.35, at: [0, 0, -0.15] }] },
+    {
+      // 扇形段 C:齒弧與桁架(桁架在樑那一層,接進樑的左端;和樑是同一個剛體,分兩個零件畫)
+      id: "sectorC",
+      kind: "plate",
+      center: F,
+      shape: bandShape,
+      thickness: 0.16,
+      arrow: false,
+      label: "C",
+      labelOffset: [-2.3, 0.9, 0.3],
+      pieces: [
+        { kind: "plate", shape: shape(thickLine([TRUSS_TOP, BEAM_CORNER, TRUSS_BOT], 0.12)), thickness: 0.1, at: [0, 0, -0.1] },
+        { kind: "plate", shape: shape(thickLine([TRUSS_BOT, BEAM_LOW], 0.12)), thickness: 0.1, at: [0, 0, -0.1] },
+      ],
+    },
+    {
+      // 齒條 B(活塞桿):局部 +x 是下端,下端接一段沒有齒的桿
+      id: "rackB",
+      kind: "rack",
+      teeth: RACK_TEETH,
+      pitch: RACK.pitch,
+      width: 0.16,
+      depth: RACK_DEPTH,
+      arrow: false,
+      label: "B",
+      labelOffset: [-0.4, -1.5, 0.3],
+      pieces: [{ kind: "box", size: [TAIL, RACK_DEPTH, 0.16], at: [(RACK_TEETH / 2) * RACK.pitch + TAIL / 2, -1.2 * (RACK.pitch / Math.PI) - RACK_DEPTH / 2, 0] }],
+    },
+    { id: "rollerA", kind: "pulley", style: "disc", center: ROLLER_C, radius: ROLLER_R, width: 0.2, label: "A", labelOffset: [-0.45, 0, 0.3], pieces: [{ kind: "cylinder", radius: 0.08, length: 0.35, at: [0, 0, -0.15] }] },
     { id: "chain", kind: "chain", style: "plate", pitch: 0.2, width: 0.12, offset: 0.05 },
+    // 空氣泵(冷凝器)的泵桿(推斷)
     { id: "pumpRod", kind: "group", pieces: [{ kind: "box", size: [0.1, PUMP_ROD, 0.1], at: [0, -PUMP_ROD / 2, 0] }, { kind: "box", size: [0.22, 0.12, 0.14], at: [0, 0, 0] }] },
     { id: "labelD", kind: "group", center: [F[0] - 1.25, F[1] + 0.25, 0], label: "D", labelOffset: [0.25, 0.25, 0.3] },
   ],
@@ -97,17 +149,14 @@ export default {
       parts: {
         beam: { angle: psi },
         sectorC: { angle: psi },
-        // 齒條沿 y、齒朝 +x(朝扇形段):局部 x 轉到世界 +y
-        rackB: { position: [RACK.origin[0], RACK.origin[1] + offset, 0], angle: -Math.PI / 2 },
-        // 滾子貼著齒條背面滾動
-        rollerA: { angle: -offset / 0.32 },
+        // 齒條沿 y、齒朝 +x(朝扇形段):局部 x 轉到世界 −y;中點在接觸點上方 RACK_SHIFT(整數個齒距,齒的相位不變)
+        rackB: { position: [RACK.origin[0], RACK.origin[1] + offset + RACK_SHIFT, 0], angle: -Math.PI / 2 },
+        // 滾子貼著齒條背面滾動:接觸點在滾子右側,齒條往上走時輪緣也往上(逆時針)
+        rollerA: { angle: offset / ROLLER_R },
         pumpRod: { position: [F[0] - ARCH - 0.07, pumpTop(psi0), Z_FRONT] },
       },
       paths: { chain: { points: chainPoints(clamp(psi0, ...RANGE)), closed: false, phase: 0 } },
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["rackB", "rollerA"], reason: "簡化畫法:導輪貼著齒條的背面滾,輪緣與齒條背面重疊 0.03" },
-  ],
 };

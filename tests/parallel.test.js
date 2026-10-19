@@ -22,6 +22,8 @@ import * as m332 from "../models/fig332.js";
 import * as m333 from "../models/fig333.js";
 import * as m334 from "../models/fig334.js";
 import * as m335 from "../models/fig335.js";
+import { placeOutline, polygonsOverlap, pointInPolygon } from "../models/contact.js";
+import { rackShape, sectorShape, circle } from "../models/shapes.js";
 import * as m336 from "../models/fig336.js";
 import * as m337 from "../models/fig337.js";
 import { verticalDeviation } from "../models/parallel-motion.js";
@@ -447,19 +449,164 @@ test("第 333 種:特殊的平行運動(依原圖):樑由兩根桿撐著,左上�
   close(Math.max(...hr) - Math.min(...hr), 0, "樑是剛體(H–R 不變)", 1e-6);
 });
 
+test("第 333 種:吊桿中段 J1 的接頭是吊桿上的一個銷(不另列零件),全程就在近似直線點 J1 上", () => {
+  const def = m333.default;
+  assert.ok(!def.parts.some((p) => p.id === "pinJ1"), "J1 的銷不另列成零件");
+  const pin = def.parts.find((p) => p.id === "hanger").pieces?.find((p) => p.kind === "cylinder");
+  assert.ok(pin, "吊桿上有 J1 的銷");
+  for (const v of sweep(m333.RANGE[1], 8, m333.RANGE[0])) {
+    const { from, to } = def.pose(v).parts.hanger;
+    const len = dist(from, to);
+    const at = [0, 1].map((k) => from[k] + ((to[k] - from[k]) * pin.at[0]) / len);
+    const J1 = m333.linkage(v).J1;
+    close(dist([...at, 0], J1), 0, `主動量 ${v.toFixed(2)}:銷在 J1`, 1e-9);
+  }
+});
+
 test("第 334 種:活塞桿是一根直齒條,與樑上的扇形段咬合、背面抵著滾子 A,活塞桿走直線,位移 = 扇形段節圓弧長", () => {
   const a = m334.rack(0.1).offset - m334.rack(0).offset;
   close(Math.abs(a), 2.85 * 0.1, "齒條位移 = 節圓半徑 × 轉角", 1e-9);
-  // 弓頭 D 以鏈條吊著的抽水桿:位移 = 弓頭半徑 × 轉角,和活塞桿同向
+  // 弓頭 D 以鏈條吊著的空氣泵(冷凝器)泵桿:位移 = 弓頭半徑 × 轉角,和活塞桿同向
   const b = m334.pumpTop(0.1) - m334.pumpTop(0);
-  close(Math.abs(b), 1.35 * 0.1, "抽水桿位移 = 弓頭半徑 × 轉角", 1e-9);
-  assert.ok(Math.sign(a) === Math.sign(b), "抽水桿與活塞桿同向");
+  close(Math.abs(b), 1.35 * 0.1, "泵桿位移 = 弓頭半徑 × 轉角", 1e-9);
+  assert.ok(Math.sign(a) === Math.sign(b), "泵桿與活塞桿同向");
+});
+
+/**
+ * 第 334 種:零件 id 在主動量 v 下的各塊平面外形(世界座標)與深度範圍 { poly, z: [z0, z1] };
+ * 齒條照 rackShape,扇形段是板與它的 pieces(或舊的扇形齒輪)
+ */
+function outlines334(id, v) {
+  const def = m334.default;
+  const p = def.parts.find((q) => q.id === id);
+  const pose = def.pose(v).parts[id];
+  const at = pose.position ?? p.center;
+  const place = (outline, z, t) => ({ poly: placeOutline(outline, at, pose.angle), z: [z - t / 2, z + t / 2] });
+  if (p.kind === "rack") return [place(rackShape({ teeth: p.teeth, pitch: p.pitch, depth: p.depth }).outline, 0, p.width)];
+  if (p.kind === "gear") return [place(sectorShape(p).outline, 0, p.width)];
+  return [{ shape: p.shape, at: [0, 0, 0], thickness: p.thickness }, ...(p.pieces ?? [])].filter((q) => q.shape).map((q) => place(q.shape.outline, q.at?.[2] ?? 0, q.thickness));
+}
+const zRange334 = (q) => {
+  const half = q.kind === "box" ? q.size[2] / 2 : q.axis && q.axis[2] === 0 ? q.radius : q.length / 2;
+  return [q.at[2] - half, q.at[2] + half];
+};
+const footprint334 = (q) =>
+  q.kind === "box"
+    ? [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => [q.at[0] + (sx * q.size[0]) / 2, q.at[1] + (sy * q.size[1]) / 2])
+    : q.axis && q.axis[2] === 0
+      ? [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => [q.at[0] + sx * q.radius, q.at[1] + (sy * q.length) / 2])
+      : circle(q.radius).map(([x, y]) => [q.at[0] + x, q.at[1] + y]);
+
+test("第 334 種:齒條的背面抵著滾子 A 運行——輪緣貼著齒條背面(間隙 0、不穿入),滾子在接觸點跟著齒條走、不打滑", () => {
+  const def = m334.default;
+  const roller = def.parts.find((p) => p.id === "rollerA");
+  for (const v of sweep(m334.RANGE[1], 12, m334.RANGE[0])) {
+    const rack = outlines334("rackB", v)[0].poly;
+    const back = Math.min(...rack.map((p) => p[0]));
+    close(back - (roller.center[0] + roller.radius), 0, `主動量 ${v.toFixed(2)}:輪緣與齒條背面的間隙`, 1e-6);
+    const ys = rack.map((p) => p[1]);
+    assert.ok(Math.min(...ys) < roller.center[1] && roller.center[1] < Math.max(...ys), `主動量 ${v.toFixed(2)}:滾子全程抵著齒條`);
+    // 接觸點在滾子右側:逆時針轉 dθ,輪緣在接觸點往上走 r·dθ,要等於齒條往上走的距離
+    const dv = 1e-4;
+    const [p0, p1] = [def.pose(v).parts, def.pose(Math.min(v + dv, m334.RANGE[1])).parts];
+    const rackUp = p1.rackB.position[1] - p0.rackB.position[1];
+    const rimUp = (p1.rollerA.angle - p0.rollerA.angle) * roller.radius;
+    close(rimUp, rackUp, `主動量 ${v.toFixed(2)}:接觸點的輪緣速度 = 齒條速度`, 1e-9);
+  }
+});
+
+test("第 334 種:齒照原圖——齒距約為扇形段半徑的 0.048、齒條長約 1.45 倍半徑,齒條全程咬在扇形段的齒段上", () => {
+  const def = m334.default;
+  const rack = def.parts.find((p) => p.id === "rackB");
+  const { teeth, radius, span } = m334.SECTOR;
+  close(rack.pitch, (2 * Math.PI * radius) / teeth, "齒條與扇形段的齒距相同", 1e-12);
+  const ratio = rack.pitch / radius;
+  assert.ok(ratio > 0.044 && ratio < 0.052, `齒距 / 半徑 ${ratio.toFixed(3)}(原圖約 0.048)`);
+  const length = rack.teeth * rack.pitch;
+  assert.ok(length / radius > 1.35 && length / radius < 1.55, `齒條長 / 半徑 ${(length / radius).toFixed(2)}(原圖約 1.45)`);
+  const pitchAngle = (2 * Math.PI) / teeth;
+  for (const v of [m334.RANGE[0], 0, m334.RANGE[1]]) {
+    // 接觸點在世界 180°(F 的正左方),對到扇形段局部角 180° − 樑角;兩側都要留一個齒以上
+    const local = Math.PI - def.pose(v).parts.sectorC.angle;
+    assert.ok(local - span[0] > pitchAngle && span[1] - local > pitchAngle, `主動量 ${v.toFixed(2)}:接觸點在齒段裡`);
+    const ys = outlines334("rackB", v)[0].poly.map((p) => p[1]);
+    const contact = def.parts.find((p) => p.id === "sectorC").center[1];
+    assert.ok(Math.min(...ys) + 2 * rack.pitch < contact && contact < Math.max(...ys) - 2 * rack.pitch, `主動量 ${v.toFixed(2)}:接觸點在齒條的齒上`);
+  }
+});
+
+test("第 334 種:扇形段只是一條齒弧,由桁架接到樑上(原圖不是實心扇形);全程掃不到空氣泵泵桿導套的托架", () => {
+  const def = m334.default;
+  const sector = def.parts.find((p) => p.id === "sectorC");
+  const [cx, cy] = sector.center;
+  const { radius } = m334.SECTOR ?? sector;
+  // F 與齒弧之間、桁架以外是空的
+  for (const deg of [165, 195]) {
+    const a = (deg * Math.PI) / 180;
+    const p = [cx + 2 * Math.cos(a), cy + 2 * Math.sin(a)];
+    assert.ok(!outlines334("sectorC", 0).some((s) => pointInPolygon(p, s.poly)), `半徑 2、${deg}° 不在扇形段上`);
+  }
+  // 齒弧在節圓附近(F 到齒弧之間沒有板)
+  const band = outlines334("sectorC", 0)[0].poly.map(([x, y]) => Math.hypot(x - cx, y - cy));
+  assert.ok(Math.min(...band) > 0.85 * radius, `齒弧內緣 ${Math.min(...band).toFixed(2)}`);
+  const frame = def.parts.find((p) => p.id === "frame").pieces;
+  for (const v of sweep(m334.RANGE[1], 48, m334.RANGE[0])) {
+    for (const s of outlines334("sectorC", v))
+      for (const q of frame) {
+        const [a, b] = zRange334(q);
+        if (a < s.z[1] && b > s.z[0]) assert.ok(!polygonsOverlap(s.poly, footprint334(q)), `主動量 ${v.toFixed(2)}:扇形段掃到托架(${q.at.map((x) => x.toFixed(2))})`);
+      }
+  }
 });
 
 test("第 335 種:固定式樑式引擎的平行運動:活塞桿頭的軌跡近似直線", () => {
   const ps = sweep(m335.RANGE[1], 30, m335.RANGE[0]).map((v) => m335.parallel(v).P);
   const ys = ps.map((p) => p[1]);
   assert.ok(verticalDeviation(ps) / (Math.max(...ys) - Math.min(...ys)) < 0.01, "偏離鉛直線不到行程的 1%");
+});
+
+test("第 335 種:原圖的虛線弧是 Q 繞固定樞軸擺的軌跡,圓心在活塞桿頭 P 的中間位置、半徑等於 P–Q;各桿長不變", () => {
+  const def = m335.default;
+  const values = sweep(m335.RANGE[1], 30, m335.RANGE[0]);
+  const rows = values.map((v) => ({ ...m335.parallel(v), O2: def.pose(v).parts.radiusBar.from }));
+  const O2 = rows[0].O2;
+  for (const r of rows) close(dist(r.O2, O2), 0, "半徑桿的樞軸固定", 1e-12);
+  const ys = rows.map((r) => r.P[1]);
+  const stroke = Math.max(...ys) - Math.min(...ys);
+  const mid = m335.parallel(0);
+  close(dist([O2[0], O2[1], 0], mid.P), 0, "固定樞軸在行程中間時的 P 上", 1e-9);
+  assert.ok(Math.abs(O2[1] - (Math.max(...ys) + Math.min(...ys)) / 2) < 0.01 * stroke, "P 的中間位置");
+  const PQ = dist(mid.P, mid.Q);
+  for (const r of rows) {
+    close(dist([O2[0], O2[1], 0], r.Q), PQ, "Q 在以 O2 為圓心、半徑 P–Q 的弧上", 1e-9);
+    close(dist(r.B, r.P), dist(mid.B, mid.P), "外側吊桿長不變", 1e-9);
+    close(dist(r.M, r.Q), dist(mid.M, mid.Q), "內側吊桿長不變", 1e-9);
+    close(dist(r.P, r.Q), PQ, "平行桿長不變", 1e-9);
+  }
+});
+
+test("第 335 種:機架是一件——軸承座撐著樑的軸、固定臂從牆柱伸到半徑桿的固定樞軸,都站在同一塊地基上", () => {
+  const frame = m335.default.parts.find((p) => p.id === "frame").pieces;
+  // 各塊的外接盒(盒子不轉;圓柱沿 z),兩盒相貼或重疊就算相連
+  const boxOf = (q) => {
+    const h = q.kind === "box" ? q.size.map((s) => s / 2) : [q.radius, q.radius, q.length / 2];
+    return [q.at.map((c, i) => c - h[i]), q.at.map((c, i) => c + h[i])];
+  };
+  const boxes = frame.map(boxOf);
+  const touch = (a, b) => [0, 1, 2].every((i) => a[0][i] <= b[1][i] + 1e-9 && b[0][i] <= a[1][i] + 1e-9);
+  const seen = new Set([0]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    boxes.forEach((b, i) => {
+      if (!seen.has(i) && [...seen].some((j) => touch(boxes[j], b))) (seen.add(i), (grew = true));
+    });
+  }
+  assert.equal(seen.size, frame.length, `相連的塊 ${seen.size} / ${frame.length}`);
+  // 樑的軸穿在軸承環裡:環的孔徑等於軸的半徑,圓心在樑的樞軸上
+  const O1 = m335.default.parts.find((p) => p.id === "beam").center;
+  const at = (q) => Math.hypot(q.at[0] - O1[0], q.at[1] - O1[1]) < 1e-9;
+  const axle = frame.find((q) => q.kind === "cylinder" && !q.inner && at(q));
+  assert.ok(axle && frame.some((q) => q.kind === "cylinder" && q.inner === axle.radius && at(q)), "樑的軸穿在軸承環裡");
 });
 
 test("第 337 種:半徑桿接在短擺動桿的下端,擺動桿中點(活塞桿)的軌跡近似直線", () => {
