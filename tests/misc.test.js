@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep, part, turned, inSolid, polyGap, pieceBox, plateLayers, guidedBetween, assertOnePiece, assertThrottle, assertShaftInBearings } from "./helpers.js";
 import { deg, quatMul, quatRotate, partPoint, rotateAbout, add, sub, scale, cross, dot, dist, len, norm, lerp3, rot2, polar, X, Y, Z, TAU } from "../models/kit.js";
-import { rackShape } from "../models/shapes.js";
+import { rackShape, gearProfile } from "../models/shapes.js";
 import { pathLength } from "../models/flow.js";
 import { lineAngle } from "../models/ruler-lines.js";
 import * as cramp from "../models/cramp-drill.js";
@@ -3189,27 +3189,97 @@ test("第 390 種:部件 A 往兩個方向擺時,開口皮帶 C 與交叉皮帶 
   for (const v of sweep(4 * S, 200)) for (const key of ["c", "d"]) assert.ok(m390.pawlGap(v, key) > -3e-3, `主動量 ${v.toFixed(3)}:${key} 的爪尖壓進棘輪`);
 });
 
-test("第 391 種:一根齒條上升時、另一根下降時作用於齒輪,得到連續旋轉;齒條的銷在溝槽 b 裡繞圈", () => {
+test("第 391 種:一根齒條上升時、另一根下降時作用於齒輪,得到連續旋轉(原圖箭頭逆時針);齒條的銷在溝槽 b 裡繞圈", () => {
   const S = m391.geometry.STROKE;
   const gs = sweep(4 * S, 200).map((v) => m391.racks(v).gear);
-  assert.ok(gs.every((g, i) => i === 0 || g <= gs[i - 1] + 1e-12), "齒輪只朝一個方向轉");
-  close(m391.racks(2 * S).gear, (-2 * S) / m391.geometry.GEAR.r, "上、下兩程都推動齒輪");
-  // 銷始終在溝的中心線上(齒條的傾角由銷在溝裡的位置決定)
-  for (const v of sweep(2 * S, 80)) {
-    const r = m391.racks(v);
+  assert.ok(gs.every((g, i) => i === 0 || g >= gs[i - 1] - 1e-12), "齒輪只朝一個方向轉(逆時針)");
+  close(m391.racks(2 * S).gear - m391.racks(0).gear, (2 * S) / m391.geometry.GEAR.r, "上、下兩程都推動齒輪");
+  // 銷始終在溝裡:兩側都有溝壁、不穿進溝壁(齒條的傾角由銷在溝裡的位置決定)
+  const slots = m391.default.parts.find((p) => p.id === "frame").pieces.filter((q) => q.role === "slot").map((q) => q.shape);
+  for (const v of sweep(2 * S, 120)) {
     for (const s of [-1, 1]) {
-      const [x, y] = m391.pinOf(s, v);
-      close(x, m391.pinX(s, y, r.up), `主動量 ${v.toFixed(2)}:${s < 0 ? "A" : "A¹"} 的銷在溝裡`, 1e-6);
+      const g = guidedBetween(m391.pinOf(s, v), m391.geometry.PIN.r, slots);
+      // 行程兩端銷走到溝的角上(兩面溝壁成一個角,不是相對的兩側)
+      const end = Math.min(m391.racks(v).y, S - m391.racks(v).y) < 0.25;
+      assert.ok(g.open && g.depth < 1e-3 && (g.sides || end), `主動量 ${v.toFixed(2)}:${s < 0 ? "A" : "A¹"} 的銷在溝裡(穿入 ${g.depth.toFixed(4)}、兩側有壁 ${g.sides})`);
     }
   }
-  // 上升的中段 A 直立咬著齒輪、A¹ 外傾;下降的中段反過來
+  // 逆時針:齒輪左側往下、右側往上,所以下降的中段 A(左)直立咬著齒輪、A¹ 外傾;上升的中段反過來
   const up = m391.racks(S / 2);
   const down = m391.racks(1.5 * S);
-  assert.ok(Math.abs(up.angleA) < 1e-6 && Math.abs(up.angleA1) > 0.05, "上升時 A 咬著、A¹ 離開");
-  assert.ok(Math.abs(down.angleA1) < 1e-6 && Math.abs(down.angleA) > 0.05, "下降時 A¹ 咬著、A 離開");
-  // 肘形槓桿 C:A¹ 的銷到了上角才把它頂起,其餘時間落在擋上
-  const rest = m391.toggleAngle(m391.pinOf(1, S / 2));
-  assert.ok(m391.toggleAngle(m391.pinOf(1, S)) > rest + 0.1, "銷到上角時頂起肘形槓桿 C");
+  assert.ok(Math.abs(up.angleA1) < 1e-6 && Math.abs(up.angleA) > 0.05, "上升時 A¹ 咬著、A 離開");
+  assert.ok(Math.abs(down.angleA) < 1e-6 && Math.abs(down.angleA1) > 0.05, "下降時 A 咬著、A¹ 離開");
+});
+
+// 第 391 種:齒條的齒(role teeth)、重錘(role weight)、連桿的銷(role linkPin)
+const d391 = m391.default;
+const role391 = (id, r) => part(d391, id).pieces.filter((q) => q.role === r);
+const world391 = (pose, id, [x, y]) => {
+  const p = pose.parts[id];
+  const c = p.position ?? part(d391, id).center ?? [0, 0, 0];
+  const [u, w] = rot2([x, y], p.angle ?? 0);
+  return [c[0] + u, c[1] + w];
+};
+const gearWorld391 = (pose) => {
+  const g = part(d391, "gear");
+  return { outline: gearProfile(g).map((q) => { const [u, w] = rot2(q, pose.parts.gear.angle); return [g.center[0] + u, g.center[1] + w]; }), holes: [] };
+};
+
+test("第 391 種:行程是整數個齒距,每次重新咬合時齒條的齒都落在齒輪的齒槽裡,三個來回都不穿入", () => {
+  const S = m391.geometry.STROKE;
+  close((2 * S) / m391.geometry.PITCH, Math.round((2 * S) / m391.geometry.PITCH), "一個來回齒輪轉過整數個齒", 1e-9);
+  for (const v of sweep(6 * S, 720)) {
+    const pose = d391.pose(v);
+    const gear = gearWorld391(pose);
+    for (const id of ["rackA", "rackA1"]) {
+      const teeth = role391(id, "teeth")[0];
+      assert.ok(teeth, `${id} 的齒`);
+      const outline = teeth.shape.outline.map((q) => world391(pose, id, [q[0] + (teeth.at?.[0] ?? 0), q[1] + (teeth.at?.[1] ?? 0)]));
+      const depth = penetrationDepth(outline, gear);
+      assert.ok(depth < 0.004, `主動量 ${v.toFixed(3)}:${id} 的齒穿進齒輪 ${depth.toFixed(3)}`);
+    }
+  }
+});
+
+test("第 391 種:肘形槓桿 C 以短連桿接 A¹ 的上端(連桿長度不變),彈簧 d 拉著 C", () => {
+  const S = m391.geometry.STROKE;
+  const cPin = role391("toggleC", "linkPin")[0];
+  const aPin = role391("rackA1", "linkPin")[0];
+  assert.ok(cPin && aPin, "C 與 A¹ 上各有連桿的銷");
+  let L;
+  const angles = [];
+  for (const v of sweep(4 * S, 160)) {
+    const pose = d391.pose(v);
+    const link = pose.parts.linkC;
+    const q = world391(pose, "toggleC", cPin.at);
+    const t = world391(pose, "rackA1", aPin.at);
+    assert.ok(Math.hypot(link.from[0] - q[0], link.from[1] - q[1]) < 1e-9, `主動量 ${v.toFixed(2)}:連桿一端在 C 的銷上`);
+    assert.ok(Math.hypot(link.to[0] - t[0], link.to[1] - t[1]) < 1e-9, `主動量 ${v.toFixed(2)}:連桿另一端在 A¹ 上端的銷上`);
+    L ??= Math.hypot(t[0] - q[0], t[1] - q[1]);
+    close(Math.hypot(t[0] - q[0], t[1] - q[1]), L, `主動量 ${v.toFixed(2)}:連桿長度不變`, 1e-6);
+    // 彈簧 d 的兩端鉤在 C 的銷與機架的掛柱上(端圈離銷心不到 0.06)
+    const sp = pose.parts.springD;
+    const w = world391(pose, "toggleC", role391("toggleC", "spring")[0].at);
+    const k = role391("frame", "anchor")[0].at;
+    const near = (e, q) => Math.hypot(e[0] - q[0], e[1] - q[1]) < 0.06;
+    assert.ok((near(sp.from, w) && near(sp.to, k)) || (near(sp.to, w) && near(sp.from, k)), `主動量 ${v.toFixed(2)}:彈簧 d 一端鉤在 C 上、另一端鉤在掛柱上`);
+    angles.push(pose.parts.toggleC.angle);
+  }
+  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.2, "C 隨 A¹ 上下擺動");
+  assert.ok(L < 0.6 * Math.hypot(...role391("toggleC", "linkPin")[0].at.slice(0, 2)), "連桿比 C 的臂短");
+});
+
+test("第 391 種:A 的重錘朝外、A¹ 的重錘朝內(球在兩根齒條中間);機架、活塞桿各是一件", () => {
+  const S = m391.geometry.STROKE;
+  for (const v of sweep(2 * S, 40)) {
+    const pose = d391.pose(v);
+    const ball = (id) => world391(pose, id, part(d391, id).pieces.find((q) => q.kind === "sphere").at);
+    assert.ok(ball("rackA")[0] < pose.parts.rackA.position[0], `主動量 ${v.toFixed(2)}:A 的重錘在樞軸外側`);
+    const b1 = ball("rackA1")[0];
+    assert.ok(b1 < pose.parts.rackA1.position[0] && b1 > pose.parts.rackA.position[0], `主動量 ${v.toFixed(2)}:A¹ 的重錘在兩根齒條中間`);
+  }
+  assertOnePiece(part(d391, "frame"), "機架的各塊連成一件");
+  assertOnePiece(part(d391, "piston"), "活塞桿與兩根樞軸銷連成一件");
 });
 
 test("第 392 種:跳鋸:下端由曲柄帶動上下,上端的彈簧讓鋸子保持繃緊", () => {
@@ -3221,11 +3291,143 @@ test("第 392 種:跳鋸:下端由曲柄帶動上下,上端的彈簧讓鋸子保
   }
 });
 
+// 第 392 種:鋸條、十字頭、導柱、台面都以 role 標出;彈簧桿是路徑零件 springBar
+const d392 = m392.default;
+const roles392 = (id, r) => part(d392, id).pieces.filter((q) => q.role === r);
+const pathLen392 = (pts) => pts.slice(1).reduce((s, q, i) => s + dist(q, pts[i]), 0);
+
+test("第 392 種:上端連接於彈簧上——上方的水平桿就是彈簧桿:一端夾死在夾座,另一端經吊環隨鋸條上下彎", () => {
+  assert.ok(part(d392, "springBar")?.kind === "rod", "彈簧桿是一根會彎的桿(路徑零件)");
+  assert.ok(!d392.parts.some((p) => p.kind === "spring"), "沒有另外吊一根螺旋彈簧");
+  const clamp = roles392("frame", "clamp")[0];
+  assert.ok(clamp, "夾座");
+  const box = pieceBox(clamp);
+  const tips = [];
+  let len0;
+  for (const t of sweep(TAU, 24)) {
+    const pose = d392.pose(t);
+    const bar = pose.paths.springBar.points;
+    // 夾住的那一端不動、在夾座裡
+    const end = bar[0];
+    assert.ok([0, 1, 2].every((k) => end[k] >= box.lo[k] - 1e-9 && end[k] <= box.hi[k] + 1e-9), `θ=${t.toFixed(2)}:彈簧桿的固定端在夾座裡`);
+    // 桿不伸縮
+    len0 ??= pathLen392(bar);
+    close(pathLen392(bar), len0, `θ=${t.toFixed(2)}:彈簧桿長度不變`, 1e-6);
+    // 末端經吊環(shackle)接到鋸條上端的吊桿銷
+    const s = pose.parts.shackle;
+    assert.ok(dist(s.from, bar.at(-1)) < 1e-9, `θ=${t.toFixed(2)}:吊環掛在彈簧桿末端`);
+    const pin = add(pose.parts.blade.position, roles392("blade", "hangerPin")[0].at);
+    assert.ok(Math.hypot(s.to[0] - pin[0], s.to[1] - pin[1]) < 1e-9, `θ=${t.toFixed(2)}:吊環的下端套在吊桿的銷上`);
+    tips.push(bar.at(-1)[1]);
+  }
+  // 末端跟著鋸條走滿行程(彈簧桿真的彎),而且始終在不受力時的位置之下(一直往上拉、鋸條繃緊)
+  close(Math.max(...tips) - Math.min(...tips), 0.9, "彈簧桿末端上下的量 = 鋸條的行程", 0.03);
+  assert.ok(Math.max(...tips) < m392.geometry.FREE_TIP, "彈簧桿末端始終低於不受力時的位置");
+});
+
+test("第 392 種:鋸條上下兩端各有十字頭夾在兩根導柱之間,連桿接在下十字頭", () => {
+  const heads = roles392("blade", "crosshead");
+  assert.equal(heads.length, 2, "上、下兩個十字頭");
+  const guides = roles392("frame", "guide").map((q) => pieceBox(q));
+  for (const t of sweep(TAU, 24)) {
+    const pose = d392.pose(t);
+    for (const h of heads) {
+      const b = pieceBox(h, pose.parts.blade.position);
+      const cy = (b.lo[1] + b.hi[1]) / 2;
+      const beside = guides.filter((g) => g.lo[1] <= b.lo[1] + 1e-9 && g.hi[1] >= b.hi[1] - 1e-9);
+      const left = beside.filter((g) => (g.lo[0] + g.hi[0]) / 2 < 0);
+      const right = beside.filter((g) => (g.lo[0] + g.hi[0]) / 2 > 0);
+      assert.ok(left.length === 1 && right.length === 1, `θ=${t.toFixed(2)}:十字頭(y ${cy.toFixed(2)})的兩側全程都有導柱`);
+      const gl = b.lo[0] - left[0].hi[0];
+      const gr = right[0].lo[0] - b.hi[0];
+      assert.ok(gl >= 0 && gl < 0.01 && gr >= 0 && gr < 0.01, `θ=${t.toFixed(2)}:十字頭貼著兩根導柱(間隙 ${gl.toFixed(3)}、${gr.toFixed(3)})`);
+    }
+    // 連桿的上端在下十字頭的銷上
+    const lower = heads.reduce((a, b) => (a.at[1] < b.at[1] ? a : b));
+    const at = add(pose.parts.blade.position, lower.at);
+    assert.ok(Math.hypot(pose.parts.rod.to[0] - at[0], pose.parts.rod.to[1] - at[1]) < 1e-9, `θ=${t.toFixed(2)}:連桿接在下十字頭`);
+  }
+});
+
+test("第 392 種:鋸條穿過工作台中間的鋸縫,台面由腳撐到地上", () => {
+  const table = roles392("frame", "table")[0];
+  assert.deepEqual(table.axis, [0, 1, 0], "台面是水平的板(外形在 XZ 平面上)");
+  const hole = table.shape.holes[0];
+  assert.ok(hole && hole.every((q) => pointInPolygon(q, table.shape.outline)), "鋸縫在台面的外形之內");
+  // 板的局部 (x, y) 對到世界的 (x, −z)
+  const inHole = (x, z) => pointInPolygon([x - table.at[0], -(z - table.at[2])], hole);
+  const strip = roles392("blade", "strip");
+  assert.ok(strip.length > 0, "鋸條");
+  for (const q of strip) {
+    const b = pieceBox(q);
+    for (const x of [b.lo[0], b.hi[0]]) for (const z of [b.lo[2], b.hi[2]]) assert.ok(inHole(x, z), `鋸條的截面角 (${x.toFixed(2)}, ${z.toFixed(2)}) 在鋸縫裡`);
+  }
+  // 鋸條全程穿過台面(上下兩端都在台面外)
+  const ty = [table.at[1] - table.thickness / 2, table.at[1] + table.thickness / 2];
+  for (const t of sweep(TAU, 24)) {
+    const y0 = d392.pose(t).parts.blade.position[1];
+    const ys = strip.map((q) => pieceBox(q, [0, y0, 0]));
+    assert.ok(Math.min(...ys.map((b) => b.lo[1])) < ty[0] && Math.max(...ys.map((b) => b.hi[1])) > ty[1], `θ=${t.toFixed(2)}:鋸條穿過台面`);
+  }
+  const legs = roles392("frame", "leg").map((q) => pieceBox(q));
+  assert.ok(legs.length >= 2, "台面下至少兩支腳");
+  for (const l of legs) {
+    close(l.hi[1], ty[0], "腳頂著台面的底", 1e-9);
+    close(l.lo[1], m392.geometry.FLOOR, "腳落到地上", 1e-9);
+  }
+});
+
 test("第 393 種:拋光透鏡:杯子繞共同的軸轉,同時繞自己的軸轉", () => {
-  const a = m393.polisher(0).center;
-  const b = m393.polisher(Math.PI / 2).center;
+  const a = m393.polisher(0).pole;
+  const b = m393.polisher(Math.PI / 2).pole;
   close(Math.hypot(a[0], a[2]), Math.hypot(b[0], b[2]), "杯子繞軸公轉");
+  assert.ok(Math.hypot(a[0], a[2]) > 0.3, "杯子偏心配置:杯的軸不是直立軸");
   assert.ok(Math.abs(m393.polisher(1).self) > 0, "杯子自轉");
+});
+
+// 第 393 種的透鏡與杯:透鏡是 table 上的旋轉體(沿 Y),杯是 cup 上的旋轉體(沿杯的局部 Z)
+const d393 = m393.default;
+const lens393 = () => part(d393, "table").pieces.find((q) => q.kind === "lathe");
+const lensCenter393 = () => [0, lens393().profile[0][1], 0];
+const cupWorld393 = (pose, local) => add(pose.parts.cup.position, quatRotate(pose.parts.cup.rotation, local));
+const latheRing393 = (profile, n = 12) => profile.flatMap(([r, z]) => Array.from({ length: n }, (_, k) => [r * Math.cos((k * TAU) / n), r * Math.sin((k * TAU) / n), z]));
+
+test("第 393 種:透鏡是真的半球,杯面是同半徑的凹球面、全程貼著透鏡(拋光料裝在杯中,杯面磨著透鏡)", () => {
+  const lens = lens393();
+  const c = lensCenter393();
+  const R = Math.max(...lens.profile.map((p) => p[0]));
+  // 透鏡的曲面(底面以外的剖面點)離球心都是 R
+  for (const [r, z] of lens.profile.filter(([r, z]) => z > c[1] + 1e-9)) close(Math.hypot(r, z - c[1]), R, "透鏡的曲面在半徑 R 的球面上", 1e-6);
+  const cup = part(d393, "cup").pieces.find((q) => q.kind === "lathe");
+  for (const v of sweep(TAU, 12)) {
+    const pose = d393.pose(v);
+    const gaps = latheRing393(cup.profile).map((q) => dist(cupWorld393(pose, q), c) - R);
+    const gap = Math.min(...gaps);
+    assert.ok(gap >= 0, `主動量 ${v.toFixed(2)}:杯壓進透鏡 ${(-gap).toFixed(3)}`);
+    assert.ok(gap < 0.03, `主動量 ${v.toFixed(2)}:杯面離透鏡 ${gap.toFixed(3)},沒貼著`);
+    // 杯面有一圈都貼著(是凹球面,不是只有一點碰到)
+    assert.ok(gaps.filter((g) => g < 0.03).length >= 24, `主動量 ${v.toFixed(2)}:杯面貼著透鏡的只有 ${gaps.filter((g) => g < 0.03).length} 點`);
+  }
+});
+
+test("第 393 種:球窩接頭在杯頂外側,彎曲金屬片的末端是套著球的窩,全程跟著軸轉", () => {
+  const c = lensCenter393();
+  const cup = part(d393, "cup");
+  const ball = cup.pieces.find((q) => q.kind === "sphere");
+  const shell = cup.pieces.find((q) => q.kind === "lathe");
+  const outer = Math.max(...shell.profile.map(([r, z]) => Math.hypot(r, z)));
+  const spindle = part(d393, "spindle");
+  const socket = spindle.pieces.find((q) => q.kind === "lathe");
+  assert.ok(socket, "金屬片末端有球窩");
+  const inner = Math.min(...socket.profile.map(([r, z]) => Math.hypot(r, z)));
+  assert.ok(inner > ball.radius && inner - ball.radius < 0.02, `球窩內徑套著球(差 ${(inner - ball.radius).toFixed(3)})`);
+  for (const v of sweep(TAU, 12)) {
+    const pose = d393.pose(v);
+    const b = cupWorld393(pose, ball.at);
+    assert.ok(dist(b, c) > outer, `主動量 ${v.toFixed(2)}:球在杯頂外側(離球心 ${dist(b, c).toFixed(2)},杯外徑 ${outer.toFixed(2)})`);
+    const s = partPoint(spindle.center, spindle.axis, pose.parts.spindle.angle, socket.at);
+    assert.ok(dist(b, s) < 1e-6, `主動量 ${v.toFixed(2)}:球窩的中心離球心 ${dist(b, s).toFixed(4)}`);
+  }
 });
 
 test("第 394 種:Parsons 無端齒條:框往復,小齒輪連續朝同一方向轉(把往復運動轉成旋轉)", () => {
