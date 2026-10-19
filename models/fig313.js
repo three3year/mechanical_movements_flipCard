@@ -17,9 +17,16 @@
 // 立體化:擒縱輪與大滾子同一層;止動器與角在它們前面一層(鎖石往後伸到輪那一層);通過彈簧再前一層,鉤往前蓋到這一層;
 // 小滾子在最前面,齒 V 往後伸到通過彈簧那一層。
 // 推斷:齒數(依原圖約十五齒)與擺幅、各部尺寸;鎖石做成上寬下窄的楔形(鎖面往右上斜,止動器推開時鎖面離開齒,
-// 下半部讓開被放開的齒;推開的頭一小段,齒沿著斜的鎖面前進約 0.007 齒才放開);不畫擺輪本體與游絲,只畫兩個滾子、擺輪軸,軸都裝在後面的夾板條上(原圖沒畫)。
-import { deg, TAU } from "./kit.js";
+// 下半部讓開被放開的齒;推開的頭一小段,齒沿著斜的鎖面前進約 0.007 齒才放開);軸都裝在後面的夾板條上(原圖沒畫);
+// 止動器下端的座落在 D 底下夾板條的凸台上,擋止 E 是從夾板條立起的銷。
+// 推斷的擺輪(原圖只畫兩個滾子;照第 291 種):擺輪軸往後穿過夾板條,擺輪(輪緣、兩根橫臂與輪轂)固定在軸的後端、
+// 夾板條後面——放在前面會蓋住齒 V、通過彈簧與衝量叉瓦 P。不畫游絲。
+// 推斷的驅動(原文沒說輪為什麼往前轉;共用 weight-drive.js,照第 291、296 種):擒縱輪軸往後伸,輪與夾板條之間有一個鼓,
+// 繩從鼓的右側垂下吊著重錘,重錘的重量就是讓輪順時針轉的固定力矩;輪轉多少重錘降多少,被鎖石擋住時重錘也停。
+// 重錘每降一段(擺輪來回八次)捲回最高處一次(上鍊,畫面上一下子回到上面)。錶實際上用發條經輪系帶動,這裡用重錘只是示意。
+import { deg, TAU, Y, Z } from "./kit.js";
 import { detentMechanism, detentModel } from "./detent-escapement.js";
+import { weightDrive, rewound } from "./weight-drive.js";
 import { shape, rect, circle, thickLine, arcPoints } from "./shapes.js";
 import { plateBar } from "./supports.js";
 
@@ -68,6 +75,28 @@ export const { N, PITCH, SWING, balanceAngle, chronometer, escapement } = mech;
 // 打開時停在衝量的那一刻(原圖畫的就是這一刻:齒 A 推著叉瓦 P):擺輪往箭頭方向擺到 45°
 const INITIAL = 3 * SWING + deg(45);
 
+// 推斷的重錘驅動:鼓在擒縱輪軸上、輪與夾板條之間,繩從鼓的右側垂下吊著重錘
+const ROPE_R = 0.035;
+const DRUM_R = 0.15;
+const DRUM = { center: [...W, -0.29], axis: Z, radius: DRUM_R + ROPE_R, sense: -1 }; // 輪往前(順時針,繞 −z)轉時繩從鼓上放出
+const REWIND = 8 * 4 * SWING; // 擺輪來回八次(輪轉過八齒)上鍊一次
+const WEIGHT = { radius: 0.14, height: 0.38 };
+const hang = weightDrive({
+  drum: DRUM,
+  eye: [W[0] + DRUM.radius, W[1] - R - 0.25, DRUM.center[2]], // 最高處在輪的下緣下方
+  reserve: DRUM.radius * 8 * PITCH,
+  spare: 2 * Math.PI * DRUM.radius,
+  pitch: 2.1 * ROPE_R,
+});
+const weightAt = rewound(hang, (v) => -mech.state(v).w, REWIND); // 輪往前(順時針)轉的角度
+/** 重錘驅動的鼓與上鍊間隔(檢查用) */
+export const WEIGHT_DRIVE = { drum: DRUM, every: REWIND };
+
+// 推斷的擺輪(相對擺輪軸):輪緣、兩根橫臂與輪轂,在夾板條(凸台背面 z −0.58)後面
+const BALANCE = { r: 1.0, rim: 0.09, z: -0.75 };
+const PLATE_Z = -0.5; // 夾板條的中心深度
+const BOSS_TOP = PLATE_Z + 0.08; // 凸台的頂面(plateBar:厚 0.1,凸台長 0.16)
+
 // 擒縱輪的四根輪輻(輪輻之間的窗)
 const windows = [0, 1, 2, 3].map((k) => {
   const a0 = (k * TAU) / 4;
@@ -99,13 +128,19 @@ export default detentModel(mech, {
       { kind: "cylinder", radius: 0.14, length: 0.2 },
       { kind: "cylinder", radius: 0.05, length: 0.5, at: [0, 0, -0.25] }, // 輪軸,往後伸進夾板條
       { kind: "cylinder", radius: 0.06, length: 0.16, at: [0.6, 0, 0.04], accent: true },
+      { kind: "cylinder", radius: DRUM_R, length: 0.2, at: [0, 0, DRUM.center[2]] }, // 繞繩的鼓(推斷)
     ],
     balance: [
       { kind: "plate", shape: shape(mech.roller, [circle(0.06).reverse()]), thickness: 0.12 }, // 大滾子與缺口
       { kind: "plate", shape: shape(PALLET), thickness: 0.14 }, // 衝量叉瓦 P
       { kind: "plate", shape: shape(circle(SMALL_ROLLER), [circle(0.06).reverse()]), thickness: 0.06, at: [0, 0, 0.39] }, // 小滾子
       { kind: "plate", shape: shape(V), thickness: 0.21, at: [0, 0, 0.315], accent: true }, // 齒 V,往後伸到通過彈簧那一層
-      { kind: "cylinder", radius: 0.06, length: 0.92, at: [0, 0, -0.04] }, // 擺輪軸,往後伸進夾板條
+      { kind: "cylinder", radius: 0.06, length: 0.42 - (BALANCE.z - 0.03), at: [0, 0, (0.42 + BALANCE.z - 0.03) / 2] }, // 擺輪軸,往後穿過夾板條到擺輪
+      // 擺輪(推斷):輪緣、兩根橫臂與輪轂,固定在擺輪軸的後端
+      { kind: "plate", shape: shape(circle(BALANCE.r), [circle(BALANCE.r - BALANCE.rim).reverse()]), thickness: 0.06, at: [0, 0, BALANCE.z] },
+      { kind: "plate", shape: shape(rect(2 * BALANCE.r - 0.04, 0.09, 0, 0)), thickness: 0.05, at: [0, 0, BALANCE.z] },
+      { kind: "plate", shape: shape(rect(0.09, 2 * BALANCE.r - 0.04, 0, 0)), thickness: 0.05, at: [0, 0, BALANCE.z] },
+      { kind: "cylinder", radius: 0.12, length: 0.1, at: [0, 0, BALANCE.z] },
     ],
     detent: [
       { kind: "plate", shape: shape(local(BODY, D)), thickness: 0.08, at: [0, 0, 0.15] },
@@ -117,10 +152,12 @@ export default detentModel(mech, {
     ],
     spring: [{ kind: "plate", shape: shape(local(thickLine(SPRING_LINE, 0.03), T)), thickness: 0.06, at: [0, 0, 0.27] }],
     foot: [
-      { kind: "box", size: [0.3, 0.3, 0.6], at: [D[0], D[1] - 0.15, -0.1] }, // 止動器下端固定的座
-      { kind: "cylinder", radius: 0.05, length: 0.64, at: [STOP_E[0], STOP_E[1], -0.13] }, // 擋止 E(位置推斷):止動器被彈簧壓在它上面
+      { kind: "box", size: [0.3, 0.3, 0.2 - BOSS_TOP], at: [D[0], D[1] - 0.15, (0.2 + BOSS_TOP) / 2] }, // 止動器下端固定的座,落在 D 底下的凸台上
     ],
-    plate: plateBar({ points: [W, BAL, D], z: -0.5, width: 0.22, boss: 0.15 }),
+    plate: [
+      ...plateBar({ points: [W, BAL, D], z: PLATE_Z, width: 0.22, boss: 0.15 }),
+      { kind: "cylinder", radius: 0.05, length: 0.19 - (PLATE_Z + 0.05), at: [STOP_E[0], STOP_E[1], (0.19 + PLATE_Z + 0.05) / 2] }, // 擋止 E(位置推斷):從夾板條立起,止動器被彈簧壓在它上面
+    ],
   },
   labels: [
     { text: "A", at: A_AT, offset: [-0.2, 0.15] },
@@ -137,4 +174,17 @@ export default detentModel(mech, {
     release: { label: "擺輪朝箭頭方向(逆時針)轉:齒 V 推通過彈簧連止動器往右(離開擒縱輪),放走一齒", quote: "軸桿上的齒 V 會將通過彈簧(passing-spring)壓向槓桿,將槓桿推至一旁,並從擒縱輪的齒上移開止動裝置(detent)" },
   },
   view: { direction: [0.03, 0.04, 1] },
+  extra: {
+    parts: [
+      { id: "rope", kind: "rope", radius: ROPE_R },
+      { id: "weight", kind: "weight", axis: Y, radius: WEIGHT.radius, height: WEIGHT.height },
+    ],
+    pose(v) {
+      const w = weightAt(v);
+      return {
+        parts: { weight: { position: [w.eye[0], w.eye[1] - WEIGHT.height / 2 - WEIGHT.radius * 0.38, w.eye[2]] } },
+        paths: { rope: { points: w.rope, closed: false, phase: 0 } },
+      };
+    },
+  },
 });

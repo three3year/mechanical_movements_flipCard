@@ -1433,7 +1433,7 @@ test("第 312 種:布洛克桑重力擒縱:擺推開一個叉瓦、放開擋止,
 
 test("第 313 種:E 是槓桿(止動器)返回後靠住的擋止,不是鎖石", () => {
   const def = m313.default;
-  const stop = def.parts.find((p) => p.id === "foot").pieces.find((p) => p.kind === "cylinder");
+  const stop = def.parts.find((p) => p.id === "plate").pieces.find((p) => p.kind === "cylinder" && p.radius < 0.1); // 擋止 E 從夾板條立起
   const e = def.parts.find((p) => p.label === "E");
   close(Math.hypot(e.center[0] - stop.at[0], e.center[1] - stop.at[1]), 0, "E 標在擋止上", 1e-9);
   // 止動器停著時靠在擋止上:擋止和止動器的本體之間沒有空隙
@@ -1510,6 +1510,115 @@ test("第 314 種:槓桿式天文台計時器擒縱:叉瓦只鎖輪,衝量直接
   assert.equal(pushes(base + 2 * S).length, 0, "擺輪順時針擺:輪齒不推滾子(每來回只給一次衝量)");
   noPenetration(e, 2000);
   apart(m314.escapement, "fork", "pin");
+});
+
+// ── 第 313、314 種(model-audit-fixes-3 票 12)──
+
+/**
+ * 推斷的擺輪(原圖只畫滾子):擺輪的輪緣比最大的滾子(disc)大得多,輪輻伸進輪緣,輪轂與穿過滾子的同一根軸固定在一起,
+ * 整個擺輪在夾板條(frame)後面——放在前面會蓋住滾子上的叉瓦與撥東西的齒 / 銷。
+ */
+function balanceWheelBehind313(def, { id, disc, frame }) {
+  const bal = part(def, id);
+  const rim = bal.pieces.find((p) => p.kind === "plate" && p.shape.holes?.length && reach296(p) > 1.2 * reach296(disc));
+  assert.ok(rim, "擺輪的輪緣比滾子大得多");
+  const hole = Math.max(...rim.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  const spokes = bal.pieces.filter((p) => p.kind === "plate" && p !== rim && p !== disc && depthsMeet294(depth294(p), depth294(rim)));
+  assert.ok(spokes.length >= 2 && spokes.every((s) => reach296(s) > hole), "輪輻伸進輪緣");
+  const onAxis = (p) => p.kind === "cylinder" && !(p.at?.[0] || p.at?.[1]) && depthsMeet294(depth294(p), depth294(rim));
+  const hub = bal.pieces.find((p) => onAxis(p) && p.radius > 0.08);
+  const staff = bal.pieces.find((p) => onAxis(p) && p.radius <= 0.08);
+  assert.ok(hub && staff, "擺輪的輪轂固定在擺輪軸上(軸穿過擺輪)");
+  assert.ok(depthsMeet294(depth294(staff), depth294(disc)), "同一根軸也穿過滾子");
+  const plateBack = Math.min(...part(def, frame).pieces.map((p) => depth294(p)[0]));
+  for (const p of [rim, ...spokes, hub]) assert.ok(depth294(p)[1] < plateBack, `擺輪的一塊(z ${depth294(p).map((z) => z.toFixed(2)).join("..")})在夾板條後面`);
+}
+
+test("第 313 種:止動器下端 D 的座落在夾板條的凸台上;擋止 E 從夾板條立起、伸過止動器那一層", () => {
+  const def = m313.default;
+  const D = part(def, "detent").center;
+  const plate = part(def, "plate").pieces;
+  const boss = plate.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - D[0], p.at[1] - D[1]) < 1e-9);
+  const seat = part(def, "foot").pieces.find((p) => p.kind === "box" && inBox291(D, p));
+  close(zSpan291(seat)[0], zSpan291(boss)[1], "座的底面落在 D 底下凸台的頂面", 1e-9);
+  const E = def.parts.find((p) => p.label === "E").center;
+  const stop = plate.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - E[0], p.at[1] - E[1]) < 1e-9);
+  assert.ok(stop, "擋止 E 是夾板條上的一根銷");
+  assert.ok(plate.some((b) => b.kind === "box" && inBox291(E, b) && Math.abs(zSpan291(stop)[0] - zSpan291(b)[1]) < 1e-9), "擋止 E 立在夾板條的板面上");
+  const body = zSpan291(part(def, "detent").pieces[0]);
+  assert.ok(zSpan291(stop)[0] <= body[0] && zSpan291(stop)[1] >= body[1], "擋止 E 伸過止動器那一層");
+});
+
+test("第 313 種:擺輪(推斷)——大、小滾子與擺輪固定在同一根擺輪軸上;擺輪在夾板條後面,不擋住滾子、齒 V 與通過彈簧", () => {
+  balanceWheelBehind313(m313.default, { id: "balance", disc: part(m313.default, "balance").pieces[0], frame: "plate" });
+});
+
+test("第 313 種:推斷的重錘驅動——擒縱輪軸上的鼓放出繩、吊著重錘,重錘隨輪下降,降到底時捲回(錶用發條,重錘是示意)", () => {
+  const { drum, every } = m313.WEIGHT_DRIVE;
+  assertWeightDrive(m313.default, { drum, wheel: (v) => m313.chronometer(v).wheel, period: m313.escapement.period, every }); // 輪順時針往前轉(繞鼓軸 −1,drum.sense)
+});
+
+test("第 314 種:擋銷在槓桿下端的兩側、從夾板條立起;槓桿停著時靠在擋銷上,整個來回不壓進擋銷", () => {
+  const def = m314.default;
+  const lever = part(def, "lever");
+  const L = lever.center;
+  const frame = part(def, "frame").pieces;
+  const pins = frame.filter((p) => p.kind === "cylinder" && p.radius < 0.1);
+  assert.equal(pins.length, 2, "兩根擋銷裝在夾板條上(和夾板條是同一件)");
+  const bars = frame.filter((p) => p.kind === "box");
+  for (const pin of pins) assert.ok(bars.some((b) => inBox294(pin.at, b) && depthsMeet294(depth294(b), depth294(pin))), `擋銷 (${pin.at[0].toFixed(2)}, ${pin.at[1].toFixed(2)}) 插在夾板條裡`);
+  // 槓桿從樞軸往下延伸一段尾,擋銷在尾端的左右兩側
+  const bar = lever.pieces.reduce((m, p) => (p.kind === "plate" && Math.min(...p.shape.outline.map(([, y]) => y)) < Math.min(...m.shape.outline.map(([, y]) => y)) ? p : m));
+  const tailY = Math.min(...bar.shape.outline.map(([, y]) => y));
+  assert.ok(tailY < -0.6, `槓桿往下延伸一段尾(尾端在樞軸下方 ${(-tailY).toFixed(2)})`);
+  assert.ok(pins.every((p) => p.at[1] < L[1] + tailY / 2), "擋銷在槓桿的下端(不在樞軸上方)");
+  assert.ok(Math.min(...pins.map((p) => p.at[0])) < L[0] && Math.max(...pins.map((p) => p.at[0])) > L[0], "左右各一根");
+  for (const pin of pins) assert.ok(depth294(pin)[1] >= depth294(bar)[1] && depth294(pin)[0] <= depth294(bar)[0], "擋銷伸過槓桿那一層");
+  // 接觸:槓桿停在 ±REST 時尾端貼著一根擋銷(間隙接近 0),整個來回不壓進擋銷
+  const gaps = (v) => {
+    const poly = placePoly(bar.shape.outline, L, m314.leverAngle(v));
+    return pins.map((p) => (pointInPolygon([p.at[0], p.at[1]], poly) ? -1 : edgeDistance([p.at[0], p.at[1]], poly) - p.radius));
+  };
+  for (const v of [0, 2 * m314.SWING]) assert.ok(Math.min(...gaps(v)) < 2e-3, `主動量 ${v.toFixed(2)}:槓桿停著時靠在擋銷上(間隙 ${Math.min(...gaps(v)).toFixed(4)})`);
+  for (const v of sweep(2 * m314.escapement.period, 720)) assert.ok(Math.min(...gaps(v)) > -2e-3, `主動量 ${v.toFixed(3)}:槓桿壓進擋銷 ${Math.min(...gaps(v)).toFixed(4)}`);
+});
+
+test("第 314 種:叉瓦照原圖是一塊跨在槓桿前面的月牙形板——樞軸在月牙中間,凹的一側朝輪,A、B 在兩端往後伸到輪那一層;槓桿軸從夾板條穿過槓桿與月牙", () => {
+  const def = m314.default;
+  const lever = part(def, "lever");
+  const plates = lever.pieces.filter((p) => p.kind === "plate");
+  const bar = plates.find((p) => pointInPolygon([0, -0.3], p.shape.outline));
+  assert.ok(bar, "槓桿本體從樞軸往下");
+  const pallets = plates.filter((p) => depth294(p)[0] < 0.06); // 往後伸到輪那一層(輪 z ±0.06)
+  assert.equal(pallets.length, 2, "兩個叉瓦 A、B");
+  const crescent = plates.find((p) => depth294(p)[1] > depth294(bar)[1] + 0.03 && !pallets.includes(p));
+  assert.ok(crescent, "月牙形板在槓桿前面");
+  assert.ok(depthsMeet294(depth294(crescent), depth294(bar)) && polygonsOverlap(crescent.shape.outline, bar.shape.outline), "月牙形板貼在槓桿上");
+  assert.ok(pointInPolygon([0.0, 0.1], crescent.shape.outline) || pointInPolygon([0.0, -0.1], crescent.shape.outline), "樞軸在月牙中間");
+  for (const p of pallets) assert.ok(depthsMeet294(depth294(p), depth294(crescent)) && polygonsOverlap(p.shape.outline, crescent.shape.outline), "叉瓦接在月牙形板的一端");
+  // 凹的一側朝輪:兩個叉瓦之間的弦的中點不在月牙上,且比樞軸更靠近輪心
+  const mid = (p) => p.shape.outline.reduce(([x, y], [a, b]) => [x + a / p.shape.outline.length, y + b / p.shape.outline.length], [0, 0]);
+  const [a, b] = pallets.map(mid);
+  const chord = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  assert.ok(!pointInPolygon(chord, crescent.shape.outline), "月牙在兩個叉瓦之間是凹的(弦的中點不在板上)");
+  const wheel = part(def, "wheel").center;
+  const W = [wheel[0] - lever.center[0], wheel[1] - lever.center[1]];
+  assert.ok(Math.hypot(chord[0] - W[0], chord[1] - W[1]) < Math.hypot(W[0], W[1]), "凹的一側朝輪");
+  // 槓桿軸從夾板條的凸台穿過槓桿與月牙形板
+  const shaft = lever.pieces.find((p) => p.kind === "cylinder" && !(p.at?.[0] || p.at?.[1]));
+  const boss = part(def, "frame").pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - lever.center[0], p.at[1] - lever.center[1]) < 1e-9);
+  assert.ok(depth294(shaft)[0] <= depth294(boss)[1] - 0.02, `槓桿軸伸進夾板條的凸台(軸 z ${depth294(shaft)[0].toFixed(2)},凸台頂 ${depth294(boss)[1].toFixed(2)})`);
+  assert.ok(depth294(shaft)[1] >= depth294(crescent)[1] - 1e-9, "槓桿軸穿過月牙形板");
+});
+
+test("第 314 種:擺輪(推斷)——衝擊滾子(叉瓦 C)、帶銷的小圓盤與擺輪固定在同一根擺輪軸上;擺輪在夾板條後面,不擋住滾子與銷", () => {
+  balanceWheelBehind313(m314.default, { id: "balance", disc: part(m314.default, "balance").pieces[0], frame: "frame" });
+});
+
+test("第 314 種:推斷的重錘驅動——擒縱輪軸上的鼓放出繩、吊著重錘,重錘隨輪下降,降到底時捲回(錶用發條,重錘是示意)", () => {
+  const { drum, every } = m314.WEIGHT_DRIVE ?? {};
+  assert.ok(drum, "模型有重錘驅動");
+  assertWeightDrive(m314.default, { drum, wheel: (v) => m314.leverChrono(v).wheel, period: m314.escapement.period, every }); // 輪順時針往前轉(繞鼓軸 −1,drum.sense)
 });
 
 // ── 第 309、312 種與重力擒縱的共用邏輯(model-audit-fixes-3 票 09)──
