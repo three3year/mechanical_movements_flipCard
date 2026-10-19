@@ -1,6 +1,6 @@
 # 模型檢查第 16–23 族的修正(第 301–400 種)
 
-Status: ready-for-agent
+Status: done
 
 **來源:** 2026-10-14 用八類常見錯誤(`docs/agents/model-audit.md`)掃了第 301–400 種,同時對照 507movements.com(英文原文、網站註記、525 px 原圖、動畫)。報告在 `.scratch/model-audit/`:`16-escapement-2.md`(第 301–305 種補在後半)、`17-escapement-3.md`、`18-pendulums.md`、`19-parallel-1.md`、`20-parallel-2.md`、`21-misc-1.md`、`22-misc-2.md`、`23-misc-3.md`(只到第 400 種)。每一筆問題都有證據、建議修法與同類要一起查的圖。2026-10-14 維護者對八份報告「需要你決定的」21 題全部照建議決定(寫在各報告裡);第 299 種「9 齒改 7 齒」是上一輪留下的題目,2026-10-16 決定改成 7 齒(不在本規格範圍)。
 
