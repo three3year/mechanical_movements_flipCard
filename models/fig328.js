@@ -85,7 +85,7 @@ export default {
     { id: "gearR", kind: "gear", center: GR.center, teeth: G.teeth, radius: G.radius, width: 0.16, pieces: crank(MIRROR), label: "C", labelOffset: [0.6, 0.6, 0.3] },
     { id: "rodL", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "rodR", kind: "link", width: 0.12, thickness: 0.06 },
-    { id: "crosshead", kind: "group", label: "B", labelOffset: [0.3, -0.6, 0.3], pieces: [{ kind: "box", size: [2 * HALF + 0.2, 0.14, 0.12], at: [0, 0, 0.3] }, { kind: "box", size: [0.08, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] }, rodHub(0, 0.04, 0.24, 0.09)] }, // 轂套住活塞桿頂端、往前接到橫桿背面(推斷)
+    { id: "crosshead", kind: "group", label: "B", labelOffset: [0.3, -0.6, 0.3], pieces: [{ kind: "box", size: [2 * HALF + 0.2, 0.14, 0.12], at: [0, 0, 0.3] }, { kind: "box", size: [0.08, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] }, rodHub({ rodZ: 0, rodHalf: 0.04, barBack: 0.24, radius: 0.09 })] }, // 轂套住活塞桿頂端、往前接到橫桿背面(推斷)
     { id: "labelA1", kind: "group", center: GL.center, label: "A", labelOffset: [0.25, -0.5, 0.4] },
     { id: "labelA2", kind: "group", center: GR.center, label: "A", labelOffset: [-0.25, -0.5, 0.4] },
   ],

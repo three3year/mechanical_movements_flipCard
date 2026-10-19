@@ -29,3 +29,4 @@
 ## Comments
 
 - 2026-10-19 做完。截圖 `.playwright-mcp/maf3/355-a.png`、`355-back.png`、`356-a.png`、`356-back.png`(每組相鄰兩格只差一點主動量,第二格的箭頭方向和自轉一致)。全書其他只給 `rotation`、有箭頭的零件(第 226、365、384、411、443 種)以腳本算過 twist,轉向各自只有一個符號。第 356 種的主動件改成座,登記到 `.scratch/recheck-86-507/tables/README.md`;目標件沒換。`one-piece.mjs`、`rigid-links.mjs` 在 355、356 不報。
+- 2026-10-19 code review 後:一幀轉超過四分之一圈(拖動時跳一大段、切換狀態)分不出轉向,那一幀不累加、箭頭先收起來,免得畫成反方向。

@@ -82,6 +82,8 @@ function pathMoving(a, b) {
 
 // ── 干涉與憑空連動 ─────────────────────────
 
+const SLIDE = 1e-3; // 圓柱在同一個狀態裡沿自己的軸移動超過這個,算沿軸滑
+
 function staticChecks(def, scene, opt) {
   const findings = [];
   const d = def.driver;
@@ -143,14 +145,17 @@ function staticChecks(def, scene, opt) {
               const hole = holes.get(piece) ?? new Map();
               holes.set(piece, hole);
               const seen = hole.get(other);
-              // 圓柱沿自己的軸在對方座標裡的位置(兩端中點投影到軸上),看它有沒有沿軸滑
+              // 圓柱沿自己的軸在對方座標裡的位置(兩端中點投影到軸上),看它在這個狀態裡有沒有沿軸滑
+              // (各狀態停在不同位置、狀態裡不動的不算滑)
               const dir = seen?.dir ?? line[1].clone().sub(line[0]).normalize();
               const at = line[0].clone().add(line[1]).multiplyScalar(0.5).dot(dir);
-              if (!seen) hole.set(other, { line, dir, fixed: true, lo: at, hi: at });
+              if (!seen) hole.set(other, { line, dir, fixed: true, slid: false, state, lo: at, hi: at });
               else {
                 if (seen.fixed && !sameLine(seen.line, line)) seen.fixed = false;
+                if (seen.state !== state) Object.assign(seen, { state, lo: at, hi: at });
                 seen.lo = Math.min(seen.lo, at);
                 seen.hi = Math.max(seen.hi, at);
+                if (seen.hi - seen.lo > SLIDE) seen.slid = true;
               }
             }
           }
@@ -211,16 +216,16 @@ function staticChecks(def, scene, opt) {
       // 同一條(繞自己的軸轉、沿軸滑),就是機構裡裝在孔中的軸承、鉸接或導桿——孔沒畫出來,不算干涉;
       // 球心在對方座標裡不動的球是球接頭,同理。軸線會移動的(銷掃過對方的實體)算;
       // 兩個都固定不動的也算(簡化的機架,要寫豁免)。
-      // 沿軸滑的圓柱還要被對方圍著(見 Scene.surrounds):鼓輪沿軸向橫移、一端滑進沒圍住它的立柱,
+      // 同一個狀態裡沿軸滑的圓柱,還要被對方圍著(Scene.surrounds)或對方穿在它的孔裡(Scene.threads):
+      // 鼓輪沿軸向橫移、一端滑進沒圍住它的立柱,
       // 標記桿的尖端沿轉動圓筒的軸向移動、埋進筒裡,都不是孔裡的軸
-      const SLIDE = 1e-3;
       const { moves, rigid } = relativeMotion(placed, ...o.parts);
       // 兩個零件一起動、彼此之間始終沒有相對運動:是固定在一起的同一個剛體(活塞與活塞桿、臂與臂端的球),
       // 和同一個零件自己的各部分一樣不查。兩個都固定不動的不在此列
       if (moves && rigid) continue;
       const inHole = ([piece, other, surrounded]) => {
         const hole = holes.get(piece)?.get(other);
-        return moves && hole?.fixed && (surrounded || hole.hi - hole.lo <= SLIDE);
+        return moves && hole?.fixed && (surrounded || !hole.slid);
       };
       o.depth = 0;
       o.count = 0;

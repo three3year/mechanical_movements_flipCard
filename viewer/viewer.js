@@ -35,12 +35,14 @@ let active = null;
 const tmpTwist = new THREE.Quaternion();
 
 // 只給 rotation(四元數)、沒給 angle 的零件:由前後兩次的朝向算繞零件自己的軸(局部 Z)轉了多少
-// (前後朝向之差在局部座標裡的 swing-twist 分解取 twist),累加起來當轉角,給轉向箭頭用
+// (前後朝向之差在局部座標裡的 swing-twist 分解取 twist),累加起來當轉角,給轉向箭頭用。
+// 一幀轉超過四分之一圈(拖動時跳一大段、切換狀態)分不出往哪邊轉,這一幀不累加(箭頭先收起來)
 function spun(entry, quaternion) {
   if (!entry.spin) entry.spin = { angle: 0, last: quaternion.clone() };
   const d = tmpTwist.copy(entry.spin.last).invert().multiply(quaternion);
   if (d.w < 0) d.set(-d.x, -d.y, -d.z, -d.w);
-  entry.spin.angle += 2 * Math.atan2(d.z, d.w);
+  const twist = 2 * Math.atan2(d.z, d.w);
+  if (Math.abs(twist) < Math.PI / 2) entry.spin.angle += twist;
   entry.spin.last.copy(quaternion);
   return entry.spin.angle;
 }

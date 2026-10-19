@@ -173,12 +173,14 @@ for (const def of models) {
 
 // 狀態決定姿勢的零件要標 posed:網頁切換狀態時,沒標 posed 的零件轉角以偏移量接續(切換瞬間不跳動),
 // 姿勢由狀態決定的零件(指針、撥桿、棘爪)就不會動。同一主動量下各狀態的轉角不同、而且不是轉速類的零件要標 posed;
-// 轉速類的零件(狀態只改轉速或轉向、間歇轉動的輪)轉角是累積的,接續才對。位置不必標:切換時位置一律以短動畫移過去
+// 轉速類的零件(狀態只改轉速或轉向、間歇轉動的輪)轉角是累積的,接續才對。位置不必標:切換時位置一律以短動畫移過去;
+// 以 rotation 擺放的零件也不必標(切換時一律以短動畫轉過去),這裡只看 angle
 
 // 持續運轉的主動量走很多輪之後,零件在某個狀態下轉了一圈以上:轉速類(取樣的範圍內轉得慢、還沒轉滿一圈的也算)
 function keepsTurning(def, id, states) {
   const d = def.driver;
   if (d.range && !(d.type === "virtual" && d.mode === "progress")) return false;
+  // 走 20 輪:進程 20 個滑桿長、往復 20 個來回、轉動 20 圈
   const far = d.type === "virtual" ? (d.range[1] - d.range[0]) * 20 : d.cycle ? Math.abs(d.cycle[1] - d.cycle[0]) * 40 : 40 * Math.PI;
   return states.some((s) => Math.abs((def.pose(far, s).parts[id]?.angle ?? 0) - (def.pose(0, s).parts[id]?.angle ?? 0)) >= 2 * Math.PI);
 }

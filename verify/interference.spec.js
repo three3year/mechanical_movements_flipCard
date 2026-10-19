@@ -71,7 +71,7 @@ test("軸、銷裝在沒畫出來的孔裡:會動的零件繞著它轉或沿著�
   assert.equal(interference(model([wheel, shaft(0)])).length, 1, "兩個都固定不動:簡化的機架,要寫豁免");
 });
 
-test("大圓柱沿自己的軸向滑進、或繞自己的軸轉著穿過沒圍住它的零件,不是裝在孔裡,照報", () => {
+test("大圓柱沿自己的軸向滑進沒圍住它的零件(或滑動時對方埋進它裡面),不是裝在孔裡,照報", () => {
   // 鼓輪沿軸向橫移,一端穿進立柱(第 362 種):鼓輪的軸線在立柱座標裡始終是同一條,但立柱沒有圍住鼓輪
   const drum = { id: "drum", kind: "cylinder", center: [0, 0, 0], axis: [1, 0, 0], radius: 0.85, length: 1.25 };
   const post = { id: "post", kind: "box", size: [0.3, 3, 0.3], center: [1, 0, 0] };
@@ -94,6 +94,14 @@ test("大圓柱沿自己的軸向滑進、或繞自己的軸轉著穿過沒圍�
   // 鍵條的一端停在滑動的輪轂裡(第 48 種的離合器):鍵條在輪轂的半徑以內、從輪轂一端伸出去,是輪轂孔裡的東西
   const key = { id: "key", kind: "box", size: [1.5, 0.1, 0.1], center: [0.8, 0.3, 0] };
   assert.deepEqual(interference(model([disc, key], (v) => ({ disc: { position: [v * 0.4, 0, 0] } }))), [], "輪轂沿鍵條滑");
+});
+
+test("「沿軸滑」只看同一個狀態裡的動作:各狀態停在不同位置、狀態裡只繞軸轉的圓盤,照舊算裝在孔裡", () => {
+  const disc = { id: "disc", kind: "cylinder", center: [0, 0, 0], axis: [1, 0, 0], radius: 1.2, length: 0.4 };
+  const hub = { id: "hub", kind: "box", size: [0.2, 0.2, 0.2], center: [0, 0, 0] };
+  const states = { initial: "a", options: [{ id: "a", label: "甲" }, { id: "b", label: "乙" }] };
+  const def = model([disc, hub], (v, state) => ({ disc: { position: [state === "b" ? 0.05 : 0, 0, 0], angle: v * 3 } }), { states });
+  assert.deepEqual(interference(def), []);
 });
 
 test("每個凸塊都建得起來:細長圓柱轉到某些朝向時(凸包點集有重複的頂點)也不會悄悄少掉", () => {

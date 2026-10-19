@@ -98,6 +98,6 @@ export default {
   waivers: [
     { check: "interference", parts: ["spur", "rack"], reason: "簡化齒形:正齒輪與齒條的梯形齒齒側重疊 0.08(96 個取樣中 55 個)" },
     { check: "interference", parts: ["gears", "rack"], reason: "簡化齒形:齒輪與齒條的梯形齒齒側重疊 0.12" },
-    { check: "interference", parts: ["cylinder", "rack"], reason: "未修:齒條上標記桿的尖端埋在圓筒裡 0.67,螺旋線卻畫在筒面上;留給第 368 種的票(model-audit-fixes-3 票 31,#368-3)(model-audit-fixes-3 票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
+    { check: "interference", parts: ["cylinder", "rack"], reason: "未修:齒條上標記桿的尖端埋在圓筒裡 0.67,螺旋線卻畫在筒面上;留給第 368 種的票(model-audit-fixes-3 票 31,#368-3;票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
   ],
 };

@@ -1,4 +1,4 @@
-// 直立蒸汽引擎(第 326–331 種)共用:下方汽缸裡的活塞經活塞桿推動十字頭,十字頭經連桿帶動上方的曲柄(飛輪軸)。
+// 直立蒸汽引擎(第 326–346 種多張與第 421 種)共用:下方汽缸裡的活塞經活塞桿推動十字頭,十字頭經連桿帶動上方的曲柄(飛輪軸)。
 // 汽缸內的蒸汽以流體示意(ADR-0002):正在推活塞的那一側充滿蒸汽(填色),蒸汽沿進汽管流進那一側;
 // 另一側排汽。全是曲柄轉角的純函式。
 import { Y } from "./kit.js";
@@ -17,6 +17,7 @@ export function crankSlider(crank, r, rod, theta) {
 }
 
 const WALL = 0.12; // 汽缸壁與上下蓋的厚度
+const ROD_HOLE = 0.12; // 上蓋讓活塞桿穿過的孔的半徑
 const FLANGE = 0.06; // 座底端的凸緣伸出汽缸外壁多少
 
 /**
@@ -36,7 +37,7 @@ export function cylinderParts({ x, top, length, radius, seat, prefix = "" }) {
       kind: "lathe",
       axis: Y,
       center: [x, bottom, 0],
-      profile: [[0.12, length + WALL], [outer, length + WALL], ...base, [0, 0], [radius, 0], [radius, length], [0.12, length]],
+      profile: [[ROD_HOLE, length + WALL], [outer, length + WALL], ...base, [0, 0], [radius, 0], [radius, length], [ROD_HOLE, length]],
       ...backHalf(Y),
     },
     { id: `${prefix}steamUp`, kind: "fill", fluid: "steam", shape: "cylinder", size: [2 * radius - 0.04, length, 0], level: 0 },
@@ -87,8 +88,11 @@ export function steamPipe(cyl) {
   };
 }
 
-/** 十字頭上套住活塞桿頂端的轂:從活塞桿那一層(rodZ ± half)往前伸到橫桿的背面 barZ,讓活塞桿與十字頭接成一件 */
-export function rodHub(rodZ, half, barZ, radius) {
-  const from = rodZ - half - 0.02;
-  return { kind: "cylinder", radius, length: barZ + 0.02 - from, at: [0, 0, (from + barZ + 0.02) / 2] };
+const HUB_LAP = 0.02; // 轂兩端多伸出去、和活塞桿與橫桿重疊的長度
+
+/** 十字頭上套住活塞桿頂端的轂:從活塞桿那一層(rodZ ± rodHalf)往前伸到橫桿的背面 barBack,讓活塞桿與十字頭接成一件 */
+export function rodHub({ rodZ, rodHalf, barBack, radius }) {
+  const from = rodZ - rodHalf - HUB_LAP;
+  const to = barBack + HUB_LAP;
+  return { kind: "cylinder", radius, length: to - from, at: [0, 0, (from + to) / 2] };
 }

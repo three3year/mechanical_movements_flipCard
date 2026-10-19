@@ -73,7 +73,7 @@ export default {
         { kind: "cylinder", radius: 0.05, length: 0.3, at: [-ROLLER.x, 0, 0.2] },
         { kind: "cylinder", radius: 0.05, length: 0.3, at: [ROLLER.x, 0, 0.2] },
         { kind: "box", size: [0.08, PISTON_ROD, 0.08], at: [0, -PISTON_ROD / 2, 0] },
-        rodHub(0, 0.04, 0.15, 0.09), // 套住活塞桿頂端、往前接到橫桿背面的轂(推斷)
+        rodHub({ rodZ: 0, rodHalf: 0.04, barBack: 0.15, radius: 0.09 }), // 套住活塞桿頂端、往前接到橫桿背面的轂(推斷)
       ],
     },
     // 十字頭兩端的滾子:貼著導桿 A 滾

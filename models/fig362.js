@@ -64,6 +64,6 @@ export default {
     return { parts: { cylinder: { angle: theta }, upper: { position: [traverse(theta), 0, 0] } }, readouts: [] };
   },
   waivers: [
-    { check: "interference", parts: ["frame", "upper"], reason: "未修:鼓輪橫移到兩端時穿進立柱 0.18(左)/ 0.125(中):橫移 ±0.45,兩根立柱之間只容得下 ±0.30;留給第 362 種的票(model-audit-fixes-3 票 29,#362-2)(model-audit-fixes-3 票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
+    { check: "interference", parts: ["frame", "upper"], reason: "未修:鼓輪橫移到兩端時穿進立柱 0.18(左)/ 0.125(中):橫移 ±0.45,兩根立柱之間只容得下 ±0.30;留給第 362 種的票(model-audit-fixes-3 票 29,#362-2;票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
   ],
 };

@@ -237,16 +237,15 @@ export class Scene {
 
   /** 軸這一段(兩個端點之間,不是延長的直線)是不是整根穿過這個零件:這一段打到它的某一塊,而且兩個端點都露在它外面 */
   segmentPasses(axle, part) {
-    const length = axle.from.distanceTo(axle.to);
+    const length = axisOf(axle);
     if (length < 1e-9) return false;
-    tmpV.subVectors(axle.to, axle.from).divideScalar(length);
-    const ray = new RAPIER.Ray(axle.from, tmpV);
-    return part.pieces.some((piece) => piece.collider.castRay(ray, length, true) >= 0) && !part.pieces.some((piece) => piece.collider.containsPoint(axle.from) || piece.collider.containsPoint(axle.to));
+    const ray = new RAPIER.Ray(axle.from, tmpD);
+    return part.pieces.some((piece) => piece.collider.castRay(ray, length, true) >= 0) && endsOutside(axle, part);
   }
 
   /** 軸(導桿、螺桿)是不是整根穿過這個零件:軸線穿過它的某一塊,而且兩個端點都露在它外面 */
   passesThrough(axle, part) {
-    return part.pieces.some((piece) => this.lineHits(axle, piece)) && !part.pieces.some((piece) => piece.collider.containsPoint(axle.from) || piece.collider.containsPoint(axle.to));
+    return part.pieces.some((piece) => this.lineHits(axle, piece)) && endsOutside(axle, part);
   }
 
   /**
@@ -257,9 +256,9 @@ export class Scene {
    */
   surrounds(piece, part) {
     const { axle } = piece;
-    const length = axle.from.distanceTo(axle.to);
+    const length = axisOf(axle);
     if (length < 1e-9) return true;
-    const dir = tmpD.subVectors(axle.to, axle.from).divideScalar(length);
+    const dir = tmpD;
     tmpU.set(1, 0, 0);
     if (Math.abs(dir.x) > 0.9) tmpU.set(0, 1, 0);
     tmpU.addScaledVector(dir, -dir.dot(tmpU)).normalize();
@@ -282,8 +281,7 @@ export class Scene {
       let lo = Infinity;
       let hi = -Infinity;
       for (let k = 0; k < 8; k++) {
-        tmpO.set(q.box[k & 1 ? 3 : 0], q.box[k & 2 ? 4 : 1], q.box[k & 4 ? 5 : 2]).sub(axle.from);
-        const t = tmpO.dot(dir);
+        const t = corner(q.box, k, tmpO).sub(axle.from).dot(dir);
         lo = Math.min(lo, t);
         hi = Math.max(hi, t);
       }
@@ -301,16 +299,16 @@ export class Scene {
    */
   threads(q, piece) {
     const { axle } = piece;
-    const length = axle.from.distanceTo(axle.to);
+    const length = axisOf(axle);
     if (length < 1e-9) return false;
-    const dir = tmpD.subVectors(axle.to, axle.from).divideScalar(length);
+    const dir = tmpD;
     let lo = Infinity;
     let hi = -Infinity;
     // q 的頂點(實體零件的凸塊);線狀零件的一段沒有頂點,取外框的八個角
     const n = q.hull ? q.hull.length / 3 : 8;
     for (let k = 0; k < n; k++) {
       if (q.hull) tmpO.set(q.hull[k * 3], q.hull[k * 3 + 1], q.hull[k * 3 + 2]).applyMatrix4(q.matrix);
-      else tmpO.set(q.box[k & 1 ? 3 : 0], q.box[k & 2 ? 4 : 1], q.box[k & 4 ? 5 : 2]);
+      else corner(q.box, k, tmpO);
       tmpO.sub(axle.from);
       const t = tmpO.dot(dir);
       if (tmpO.addScaledVector(dir, -t).length() > axle.radius) return false;
@@ -335,6 +333,19 @@ function nudged(a, b, prediction) {
   b.setTranslation(t);
   return contact ? contact.distance : 0;
 }
+
+// 軸 axle 的長度,單位方向寫進 tmpD
+function axisOf(axle) {
+  const length = axle.from.distanceTo(axle.to);
+  if (length >= 1e-9) tmpD.subVectors(axle.to, axle.from).divideScalar(length);
+  return length;
+}
+
+// 軸的兩個端點都露在零件外面
+const endsOutside = (axle, part) => !part.pieces.some((piece) => piece.collider.containsPoint(axle.from) || piece.collider.containsPoint(axle.to));
+
+// 外框的第 k 個角(k 的三個位元選各軸的下界或上界)
+const corner = (b, k, out) => out.set(b[k & 1 ? 3 : 0], b[k & 2 ? 4 : 1], b[k & 4 ? 5 : 2]);
 
 // 軸對齊的外框 [minX, minY, minZ, maxX, maxY, maxZ]
 const inBox = (b, p) => p.x >= b[0] && p.x <= b[3] && p.y >= b[1] && p.y <= b[4] && p.z >= b[2] && p.z <= b[5];
