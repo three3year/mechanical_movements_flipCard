@@ -1,6 +1,6 @@
 // 測試共用:數值比較、零件查找、齒輪齒形不重疊的檢查
 import assert from "node:assert/strict";
-import { gearProfile } from "../models/shapes.js";
+import { gearProfile, circle, rect } from "../models/shapes.js";
 import { planeBasis, add, scale, rot2 } from "../models/kit.js";
 import { pointInPolygon, penetrationDepth, circlePolygon, polygonsOverlap, edgeDistance } from "../models/contact.js";
 
@@ -173,4 +173,45 @@ export function assertWeightDrive(def, { drum, wheel, period, every, dir = drum.
   assert.ok(ys[0].y - ys.at(-1).y > 0.3, "上鍊之間重錘降下一段看得出來的距離");
   assert.ok(every >= 2 * period, "至少擺兩個來回才上鍊一次");
   close(def.pose(every).parts.weight.position[1], ys[0].y, "重錘降到底時捲回最高處(上鍊)", 1e-6);
+}
+
+/** 群組零件的一塊(方塊、沿座標軸的圓柱、沿 z 的板件;不轉)的外框,世界座標(origin 是零件中心):{ lo, hi } */
+export function pieceBox(q, origin = [0, 0, 0]) {
+  const at = (q.at ?? [0, 0, 0]).map((v, k) => v + origin[k]);
+  if (q.kind === "plate") {
+    const xs = q.shape.outline.map((v) => v[0]);
+    const ys = q.shape.outline.map((v) => v[1]);
+    const h = (q.thickness ?? 0.2) / 2;
+    return { lo: [at[0] + Math.min(...xs), at[1] + Math.min(...ys), at[2] - h], hi: [at[0] + Math.max(...xs), at[1] + Math.max(...ys), at[2] + h] };
+  }
+  const axis = q.axis ?? [0, 0, 1];
+  const h = q.kind === "box" ? q.size.map((v) => v / 2) : axis.map((a) => (Math.abs(a) > 0.5 ? q.length / 2 : q.radius));
+  return { lo: at.map((v, k) => v - h[k]), hi: at.map((v, k) => v + h[k]) };
+}
+
+/**
+ * 群組零件 p 的各塊連成一件:兩塊的深度範圍相接、平面外形相接就算相連(板件用輪廓、方塊用矩形、沿 z 的圓柱用圓,
+ * 沿 x、y 的圓柱用外框);從第一塊走得到每一塊
+ */
+export function assertOnePiece(p, what) {
+  const items = p.pieces.map((q) => {
+    assert.ok(["plate", "box", "cylinder"].includes(q.kind), `只認板件、方塊與圓柱(${q.kind})`);
+    assert.ok(!q.angle && !q.rotation && (!q.axis || (q.kind === "cylinder" && q.axis.filter((a) => a !== 0).length === 1)), "方塊、板件沿 z、不轉;圓柱沿座標軸");
+    const { lo, hi } = pieceBox(q);
+    const [x, y] = q.at ?? [0, 0];
+    let poly;
+    if (q.kind === "plate") poly = q.shape.outline.map(([u, v]) => [u + x, v + y]);
+    else if (q.kind === "cylinder" && !q.axis?.[0] && !q.axis?.[1]) poly = circle(q.radius, x, y);
+    else poly = rect(hi[0] - lo[0], hi[1] - lo[1], (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2);
+    return { poly, z: [lo[2], hi[2]] };
+  });
+  const touch = (a, b) => a.z[0] <= b.z[1] + 1e-9 && b.z[0] <= a.z[1] + 1e-9 && polyGap(a.poly, b.poly) < 1e-6;
+  const seen = new Set([0]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    items.forEach((b, i) => {
+      if (!seen.has(i) && [...seen].some((j) => touch(items[j], b))) (seen.add(i), (grew = true));
+    });
+  }
+  assert.deepEqual(items.map((_, i) => i).filter((i) => !seen.has(i)), [], what);
 }

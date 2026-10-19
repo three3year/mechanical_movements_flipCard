@@ -1,8 +1,8 @@
 // 第十六章「雜項裝置」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
-import { deg, quatMul, quatRotate } from "../models/kit.js";
+import { close, sweep, part, pieceBox, plateLayers, guidedBetween, assertOnePiece } from "./helpers.js";
+import { deg, quatMul, quatRotate, rot2 } from "../models/kit.js";
 
 import * as m350 from "../models/fig350.js";
 import * as m351 from "../models/fig351.js";
@@ -58,10 +58,10 @@ import * as m399 from "../models/fig399.js";
 import * as m400 from "../models/fig400.js";
 import * as m401 from "../models/fig401.js";
 import * as m402 from "../models/fig402.js";
-import { penetrationDepth, polygonsOverlap } from "../models/contact.js";
+import { penetrationDepth, polygonsOverlap, pointInPolygon, circlePolygon, edgeDistance, placeOutline } from "../models/contact.js";
 
 test("第 350 種:上溝槽的銷靜止、下溝槽的銷沿水平線移動,槓桿把橫移運動傳給導件 a、a 內的桿", () => {
-  const xs = sweep(0.6, 20, -1.6).map((x) => m350.traverse(x).rod);
+  const xs = sweep(m350.RANGE[1], 20, m350.RANGE[0]).map((x) => m350.traverse(x).rod);
   assert.ok(xs.every((x, i) => i === 0 || x > xs[i - 1]), "下銷往右,桿也往右");
   assert.ok(Math.max(...xs) - Math.min(...xs) > 1, "桿橫移");
 });
@@ -94,11 +94,14 @@ test("第 351 種:搗錘:缺齒小齒輪把桿抬起,直到齒脫離齒條,讓�
 test("第 352 種:中式絞盤的另一種配置:轉一圈,重物上升兩段圓周差的一半", () => {
   const [r1, r2] = m352.radii;
   close(m352.pulleyY(2 * Math.PI) - m352.pulleyY(0), Math.PI * (r1 - r2), "每圈上升 π(R₁ − R₂)");
-  // 繩不打滑:左導輪的表面速度是大段捲進的速度、右導輪是小段放出的速度,吊重滑輪是兩者的平均(一邊升一邊轉)
+  // 繩不打滑:左導輪的表面速度是大段捲進的速度、右導輪是小段放出的速度(繩心繞鼓的半徑 × ω),
+  // 吊重滑輪是兩者的平均(一邊升一邊轉)
   const [a, b] = [m352.sheaves(1), m352.sheaves(2)];
-  close((b.left - a.left) * 0.17, r1, "左導輪的表面速度 = R₁·ω", 1e-9);
-  close((b.right - a.right) * 0.17, r2, "右導輪的表面速度 = R₂·ω", 1e-9);
-  close(Math.abs(b.pulley - a.pulley) * 0.32, (r1 + r2) / 2, "吊重滑輪的表面速度 = 兩者的平均", 1e-9);
+  const [w1, w2] = m352.windRadii;
+  close(w1 - w2, r1 - r2, "繩心半徑的差就是兩段半徑的差");
+  close((b.left - a.left) * part(m352.default, "guideL").radius, w1, "左導輪的表面速度 = 大段捲進的速度", 1e-9);
+  close((b.right - a.right) * part(m352.default, "guideR").radius, w2, "右導輪的表面速度 = 小段放出的速度", 1e-9);
+  close(Math.abs(b.pulley - a.pulley) * part(m352.default, "pulley").radius, (w1 + w2) / 2, "吊重滑輪的表面速度 = 兩者的平均", 1e-9);
 });
 
 test("第 353 種:跳動錘的變形:推板每經過一次把錘頭抬起,滑脫後落下", () => {
@@ -118,6 +121,263 @@ test("第 354 種:十字頭內的無端溝槽讓十字頭以均勻的速度往�
   const moving = v.filter((d) => d > 0);
   assert.ok(Math.max(...moving) - Math.min(...moving) < 1e-6, "速度大小處處相同(勻速)");
   close(Math.max(...ys) - Math.min(...ys), 3.2, "行程 = 曲柄直徑", 1e-9);
+});
+
+// ── 第 350–354 種(model-audit-fixes-3 票 26) ──
+
+/** 板件零件在姿勢下:世界座標的點換到板的局部座標(板繞 z 轉) */
+const toLocal = (pose, [x, y]) => rot2([x - pose.position[0], y - pose.position[1]], -(pose.angle ?? 0));
+/** 圓(圓心 c、半徑 r)整個在多邊形 hole 裡(孔和銷同徑時,孔的多邊形邊在圓內一點點,留 0.002) */
+const circleInside = (c, r, hole) => circlePolygon(c, r - 0.002, 24).every((q) => pointInPolygon(q, hole));
+/** 零件裡沿 z 的圓柱(銷、軸;含零件本體是圓柱的),換成世界座標:{ c: [x, y], r, z0, z1 } */
+const zPins = (p, origin = [0, 0, 0]) =>
+  [...(p.kind === "cylinder" && !p.axis ? [{ ...p, at: [0, 0, 0] }] : []), ...(p.pieces ?? [])]
+    .filter((q) => q.kind === "cylinder" && !q.axis)
+    .map((q) => {
+      const at = (q.at ?? [0, 0, 0]).map((v, k) => v + origin[k]);
+      return { c: [at[0], at[1]], r: q.radius, z0: at[2] - q.length / 2, z1: at[2] + q.length / 2 };
+    });
+
+test("第 350 種:槓桿中段的轂鉸在桿上,上下兩道長孔各套著一個銷(原圖與 507movements 的動畫)", () => {
+  const def = m350.default;
+  const lever = part(def, "lever");
+  const holes = lever.shape.holes;
+  const t = lever.thickness / 2;
+  for (const x of sweep(def.driver.range[1], 40, def.driver.range[0])) {
+    const pose = def.pose(x).parts;
+    const L = pose.lever;
+    const [z0, z1] = [L.position[2] - t, L.position[2] + t];
+    const through = (pins) => pins.filter((p) => p.z0 <= z0 + 1e-9 && p.z1 >= z1 - 1e-9);
+    // 上溝槽裡靜止的銷(機架上)、下溝槽裡的動銷(主動件)、桿上的樞銷(轂)
+    const fixed = through(zPins(part(def, "frame")));
+    const low = through(zPins(part(def, "pinLow"), pose.pinLow.position));
+    const pivot = through(zPins(part(def, "rod"), pose.rod.position));
+    assert.equal(fixed.length, 1, "上溝槽裡有一根固定在機架上的銷");
+    assert.equal(low.length, 1, "下溝槽裡有一根動銷");
+    assert.equal(pivot.length, 1, "桿上有一根穿過槓桿的樞銷");
+    const where = (pin) => {
+      const c = toLocal(L, pin.c);
+      return { c, hole: holes.findIndex((h) => circleInside(c, pin.r, h)) };
+    };
+    const [u, d, h] = [where(fixed[0]), where(low[0]), where(pivot[0])];
+    assert.ok(u.hole >= 0 && d.hole >= 0 && h.hole >= 0, `x ${x.toFixed(2)}:三根銷都在槓桿的孔裡(上 ${u.hole}、下 ${d.hole}、轂 ${h.hole})`);
+    assert.equal(new Set([u.hole, d.hole, h.hole]).size, 3, "三根銷各在自己的孔裡");
+    close(Math.hypot(...h.c), 0, "樞銷在槓桿的轂上,不沿槓桿滑", 1e-9);
+    assert.ok(u.c[0] * d.c[0] < 0, "轂在兩道長孔之間(槓桿中段)");
+    assert.ok(Math.abs(u.c[1]) < 1e-9 && Math.abs(d.c[1]) < 1e-9, "兩個銷都在長孔的中心線上");
+  }
+});
+
+test("第 350 種:槓桿的擺角照原圖(左右各 36° 以上),兩個銷都沿長孔滑,桿全程留在導件 a、a 裡", () => {
+  const def = m350.default;
+  const lever = part(def, "lever");
+  const [a, b] = def.driver.range;
+  const topPin = zPins(part(def, "frame")).find((q) => pointInPolygon(toLocal(def.pose(0).parts.lever, q.c), lever.shape.outline)).c;
+  const tilt = (x) => {
+    const low = def.pose(x).parts.pinLow.position;
+    return Math.atan2(low[0] - topPin[0], topPin[1] - low[1]); // 從鉛直往右為正
+  };
+  const [left, right] = [(-tilt(a) * 180) / Math.PI, (tilt(b) * 180) / Math.PI];
+  assert.ok(left >= 36 && right >= 36, `擺角左 ${left.toFixed(1)}°、右 ${right.toFixed(1)}°(原圖左 46°、右 36°,動畫 ±45°)`);
+  // 兩個銷在長孔裡滑:槓桿局部座標上的位置在行程裡有變
+  const along = (x, pin) => toLocal(def.pose(x).parts.lever, pin)[0];
+  assert.ok(Math.abs(along(a, topPin) - along(0, topPin)) > 0.15, "上面的銷沿長孔滑");
+  const lowAt = (x) => def.pose(x).parts.pinLow.position;
+  assert.ok(Math.abs(along(a, lowAt(a)) - along(0, lowAt(0))) > 0.3, "下面的銷沿長孔滑");
+  // 桿全程穿過兩個導件
+  const rod = part(def, "rod").pieces.find((q) => q.kind === "cylinder" && q.axis?.[0] === 1);
+  const guides = ["labelA1", "labelA2"].map((id) => {
+    const c = part(def, id).center;
+    const box = part(def, "frame").pieces.find((q) => q.kind === "box" && Math.abs(q.at[0] - c[0]) < 1e-9 && Math.abs(q.at[1] - c[1]) < 1e-9);
+    return [box.at[0] - box.size[0] / 2, box.at[0] + box.size[0] / 2];
+  });
+  for (const x of sweep(b, 40, a)) {
+    const cx = def.pose(x).parts.rod.position[0] + (rod.at?.[0] ?? 0);
+    for (const [g0, g1] of guides) assert.ok(cx - rod.length / 2 <= g0 && cx + rod.length / 2 >= g1, `x ${x.toFixed(2)}:桿穿過導件 ${g0.toFixed(2)}..${g1.toFixed(2)}`);
+  }
+});
+
+test("第 351 種:導座在整個行程都包住桿身的左、前、後三面(右邊讓齒條通過)", () => {
+  const def = m351.default;
+  const body = part(def, "stamp").pieces.reduce((a, q) => (q.kind === "box" && q.size[1] > (a?.size[1] ?? 0) ? q : a), null);
+  const boxes = part(def, "guides").pieces.filter((q) => q.kind === "box").map((q) => pieceBox(q, part(def, "guides").center ?? [0, 0, 0]));
+  const overlap = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0);
+  const names = { left: "左", front: "前", back: "後" };
+  for (const th of sweep(-2 * Math.PI, 96)) {
+    const { lo, hi } = pieceBox(body, def.pose(th).parts.stamp.position);
+    const wraps = (face) =>
+      boxes.some((g) => {
+        const ys = overlap(lo[1], hi[1], g.lo[1], g.hi[1]) > 0.3;
+        if (face === "left") return Math.abs(g.hi[0] - lo[0]) < 0.005 && ys && g.lo[2] <= lo[2] + 1e-9 && g.hi[2] >= hi[2] - 1e-9;
+        const xs = g.lo[0] <= lo[0] + 1e-9 && g.hi[0] >= hi[0] - 0.05;
+        if (face === "front") return Math.abs(g.lo[2] - hi[2]) < 0.005 && ys && xs;
+        return Math.abs(g.hi[2] - lo[2]) < 0.005 && ys && xs;
+      });
+    for (const face of Object.keys(names)) assert.ok(wraps(face), `轉角 ${th.toFixed(2)}:導座貼著桿身的${names[face]}面`);
+  }
+});
+
+test("第 351 種:垂直撞擊式落下——搗錘落回停點時,衝頭底面正好落在臼裡的砧面上", () => {
+  const def = m351.default;
+  const head = part(def, "stamp").pieces.find((q) => q.kind === "lathe");
+  const ths = sweep(-2 * Math.PI, 720);
+  const low = Math.min(...ths.map((v) => m351.stamp(v).lift));
+  const rest = ths.find((th) => !m351.stamp(th).engaged && m351.stamp(th).lift === low);
+  const pos = def.pose(rest).parts.stamp.position;
+  const bottom = pos[1] + Math.min(...head.profile.map(([, y]) => y));
+  const x = pos[0] + head.at[0];
+  const posed = new Set(Object.keys(def.pose(0).parts));
+  const under = def.parts
+    .filter((p) => !posed.has(p.id) && p.pieces)
+    .flatMap((p) => p.pieces.filter((q) => q.kind === "box").map((q) => pieceBox(q, p.center ?? [0, 0, 0])))
+    .filter((q) => q.lo[0] <= x && x <= q.hi[0] && q.lo[2] <= 0 && 0 <= q.hi[2] && q.hi[1] <= bottom + 1e-6);
+  assert.ok(under.length, "衝頭下方有砧(臼底)");
+  close(Math.max(...under.map((q) => q.hi[1])), bottom, "衝頭落在砧面上", 0.005);
+});
+
+/** 第 352 種的繩:各點在不在鼓上(哪一段)、繞軸的角;兩段上各捲著幾圈;繩長 */
+function ropeOnDrum352(def, theta) {
+  const drum = part(def, "drum");
+  const c = drum.center;
+  const segs = drum.pieces.filter((q) => q.kind === "cylinder" && q.radius > 0.2).map((q) => ({ r: q.radius, x0: c[0] + q.at[2] - q.length / 2, x1: c[0] + q.at[2] + q.length / 2 }));
+  const pts = def.pose(theta).paths.rope.points;
+  const info = pts.map((p) => {
+    const [y, z] = [p[1] - c[1], p[2] - c[2]];
+    const r = Math.hypot(y, z);
+    const seg = segs.findIndex((s) => p[0] >= s.x0 - 1e-9 && p[0] <= s.x1 + 1e-9 && r >= s.r - 1e-9 && r <= s.r + 0.06);
+    return { p, a: Math.atan2(z, y), seg };
+  });
+  const turns = segs.map((_, k) => {
+    let sum = 0;
+    for (let i = 1; i < info.length; i++) if (info[i].seg === k && info[i - 1].seg === k) sum += Math.atan2(Math.sin(info[i].a - info[i - 1].a), Math.cos(info[i].a - info[i - 1].a));
+    return Math.abs(sum) / (2 * Math.PI);
+  });
+  const length = pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1], p[2] - pts[i][2]), 0);
+  return { info, turns, length, segs };
+}
+
+test("第 352 種:繩照第 129 種捲在鼓上——繩長不變、大段捲進一圈小段就放出一圈、繩頭跟著鼓轉、繩從鼓的切線離開", () => {
+  const def = m352.default;
+  const [a, b] = def.driver.range;
+  const c = part(def, "drum").center;
+  const first = ropeOnDrum352(def, a);
+  assert.equal(first.segs.length, 2, "鼓分大小兩段");
+  const big = first.segs[0].r > first.segs[1].r ? 0 : 1;
+  for (const th of sweep(b, 24, a)) {
+    const now = ropeOnDrum352(def, th);
+    close(now.length, first.length, `轉角 ${th.toFixed(2)}:繩長不變`, 0.01);
+    close(now.turns[big] - first.turns[big], (th - a) / (2 * Math.PI), "大段每轉一圈多捲一圈", 0.02);
+    close(now.turns[1 - big] - first.turns[1 - big], -(th - a) / (2 * Math.PI), "小段每轉一圈放出一圈", 0.02);
+    assert.ok(now.turns.every((n) => n >= 0.9), "兩段上始終捲著繩");
+    // 繩的兩頭固定在鼓上:轉回鼓的局部座標後位置不變
+    for (const [p, p0] of [[now.info[0].p, first.info[0].p], [now.info.at(-1).p, first.info.at(-1).p]]) {
+      const back = rot2([p[1] - c[1], p[2] - c[2]], -(th - a));
+      close(Math.hypot(back[0] - (p0[1] - c[1]), back[1] - (p0[2] - c[2])), 0, "繩頭跟著鼓轉", 1e-6);
+      close(p[0], p0[0], "繩頭不沿軸移動", 1e-6);
+    }
+    // 繩離開鼓的那一點:往外的一段和半徑垂直(切線離開,不是從鼓頂沿半徑離開)
+    let leaves = 0;
+    for (let i = 0; i < now.info.length - 1; i++) {
+      const [u, v] = [now.info[i], now.info[i + 1]];
+      if (u.seg >= 0 === v.seg >= 0) continue;
+      leaves++;
+      const [on, off] = u.seg >= 0 ? [u, v] : [v, u];
+      const d = [off.p[1] - on.p[1], off.p[2] - on.p[2]];
+      const radial = [on.p[1] - c[1], on.p[2] - c[2]];
+      const cos = (d[0] * radial[0] + d[1] * radial[1]) / (Math.hypot(...d) * Math.hypot(...radial));
+      assert.ok(Math.abs(cos) < 0.05, `轉角 ${th.toFixed(2)}:繩從鼓的切線離開(cos ${cos.toFixed(3)})`);
+    }
+    assert.equal(leaves, 2, "繩在兩段上各離開鼓一次");
+  }
+});
+
+test("第 352 種:鼓軸穿過兩根架腳、兩端伸出腳外;導輪掛在架腳中段(原圖約在架頂到鼓之間三成處)", () => {
+  const def = m352.default;
+  const drum = part(def, "drum");
+  const axle = drum.pieces.reduce((a, q) => (q.kind === "cylinder" && q.radius < (a?.radius ?? 1) ? q : a), null);
+  const [x0, x1] = [drum.center[0] + (axle.at?.[2] ?? 0) - axle.length / 2, drum.center[0] + (axle.at?.[2] ?? 0) + axle.length / 2];
+  const frame = part(def, "frame");
+  const legs = frame.pieces.filter((q) => q.kind === "box" && q.angle);
+  assert.equal(legs.length, 2, "A 形架的兩根腳");
+  const inBox = (q, p) => {
+    const d = p.map((v, k) => v - q.at[k]);
+    const [u, w] = rot2([d[0], d[1]], -q.angle);
+    return Math.abs(u) <= q.size[0] / 2 && Math.abs(w) <= q.size[1] / 2 && Math.abs(d[2]) <= q.size[2] / 2;
+  };
+  for (const leg of legs) {
+    const xs = sweep(4, 1600, -4).filter((x) => inBox(leg, [x, drum.center[1], drum.center[2]]));
+    assert.ok(xs.length, "鼓軸的軸線穿過架腳");
+    const [l0, l1] = [Math.min(...xs), Math.max(...xs)];
+    assert.ok(x0 < l0 - 0.02 && x1 > l1 + 0.02, `鼓軸(${x0.toFixed(2)}..${x1.toFixed(2)})整根穿過架腳(${l0.toFixed(2)}..${l1.toFixed(2)})、兩端伸出`);
+  }
+  const top = Math.max(...frame.pieces.filter((q) => q.kind === "box" && !q.angle).map((q) => pieceBox(q).hi[1]));
+  for (const id of ["guideL", "guideR"]) {
+    const f = (top - part(def, id).center[1]) / (top - drum.center[1]);
+    assert.ok(f > 0.2 && f < 0.45, `${id} 掛在架腳中段(離架頂 ${(f * 100).toFixed(0)}%)`);
+  }
+});
+
+test("第 353 種:推板輪的軸往後穿過支架、錘柄的軸承環坐在支柱頂上", () => {
+  const def = m353.default;
+  const wheel = part(def, "wheel");
+  const frame = part(def, "frame");
+  const bracket = frame.pieces.find((q) => q.kind === "plate" && pointInPolygon(wheel.center, q.shape.outline));
+  assert.ok(bracket, "推板輪後面有支架");
+  const b0 = bracket.at[2] - bracket.thickness / 2;
+  const axle = zPins(wheel, wheel.center).find((q) => Math.hypot(q.c[0] - wheel.center[0], q.c[1] - wheel.center[1]) < 1e-9);
+  assert.ok(axle && axle.z0 <= b0 + 1e-9 && axle.z1 >= wheel.center[2], "推板輪的軸從輪一路穿過支架");
+  const ring = frame.pieces.find((q) => q.kind === "cylinder" && q.inner);
+  const column = frame.pieces.find((q) => q.kind === "box" && Math.abs(q.at[0] - ring.at[0]) < 1e-9 && q.at[1] < ring.at[1]);
+  assertOnePiece({ pieces: [column, ring] }, "軸承環坐在支柱頂上");
+});
+
+test("第 353 種:錘柄為第一類槓桿——支點在錘頭與推板壓著的尾端之間,推板把尾端往下壓、錘頭就抬起", () => {
+  const def = m353.default;
+  const hammer = part(def, "hammer");
+  const wheel = part(def, "wheel");
+  const handle = hammer.pieces[0].shape.outline;
+  const head = hammer.pieces.find((q) => q.kind === "plate" && q.thickness > 0.5).shape.outline;
+  const mid = head.reduce((s, p) => [s[0] + p[0] / head.length, s[1] + p[1] / head.length], [0, 0]);
+  const [px, py] = hammer.center;
+  const headAt = (angle) => placeOutline([mid], hammer.center, angle)[0];
+  let pressed = 0;
+  for (const b of sweep((2 * Math.PI) / 6, 120)) {
+    const pose = def.pose(b).parts;
+    const placed = placeOutline(handle, hammer.center, pose.hammer.angle);
+    const star = placeOutline(wheel.shape.outline, wheel.center, pose.wheel.angle);
+    const gap = (p) => (pointInPolygon(p, star) ? 0 : edgeDistance(p, star));
+    const contact = placed.reduce((q, p) => (gap(p) < gap(q) ? p : q));
+    if (gap(contact) > 0.01 || m353.hammer(b) < 0.05) continue; // 推板沒壓著(落下中或停在砧上)
+    pressed++;
+    const h = headAt(pose.hammer.angle);
+    assert.ok((contact[0] - px) * (h[0] - px) + (contact[1] - py) * (h[1] - py) < 0, "支點在錘頭與尾端的接觸點之間");
+    assert.ok(contact[1] < py + 0.2 && h[1] > headAt(0)[1], "推板壓著尾端時,錘頭比落在砧上時高");
+  }
+  assert.ok(pressed > 5, "推板壓著尾端把錘頭抬起");
+});
+
+test("第 354 種:十字頭是開槽的板,溝槽比曲柄銷寬,曲柄銷整圈都在溝槽裡、不碰槽壁", () => {
+  const def = m354.default;
+  const pin = part(def, "crank").pieces.find((q) => q.kind === "cylinder" && q.accent);
+  const layers = plateLayers(part(def, "crosshead"));
+  const z = pin.at[2] + pin.length / 2 - 0.02; // 銷的前端
+  const solids = layers.filter((l) => l.z0 <= z && z <= l.z1).map((l) => l.solid);
+  assert.ok(solids.length, "銷的前端伸到十字頭有溝槽的那一層板");
+  for (const th of sweep(2 * Math.PI, 360)) {
+    const pose = def.pose(th).parts;
+    const w = rot2([pin.at[0], pin.at[1]], pose.crank.angle);
+    const c = [w[0] - pose.crosshead.position[0], w[1] - pose.crosshead.position[1]];
+    const g = guidedBetween(c, pin.radius, solids);
+    const d = (th * 180) / Math.PI;
+    assert.ok(g.open && g.depth < 0.003, `轉角 ${d.toFixed(0)}°:銷在溝裡、不穿進槽壁(穿入 ${g.depth.toFixed(3)})`);
+    if (![90, 270].some((e) => Math.abs(d - e) < 15)) assert.ok(g.sides, `轉角 ${d.toFixed(0)}°:溝的兩側都貼著銷`);
+  }
+});
+
+test("第 354 種:曲柄臂貼在曲柄盤面上、銷立在臂上;十字頭的板與上下兩根桿連成一件", () => {
+  const def = m354.default;
+  assertOnePiece(part(def, "crank"), "曲柄的盤、臂、銷與軸連成一件");
+  assertOnePiece(part(def, "crosshead"), "十字頭的板、島、壓條與上下桿連成一件");
 });
 
 test("第 355 種:陀螺儀:碟片高速旋轉時不掉落,而是繞鉛直軸轉(進動)", () => {

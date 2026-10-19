@@ -1,12 +1,13 @@
 // 第 353 種:第 72 種傾動(跳動)錘的變形。錘柄是第一類槓桿:支點在錘柄中段的軸套,錘頭在左端、
 // 右端的尾巴伸到星形推板輪旁;推板輪每轉過一片推板,就把錘柄尾端往下壓,錘頭隨之抬起,
-// 推板一滑脫,錘頭就落回砧上(第 74 種則是第三類槓桿)。主動件是推板輪。
+// 推板一滑脫,錘頭就落回砧上(第 72 種則是第三類槓桿)。主動件是推板輪。
 // 轉向以原文為準(維護者決定):第一類槓桿要把尾端往下壓,尾端在輪的左側,所以輪逆時針轉
 // (原圖箭頭畫的是順時針,照原圖的配置那一側的推板是往上走的,壓不下尾端)。
-// 抬起的角度由推板與錘柄尾端的接觸算,滑脫後錘頭憑自重加速落回砧上。推斷:推板數(依原圖六片)。
+// 抬起的角度由推板與錘柄尾端的接觸算,滑脫後錘頭憑自重加速落回砧上。推斷:推板數(依原圖六片);
+// 推板輪的軸往後穿過支架(支架頂端圓、包住軸,原圖的立柱在輪前,這裡放在輪後讓推板看得到)。
 import { TAU, deg, polar } from "./kit.js";
 import { placeOutline, swingUntilContact, withFall } from "./contact.js";
-import { shape, circle, rect, thickLine } from "./shapes.js";
+import { shape, circle, rect, thickLine, arcPoints, zCylinder } from "./shapes.js";
 
 const WHEEL = [2.5, 0.05, 0];
 const N = 6;
@@ -36,15 +37,15 @@ export default {
       kind: "group",
       pieces: [
         // 推板輪的支架與砧(砧面就在錘頭落下的位置:動力重演時錘頭落在砧上停住)
-        { kind: "plate", shape: shape([[WHEEL[0] - 0.9, -2.4], [WHEEL[0] + 0.9, -2.4], [WHEEL[0] + 0.15, WHEEL[1]], [WHEEL[0] - 0.15, WHEEL[1]]]), thickness: 0.2, at: [0, 0, -0.35] },
-        { kind: "box", size: [3.4, 0.2, 0.6], at: [WHEEL[0] - 0.55, -2.45, -0.2] },
+        { kind: "plate", shape: shape([[WHEEL[0] - 0.9, -2.4], [WHEEL[0] + 0.9, -2.4], ...arcPoints(0.25, 0, Math.PI, WHEEL[0], WHEEL[1])]), thickness: 0.2, at: [0, 0, -0.35] },
+        { kind: "box", size: [6.85, 0.2, 0.6], at: [0.225, -2.45, -0.2] }, // 底座:推板輪的支架、支柱與砧都立在上面
         { kind: "plate", shape: shape([[-3.2, -2.45], [-1.6, -2.45], [-1.75, -0.4], [-1.6, -0.17], [-3.2, -0.17], [-3.05, -0.4]]), thickness: 0.8 },
-        // 支柱在錘柄的後面,立在底座上(原本懸在半空);頂上的軸承環套著錘柄的軸
-        { kind: "box", size: [0.35, 2.05, 0.4], at: [PIVOT[0], -1.375, -0.42] },
+        // 支柱在錘柄的後面,立在底座上;頂端伸進軸承環的下緣,環坐在柱頂、套著錘柄的軸
+        { kind: "box", size: [0.35, 2.15, 0.4], at: [PIVOT[0], -1.325, -0.42] },
         { kind: "cylinder", radius: 0.3, inner: 0.13, length: 0.3, at: [PIVOT[0], PIVOT[1], -0.42] },
       ],
     },
-    { id: "wheel", kind: "plate", center: WHEEL, shape: star, thickness: 0.2, hub: 0.25, mark: [0.6, 0], markSize: 0.07, spin: 0.85 },
+    { id: "wheel", kind: "plate", center: WHEEL, shape: star, thickness: 0.2, hub: 0.25, mark: [0.6, 0], markSize: 0.07, spin: 0.85, pieces: [zCylinder(-0.45, 0.16, 0.12)] }, // 軸往後穿過支架
     {
       id: "hammer",
       kind: "group",

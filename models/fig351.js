@@ -4,7 +4,7 @@
 // 它還托在上一個齒條齒的下面,一邊往上轉一邊退出齒條,桿再被托高一點(近似仍照節圓滾動),
 // 直到齒尖退出齒條的齒頂線(EXIT,由齒頂半徑與齒條齒頂線算)才滑脫;然後桿加速落到底
 // (jumps.falling,約 0.5 秒),等缺齒段轉過去、有齒段再進來把它抬起。
-// 導座與小齒輪的軸裝在後面的背板上(推斷,原圖沒畫機架)。
+// 導套與小齒輪的軸裝在後面的背板上,衝頭落進底下的臼裡(推斷,原圖沒畫機架與臼)。
 import { TAU, deg } from "./kit.js";
 import { circularPitch } from "./gears.js";
 import { gearSize } from "./shapes.js";
@@ -35,6 +35,10 @@ export const RELEASE = LEN - TOOTH / 2 + EXIT; // 最後一齒的齒尖退出齒
 const REST = ((((PITCH / 2 - EXIT * R) % PITCH) + PITCH) % PITCH) - PITCH;
 export const TOP = REST + (RELEASE - U_ENTRY) * R; // 落下前的高度
 const BASE = -1.5 * PITCH;
+const BODY = { x0: RACK_X - 0.62, x1: RACK_X - 0.22, z: 0.125 }; // 桿身(寬 0.4、厚 0.25)在世界座標的左右緣與半厚
+const HEAD_X = RACK_X - 0.42; // 衝頭的中心線
+const ANVIL = REST + BASE - 3.25; // 停點時衝頭的底面:臼底的砧面
+const GROUND = ANVIL - 0.25;
 
 // 小齒輪順時針轉(轉角為負),接觸點的局部角 = CONTACT − theta 隨之增加;有齒段從 START 起開始經過接觸點
 const theta0 = START - CONTACT; // 有齒段起點剛到接觸點時的轉角(順時針計)
@@ -61,7 +65,7 @@ export default {
       width: 0.25,
       bore: 0.1,
       toothed: TEETH,
-      pieces: [{ kind: "cylinder", radius: 0.08, length: 1.0, at: [0, 0, -0.1] }],
+      pieces: [{ kind: "cylinder", radius: 0.08, length: 1.15, at: [0, 0, -0.175] }], // 軸往後伸進背板
     },
     {
       id: "stamp",
@@ -77,22 +81,39 @@ export default {
         { kind: "lathe", axis: [0, 1, 0], profile: [[0, -3.25], [0.25, -3.25], [0.45, -3.0], [0.45, -2.8], [0.3, -2.6], [0, -2.6]], at: [-0.42, 0, 0] },
       ],
     },
-    // 導槽在桿的左側,整個行程裡桿都在兩個導槽之間
-    { id: "guides", kind: "group", // 兩個導座各是一塊背板加左側的擋塊(右側是小齒輪;凸塊貼著背板與擋塊上下通過)
+    // 導座:包住桿身左、前、後三面的導套(右邊開口讓齒條與小齒輪通過),在兩個軸環的行程之間——
+    // 上軸環最低到 1.85、下軸環最高到 0.76,導套在 0.8–1.7,整個行程桿身都在導套裡(推斷,原圖沒畫機架);
+    // 停點時上軸環離導套頂 0.15(桿落下由臼底擋住,不是軸環),抬到最高時下軸環離導套底 0.04
+    {
+      id: "guides",
+      kind: "group",
       pieces: [
-        // 機架的背板:托著兩個導座與小齒輪的軸(推斷,原圖沒畫)
-        { kind: "box", size: [2.4, 6.2, 0.1], at: [-0.55, -0.6, -0.535] },
-        ...[1.05, 1.85].flatMap((y) => [
-        { kind: "box", size: [0.15, 0.5, 0.5], at: [RACK_X - 0.42 - 0.52, y, 0] },
-        { kind: "box", size: [1.1, 0.5, 0.25], at: [RACK_X - 0.42 - 0.05, y, -0.36] },
+        // 機架的背板:托著導套與小齒輪的軸,往下立到地面(推斷,原圖沒畫)
+        { kind: "box", size: [2.4, 2.5 - GROUND, 0.1], at: [-0.55, (2.5 + GROUND) / 2, -0.7] },
+        { kind: "box", size: [0.15, 0.9, 0.9], at: [BODY.x0 - 0.075, 1.25, -0.2] }, // 左壁(往後接到背板)
+        { kind: "box", size: [BODY.x1 - BODY.x0 + 0.15, 0.9, 0.125], at: [(BODY.x0 - 0.15 + BODY.x1) / 2, 1.25, BODY.z + 0.0625] }, // 前壁
+        { kind: "box", size: [BODY.x1 - BODY.x0 + 0.15, 0.9, 0.65 - BODY.z], at: [(BODY.x0 - 0.15 + BODY.x1) / 2, 1.25, -(0.65 + BODY.z) / 2] }, // 後壁(接到背板)
+      ],
+    },
+    // 臼(推斷,原圖沒畫):衝頭落到停點時底面正好落在臼底的砧面上;臼與背板站在同一塊地面上
+    {
+      id: "mortar",
+      kind: "group",
+      pieces: [
+        { kind: "box", size: [2.85, 0.2, 1.5], at: [-0.675, GROUND - 0.1, -0.05] }, // 地面
+        { kind: "box", size: [1.2, ANVIL - GROUND, 1.2], at: [HEAD_X, (ANVIL + GROUND) / 2, 0] }, // 臼底(砧面在 ANVIL)
+        ...[-1, 1].flatMap((s) => [
+          { kind: "box", size: [0.1, 0.35, 1.2], at: [HEAD_X + s * 0.55, ANVIL + 0.175, 0] },
+          { kind: "box", size: [1.0, 0.35, 0.1], at: [HEAD_X, ANVIL + 0.175, s * 0.55] },
         ]),
-      ] },
+      ],
+    },
   ],
-  // 動力重演:只推缺齒小齒輪;桿在導座裡自由上下,靠自重落下
-  replay: { from: 0, to: -2 * Math.PI, free: { stamp: { slide: [0, 1, 0], limits: [0, 3.6] } }, ignore: [["stamp", "guides"]], expect: [{ at: -5.4, part: "stamp", label: "有齒段把桿抬高" }, { at: -2 * Math.PI, part: "stamp", label: "齒脫離齒條後桿落到底" }] },
+  // 動力重演:只推缺齒小齒輪;桿在導套裡自由上下(滑軌代表導套),靠自重落下、撞在臼底停住
+  replay: { from: 0, to: -2 * Math.PI, free: { stamp: { slide: [0, 1, 0], limits: [-1, 3.6] } }, expect: [{ at: -5.4, part: "stamp", label: "有齒段把桿抬高" }, { at: -2 * Math.PI, part: "stamp", label: "齒脫離齒條後桿落下、撞在臼底停住" }] },
   driver: { part: "pinion", type: "rotation", speed: -0.8 }, // 自動播放時順時針轉,把桿抬起
   target: "stamp",
-  view: { direction: [0.03, 0.05, 1] },
+  view: { direction: [0.03, 0.05, 1], fitSamples: 24 }, // 抬到最高(落下前一刻)在兩個預設取樣點之間:取景均勻取樣,整個行程都在畫面裡
   pose(theta) {
     const { lift } = stamp(theta);
     // 齒條的齒朝 +x(朝小齒輪),節線在 x = −R
