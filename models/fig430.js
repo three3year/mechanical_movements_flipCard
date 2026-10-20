@@ -5,12 +5,17 @@
 import { TAU, deg, polar, wrap } from "./kit.js";
 import { stream, ramp } from "./flow.js";
 import { shape, arcPoints } from "./shapes.js";
+import { pedestal } from "./supports.js";
 
 const R = { outer: 2.05, inner: 1.5, hub: 0.32 };
 const BUCKETS = 16;
 const LEAN = deg(24); // 水斗隔板外端往逆時針側傾,下降側的水斗開口朝上
 const DEPTH = 0.5; // 輪寬
 const FLUME = { from: [-3.4, 3.0, 0], to: [0.32, 2.24, 0] };
+const FLUME_ANGLE = Math.atan2(FLUME.to[1] - FLUME.from[1], FLUME.to[0] - FLUME.from[0]);
+const FLUME_FLOOR = { at: [-1.55, 2.55], thickness: 0.12 }; // 槽底板的中心與厚度
+const flumeBottomAt = (x) => FLUME_FLOOR.at[1] + (x - FLUME_FLOOR.at[0]) * Math.tan(FLUME_ANGLE) - FLUME_FLOOR.thickness / 2 / Math.cos(FLUME_ANGLE);
+const SLAB_TOP = -2.595; // 尾水渠底的頂面
 const SPEED = TAU * 1.85; // 進程每一圈水流過的距離(與水斗的線速度相同)
 
 // 水流路徑:沿水槽流下,在槽口落入輪頂右側的水斗
@@ -52,6 +57,11 @@ const wall = shape([
   ...arcPoints(R.outer + 0.15, deg(150), deg(285)),
   ...arcPoints(R.outer + 0.55, deg(285), deg(150)),
 ]);
+// 左邊的石墩:從渠牆往上到水槽底,水槽擱在它頂上(原圖水槽擱在左邊的石砌牆頂;墩頂是平的、槽底有斜度,
+// 以墩的中線貼住槽底,兩側差不到 0.05、都在槽底板的厚度裡)
+const PIER_X = -2.45;
+const PIER_TOP = flumeBottomAt(PIER_X);
+export const PIER = { kind: "box", size: [0.4, PIER_TOP + 0.15, DEPTH * 1.3], at: [PIER_X, (PIER_TOP - 0.15) / 2, 0] };
 
 export default {
   figure: 430,
@@ -61,7 +71,7 @@ export default {
       kind: "cylinder",
       center: [0, 0, 0],
       radius: 0.08,
-      length: 1.6, // 水車的固定軸(軸承座沒畫,推斷)
+      length: 1.6, // 水車的固定軸(推斷;兩端架在渠底的軸承座上)
     },
     {
       id: "wheel",
@@ -82,11 +92,15 @@ export default {
       kind: "group",
       pieces: [
         // 水槽:槽底與兩側
-        { kind: "box", size: [3.8, 0.12, DEPTH * 1.1], at: [-1.55, 2.55, 0], angle: Math.atan2(FLUME.to[1] - FLUME.from[1], FLUME.to[0] - FLUME.from[0]) },
-        { kind: "box", size: [3.8, 0.35, 0.06], at: [-1.55, 2.68, -DEPTH * 0.58], angle: Math.atan2(FLUME.to[1] - FLUME.from[1], FLUME.to[0] - FLUME.from[0]) },
+        { kind: "box", size: [3.8, FLUME_FLOOR.thickness, DEPTH * 1.1], at: [...FLUME_FLOOR.at, 0], angle: FLUME_ANGLE },
+        { kind: "box", size: [3.8, 0.35, 0.06], at: [-1.55, 2.68, -DEPTH * 0.58], angle: FLUME_ANGLE },
         { kind: "plate", shape: wall, thickness: DEPTH * 1.3 },
-        { kind: "box", size: [0.4, 2.5, DEPTH * 1.3], at: [-2.45, 1.1, 0] },
-        { kind: "box", size: [4.8, 0.25, DEPTH * 1.3], at: [0.6, -2.72, 0] },
+        PIER,
+        // 尾水渠底(寬到放得下兩座軸承座)
+        { kind: "box", size: [4.8, 0.25, 2.2], at: [0.6, SLAB_TOP - 0.125, 0] },
+        // 固定軸兩端的軸承座(推斷;原圖的軸藏在石砌的側牆裡,側牆沒畫,改立在渠底上),底板擱在渠底上
+        ...pedestal({ at: [0, 0], z: 0.75, bore: 0.08, floor: SLAB_TOP + 0.18 }),
+        ...pedestal({ at: [0, 0], z: -0.75, bore: 0.08, floor: SLAB_TOP + 0.18 }),
       ],
     },
     // 尾水
