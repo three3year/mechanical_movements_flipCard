@@ -4,11 +4,29 @@
 
 **Blocked by:** 無
 
-**Status:** ready
+**Status:** done
 
-- [ ] 先寫失敗的測試,再改工具
-- [ ] 工具自己的測試、`npm test`(與改實體驗證時的 `npm run test:verify`)全過
-- [ ] 範圍內報出的列在 Comments 交給各圖的票,範圍外的寫進 pending.md
-- [ ] 以獨立暫存區提交(只放自己的檔案)
+- [x] 先寫失敗的測試,再改工具
+- [x] 工具自己的測試、`npm test`(與改實體驗證時的 `npm run test:verify`)全過
+- [x] 範圍內報出的列在 Comments 交給各圖的票,範圍外的寫進 pending.md
+- [x] 以獨立暫存區提交(只放自己的檔案)
 
 ## Comments
+
+2026-10-20:新增 `verify/outlines.js`(`outlineProblems(def)`)與 `tools/outlines.mjs [圖號或範圍…]`。沒併進 `one-piece.mjs`:那個工具量的是塊與塊的距離,這個查的是 2D 輪廓。每個板件(kind 為 `plate` 的零件與附件)查三件:洞的頂點落在外形外(整個 / 部分,印出外形外的頂點數)、外輪廓自交且三角化面積比該有的多過 2%(自交但面積只差一點的不報)、其餘三角化面積與外形不符。面積用繪圖層同一份三角化(`THREE.ShapeUtils`)量,所以測試在 `verify/outlines.spec.js`(`npm run test:verify`,四個測試)。全書:76 張、洞在外形外 94 件、自交 4 件、面積不符 0 件(完整輸出:`node tools/outlines.mjs`)。
+
+範圍內(第 401–507 種)報出的,交給各圖的票:
+
+| 圖 | 板件 | 報出 | 交給 |
+| --- | --- | --- | --- |
+| 426 | `hub.pieces[0]` | 洞整個在外(溝槽洞比輪轂大,被丟掉、輪轂實心) | 票 10(#426-1) |
+| 427 | `hub.pieces[0]` | 洞整個在外 | 票 10(#427-1) |
+| 437 | `casing.pieces[0]` | 外輪廓自交,三角化 6.385、該有 2.852 | 票 13(#437-1) |
+| 470 | `frame.pieces[0]` | 洞整個在外(三角化 4.907 = 整塊,洞沒作用) | 票 22 |
+| 482 | `valve` | 洞整個在外,三角化 0.096 > 該有 0.083(多出一塊) | 票 25(#482-2) |
+| 493 | `pin.pieces[0]` | 洞整個在外,三角化 0.070 > 0.062 | 票 27 |
+| 420 | `hammer` | 洞部分在外(31/96 點),三角化 0.484、該有 0.183:洞大半在外,多出一大塊 | 票 08 |
+| 459 | `frame.pieces[12]` | 洞部分在外(2/4 點),三角化 0.203、該有 0.070 | 票 18 |
+| 402 `lever.pieces[0]`、405 `ruler`(73/96)、415 `pawlB`、`pawlC`、416 `treadle`、418 `rod.pieces[0]`、422 `piston.pieces[3]`、425 `cylinder.pieces[2]`(2/4)、444 `works.pieces[0]`(2/4)、448 `handle`、450 `handle`、451 `handle`、453 `works.pieces[7]`、454 `works.pieces[6]`(2/4)、`handle`、460 `lever`、466 `handle`、467 `handle`、478 `lever`(9/96)、490 `tiller`、491 `pawl`、492 `post.pieces[0]`、505 `armD` | 洞部分在外,多是約一半的頂點在外(圓心在外形的邊上:端頭的銷孔、端頭沒畫圓,或拿洞當缺口),面積差 1–3% | 各圖的票(04、05、07、08、09、10、16、17、19、20、23、27、30):修或寫出理由(拿洞當缺口的,改成外形本身的缺口) |
+
+範圍外(第 400 種以前,52 張)寫進 `.scratch/physical-verification/pending.md`「工具補盲點後報出、留給各族的」。
