@@ -4,14 +4,23 @@
 // 主動件是軸 B(原圖箭頭:順時針)。
 // 推斷:擋板 D 靠蒸汽或彈簧壓著,始終貼著偏心輪;蒸汽從擋板右邊進來,充滿擋板與接觸點之間(順時針方向)的月牙形空間,
 // 擋板左邊與接觸點之間的蒸汽經左邊的汽道排出。
+// 2026-10-20 複查 #425-1:擋板的槽真的開在汽缸壁上(汽缸環分成前、中、後三層,三層在頂端都缺一道槽,擋板在槽裡滑;
+// 導槽座是 U 形、頂端封住),進、排汽道的端頭停在汽缸外緣、中層的環在汽道處開口,不再伸進缸膛頂到偏心輪。
 import { TAU } from "./kit.js";
 import { stream } from "./flow.js";
-import { shape, circle, rect, thickLine } from "./shapes.js";
+import { shape, circle, thickLine, arcPoints } from "./shapes.js";
 
 export const BORE = 1.6; // 汽缸內半徑
 export const ECC = 0.42; // 偏心距
 export const PISTON = BORE - ECC; // 偏心輪半徑:剛好在一點碰到汽缸
 export const SLOT = 0.16; // 擋板半寬
+const OUTER = BORE + 0.18; // 汽缸外半徑
+const GAP = SLOT + 0.01; // 擋板槽的半寬(擋板兩側各留 0.01)
+const GUIDE = 0.3; // 導槽座的半寬(外壁)
+const CHANNEL = 0.45; // 汽道的外側(汽道在導槽座外壁與汽道壁之間)
+const TRAVEL = 1.2; // 擋板的高度
+const SLOT_TOP = BORE + TRAVEL + 0.02; // 擋板完全退出時頂端在 BORE + TRAVEL
+const Z = { ring: 0.3, port: 0.15 }; // 汽缸環的半厚;汽道(與中層環)的半厚
 
 /** 軸轉 theta(逆時針為正;原圖是順時針)→ 偏心輪中心、接觸點方向 */
 export function piston(theta) {
@@ -46,8 +55,28 @@ function crescent(theta, a0, a1, travel) {
   return dots;
 }
 
-const inlet = [[0.42, BORE + 1.0, 0.2], [0.42, BORE + 0.15, 0.2], [0.55, BORE - 0.15, 0.2]];
-const exhaust = [[-0.55, BORE - 0.15, 0.2], [-0.42, BORE + 0.15, 0.2], [-0.42, BORE + 1.0, 0.2]];
+// ── 汽缸壁:環在頂端缺一道擋板的槽(前、中、後三層都缺),中層另在兩條汽道處開口 ──
+const yOn = (r, x) => Math.sqrt(r * r - x * x);
+/** 環在 x0 < x < x1 之間(上半)的一段:兩側是垂直的切口 */
+const band = (x0, x1) => [...arcPoints(OUTER, Math.acos(x1 / OUTER), Math.acos(x0 / OUTER)), ...arcPoints(BORE, Math.acos(x0 / BORE), Math.acos(x1 / BORE))];
+/** 環缺掉頂端 |x| < g 那一段(垂直的切口),其餘整圈 */
+const cRing = (g) => [...arcPoints(OUTER, Math.PI - Math.acos(g / OUTER), TAU + Math.acos(g / OUTER)), ...arcPoints(BORE, TAU + Math.acos(g / BORE), Math.PI - Math.acos(g / BORE))];
+// 導槽座:U 形,兩腳立在汽缸外緣上、頂端封住;擋板在 |x| < GAP 的槽裡滑
+const housing = [
+  ...arcPoints(OUTER, Math.acos(-GUIDE / OUTER), Math.acos(-GAP / OUTER)),
+  [-GAP, SLOT_TOP],
+  [GAP, SLOT_TOP],
+  ...arcPoints(OUTER, Math.acos(GAP / OUTER), Math.acos(GUIDE / OUTER)),
+  [GUIDE, SLOT_TOP + 0.15],
+  [-GUIDE, SLOT_TOP + 0.15],
+];
+// 汽道壁:從頂端的汽口直下到汽缸外緣;汽道在它和導槽座外壁之間,經中層環的開口進缸膛
+const WALL_X = CHANNEL + 0.03;
+const portWall = (s) => thickLine([[s * WALL_X, BORE + 1.0], [s * WALL_X, yOn(OUTER, WALL_X) - 0.01]], 0.06);
+const CH = (GUIDE + CHANNEL) / 2; // 汽道中線
+/** 蒸汽的路徑(進汽道:由上往下進缸膛;排汽道反向);端點停在缸膛表面 */
+export const inlet = [[CH, BORE + 1.0, 0.2], [CH, BORE + 0.3, 0.2], [CH, yOn(BORE, CH), 0.2]];
+export const exhaust = [[-CH, yOn(BORE, CH), 0.2], [-CH, BORE + 0.3, 0.2], [-CH, BORE + 1.0, 0.2]];
 
 export default {
   figure: 425,
@@ -58,12 +87,16 @@ export default {
       label: "A",
       labelOffset: [-BORE - 0.15, 0.5, 0.4],
       pieces: [
-        { kind: "plate", shape: shape(circle(BORE + 0.18), [circle(BORE).reverse()]), thickness: 0.6 },
-        { kind: "plate", shape: shape(circle(BORE + 0.18)), thickness: 0.04, at: [0, 0, -0.32] },
-        // 擋板的導槽、進汽與排汽道
-        { kind: "plate", shape: shape(rect(0.6, 1.3, 0, BORE + 0.55), [rect(2 * SLOT + 0.02, 1.3, 0, BORE + 0.55).reverse()]), thickness: 0.6 },
-        { kind: "plate", shape: shape(thickLine(inlet.map(([x, y]) => [x + 0.06, y]), 0.06)), thickness: 0.3 },
-        { kind: "plate", shape: shape(thickLine(exhaust.map(([x, y]) => [x - 0.06, y]), 0.06)), thickness: 0.3 },
+        // 汽缸環:前、後層缺擋板的槽;中層另缺兩條汽道的開口(汽道與導槽座之間),導槽座兩腳下方那兩段補上
+        { kind: "plate", shape: shape(cRing(GAP)), thickness: Z.ring - Z.port, at: [0, 0, (Z.ring + Z.port) / 2] },
+        { kind: "plate", shape: shape(cRing(GAP)), thickness: Z.ring - Z.port, at: [0, 0, -(Z.ring + Z.port) / 2] },
+        { kind: "plate", shape: shape(cRing(CHANNEL)), thickness: 2 * Z.port },
+        { kind: "plate", shape: shape(band(GAP, GUIDE)), thickness: 2 * Z.port },
+        { kind: "plate", shape: shape(band(-GUIDE, -GAP)), thickness: 2 * Z.port },
+        { kind: "plate", shape: shape(circle(OUTER)), thickness: 0.04, at: [0, 0, -0.32] },
+        { kind: "plate", shape: shape(housing), thickness: 2 * Z.ring },
+        { kind: "plate", shape: shape(portWall(1)), thickness: 2 * Z.port },
+        { kind: "plate", shape: shape(portWall(-1)), thickness: 2 * Z.port },
         { kind: "box", size: [2.4, 0.25, 0.9], at: [0, -BORE - 0.3, 0] },
       ],
     },
@@ -79,12 +112,11 @@ export default {
       ],
     },
     { id: "shaftB", kind: "group", label: "B", labelOffset: [0, 0, 0.6], pieces: [] },
-    { id: "abutment", kind: "box", size: [2 * SLOT, 1.2, 0.56], label: "D", labelOffset: [0.35, 0.2, 0.3] },
+    { id: "abutment", kind: "box", size: [2 * SLOT, TRAVEL, 0.56], label: "D", labelOffset: [0.35, 0.2, 0.3] },
   ],
-  // 動力重演:只推軸;擋板 D 沿導槽上下滑,被彈簧(或蒸汽)往下壓著貼住偏心輪,活塞轉過時把它頂起
+  // 動力重演:只推軸;擋板 D 沿汽缸壁與導槽座的槽上下滑,被彈簧(或蒸汽)往下壓著貼住偏心輪,活塞轉過時把它頂起
   replay: {
     free: { abutment: { slide: [0, 1, 0], spring: -1, gravity: false } },
-    ignore: [["abutment", "cylinder"]],
     expect: [
       { at: -Math.PI / 2 - Math.PI / 2, part: "abutment", label: "偏心輪轉到擋板下面,把擋板頂出活塞的路線", quote: "滑動擋板 D,會移出活塞的行經路線,讓活塞得以通過" },
       { at: -Math.PI / 2 - Math.PI, part: "abutment", label: "偏心輪轉開,擋板被壓回、貼著它" },
@@ -104,7 +136,7 @@ export default {
     return {
       parts: {
         pistonC: { angle: theta },
-        abutment: { position: [0, tip + 0.6, 0] },
+        abutment: { position: [0, tip + TRAVEL / 2, 0] },
       },
       flows: [
         { fluid: "steam", points: [...stream(inlet, travel, { spacing: 0.18 }), ...crescent(theta, top - 0.2, steamTo + 0.15, travel)] },
@@ -113,8 +145,4 @@ export default {
       readouts: [{ label: "擋板 D 退出", value: (BORE - tip).toFixed(2) }],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["cylinder", "abutment"], reason: "接合處的簡化畫法:滑動擋板插在汽缸壁的槽裡,槽沒有畫出來,重疊 0.16" },
-    { check: "interference", parts: ["cylinder", "pistonC"], reason: "簡化畫法:活塞的端緣貼著汽缸內壁滑動,重疊 0.09(96 個取樣中 19 個)" },
-  ],
 };
