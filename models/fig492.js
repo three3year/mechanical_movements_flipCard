@@ -12,9 +12,13 @@
 // 環孔是立在槓桿末端、軸沿舌片方向的一個環(舌片從環中穿過):槓桿本體在舌片前面一層,環從槓桿末端往後套住舌片;
 // 同一平面上一塊板不可能「穿過」另一塊板上的孔,所以不用板上開孔來畫。
 // 槓桿在支點處開孔套在支柱的銷上(原圖槓桿中段帶孔的寬處)。拉繩的另一端在小艇上的人手裡(推斷,手沒畫):
-// 人拉繩時手跟著槓桿下端走、繩長不變,小艇掉下時一起掉下。各階段所佔的拉繩進度為推斷。
+// 人拉繩時手跟著槓桿下端走、繩長不變,小艇掉下時一起掉下。
+// 脫鉤由接觸算:舌片何時能翻開,看舌片往上翻的整條路有沒有被環擋住(沿弧擺到相碰);環一讓開,舌片被小艇的重量
+// 加速翻開,小艇照重力加速往下掉,但舌片還壓在彎鉤上時小艇只能落到舌片碰到彎鉤為止(往下推到相碰)。
+// 拉繩的快慢(槓桿擺到底所佔的進度)是操作者的,翻開、掉下的加速度是推斷。
 import { deg, clamp, smooth, rot2 } from "./kit.js";
-import { shape, thickLine, circle, arcPoints, stadium, disc } from "./shapes.js";
+import { shape, thickLine, circle, arcPoints, stadium, disc, rect } from "./shapes.js";
+import { placeOutline, polygonsOverlap, swingUntilContact, pushUntilClear, circlePolygon } from "./contact.js";
 
 const TOP = [0, 1.0, 0]; // 舌片的鉸點(支柱上端)
 const POST_BOTTOM = -1.7;
@@ -33,9 +37,11 @@ const TONGUE_Z = 0.11; // 舌片中面的 z(在支柱前面)
 const LEVER_Z = 0.27; // 槓桿中面的 z(在鉤子的尖前面)
 const PIN_R = 0.035; // 鉸點與支點的銷
 const LOWER = 0.95; // 支點到拉繩端
-export const SLIP = 0.55; // 拉到這裡環孔滑脫
+export const SLIP = 0.55; // 拉到這裡槓桿擺到底(拉繩的行程)
 export const DROP = 0.8; // 小艇掉下的距離
-const UPRIGHT = deg(85 - 360); // 放開後舌片翻到的角度:比直立再往右 5°(彎鉤在舌片左邊,掉下時碰不到)
+const TURN_ACC = 180; // 環讓開後舌片翻開的角加速度(每單位拉繩進度平方的弧度;推斷)
+const FALL_ACC = 18; // 小艇掉下的加速度(每單位拉繩進度平方;推斷)
+const UPRIGHT = deg(85 - 360); // 放開後舌片翻到的角度:比直立再往右 5°(彎鉤在舌片左邊,掉下時碰不到;推斷,離開鉤子後舌片不碰任何東西)
 
 // 舌片方向與槓桿的擺角互相決定:舌片沿環孔路徑的弦,擺角要讓環滑過舌片尖端(含環的半厚與間隙,
 // 舌片翻上去時尖端掃過的圓才碰不到環);反覆逼近即收斂
@@ -61,15 +67,76 @@ const { at: TONGUE_AT, eyeLocal: EYE, swing: SWING } = solve();
 export const geometry = { TONGUE_AT, SWING, EYE, EYE_R, TONGUE, TONGUE_W };
 const FLIP = TONGUE_AT - UPRIGHT; // 放開後舌片往上翻的角度
 
+const leverAt = (u) => SWING * smooth(clamp(u / SLIP, 0, 1)); // 拉繩的行程:操作者拉的快慢
+
+// 環在舌片那一層的斷面:環的軸在平面上,舌片從環孔中間穿過;舌片的上、下面離中面 TONGUE_T / 2,
+// 那兩個面上環孔的半寬是 √(孔半徑² − (TONGUE_T / 2)²),環的材料就是軸兩側離軸這麼遠到外半徑那一段(沿軸長 = 環厚)。
+// 環的軸取擺動中點的方向(兩端各差半個擺角,環比舌片斷面寬鬆得下)
+const RING_AXIS_AT = TONGUE_AT - SWING / 2;
+const JAW = [EYE_R, RING_R].map((r) => Math.sqrt(r * r - (TONGUE_T / 2) ** 2));
+const ringJaws = (lever) =>
+  [1, -1].map((s) => placeOutline(placeOutline(rect(RING_L, JAW[1] - JAW[0], 0, (s * (JAW[0] + JAW[1])) / 2), EYE, RING_AXIS_AT), [FULCRUM[0], FULCRUM[1]], lever));
+const TONGUE_OUTLINE = stadium(TONGUE, TONGUE_W).outline;
+const HINGE = [TOP[0], TOP[1]];
+/** 槓桿轉 lever 時,舌片從鉤著的角度往上翻、第一次碰到環的轉角(沒碰到就是翻開的角度) */
+const flipStop = (lever) => swingUntilContact({ pivot: HINGE, outline: TONGUE_OUTLINE, from: TONGUE_AT, into: -1, sweep: FLIP, steps: 120 }, ringJaws(lever));
+const blocked = (u) => flipStop(leverAt(u)) > UPRIGHT + 1e-9;
+// 放開的時刻:環讓開舌片翻上去的整條路的那一刻(由接觸算:掃一遍找到讓開的那一格,再二分)
+export const RELEASE = (() => {
+  const N = 40;
+  for (let i = 1; i <= N; i++) {
+    let [lo, hi] = [(SLIP * (i - 1)) / N, (SLIP * i) / N];
+    if (!blocked(lo) || blocked(hi)) continue;
+    for (let k = 0; k < 40; k++) {
+      const mid = (lo + hi) / 2;
+      if (blocked(mid)) lo = mid;
+      else hi = mid;
+    }
+    return hi;
+  }
+  throw new Error("第 492 種:拉到底環還擋著舌片");
+})();
+
+// 鉤子的彎鉤在平面上的斷面(圓);小艇往下掉時舌片碰到它就托在上面
+const n0 = [-Math.sin(TONGUE_AT), Math.cos(TONGUE_AT)]; // 舌片局部 +y 在世界中的方向(舌片朝左,這一邊朝下)
+const BIGHT = [0, 1].map((k) => TOP[k] + HOOK_AT * [Math.cos(TONGUE_AT), Math.sin(TONGUE_AT)][k] + (TONGUE_W / 2 + BAR_R) * n0[k]);
+const BIGHT_POLY = circlePolygon(BIGHT, BAR_R - 1e-4, 32);
+const tongueTurn = (u) => TONGUE_AT - Math.min(FLIP, 0.5 * TURN_ACC * Math.max(0, u - RELEASE) ** 2);
+/** 拉繩 u 時(舌片的角度)小艇往下掉 d,舌片是否壓進彎鉤 */
+const onHook = (u, d) => polygonsOverlap(placeOutline(TONGUE_OUTLINE, [HINGE[0], HINGE[1] - d], tongueTurn(u)), BIGHT_POLY);
+
+// 小艇掉下:從放開起照重力加速;這一步若會讓舌片壓進彎鉤,就往回推到剛好不重疊(舌片托在彎鉤上,
+// 速度變成跟著舌片滑下的速度);掉到底停住。第一次用到時從放開的時刻往後逐步算好表,之後內插
+const FALL_STEPS = 400;
+let fallTable = null;
+function fallAt(u) {
+  if (u <= RELEASE) return 0;
+  if (!fallTable) {
+    const dt = (1 - RELEASE) / FALL_STEPS;
+    let [f, v] = [0, 0];
+    fallTable = [0];
+    for (let i = 1; i <= FALL_STEPS; i++) {
+      const at = RELEASE + i * dt;
+      const free = Math.min(DROP, f + v * dt + 0.5 * FALL_ACC * dt * dt);
+      const next = onHook(at, f) ? f : pushUntilClear(free, -1, free - f, (d) => onHook(at, d));
+      v = next >= DROP ? 0 : (next - f) / dt;
+      fallTable.push((f = next));
+    }
+  }
+  const x = ((clamp(u, RELEASE, 1) - RELEASE) / (1 - RELEASE)) * FALL_STEPS;
+  const i = Math.min(FALL_STEPS - 1, Math.floor(x));
+  return fallTable[i] + (fallTable[i + 1] - fallTable[i]) * (x - i);
+}
+
 /** 拉繩 u → 槓桿轉角、舌片轉角、小艇下降量、階段 */
 export function release(u0) {
   const u = clamp(u0, 0, 1);
-  const lever = SWING * smooth(clamp(u / SLIP, 0, 1));
-  // 環孔滑脫後,舌片被小艇的重量翻開、小艇往下掉:都是重力造成的,加速到底停住
-  const open = clamp((u - SLIP) / 0.15, 0, 1) ** 2;
-  const tongue = TONGUE_AT - FLIP * open; // 往上翻(順時針)
-  const fall = DROP * clamp((u - SLIP - 0.12) / 0.3, 0, 1) ** 2;
-  return { lever, tongue, fall, held: u < SLIP, free: fall > 0.01 };
+  const lever = leverAt(u);
+  // 環讓開之後,舌片被小艇的重量加速翻開(順時針),翻到 UPRIGHT
+  const tongue = tongueTurn(u);
+  // 小艇照重力加速往下掉,舌片還在彎鉤上方時托在彎鉤上,掉到底停住
+  const fall = fallAt(u);
+  return { lever, tongue, fall, held: u < RELEASE, free: fall > 0.01 };
 }
 
 /** 環孔套在舌片上離鉸點多遠(拉繩 u);用來驗證環一路套著舌片 */
@@ -94,14 +161,11 @@ function lever() {
   return shape([...head, ...tl.slice(n, 2 * n - 1).reverse(), ...tl.slice(1, n).reverse()]);
 }
 const ROPE = [1.3, -0.33]; // 拉繩:從槓桿下端到人手(往右下拉)
-// 環:軸沿舌片方向(取擺動中點的方向,兩端各差半個擺角,環比舌片斷面寬鬆得下)
-const RING_AXIS_AT = TONGUE_AT - SWING / 2;
 
 // 鉤子(固定在上方的滑車上):U 形圓桿,彎底沿 z 橫過舌片下面、貼著舌片的下緣(離鉸點 HOOK_AT 處),
 // 柄在舌片後面往上接到滑車,尖在舌片前面往上翹一段(鉤口朝上,舌片往上翻就從柄與尖之間出去)
 function hook() {
-  const n = [-Math.sin(TONGUE_AT), Math.cos(TONGUE_AT)]; // 舌片局部 +y 在世界中的方向(舌片朝左,這一邊朝下)
-  const c = [TOP[0] + HOOK_AT * Math.cos(TONGUE_AT) + (TONGUE_W / 2 + BAR_R) * n[0], TOP[1] + HOOK_AT * Math.sin(TONGUE_AT) + (TONGUE_W / 2 + BAR_R) * n[1]];
+  const c = BIGHT;
   const [back, front] = [TONGUE_Z - HOOK_W, TONGUE_Z + HOOK_W];
   const upright = (z, y1) => ({ kind: "cylinder", radius: BAR_R, length: y1 - c[1], axis: [0, 1, 0], at: [c[0], (c[1] + y1) / 2, z] });
   return [
@@ -133,7 +197,7 @@ export default {
       { kind: "cylinder", radius: PIN_R, length: LEVER_Z + 0.05 + 0.07, at: [0, FULCRUM[1], (LEVER_Z + 0.05 - 0.07) / 2], role: "fulcrumPin" },
     ] },
     // 舌片:鉸點那一端畫成圓頭,開孔套在鉸點的銷上
-    { id: "tongue", kind: "plate", shape: shape(stadium(TONGUE, TONGUE_W).outline, [circle(PIN_R + 0.001).reverse()]), thickness: TONGUE_T, arrow: false },
+    { id: "tongue", kind: "plate", shape: shape(TONGUE_OUTLINE, [circle(PIN_R + 0.001).reverse()]), thickness: TONGUE_T, arrow: false },
     {
       id: "lever",
       kind: "plate",
