@@ -3,7 +3,10 @@
 // 所以夾頰夾住的平行木料,沿木料拉動量規就被尖頂劃成兩半。非平行的木料也一樣:放開一個夾頰,讓它仍貼著木料即可。
 // 主動件是量規(沿木料拉動);尖頂劃出的中線由 pose 回傳。
 // 推斷:木料前段兩邊平行、後段一邊斜開,拉到後段時可調夾頰(螺絲放鬆)貼著斜邊滑出,表現兩種情形。
-import { Y, clamp } from "./kit.js";
+// 2026-10-20(#410-1、#410-2):兩根短桿在接點上下相疊(短桿 B 高一層),尖頂做成穿過兩個軸眼的銷、頂上有頭,
+// 夾頰的耳片各以一根銷接短桿(推斷;原圖接點處一顆有頭的銷);翼形螺絲獨立成零件,進入斜邊段前轉鬆、升起
+// (原文「放開一個夾頰,但仍保持其與固體接觸」),讀數「活動夾頰:鎖住 / 放開」。
+import { Y, TAU, clamp, smooth } from "./kit.js";
 import { shape } from "./shapes.js";
 
 export const EDGE = -1.0; // 木料直邊(固定夾頰貼著)的 x
@@ -14,15 +17,20 @@ export const width = (y) => 2.0 + 0.8 * clamp((y - PARALLEL_TO) / (LENGTH[1] - P
 export const LINK = 1.6; // 短桿長
 const INSET = 0.12; // 樞軸離夾頰內面
 export const RANGE = [-2.2, 2.6]; // 量規(橫桿)沿 y 的位置
+const T = 0.05; // 短桿的厚度
+const LAYER = [0.1, 0.1 + T]; // 短桿 A、B 的高度(木料面上方;B 疊在 A 上面)
+export const SCREW_REST = 0.85; // 翼形螺絲鎖緊時,螺桿中心離夾頰原點的高度
+const LOOSEN = [-0.6, PARALLEL_TO]; // 拉到這一段時把翼形螺絲轉鬆(進入斜邊段之前)
 
-/** 量規在 g → 兩個樞軸、尖頂 */
+/** 量規在 g → 兩個樞軸、尖頂、翼形螺絲鬆開的程度(0 鎖緊 → 1 放開) */
 export function gauge(g0) {
   const g = clamp(g0, ...RANGE);
-  const a = [EDGE + INSET, g, 0.1];
-  const b = [EDGE + width(g) - INSET, g, 0.1];
+  const a = [EDGE + INSET, g, LAYER[0]];
+  const b = [EDGE + width(g) - INSET, g, LAYER[1]];
   const half = (b[0] - a[0]) / 2;
-  const tip = [(a[0] + b[0]) / 2, g - Math.sqrt(LINK * LINK - half * half), 0.1];
-  return { g, a, b, tip, jaws: [EDGE, EDGE + width(g)] };
+  const tip = [(a[0] + b[0]) / 2, g - Math.sqrt(LINK * LINK - half * half), 0];
+  const loose = smooth((g - LOOSEN[0]) / (LOOSEN[1] - LOOSEN[0]));
+  return { g, a, b, tip, jaws: [EDGE, EDGE + width(g)], loose };
 }
 
 const board = shape([
@@ -48,8 +56,9 @@ export default {
         { kind: "box", size: [4.4, 0.3, 0.3], at: [0.6, 0.55, 0] },
         // 固定夾頰(在木料直邊外側)
         { kind: "box", size: JAW, at: [EDGE - JAW[0] / 2, 0.05, 0] },
-        // 夾頰內面伸出的耳片:短桿一端的銷穿在這裡(推斷;原圖是俯視圖)
-        { kind: "box", size: [INSET + 0.14, 0.06, 0.2], at: [EDGE + INSET / 2, 0.16, 0] },
+        // 夾頰內面伸出的耳片與銷:短桿 A 的一端穿在這根銷上(推斷;原圖是透視圖,接點處畫了有頭的銷)
+        { kind: "box", size: [INSET + 0.14, 0.06, 0.2], at: [EDGE + INSET / 2, LAYER[0] + T / 2 + 0.035, 0] },
+        { kind: "cylinder", radius: 0.03, length: 0.2, axis: Y, at: [EDGE + INSET, LAYER[0] + 0.05, 0] },
       ],
     },
     {
@@ -59,15 +68,27 @@ export default {
       pieces: [
         // 活動夾頰沿木料的方向做得窄:木料的斜邊上只有一小段貼著它
         { kind: "box", size: [JAW[0], JAW[1], 0.2], at: [JAW[0] / 2, 0.05, 0] },
-        { kind: "box", size: [INSET + 0.14, 0.06, 0.2], at: [-INSET / 2, 0.16, 0] },
-        // 翼形螺絲
-        { kind: "cylinder", radius: 0.05, length: 0.3, axis: Y, at: [JAW[0] / 2, 0.85, 0] },
-        { kind: "box", size: [0.08, 0.14, 0.34], at: [JAW[0] / 2, 1.03, 0], accent: true },
+        // 耳片與銷(短桿 B 高一層,耳片也高一層)
+        { kind: "box", size: [INSET + 0.14, 0.06, 0.2], at: [-INSET / 2, LAYER[1] + T / 2 + 0.035, 0] },
+        { kind: "cylinder", radius: 0.03, length: 0.2, axis: Y, at: [-INSET, LAYER[1] + 0.05, 0] },
       ],
     },
-    { id: "linkA", kind: "link", width: 0.14, thickness: 0.05, axis: Y }, // 短桿平躺在木料面上方
-    { id: "linkB", kind: "link", width: 0.14, thickness: 0.05, axis: Y },
-    { id: "tip", kind: "lathe", axis: Y, profile: [[0, -0.1], [0.07, 0.05], [0.07, 0.2], [0, 0.2]] },
+    // 翼形螺絲(鎖住活動夾頰;拉到斜邊段前轉鬆、升起)
+    {
+      id: "wingScrew",
+      kind: "group",
+      axis: Y,
+      arrow: false,
+      pieces: [
+        { kind: "cylinder", radius: 0.05, length: 0.3, at: [0, 0, 0] },
+        { kind: "box", size: [0.08, 0.34, 0.14], at: [0, 0, 0.18], accent: true },
+      ],
+    },
+    // 短桿平躺在木料面上方,A 在下層、B 在上層;兩端的銷由夾頰的耳片與尖頂提供(pins: false)
+    { id: "linkA", kind: "link", width: 0.14, thickness: T, axis: Y, pins: false },
+    { id: "linkB", kind: "link", width: 0.14, thickness: T, axis: Y, pins: false },
+    // 尖頂:尖端貼在木料面上,上段是穿過兩個軸眼的銷(半徑 0.03 < 軸眼 0.07),頂上有頭
+    { id: "tip", kind: "lathe", axis: Y, profile: [[0, 0], [0.03, 0.07], [0.03, LAYER[1] + T / 2 + 0.015], [0.08, LAYER[1] + T / 2 + 0.015], [0.08, LAYER[1] + T / 2 + 0.075], [0, LAYER[1] + T / 2 + 0.075]] },
     { id: "centerLine", kind: "trace" },
   ],
   driver: { part: "bar", grips: ["jaw"], type: "translation", direction: [0, 0, -1], range: RANGE, initial: -1.2 },
@@ -84,17 +105,17 @@ export default {
       parts: {
         bar: { position: W([0, s.g, 0]) },
         jaw: { position: W([s.jaws[1], s.g, 0]) },
-        linkA: { from: W(s.a), to: W(s.tip) },
-        linkB: { from: W(s.b), to: W(s.tip) },
+        // 翼形螺絲:鎖緊時在 SCREW_REST;放開時轉半圈、升起 0.1
+        wingScrew: { position: W([s.jaws[1] + JAW[0] / 2, s.g, SCREW_REST + 0.1 * s.loose]), angle: -(TAU / 2) * s.loose },
+        linkA: { from: W(s.a), to: W([s.tip[0], s.tip[1], LAYER[0]]) },
+        linkB: { from: W(s.b), to: W([s.tip[0], s.tip[1], LAYER[1]]) },
         tip: { position: W(s.tip) },
       },
       paths: { centerLine: { points, closed: false } },
-      readouts: [{ label: "兩夾頰間距", value: (s.jaws[1] - s.jaws[0]).toFixed(2) }],
+      readouts: [
+        { label: "兩夾頰間距", value: (s.jaws[1] - s.jaws[0]).toFixed(2) },
+        { label: "活動夾頰", value: s.loose > 0.5 ? "放開" : "鎖住" },
+      ],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["linkB", "tip"], reason: "接合處的簡化畫法:筆尖裝在兩根連桿的接點上,與連桿端重疊 0.03" },
-    { check: "interference", parts: ["linkA", "tip"], reason: "接合處的簡化畫法:筆尖裝在兩根連桿的接點上,與連桿端重疊 0.03" },
-    { check: "interference", parts: ["linkA", "linkB"], reason: "接合處的簡化畫法:兩根連桿的端頭在同一個接點相疊,軸眼互相重疊 0.10" },
-  ],
 };

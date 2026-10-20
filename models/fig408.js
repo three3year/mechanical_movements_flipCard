@@ -3,8 +3,11 @@
 // 葉片的畫線邊始終指向那個會聚點(銷、接頭與會聚點在同一個圓上,同弧所對的圓周角相等)。
 // 主動件是儀器(靠著兩根銷滑動);沿葉片上緣畫的線由 pose 回傳。
 // 推斷:會聚點放在圖紙左方的外面;圖紙上預先畫好的幾條會聚線是用同一儀器畫出來的例子。
-import { clamp, deg } from "./kit.js";
-import { shape, rect, circle, ring } from "./shapes.js";
+// 2026-10-20(#408-1):接頭照原圖改成實心圓盤(朝葉片那一側開一道缺口、兩道弧形槽裡各一顆鎖腿的螺絲),中心記號在盤上;
+// 葉片的固定銷移到葉片零件上(原本接頭是中間開大孔的環,記號銷浮在孔裡、固定銷在環外)。
+import { clamp, deg, TAU } from "./kit.js";
+import { shape, rect, arcPoints, thickLine } from "./shapes.js";
+import { signedArea } from "./contact.js";
 
 export const V = [-9, 0, 0]; // 會聚點(在圖紙外)
 const CENTER = [V[0] / 2, 0, 0]; // 通過接頭、兩銷與會聚點的圓
@@ -33,6 +36,17 @@ export function joint(psi0) {
 const LINES = [-16, -8, 8, 16].map((d) => joint(deg(d)));
 const BLADE = 6.2;
 
+// 接頭的圓盤:半徑 0.55,朝葉片(局部 +x)開一道 0.3 寬的缺口到半徑 0.25;兩道弧形槽在半徑 0.42、各跨 ±17°,鎖腿的螺絲在槽裡
+const DISC_R = 0.55;
+const NOTCH = 0.15;
+const SLOT_R = 0.42;
+const cw = (pts) => (signedArea(pts) > 0 ? pts.slice().reverse() : pts); // 洞要順時針
+const notchA = Math.asin(NOTCH / DISC_R);
+const DISC = shape(
+  [...arcPoints(DISC_R, notchA, TAU - notchA), [0.25, -NOTCH], [0.25, NOTCH]],
+  LEGS.map((a) => cw(thickLine(arcPoints(SLOT_R, a - deg(17), a + deg(17)), 0.1))),
+);
+
 export default {
   figure: 408,
   parts: [
@@ -44,8 +58,16 @@ export default {
     },
     // 先前用同一儀器畫好的會聚線(延長都會到會聚點)
     ...LINES.map((_, k) => ({ id: `line${k + 1}`, kind: "trace" })),
-    // 葉片:上緣(局部 y = 0)是畫線邊,通過接頭
-    { id: "blade", kind: "plate", shape: shape(rect(BLADE, 0.3, BLADE / 2 + 0.3, -0.15)), thickness: 0.1, arrow: false },
+    // 葉片:上緣(局部 y = 0)是畫線邊,通過接頭;接頭缺口外的固定銷把它鎖在圓盤上(原圖接頭右邊的那顆銷)
+    {
+      id: "blade",
+      kind: "group",
+      arrow: false,
+      pieces: [
+        { kind: "plate", shape: shape(rect(BLADE, 0.3, BLADE / 2 + 0.3, -0.15)), thickness: 0.1, at: [0, 0, 0] },
+        { kind: "cylinder", radius: 0.07, length: 0.12, at: [0.75, -0.15, 0.09] },
+      ],
+    },
     // 兩條腿:背面(局部 y = 0)通過接頭,靠著銷
     { id: "legA", kind: "plate", shape: shape(rect(3.9, 0.26, 2.05, -0.13)), thickness: 0.06, arrow: false },
     { id: "legB", kind: "plate", shape: shape(rect(3.9, 0.26, 2.05, 0.13)), thickness: 0.06, arrow: false },
@@ -54,11 +76,11 @@ export default {
       kind: "group",
       arrow: false,
       pieces: [
-        { kind: "plate", shape: ring(0.55, 0.3), thickness: 0.05, at: [0, 0, 0.1] },
-        { kind: "cylinder", radius: 0.08, length: 0.14, at: [0, 0, 0.14], accent: true },
-        { kind: "cylinder", radius: 0.07, length: 0.12, at: [0.42 * Math.cos(LEGS[0]), 0.42 * Math.sin(LEGS[0]), 0.16] },
-        { kind: "cylinder", radius: 0.07, length: 0.12, at: [0.42 * Math.cos(LEGS[1]), 0.42 * Math.sin(LEGS[1]), 0.16] },
-        { kind: "cylinder", radius: 0.07, length: 0.12, at: [0.75, -0.15, 0.13] },
+        // 實心圓盤蓋在兩腿與葉片的接頭上;中心記號是三條線相交的點
+        { kind: "plate", shape: DISC, thickness: 0.05, at: [0, 0, 0.115] },
+        { kind: "cylinder", radius: 0.08, length: 0.14, at: [0, 0, 0.15], accent: true },
+        // 兩道弧形槽裡鎖住兩腿的螺絲(頭比槽寬)
+        ...LEGS.map((a) => ({ kind: "cylinder", radius: 0.07, length: 0.12, at: [SLOT_R * Math.cos(a), SLOT_R * Math.sin(a), 0.17] })),
       ],
     },
     { id: "pencilLine", kind: "trace" },

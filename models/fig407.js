@@ -7,6 +7,8 @@
 // 圓弧(根部與拱腳相切,原文「其基部的支點件確保它保持與拱腳相切的關係」),彎多少由「頂端到滑塊銷的距離 = 繩長」決定;紅線是尺的外緣
 // (要畫的拱的一側)。
 // 推斷:彈性尺彎成圓弧(實際是彈性曲線,差不多);尺長取等邊尖拱一側的弧長;繩長取滑塊在中間時剛好彎成等邊尖拱。
+// 2026-10-20(#407-1):銷立在溝槽裡的滑塊上、沿深度從水平桿的前面伸出(原圖的銷畫在溝槽裡),繩圈套在伸出的那一段;
+// 原本銷浮在桿的上緣外、和滑塊不相連。
 import { clamp } from "./kit.js";
 import { shape, rect } from "./shapes.js";
 
@@ -14,7 +16,10 @@ const SPAN = 3.4;
 const Y0 = -1.6; // 起拱線(水平桿的上緣)
 const BASE = [-SPAN / 2, Y0]; // 拱形尺的根部(在左邊的拱腳)
 export const LENGTH = (SPAN * Math.PI) / 3; // 拱形尺的長(等邊尖拱一側的弧長)
-const PIN_Y = Y0 + 0.05; // 滑塊上的銷
+const GROOVE_Y = Y0 - 0.18; // 溝槽(與滑塊)的中心線
+export const PIN_Y = GROOVE_Y; // 滑塊上的銷:立在滑塊上,沿深度伸出水平桿的前面
+const PIN_Z = [-0.1, 0.22]; // 銷沿深度的範圍(穿過滑塊,伸出桿的前面 0.075)
+const STRING_Z = 0.16; // 繩圈套在銷伸出的那一段
 const tipOf = (k) => (k < 1e-6 ? [BASE[0], BASE[1] + LENGTH] : [BASE[0] + (1 - Math.cos(k * LENGTH)) / k, BASE[1] + Math.sin(k * LENGTH) / k]);
 // 繩斜斜地拉到拱頂右下方的滑塊(滑塊往右,繩把頂端往右下拉,尺彎得更厲害);
 // 繩長取滑塊在 MID 時,尺剛好彎成以右邊拱腳為圓心、跨度為半徑的弧(等邊尖拱)
@@ -57,15 +62,15 @@ export default {
       kind: "group",
       pieces: [
         // 有溝槽的水平桿(上緣在起拱線上),左邊的拱腳,與夾住拱形尺根部的座
-        { kind: "plate", shape: shape(rect(SPAN + 0.6, 0.35, 0, Y0 - 0.18), [rect(SPAN - 0.3, 0.12, 0.25, Y0 - 0.18).reverse()]), thickness: 0.15 },
+        { kind: "plate", shape: shape(rect(SPAN + 0.6, 0.35, 0, GROOVE_Y), [rect(SPAN - 0.3, 0.12, 0.25, GROOVE_Y).reverse()]), thickness: 0.15 },
         { kind: "box", size: [0.12, 4.2, 0.12], at: [BASE[0] - 0.2, Y0 + 2.1, 0] },
         { kind: "box", size: [0.3, 0.3, 0.2], at: [BASE[0] - 0.03, Y0 + 0.15, 0] },
       ],
     },
     { id: "bow", kind: "rod", radius: 0.07 },
     { id: "string", kind: "rope", radius: 0.02 },
-    // 溝槽裡的滑塊與銷(繩圈套在銷上)
-    { id: "slider", kind: "group", pieces: [{ kind: "box", size: [0.3, 0.14, 0.14], at: [0, Y0 - 0.18, 0] }, { kind: "cylinder", radius: 0.04, length: 0.3, at: [0, PIN_Y, 0.05] }] },
+    // 溝槽裡的滑塊與立在它上面的銷(沿深度伸出桿的前面;繩圈套在銷上)
+    { id: "slider", kind: "group", pieces: [{ kind: "box", size: [0.3, 0.14, 0.14], at: [0, GROOVE_Y, 0] }, { kind: "cylinder", radius: 0.04, length: PIN_Z[1] - PIN_Z[0], at: [0, PIN_Y, (PIN_Z[0] + PIN_Z[1]) / 2] }] },
     { id: "pencil", kind: "lathe", profile: [[0, -0.1], [0.05, 0], [0.06, 0.4], [0, 0.4]] },
     { id: "trace", kind: "trace" },
   ],
@@ -80,7 +85,7 @@ export default {
     const tip = tipOf(k);
     return {
       parts: { slider: { position: [x, 0, 0] }, pencil: { position: [tip[0], tip[1], 0.1] } },
-      paths: { bow: { points: bow, closed: false }, string: { points: [[tip[0], tip[1], 0.05], [x, PIN_Y, 0.05]], closed: false, phase: 0 }, trace: { points: edge, closed: false } },
+      paths: { bow: { points: bow, closed: false }, string: { points: [[tip[0], tip[1], 0.05], [x, PIN_Y, STRING_Z]], closed: false, phase: 0 }, trace: { points: edge, closed: false } },
       readouts: [],
     };
   },

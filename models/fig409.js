@@ -2,6 +2,9 @@
 // 一組兩尖之間量得的尺寸,由另一組兩尖放大或縮小轉印,比例等於兩組尖端到樞軸的距離之比。腳上有刻度指示比例。
 // 主動件是一隻腳(繞樞軸張開);狀態按鈕把滑塊鎖在不同的比例上。
 // 推斷:刻度只畫成腳上的幾條刻線;滑塊的位置以三種常用比例表示。
+// 2026-10-20(#409-1、#409-2):刻線改刻在樞軸落在 1 : 1、1 : 2、1 : 3、1 : 4 的位置(原圖的刻度看不出數字;樞軸對到哪一條
+// 就是那個比例),腳 B 的刻線貼在腳 B 的正面(原本浮在腳 A 前面);滑塊補一顆固定螺絲(推斷:原文「可透過固定螺絲加以鎖定」);
+// 不標目標件(兩腳都是主動件,滑塊在一個狀態裡不動——沒有被帶動的零件)。
 import { clamp, deg } from "./kit.js";
 import { shape, circle } from "./shapes.js";
 
@@ -29,13 +32,16 @@ const leg = shape(
   [[0, -H], [0.14, -H + 0.9], [0.24, -H + 1.3], [0.3, -1.45], [0.3, 1.45], [0.24, H - 1.3], [0.14, H - 0.9], [0, H], [-0.14, H - 0.9], [-0.24, H - 1.3], [-0.3, 1.45], [-0.3, -1.45], [-0.24, -H + 1.3], [-0.14, -H + 0.9]],
   [[[-0.1, -1.55], [-0.1, 1.55], [0.1, 1.55], [0.1, -1.55]]],
 );
-const ticks = (side) => [-1.0, -0.5, 0, 0.5, 1.0].map((y) => ({ kind: "box", size: [0.1, 0.02, 0.01], at: [side * 0.2, y, 0.04] }));
+// 刻度:樞軸在腳上的局部 y = H − a(a 是樞軸到上尖的距離);比例 1 : k 時 a = LENGTH / (1 + k)。
+// 刻線貼在腳的正面(板的厚度 0.06,正面在板的中心 +0.03)
+const TICK_RATIOS = [1, 2, 3, 4];
+const ticks = (side, face) => TICK_RATIOS.map((k) => ({ kind: "box", size: [0.1, 0.02, 0.01], at: [side * 0.22, H - LENGTH / (1 + k), face + 0.005] }));
 
 export default {
   figure: 409,
   parts: [
-    { id: "legA", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: leg, thickness: 0.06 }, ...ticks(1)] },
-    { id: "legB", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: leg, thickness: 0.06, at: [0, 0, -0.07] }, ...ticks(-1)] },
+    { id: "legA", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: leg, thickness: 0.06 }, ...ticks(1, 0.03)] },
+    { id: "legB", kind: "group", arrow: false, pieces: [{ kind: "plate", shape: leg, thickness: 0.06, at: [0, 0, -0.07] }, ...ticks(-1, -0.07 + 0.03)] },
     {
       id: "slider",
       kind: "group",
@@ -44,6 +50,9 @@ export default {
         { kind: "plate", shape: shape(circle(0.24), [circle(0.1).reverse()]), thickness: 0.04, at: [0, 0, 0.05] },
         { kind: "cylinder", radius: 0.1, length: 0.22, at: [0, 0, 0.0], accent: true },
         { kind: "plate", shape: shape(circle(0.24), [circle(0.1).reverse()]), thickness: 0.04, at: [0, 0, -0.12] },
+        // 固定螺絲(推斷):鎖在滑塊前板上、偏離樞軸,鎖緊就把滑塊夾在兩腳的溝槽裡
+        { kind: "cylinder", radius: 0.035, length: 0.12, at: [0.17, 0, 0.1], accent: true },
+        { kind: "cylinder", radius: 0.06, length: 0.04, at: [0.17, 0, 0.16], accent: true },
       ],
     },
   ],
@@ -56,7 +65,7 @@ export default {
     ],
   },
   driver: { part: "legA", grips: ["legB"], type: "rotation", range: RANGE, initial: deg(20) },
-  target: "slider", // 帶著樞軸的滑塊:它的位置決定放大、縮小的比例
+  // 沒有目標件:兩腳都是主動件(手張),樞軸滑塊在一個狀態裡不動;複製的結果是另一組尖端的距離(讀數)
   view: { direction: [0.03, 0.05, 1] },
   pose(half0, state = "double") {
     const half = clamp(half0, ...RANGE);

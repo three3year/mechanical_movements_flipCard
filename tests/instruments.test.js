@@ -1,7 +1,8 @@
 // 第十七章「繪圖儀器」與第二十二章「儀錶與周轉輪系」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
+import { close, sweep, part } from "./helpers.js";
+import { pointInPolygon } from "../models/contact.js";
 import fig500, { gauge } from "../models/fig500.js";
 import * as m403 from "../models/fig403.js";
 import * as m404 from "../models/fig404.js";
@@ -107,7 +108,7 @@ test("第 407 種:尖拱:拱形尺的根部垂直固定在桿上,頂端由繩拉
   assert.ok(ks.every((k, i) => i === 0 || k > ks[i - 1]), "滑塊往右,繩把尺的頂端往下拉,尺彎得更厲害");
   for (const x of [0.35, 0.9, 1.45]) {
     const tip = m407.pencil(x);
-    near(Math.hypot(tip[0] - x, tip[1] - (-1.55)), m407.STRING, 1e-6, "繩長不變");
+    near(Math.hypot(tip[0] - x, tip[1] - m407.PIN_Y), m407.STRING, 1e-6, "繩長不變");
     const k = m407.curvature(x);
     const base = m407.bowPoint(k, 0);
     const next = m407.bowPoint(k, 0.01);
@@ -182,6 +183,151 @@ test("第 411 種:自動記錄水平儀:輪子的圓周等於底邊;平地上擺
   const b = m411.carriage(m411.RANGE[0] + m411.BASE * 0.1);
   near(a.wheel - b.wheel, (2 * Math.PI) * 0.1, 1e-6, "走過底邊的十分之一,輪子轉十分之一圈");
   near((a.drum - b.drum) / (a.wheel - b.wheel), m411.RATIO, 1e-12, "鼓輪由台車輪子帶動");
+});
+
+test("第 407 種:滑塊帶著銷,繩圈套在銷上:銷立在溝槽裡的滑塊上、從水平桿前面伸出,繩的下端就在銷上", () => {
+  const slider = part(m407.default, "slider");
+  const body = slider.pieces.find((p) => p.kind === "box");
+  const pin = slider.pieces.find((p) => p.kind === "cylinder");
+  assert.ok(Math.abs(pin.at[1] - body.at[1]) <= body.size[1] / 2 - pin.radius, "銷穿在滑塊本體裡(y 在滑塊的範圍內)");
+  const bar = part(m407.default, "frame").pieces[0];
+  assert.ok(pin.at[2] + pin.length / 2 > bar.thickness / 2 + 0.05, "銷從水平桿的前面伸出");
+  for (const x of [m407.RANGE[0], 0.9, m407.RANGE[1]]) {
+    const end = m407.default.pose(x).paths.string.points.at(-1);
+    near(end[0], x, 1e-12, "繩的下端跟著滑塊");
+    near(end[1], pin.at[1], 1e-12, "繩的下端在銷的軸線上");
+    assert.ok(end[2] > bar.thickness / 2 && end[2] < pin.at[2] + pin.length / 2, "繩套在銷伸出水平桿前面的那一段");
+  }
+});
+
+test("第 408 種:接頭是實心的圓盤,葉片的畫線邊與兩腿的背面在圓盤中心相交;葉片的固定銷在葉片上", () => {
+  const joint = part(m408.default, "joint");
+  const disc = joint.pieces.find((p) => p.kind === "plate");
+  assert.ok(pointInPolygon([0, 0], disc.shape.outline) && !disc.shape.holes.some((h) => pointInPolygon([0, 0], h)), "接頭中心(三條線相交處)在圓盤的實體上");
+  const mark = joint.pieces.find((p) => p.kind === "cylinder" && p.accent);
+  near(Math.hypot(mark.at[0], mark.at[1]), 0, 1e-12, "中心記號在接頭中心");
+  assert.ok(Math.abs(mark.at[2] - disc.at[2]) < disc.thickness / 2 + mark.length / 2, "中心記號插在圓盤上");
+  for (const p of joint.pieces) if (p !== disc) assert.ok(pointInPolygon([p.at[0], p.at[1]], disc.shape.outline), `接頭上的 ${p.kind} 都落在圓盤上`);
+  const blade = part(m408.default, "blade");
+  const plate = blade.pieces.find((p) => p.kind === "plate");
+  const pin = blade.pieces.find((p) => p.kind === "cylinder");
+  assert.ok(pointInPolygon([pin.at[0], pin.at[1]], plate.shape.outline), "固定銷在葉片的板上");
+  assert.ok(Math.abs(pin.at[2] - plate.at[2]) < plate.thickness / 2 + pin.length / 2, "固定銷插進葉片");
+});
+
+test("第 409 種:腳上的刻度指出比例(樞軸在刻線上時就是那個比例),刻線貼在各自的腳上;滑塊有固定螺絲", () => {
+  for (const id of ["legA", "legB"]) {
+    const leg = part(m409.default, id);
+    const plate = leg.pieces.find((p) => p.kind === "plate");
+    const ticks = leg.pieces.filter((p) => p.kind === "box");
+    const face = (plate.at?.[2] ?? 0) + plate.thickness / 2;
+    for (const t of ticks) near(t.at[2] - t.size[2] / 2, face, 1e-9, `${id} 的刻線貼在這隻腳的正面`);
+    for (const [state, k] of [["same", 1], ["double", 2], ["triple", 3]]) {
+      const p = m409.LENGTH / 2 - m409.arms(state).a; // 樞軸在腳上的局部 y
+      assert.ok(ticks.some((t) => Math.abs(t.at[1] - p) < 1e-9), `${id}:比例 1 : ${k} 的樞軸位置有刻線`);
+    }
+  }
+  const slider = part(m409.default, "slider");
+  const front = slider.pieces.find((p) => p.kind === "plate");
+  const screw = slider.pieces.find((p) => p.kind === "cylinder" && p.accent && Math.hypot(p.at[0], p.at[1]) > 0);
+  assert.ok(screw, "滑塊上有固定螺絲(偏離樞軸)");
+  assert.ok(Math.hypot(screw.at[0], screw.at[1]) + screw.radius < 0.24, "固定螺絲在滑塊的板上");
+  assert.ok(screw.at[2] - screw.length / 2 < front.at[2] + front.thickness / 2, "固定螺絲鎖進滑塊的板");
+});
+
+test("第 410 種:兩根短桿在接點上下相疊,尖頂當成銷穿過兩個軸眼;夾頰的耳片以銷接短桿", () => {
+  const linkA = part(m410.default, "linkA");
+  const linkB = part(m410.default, "linkB");
+  const tip = part(m410.default, "tip");
+  const zs = tip.profile.map(([, z]) => z);
+  for (const g of sweep(m410.RANGE[1], 8, m410.RANGE[0])) {
+    const pose = m410.default.pose(g).parts;
+    const ya = pose.linkA.to[1];
+    const yb = pose.linkB.to[1];
+    assert.ok(Math.abs(ya - yb) >= (linkA.thickness + linkB.thickness) / 2 - 1e-9, "兩根短桿不在同一層(上下相疊)");
+    assert.ok(Math.abs(ya - yb) <= (linkA.thickness + linkB.thickness) / 2 + 1e-9, "兩個軸眼貼著疊");
+    const top = pose.tip.position[1] + Math.max(...zs);
+    const bottom = pose.tip.position[1] + Math.min(...zs);
+    const lo = Math.min(ya, yb) - linkA.thickness / 2;
+    const hi = Math.max(ya, yb) + linkB.thickness / 2;
+    assert.ok(bottom <= lo && top >= hi, "尖頂的軸穿過兩個軸眼");
+    const r = Math.max(...tip.profile.filter(([, z]) => z + pose.tip.position[1] > lo && z + pose.tip.position[1] < hi).map(([rr]) => rr));
+    assert.ok(r < linkA.width / 2, "穿過軸眼那一段比軸眼細(是銷,不是和軸眼同粗的柱)");
+  }
+  // 夾頰的耳片上各有一根銷,穿過短桿的另一端
+  const pinOf = (id) => part(m410.default, id).pieces.find((p) => p.kind === "cylinder" && p.axis?.[1] === 1 && p.radius < 0.05);
+  const s = m410.gauge(0);
+  const pose = m410.default.pose(0).parts;
+  const pinA = pinOf("bar");
+  const pinB = pinOf("jaw");
+  near(pose.bar.position[0] + pinA.at[0], s.a[0], 1e-9, "固定夾頰的銷在短桿 A 的樞軸上");
+  near(pose.jaw.position[0] + pinB.at[0], s.b[0], 1e-9, "活動夾頰的銷在短桿 B 的樞軸上");
+  assert.ok(pinA.at[1] - pinA.length / 2 < pose.linkA.from[1] && pinA.at[1] + pinA.length / 2 > pose.linkA.from[1], "銷穿過短桿 A 的軸眼");
+  assert.ok(pinB.at[1] - pinB.length / 2 < pose.linkB.from[1] && pinB.at[1] + pinB.length / 2 > pose.linkB.from[1], "銷穿過短桿 B 的軸眼");
+});
+
+test("第 410 種:非平行的木料:放開一個夾頰(翼形螺絲轉鬆、升起),但它仍貼著木料", () => {
+  const locked = m410.default.pose(-2.0);
+  const loose = m410.default.pose(2.0);
+  const lift = (pose) => pose.parts.wingScrew.position[1] - pose.parts.jaw.position[1];
+  near(lift(locked), m410.SCREW_REST, 1e-9, "平行段:翼形螺絲鎖緊");
+  assert.ok(lift(loose) > m410.SCREW_REST + 0.05, "斜邊段:翼形螺絲升起(放開)");
+  assert.ok(Math.abs(loose.parts.wingScrew.angle - locked.parts.wingScrew.angle) > 1, "翼形螺絲轉鬆");
+  assert.equal(locked.readouts.find((r) => r.label === "活動夾頰").value, "鎖住");
+  assert.equal(loose.readouts.find((r) => r.label === "活動夾頰").value, "放開");
+  for (const g of [1.0, 2.0, m410.RANGE[1]]) {
+    const pose = m410.default.pose(g).parts;
+    near(pose.jaw.position[0], m410.EDGE + m410.width(g), 1e-12, "放開的夾頰仍貼著木料的斜邊");
+  }
+});
+
+test("第 411 種:鼓輪與傘齒輪離地:台車走過上坡起點、下坡終點這些凹處時,鼓面全程不陷進地面", () => {
+  const drum = part(m411.default, "drum");
+  const barrel = drum.pieces.find((p) => p.kind === "drum");
+  const bevel = drum.pieces.find((p) => p.kind === "bevel");
+  let min = Infinity;
+  for (const u of sweep(m411.RANGE[1], 400, m411.RANGE[0])) {
+    const c = m411.carriage(u);
+    // 鼓輪軸沿底邊(局部 x);圓筒最低點在軸下方 r 處(沿台車的法線)
+    const low = (xl, r) => {
+      const ax = c.mid[0] + xl * Math.cos(c.tilt);
+      const ay = c.mid[1] + xl * Math.sin(c.tilt);
+      return ay - r * Math.cos(c.tilt) - m411.ground(ax + r * Math.sin(c.tilt));
+    };
+    for (let xl = -barrel.width / 2; xl <= barrel.width / 2 + 1e-9; xl += 0.05) min = Math.min(min, low(xl, barrel.radius));
+    min = Math.min(min, low(bevel.at[2], bevel.radius));
+  }
+  assert.ok(min > 0.03, `鼓面與傘齒輪全程離地(最小距離 ${min.toFixed(3)})`);
+});
+
+test("第 411 種:車架沒有東西伸進車輪轉過的範圍(鼓輪軸的軸承橫桿在輪子半徑之外)", () => {
+  const wheel = part(m411.default, "rearWheels").pieces.find((p) => p.kind === "pulley");
+  const zw = [Math.abs(wheel.at[2]) - wheel.width / 2, Math.abs(wheel.at[2]) + wheel.width / 2];
+  for (const piece of part(m411.default, "frame").pieces) {
+    const half = piece.kind === "box" ? [piece.size[0] / 2, piece.size[1] / 2, piece.size[2] / 2] : piece.kind === "cylinder" ? [piece.radius, piece.radius, piece.length / 2] : null;
+    if (!half) continue;
+    const z = [Math.abs(piece.at[2]) - half[2], Math.abs(piece.at[2]) + half[2]];
+    if (z[1] < zw[0] || z[0] > zw[1]) continue; // 不在車輪的平面上
+    for (const cx of [-m411.BASE / 2, m411.BASE / 2]) {
+      const dx = Math.max(0, Math.abs(cx - piece.at[0]) - half[0]);
+      const dy = Math.max(0, Math.abs(0 - piece.at[1]) - half[1]);
+      assert.ok(Math.hypot(dx, dy) > m411.WHEEL, `車架的 ${piece.kind}(x ${piece.at[0]})離輪心 ${Math.hypot(dx, dy).toFixed(3)},在輪子半徑 ${m411.WHEEL.toFixed(3)} 之內`);
+    }
+  }
+});
+
+test("第 411 種:鼓輪由其中一個台車輪子經傘齒輪帶動:兩個傘齒輪錐頂共點、齒距相同,轉速比等於齒數比", () => {
+  const small = part(m411.default, "rearWheels").pieces.find((p) => p.kind === "bevel");
+  const big = part(m411.default, "drum").pieces.find((p) => p.kind === "bevel");
+  // 小傘齒輪在後輪軸上(軸沿 z,錐頂在 z = 0),大傘齒輪在鼓輪軸上(軸沿 x,錐頂在後輪軸上):
+  // 小輪的節圓在 z = small.at[2]、半徑 small.radius;大輪的節圓在 x = 軸心 + big.at[2](鼓輪零件的局部 z 是世界 x)
+  near(small.at[2], big.radius, 1e-9, "小傘齒輪的節圓離後輪軸的距離 = 大傘齒輪的半徑(錐頂共點)");
+  near(big.at[2] + m411.BASE / 2, small.radius, 1e-9, "大傘齒輪的節圓離後輪軸的距離 = 小傘齒輪的半徑(錐頂共點)");
+  near(small.radius / small.teeth, big.radius / big.teeth, 1e-9, "兩輪的齒距相同(咬得上)");
+  near(m411.RATIO, small.teeth / big.teeth, 1e-12, "鼓輪轉速 / 輪子轉速 = 齒數比");
+  const a = m411.carriage(m411.RANGE[0]);
+  const b = m411.carriage(m411.RANGE[0] + m411.BASE * 0.1);
+  near((a.drum - b.drum) / (a.wheel - b.wheel), small.teeth / big.teeth, 1e-12, "鼓輪照齒數比跟著輪子轉");
 });
 
 test("第 496 種:牽伸與加撚:前羅拉 B 比後羅拉 A 轉得快,把粗紗拉長;錠翼繞紗管轉,加撚並捲上", () => {
