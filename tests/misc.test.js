@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep, part, turned, inSolid, polyGap, pieceBox, plateLayers, guidedBetween, assertOnePiece, assertThrottle, assertShaftInBearings } from "./helpers.js";
-import { deg, quatMul, quatRotate, partPoint, rotateAbout, add, sub, scale, cross, dot, dist, len, norm, lerp3, rot2, polar, X, Y, Z, TAU } from "../models/kit.js";
+import { deg, quatMul, quatRotate, partPoint, rotateAbout, add, sub, scale, cross, dot, dist, len, norm, lerp3, rot2, polar, signedAngle, X, Y, Z, TAU } from "../models/kit.js";
 import { rackShape, gearProfile } from "../models/shapes.js";
 import { pathLength } from "../models/flow.js";
 import { lineAngle } from "../models/ruler-lines.js";
@@ -4472,24 +4472,80 @@ test("第 400 種:彈簧在 A 左端的鉤的右邊,是裝在座裡的壓縮彈�
   close(hook.lo[0] + def.pose(0).parts.barA.position[0], stop.hi[0], "被推回時鉤靠在擋塊上", 1e-9);
 });
 
-test("第 401 種:Brownell 曲柄:腕銷越過死點前,滑塊 A 沿槽往前移;越過後彈簧 B 把它推回擋止", () => {
-  const deg = Math.PI / 180;
-  close(m401.wrist(Math.PI).s, 0, "腕銷在底部:滑塊在擋止處");
-  assert.ok(m401.wrist(-10 * deg).s > 0.25, "接近死點時滑塊往前移");
-  close(m401.wrist(30 * deg).s, 0, "越過後彈回擋止處", 1e-9);
-  // 沿槽(切線)移:腕銷離軸心的距離 ≥ 槽的半徑
-  const w = m401.wrist(-10 * deg);
-  assert.ok(Math.abs(w.local[1] - 0.6) < 1e-9 && w.local[0] < 0, "滑塊沿橫的槽往轉動的方向移");
-  // 彈回是加速的:越回越快
-  const back = [5, 10, 15, 20, 25].map((a) => m401.wrist(a * deg).s);
+test("第 401 種:Brownell 曲柄:連桿往下接地上的踏板,死點在頂部與底部;踏板的壓力讓滑塊 A 帶著腕銷在死點往前移過中心,越過後彈簧 B 把它推回擋止", () => {
+  const { R, SLIDE, ROD, DEAD } = m401;
+  const vs = sweep(TAU, 720);
+  // 死點 = 踏板走到盡頭、換向的地方(連桿與曲柄共線):連桿幾乎垂直往下接踏板,所以在頂部與底部
+  const endY = vs.map((v) => m401.pedal(v).end[1]);
+  const bottom = vs[endY.indexOf(Math.min(...endY))];
+  const top = vs[endY.indexOf(Math.max(...endY))];
+  assert.ok(m401.wrist(top).pos[1] > 0.85 * R, `踏板最高時腕銷在頂部(腕銷 y ${m401.wrist(top).pos[1].toFixed(3)})`);
+  assert.ok(m401.wrist(DEAD).pos[1] < -0.85 * R, `底部死點時腕銷在底部(腕銷 y ${m401.wrist(DEAD).pos[1].toFixed(3)})`);
+  // 底部死點:連桿與曲柄共線——踏板的連桿端在軸心到槽中心的那條線上
+  const slotDir = rot2([0, R], DEAD);
+  const endDir = m401.pedal(DEAD).end;
+  close(Math.abs(slotDir[0] * endDir[1] - slotDir[1] * endDir[0]) / (R * Math.hypot(endDir[0], endDir[1])), 0, "底部死點時連桿通過軸心", Math.sin(deg(2)));
+  for (const v of [DEAD, top]) {
+    const { pos } = m401.wrist(v);
+    const { end } = m401.pedal(v);
+    assert.ok(Math.abs(end[0] - pos[0]) < 0.2 * ROD, "死點時連桿幾乎垂直");
+    assert.ok(end[1] < pos[1] - 2, "踏板在飛輪下面的地上");
+  }
+  close(Math.abs(TAU / 2 - Math.abs(DEAD - top)), 0, "兩個死點相隔半圈", deg(12));
+  // 踏板的壓力從底部死點推起(踏板中段的樞軸:踩右端、左端的連桿往上推):滑塊帶著腕銷往前(轉動的方向)移過中心,
+  // 連桿的推力才有力臂(越過中心前推力通過軸心)。踏板走到最低處後幾乎停著,是滑塊在往前移
+  assert.ok(signedAngle(DEAD - bottom) > 0 && signedAngle(DEAD - bottom) < deg(25), `踏板最低處 ${bottom.toFixed(3)} 在死點 ${DEAD.toFixed(3)} 前不遠`);
+  assert.ok(Math.abs(m401.pedal(DEAD).end[1] - m401.pedal(bottom).end[1]) < 0.08, "踏板最低處到死點之間踏板幾乎不動,滑塊在往前移");
+  const atDead = m401.wrist(DEAD);
+  assert.ok(atDead.s > 0.9 * SLIDE, `死點時滑塊推到頭(s = ${atDead.s.toFixed(3)})`);
+  assert.ok(Math.abs(atDead.local[1] - R) < 1e-9 && atDead.local[0] < 0, "滑塊沿橫的槽往轉動的方向移(腕銷離軸心的距離不變)");
+  const push = norm(sub(atDead.pos, m401.pedal(DEAD).end)); // 連桿從踏板往上推腕銷
+  const arm = atDead.pos[0] * push[1] - atDead.pos[1] * push[0];
+  assert.ok(arm > 0.8 * SLIDE, `腕銷過了中心:推力對軸心的力臂 ${arm.toFixed(3)} 是逆時針的`);
+  // 越過後彈簧把滑塊推回擋止、越推越快;之後一直靠在擋止上,直到再次需要往前移(頂部死點不動)
+  close(m401.wrist(DEAD + deg(30)).s, 0, "越過後彈回擋止處", 1e-9);
+  const back = [5, 10, 15, 20, 25].map((a) => m401.wrist(DEAD + deg(a)).s);
   const steps = back.slice(1).map((s, i) => back[i] - s);
   assert.ok(steps.every((d, i) => i === 0 || d > steps[i - 1]), "彈簧把滑塊越推越快");
+  close(m401.wrist(top).s, 0, "頂部死點:滑塊在擋止處", 1e-9);
+  const moving = vs.filter((v) => m401.wrist(v).s > 1e-6);
+  assert.ok(moving.every((v) => Math.abs(signedAngle(v - DEAD)) < deg(45)), "只在底部死點前後往前移");
+  // 踩下:腳踩的右端往下,連桿那一端往上(腕銷從底部往上走)
+  assert.ok(m401.pedal(DEAD + deg(90)).foot[1] < m401.pedal(DEAD).foot[1] - 0.1, "推程裡腳踩的那端往下");
+  // 守恆與接觸:連桿長度不變;輪面的柱全程在滑塊的長孔裡,滑塊在擋止處時柱靠著孔的一端
+  for (const v of vs) {
+    const w = m401.wrist(v);
+    close(Math.hypot(w.pos[0] - m401.pedal(v).end[0], w.pos[1] - m401.pedal(v).end[1]), ROD, `主動量 ${v.toFixed(3)}:連桿長度`, 1e-9);
+    for (const [x, y] of m401.STUDS) {
+      const stud = circlePolygon([x + w.s, y - R], m401.STUD_R, 48); // 柱相對滑塊的位置(兩者同轉)
+      assert.ok(penetrationDepth(stud, m401.SLIDE_SHAPE) < 1e-3, `主動量 ${v.toFixed(3)}:柱穿進滑塊`);
+    }
+  }
+  const gapAtStop = Math.min(
+    ...m401.STUDS.map(([x, y]) => Math.min(...m401.SLIDE_SHAPE.holes.map((h) => Math.min(...circlePolygon([x, y - R], m401.STUD_R, 48).map((p) => edgeDistance(p, h))))))
+  );
+  assert.ok(gapAtStop < 0.012, `滑塊在擋止處時柱靠著長孔的一端(間隙 ${gapAtStop.toFixed(4)})`);
+  // 彈簧 B 是繞在輪轂上的渦卷彈簧:內端在輪轂上、外端跟著滑塊走、長度不變
+  const hub = part(m401.default, "flywheel").pieces.find((p) => p.kind === "cylinder" && Math.abs(p.at[0]) < 1e-9 && Math.abs(p.at[1]) < 1e-9);
+  const length0 = pathLength(m401.spring(0));
+  for (const v of sweep(TAU, 36)) {
+    const pts = m401.spring(v);
+    const w = m401.wrist(v);
+    close(Math.hypot(pts[0][0], pts[0][1]), hub.radius + m401.SPRING_WIRE, `主動量 ${v.toFixed(3)}:內端貼著輪轂`, 0.01);
+    const attach = m401.springEnd(v);
+    close(dist(pts.at(-1), attach), 0, `主動量 ${v.toFixed(3)}:外端接在滑塊上`, 1e-6);
+    close(dist(attach, w.pos) - dist(m401.springEnd(0), m401.wrist(0).pos), 0, "外端跟著滑塊走(和腕銷的距離不變)", 1e-6);
+    close(pathLength(pts), length0, `主動量 ${v.toFixed(3)}:彈簧長度不變`, 1e-3);
+  }
 });
 
 test("第 402 種:Guernsey 擒縱:兩個擺輪由同一槓桿帶動,朝相反方向擺動;叉瓦放走擒縱輪的齒由接觸算", () => {
-  const g = m402.guernsey(0);
-  assert.ok(g.bal1 * g.bal2 < 0, "兩個擺輪反向");
-  close(Math.abs(g.bal1), Math.abs(g.bal2), "擺幅相同");
+  // 槓桿從一端擺到另一端,兩個擺輪轉的方向相反、幅度相同
+  const [g0, g1] = [m402.guernsey(0), m402.guernsey(2 * m402.SWING)];
+  const [d1, d2] = [g1.bal1 - g0.bal1, g1.bal2 - g0.bal2];
+  close(Math.abs(g1.lever - g0.lever), 2 * m402.SWING, "槓桿從一端擺到另一端", 1e-9);
+  assert.ok(d1 * d2 < 0 && Math.abs(d1) > 2 * m402.SWING, "兩個擺輪反向");
+  close(Math.abs(d1), Math.abs(d2), "擺幅相同", 1e-9);
   const P = 4 * m402.SWING; // 槓桿一個來回
   close(m402.guernsey(P).wheel - m402.guernsey(0).wheel, -m402.PITCH, "一個來回放走一齒(順時針)", 1e-9);
   close(m402.guernsey(3 * P).wheel - m402.guernsey(0).wheel, -3 * m402.PITCH, "三個來回放走三齒", 1e-9);
@@ -4500,5 +4556,19 @@ test("第 402 種:Guernsey 擒縱:兩個擺輪由同一槓桿帶動,朝相反方
   for (const v of sweep(P, 120)) {
     const c = m402.contactAt(v);
     for (const p of c.pallets) for (const t of c.teeth) assert.ok(penetrationDepth(p, t) < 2e-3, `主動量 ${v.toFixed(3)}:叉瓦壓進輪齒`);
+  }
+  // 「內齒形扇形段與外齒形扇形段分別與擺輪的小齒輪嚙合」:齒距相同、全程不穿入、齒真的咬著(間隙接近 0,小齒輪少轉一點就穿入)
+  for (const m of m402.MESHES) {
+    close((TAU * m.sector.radius) / m.sector.teeth, (TAU * m.pinion.radius) / m.pinion.teeth, `${m.id}:扇形段與小齒輪的齒距相同`, 1e-9);
+    const pinionPitch = TAU / m.pinion.teeth;
+    for (const v of sweep(P, 48)) {
+      const g = m402.guernsey(v);
+      const sector = placeOutline(m.outline, m.sector.center, g.lever);
+      const pinionAt = (a) => placeOutline(gearProfile(m.pinion), m.pinion.center, a);
+      const pinion = pinionAt(g[m.id]);
+      assert.ok(penetrationDepth(sector, pinion) < 2e-3, `主動量 ${v.toFixed(3)}:${m.id} 的小齒輪穿進扇形段 ${penetrationDepth(sector, pinion).toFixed(3)}`);
+      assert.ok(polyGap(sector, pinion) < 0.03, `主動量 ${v.toFixed(3)}:${m.id} 的小齒輪沒咬著扇形段(間隙 ${polyGap(sector, pinion).toFixed(3)})`);
+      for (const d of [-0.3, 0.3]) assert.ok(penetrationDepth(sector, pinionAt(g[m.id] + d * pinionPitch)) > 0.01, `主動量 ${v.toFixed(3)}:${m.id} 的小齒輪多轉或少轉 0.3 齒還不穿入,齒沒有互相嵌著`);
+    }
   }
 });
