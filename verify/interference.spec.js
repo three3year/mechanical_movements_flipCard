@@ -260,3 +260,9 @@ test("方桿沿自己的長軸在導座(沒畫出方孔的方塊)裡滑動不算
   const grazing = model([rod, block], (v) => ({ block: { position: [v, 0.23, 0] } }), { driver: { part: "block", type: "translation", direction: [1, 0, 0], range: [0, 1] } });
   assert.equal(interference(grazing).length, 1);
 });
+
+test("兩點剖面的旋轉體(圓錐)有實體:穿進板會報;離開不報", () => {
+  const tip = (z) => ({ id: "tip", kind: "lathe", center: [0, 0, z], profile: [[0, -0.45], [0.16, 0]] });
+  assert.equal(interference(model([plate("a", square(2), [0, 0, 0]), tip(0.3)])).length, 1); // 尖頂在 z −0.15,穿進板(z ±0.1)
+  assert.deepEqual(interference(model([plate("a", square(2), [0, 0, 0]), tip(0.6)])), []);
+});

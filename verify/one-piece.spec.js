@@ -73,3 +73,13 @@ test("附件的附件、轉了角的附件照它擺放的位置算", () => {
   assert.deepEqual(found?.blocks.map((b) => b.label), ["pieces[0].pieces[0]"]);
   assert.ok(Math.abs(found.gap - 0.43) < 1e-3, `間隙 ${found.gap}`);
 });
+
+test("兩點剖面的旋轉體(第 438 種軸底的尖頂,圓錐)有實體:懸空時會報、量得到間隙;接在本體上不報", () => {
+  const cone = (z) => ({ kind: "lathe", profile: [[0, -0.45], [0.16, 0]], axis: [0, 0, 1], at: [0, 0, z] });
+  const body = { kind: "box", size: [1, 1, 1] }; // z −0.5..0.5
+  const [found, ...rest] = detachedPieces(model([{ id: "shaft", kind: "group", pieces: [body, cone(-0.8)] }]));
+  assert.deepEqual(rest, []);
+  assert.deepEqual(found?.blocks.map((b) => b.label), ["pieces[1]"]);
+  assert.ok(Math.abs(found.gap - 0.3) < 1e-3, `間隙 ${found.gap}`);
+  assert.deepEqual(detachedPieces(model([{ id: "shaft", kind: "group", pieces: [body, cone(-0.5)] }])), []);
+});

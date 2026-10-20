@@ -105,20 +105,35 @@ function ringPieces(rings, perRing, vertex) {
   return pieces;
 }
 
-// 旋轉體:剖面多邊形切成凸塊,每塊在相鄰兩個角度之間掃出一塊
+// 旋轉體:剖面多邊形切成凸塊,每塊在相鄰兩個角度之間掃出一塊。
+// 剖面沒有面積(兩點的剖面、共線的幾點:第 438 種軸底的尖頂)時是一層殼,三角化不出凸塊;
+// 這種剖面補上軸上的兩點(半徑 0,高度同剖面的兩端)封成實心的旋轉體——殼裡面就是實體。
+// 繪圖層把旋轉體的軸轉到局部 Z(viewer/parts.js 的 lathe),軸上的點就是 (0, 0, 剖面的高度)
 function lathePieces(p, at) {
   const n = p.points.length;
-  const polygons = convexPolygons(p.points.map((v, i) => ({ id: i, x: v.x, y: v.y })));
+  const vertices = p.points.map((v, i) => ({ id: i, x: v.x, y: v.y }));
+  const extra = []; // 補上的軸上點:id 從 n 起算
+  if (Math.abs(polygonArea(vertices)) < 1e-9) {
+    for (const v of [p.points[n - 1], p.points[0]]) {
+      if (Math.abs(v.x) < 1e-9) continue;
+      extra.push([0, 0, v.y]);
+      vertices.push({ id: n + extra.length - 1, x: 0, y: v.y });
+    }
+  }
+  const polygons = convexPolygons(vertices);
+  const vertexAt = (s, j) => (j < n ? at(s * n + j) : extra[j - n]);
   const pieces = [];
   for (let s = 0; s < p.segments; s++) {
     for (const polygon of polygons) {
       const points = [];
-      for (const j of polygon) points.push(...at(s * n + j), ...at((s + 1) * n + j));
+      for (const j of polygon) points.push(...vertexAt(s, j), ...vertexAt(s + 1, j));
       pieces.push(new Float32Array(points));
     }
   }
   return pieces;
 }
+
+const polygonArea = (vertices) => vertices.reduce((sum, v, i) => sum + v.x * vertices[(i + 1) % vertices.length].y - vertices[(i + 1) % vertices.length].x * v.y, 0) / 2;
 
 // 擠出的板件:蓋面的三角形併成凸多邊形,每個凸多邊形連同另一面對應的頂點是一塊凸柱。
 // 直接讀幾何裡的頂點(已含平移、錐度),不重算輪廓
