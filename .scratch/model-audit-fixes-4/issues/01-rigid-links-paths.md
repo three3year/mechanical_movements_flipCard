@@ -28,3 +28,5 @@
 | 499 | `rodL`、`rodR` | 0.58–1.25 / 0.58–1.54 | 票 29(#499-2) |
 
 範圍外(全書共 18 張,扣掉上面 9 張)寫進 `.scratch/physical-verification/pending.md`「工具補盲點後報出、留給各族的」:第 125 種兩層槓桿(`stretch: true`,註解已寫明是近似)、第 235、239、240、287、360 種的彈簧畫成 rod(彈簧會伸縮,屬實)、第 317、319 種補償擺的鋼桿與黃銅桿(熱脹是原理)、第 369 種擺線 0.01。
+
+2026-10-20 code review 後:`defaultSpeed`、起點與範圍改用 `verify/sampling.js` 匯出的(零依賴),不再自己抄一份;順帶改的檔是 `docs/agents/model-audit.md` 第 3 類那一句與 `CLAUDE.md` 測試那一句(`tools/*.test.mjs` 進 `npm test`)。保留在 CLI 檔內 `export` 加 main-guard 的寫法(和 one-piece 的「verify/ 函式庫 + tools/ CLI」不同):這個掃描零依賴、測試要進 `npm test`,放 `verify/` 會混進需要 Rapier 的那一堆。

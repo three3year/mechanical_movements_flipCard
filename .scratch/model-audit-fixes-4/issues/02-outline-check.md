@@ -29,4 +29,6 @@
 | 459 | `frame.pieces[12]` | 洞部分在外(2/4 點),三角化 0.203、該有 0.070 | 票 18 |
 | 402 `lever.pieces[0]`、405 `ruler`(73/96)、415 `pawlB`、`pawlC`、416 `treadle`、418 `rod.pieces[0]`、422 `piston.pieces[3]`、425 `cylinder.pieces[2]`(2/4)、444 `works.pieces[0]`(2/4)、448 `handle`、450 `handle`、451 `handle`、453 `works.pieces[7]`、454 `works.pieces[6]`(2/4)、`handle`、460 `lever`、466 `handle`、467 `handle`、478 `lever`(9/96)、490 `tiller`、491 `pawl`、492 `post.pieces[0]`、505 `armD` | 洞部分在外,多是約一半的頂點在外(圓心在外形的邊上:端頭的銷孔、端頭沒畫圓,或拿洞當缺口),面積差 1–3% | 各圖的票(04、05、07、08、09、10、16、17、19、20、23、27、30):修或寫出理由(拿洞當缺口的,改成外形本身的缺口) |
 
-範圍外(第 400 種以前,52 張)寫進 `.scratch/physical-verification/pending.md`「工具補盲點後報出、留給各族的」。
+範圍外(第 400 種以前,47 張)寫進 `.scratch/physical-verification/pending.md`「工具補盲點後報出、留給各族的」。
+
+2026-10-20 code review 後:(1)`triangulatedArea` 原本外形轉逆時針、洞一律順時針,和 ExtrudeGeometry 相反(它把外形轉成順時針,外形有反轉時才翻洞);改成建同一個 `THREE.Shape`、照 ExtrudeGeometry 的前處理,全書掃描結果不變。(2)「自交但面積只差一點的不報」的測試原本用的多邊形沒有真的自交,改成一角有小扭結的多邊形(多出 0.5%)。(3)小計更正:範圍內 29 張、範圍外 47 張(表格本來就列齊 29 張)。(4)第三類「面積不符」是保險用的(全書 0 件),已寫在工具檔頭與 `docs/agents/model-audit.md`;洞在外形外時不另報面積不符,也寫了。(5)順帶改的檔:`docs/agents/model-audit.md`(用法與「基準」步驟,照票 01 那一輪的前例)、`models/contact.js` 加 `signedArea` 給本工具與 `verify/solids.js` 共用、`CLAUDE.md` 的測試那一句補上零依賴的工具測試。

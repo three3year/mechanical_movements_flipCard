@@ -14,7 +14,7 @@ Single-context layout: `CONTEXT.md` at the repo root plus `docs/adr/`. See `docs
 
 ## 開發
 
-- 測試:`npm test`(Node 內建測試執行器,零依賴)。測試只驗模型定義(`pose()` 的輸出與定義資料),不碰 Three.js;斷言對應原文。
+- 測試:`npm test`(Node 內建測試執行器,零依賴)。測試只驗模型定義(`pose()` 的輸出與定義資料)與零依賴的維護工具(`tools/*.test.mjs`),不碰 Three.js;斷言對應原文。
 - 模型的運動學定義在 `models/`(純函式,不依賴 Three.js),3D 繪圖在 `viewer/`。新增模型:寫一份 `models/figNNN.js`(三位數圖號),再在 `models/registry.js` 登記一行(登記表只記圖號 → 定義檔,定義在切到模型時才載入)。
 - 本機預覽要用靜態伺服器(模型是 ES module);`tools/model-preview.html?fig=N` 把插圖與模型初始視角並排,供截圖對照;畫面行為的手動驗證清單見 `docs/models-manual-checklist.md`。
 - **截圖一律經截圖服務**(主 session 自己截或派子代理截都一樣;用法見 `tools/shot-service.mjs` 與 `tools/shot.mjs` 的檔頭):主 session 在一次 prompt 開始時判斷這次會不會截圖,會就 `node tools/shot-service.mjs start`,回覆前 `stop`(服務也提供靜態檔,不用另開伺服器)。子代理只執行 `node tools/shot.mjs 頁面 輸出.png …`,遇到「截圖服務沒在跑」就回報主 session、由主 session 啟動。執行 `tools/shot.mjs` 時把指令逾時設成 10 分鐘(它在排隊)。截圖只走這條路——自己執行 `chrome --headless` 或用 Playwright MCP 截圖,會讓多個子代理同時截時電腦滿載、分頁互相蓋掉。改動截圖服務(`tools/shot*`)後跑 `npm run test:shot`(不需要 Chrome)。

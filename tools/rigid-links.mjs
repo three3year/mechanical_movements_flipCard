@@ -4,6 +4,7 @@
 // 用法:node tools/rigid-links.mjs [圖號或範圍(7 或 186-250)…]
 import { pathToFileURL } from "node:url";
 import { loadModel } from "../models/registry.js";
+import { defaultSpeed, boundsOf, initialValue } from "../verify/sampling.js";
 import { figuresFrom } from "./figure-args.mjs";
 
 const SECONDS = 20;
@@ -12,18 +13,10 @@ const TOLERANCE = 0.01; // 兩端距離的變化超過這個量才報
 const STRETCHY = new Set(["spring"]); // from / to 擺的零件裡本來就會伸縮的
 const RIGID_PATHS = new Set(["rod"]); // 路徑零件裡該是剛性的
 
-function defaultSpeed(d) {
-  if (d.speed) return d.speed;
-  if (d.cycle) return Math.abs(d.cycle[1] - d.cycle[0]) / 1.2;
-  if (d.type === "virtual" && d.mode === "progress") return (d.range[1] - d.range[0]) / 6;
-  if (!d.range) return 0.8;
-  return (d.range[1] - d.range[0]) / (d.type === "rotation" ? 2.5 : 4);
-}
-
-// 與 tools/scan-models.mjs 相同的自動播放:有範圍的往復,沒範圍的一直加
+// 與 tools/scan-models.mjs 相同的自動播放:有範圍的往復,沒範圍的一直加(速度與起點照 verify/sampling.js)
 function* play(d) {
-  const bounds = d.type === "virtual" && d.mode === "progress" ? null : (d.range ?? null);
-  let value = d.initial ?? (bounds ? (bounds[0] <= 0 && bounds[1] >= 0 ? 0 : bounds[0]) : 0);
+  const bounds = boundsOf(d);
+  let value = initialValue(d);
   let dir = 1;
   const step = defaultSpeed(d) / FPS;
   for (let i = 0; i < SECONDS * FPS; i++) {
@@ -47,7 +40,7 @@ export function stretchedLinks(def) {
   const kinds = new Map(def.parts.map((p) => [p.id, p.kind]));
   const states = def.states ? def.states.options.map((o) => o.id) : [undefined];
   const ranges = {}; // id → { min, max, segments: [{ min, max }…] }
-  const note = (id, lengths) => {
+  const measure = (id, lengths) => {
     const total = lengths.reduce((s, l) => s + l, 0);
     const r = (ranges[id] ??= { min: total, max: total, segments: lengths.map((l) => ({ min: l, max: l })) });
     r.min = Math.min(r.min, total);
@@ -63,12 +56,12 @@ export function stretchedLinks(def) {
       const pose = def.pose(v, state);
       for (const [id, p] of Object.entries(pose.parts ?? {})) {
         if (!p.from || !p.to || STRETCHY.has(kinds.get(id)) || p.visible === false) continue;
-        note(id, [dist(p.from, p.to)]);
+        measure(id, [dist(p.from, p.to)]);
       }
       for (const [id, path] of Object.entries(pose.paths ?? {})) {
         const points = path?.points;
         if (!RIGID_PATHS.has(kinds.get(id)) || !points || points.length < 2) continue;
-        note(id, points.slice(1).map((pt, i) => dist(points[i], pt)));
+        measure(id, points.slice(1).map((pt, i) => dist(points[i], pt)));
       }
     }
   }

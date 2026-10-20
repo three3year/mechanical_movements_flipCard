@@ -3,6 +3,7 @@
 // 不算實體的只有兩種:轉動記號(塗記號色的條、點、小臂,是塗裝不是零件)與板面的刻線(繪圖層標了 engraving)。
 import * as THREE from "three";
 import { buildPart } from "../viewer/parts.js";
+import { signedArea } from "../models/contact.js";
 
 const BASE = new THREE.MeshBasicMaterial();
 const MARK = new THREE.MeshBasicMaterial();
@@ -112,16 +113,16 @@ function ringPieces(rings, perRing, vertex) {
 function lathePieces(p, at) {
   const n = p.points.length;
   const vertices = p.points.map((v, i) => ({ id: i, x: v.x, y: v.y }));
-  const extra = []; // 補上的軸上點:id 從 n 起算
-  if (Math.abs(polygonArea(vertices)) < 1e-9) {
+  const axisPoints = []; // 補上的軸上點(網格局部座標,與角度無關):id 從 n 起算
+  if (Math.abs(signedArea(p.points.map((v) => [v.x, v.y]))) < 1e-9) {
     for (const v of [p.points[n - 1], p.points[0]]) {
       if (Math.abs(v.x) < 1e-9) continue;
-      extra.push([0, 0, v.y]);
-      vertices.push({ id: n + extra.length - 1, x: 0, y: v.y });
+      axisPoints.push([0, 0, v.y]);
+      vertices.push({ id: n + axisPoints.length - 1, x: 0, y: v.y });
     }
   }
   const polygons = convexPolygons(vertices);
-  const vertexAt = (s, j) => (j < n ? at(s * n + j) : extra[j - n]);
+  const vertexAt = (s, j) => (j < n ? at(s * n + j) : axisPoints[j - n]);
   const pieces = [];
   for (let s = 0; s < p.segments; s++) {
     for (const polygon of polygons) {
@@ -133,7 +134,6 @@ function lathePieces(p, at) {
   return pieces;
 }
 
-const polygonArea = (vertices) => vertices.reduce((sum, v, i) => sum + v.x * vertices[(i + 1) % vertices.length].y - vertices[(i + 1) % vertices.length].x * v.y, 0) / 2;
 
 // 擠出的板件:蓋面的三角形併成凸多邊形,每個凸多邊形連同另一面對應的頂點是一塊凸柱。
 // 直接讀幾何裡的頂點(已含平移、錐度),不重算輪廓

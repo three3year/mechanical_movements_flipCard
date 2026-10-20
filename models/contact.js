@@ -20,6 +20,9 @@ export function segmentsCross(a, b, c, d) {
   return d1 * d2 < 0 && d3 * d4 < 0;
 }
 
+/** 多邊形的有號面積(鞋帶公式;逆時針為正) */
+export const signedArea = (poly) => poly.reduce((sum, [x, y], i) => sum + x * poly[(i + 1) % poly.length][1] - poly[(i + 1) % poly.length][0] * y, 0) / 2;
+
 export function pointInPolygon([x, y], poly) {
   let hit = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {

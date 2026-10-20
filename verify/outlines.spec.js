@@ -33,9 +33,9 @@ test("外輪廓自交、三角化面積明顯大於外形面積會報;自交但�
   assert.equal(found?.problem, "self-crossing");
   assert.ok(found.area.triangulated > found.area.outline * 1.02, `三角化 ${found.area.triangulated} 外形 ${found.area.outline}`);
 
-  // 邊只是擦過一個頂點(多邊形的點重複),三角化的面積不變,不報
-  const touching = [[0, 0], [2, 0], [2, 2], [1, 1], [0, 2], [1, 1]];
-  assert.deepEqual(scan(plate("a", touching, [0, 0, 0])), []);
+  // 一角有個很小的扭結(兩條邊真的相交,但多出的面積不到 2%):不報
+  const twist = [[0, 0], [2, 0], [2, 1], [0, 1], [0.02, 1.01], [0.02, 0.99]];
+  assert.deepEqual(scan(plate("a", twist, [0, 0, 0])), []);
 });
 
 test("附件裡的板件也查,標出是哪一塊", () => {
