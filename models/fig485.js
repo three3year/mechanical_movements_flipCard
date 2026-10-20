@@ -1,8 +1,9 @@
 // 第 485 種:普通的風車,說明風直接作用在傾斜的帆面上產生圓周運動的原理。
 // 主動件是虛擬的「進程」:風已帶著風車轉了幾圈。風以流體示意(空氣)吹向帆面。
 // 推斷:四片帆裝在略為仰起的軸上,每片帆繞自己的長邊斜一個角度(風推斜面而轉);塔身與頂蓋依原圖;
-// 原圖頂蓋後面的曲線(拉繩)不畫出。
-import { TAU, Y, deg, quatAxisAngle, quatMul, norm } from "./kit.js";
+// 原圖頂蓋後面的閉合曲線判讀成尾舵(推斷):一片直立的薄板固定在頂蓋上、沿風車軸往後伸,板面含風車軸的方向。
+// 實物上尾舵讓頂蓋轉向、使帆對著風;模型的風向固定、頂蓋不轉,尾舵只是照原圖畫出(和原文「風直接作用在傾斜帆面」不衝突)。
+import { TAU, Y, deg, quatAxisAngle, quatMul, quatFromBasis, norm, cross } from "./kit.js";
 import { stream } from "./flow.js";
 import { shape, rect } from "./shapes.js";
 
@@ -11,6 +12,11 @@ export const HUB = [-0.45, 2.55, 0.35];
 const SAIL = { from: 0.35, to: 2.0, w: 0.75 };
 export const PITCH = deg(18); // 帆面相對旋轉平面的斜角
 const SPEED = TAU * 0.6;
+
+// 尾舵:局部 x 沿風車軸往後(水平)、y 朝上、z 是板面的法向;外形照原圖,從頂蓋伸出細頸、往後張成圓頭
+const TAIL_DIR = norm([-AXIS[0], 0, -AXIS[2]]);
+const TAIL_NORMAL = norm(cross(TAIL_DIR, Y));
+const TAIL = [[0, -0.1], [0.7, -0.1], [1.25, -0.14], [1.7, -0.12], [1.95, 0.02], [1.98, 0.28], [1.8, 0.5], [1.4, 0.58], [0.95, 0.42], [0.55, 0.16], [0, 0.1]];
 
 // 一片帆:格子框(局部:x 沿帆長,y 沿帆寬,繞 x 斜 PITCH)
 const lattice = [
@@ -28,7 +34,9 @@ export default {
       kind: "group",
       pieces: [
         { kind: "lathe", axis: Y, profile: [[0, -2.0], [0.95, -2.0], [0.62, 1.9], [0, 1.9]], at: [0.3, 0, 0] },
-        { kind: "lathe", axis: Y, profile: [[0, 0], [0.7, 0], [0.6, 0.45], [0.3, 0.75], [0, 0.82]], at: [0.3, 1.9, 0] },
+        { kind: "lathe", role: "cap", axis: Y, profile: [[0, 0], [0.7, 0], [0.6, 0.45], [0.3, 0.75], [0, 0.82]], at: [0.3, 1.9, 0] },
+        // 尾舵(推斷):根部插在頂蓋的後側裡
+        { kind: "plate", role: "tail", shape: { outline: TAIL, holes: [] }, thickness: 0.03, at: [0.3 + TAIL_DIR[0] * 0.45, 2.25, TAIL_DIR[2] * 0.45], rotation: quatFromBasis(TAIL_DIR, Y, TAIL_NORMAL) },
         { kind: "box", size: [0.3, 0.55, 0.05], at: [0.3, -1.65, 0.93] },
         { kind: "box", size: [0.15, 0.3, 0.05], at: [0.1, 0.0, 0.8] },
         { kind: "box", size: [0.15, 0.3, 0.05], at: [0.5, 0.0, 0.8] },

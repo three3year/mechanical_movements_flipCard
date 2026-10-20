@@ -1,11 +1,13 @@
 // 第 488 種:螺旋槳。槳葉是螺紋的片段,在水中旋轉的效果與螺絲在螺帽中一樣,沿軸的方向產生運動,推進船隻。
 // 主動件是槳軸(由引擎轉動,讀者直接抓軸轉)。
-// 推斷:兩片槳葉,各斜一個螺距角;軸沿左右方向;槳轉動時把水往右推,船往左(軸的方向)前進。
+// 推斷:兩片槳葉,各斜一個螺距角;軸沿左右方向,船身在左(軸承那一側);槳轉動時把水往右(船尾外)推,推力把船往左
+// (軸的方向)推進。螺距的斜向和主動件的轉向配對:軸繞 +X 正轉時,槳葉迎著運動方向的那一面朝右,水被推往右。
 import { X, deg, quatAxisAngle, quatMul } from "./kit.js";
 import { stream } from "./flow.js";
 import { shape } from "./shapes.js";
 
-export const PITCH_ANGLE = deg(35); // 槳葉相對旋轉平面的斜角
+export const PITCH_ANGLE = deg(35); // 槳葉相對旋轉平面的斜角(大小)
+const HAND = -1; // 斜向:每片槳葉繞自己的長邊轉 HAND·PITCH_ANGLE,配上軸的正轉,水被推往右
 const BLADE = shape([[0.12, -0.18], [0.7, -0.4], [1.3, -0.42], [1.75, -0.25], [1.85, 0.05], [1.6, 0.3], [1.0, 0.32], [0.4, 0.2], [0.12, 0.12]]);
 
 export default {
@@ -25,14 +27,14 @@ export default {
         { kind: "cylinder", radius: 0.2, length: 0.12, at: [0, 0, 1.6] },
       ],
     },
-    // 兩片槳葉(固定在軸上、跟著軸轉;獨立成一個零件當目標件):在旋轉平面(局部 xy)上,各繞自己的長邊斜 PITCH_ANGLE
+    // 兩片槳葉(固定在軸上、跟著軸轉;獨立成一個零件當目標件):在旋轉平面(局部 xy)上,各繞自己的長邊斜 HAND·PITCH_ANGLE
     {
       id: "blades",
       kind: "group",
       axis: X,
       arrow: false,
       pieces: [
-        ...[0, 1].map((k) => ({ kind: "plate", shape: BLADE, thickness: 0.05, rotation: quatMul(quatAxisAngle([0, 0, 1], k * Math.PI + Math.PI / 2), quatAxisAngle([1, 0, 0], PITCH_ANGLE)), ...(k === 0 ? { mark: [1.3, 0] } : {}) })),
+        ...[0, 1].map((k) => ({ kind: "plate", shape: BLADE, thickness: 0.05, rotation: quatMul(quatAxisAngle([0, 0, 1], k * Math.PI + Math.PI / 2), quatAxisAngle([1, 0, 0], HAND * PITCH_ANGLE)), ...(k === 0 ? { mark: [1.3, 0] } : {}) })),
       ],
     },
   ],
