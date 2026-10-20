@@ -1,10 +1,16 @@
 // 第 480 種:另一種儲氣槽。容器 A 裡永久固定著一根中央管 a,這根管在槽中央的固定管 b 上滑動。
 // 主動件是虛擬的「槽裡的氣量」。剖面圖。
-// 推斷:中央的兩根管當作 A 升降的導引;其餘與第 479 種相同(進氣時 A 上升)。
+// 推斷:中央的兩根管當作 A 升降的導引:a 是套在 b 外面的套管(原圖 b 是寬管、a 套在外面);其餘與第 479 種相同(進氣時 A 上升)。
 import { Y } from "./kit.js";
 import { tankParts, waterPart, bellPart, bellBottom, gasFlows, BELL, TANK } from "./gasometer.js";
 
 const B_TOP = BELL.h + 0.6; // 固定管 b 的頂
+const B_R = 0.09;
+const A_R = 0.15; // 中央管 a 的外半徑
+const A_LEN = BELL.h + 0.6; // a 從 A 的口到伸出 A 頂上(原圖 a 穿過 A 的頂)
+// A 的旋轉剖面:頂上開一個讓 a 穿過的孔(原圖),孔徑就是 a 的外徑
+const roof = (r, inner) => (inner ? BELL.h - 0.06 + ((BELL.h + 0.29 - (BELL.h - 0.06)) * (BELL.r - r)) / BELL.r : BELL.h + ((BELL.h + 0.35 - BELL.h) * (BELL.r + 0.06 - r)) / (BELL.r + 0.06));
+const PROFILE = [[BELL.r, 0], [BELL.r + 0.06, 0], [BELL.r + 0.06, BELL.h], [A_R, roof(A_R)], [A_R, roof(A_R, true)], [BELL.r, BELL.h - 0.06]];
 
 export default {
   figure: 480,
@@ -15,14 +21,14 @@ export default {
       pieces: [
         ...tankParts(),
         // 固定在槽中央的管 b
-        { kind: "cylinder", radius: 0.09, length: B_TOP - TANK.y0, axis: Y, at: [0, (B_TOP + TANK.y0) / 2, 0] },
+        { kind: "cylinder", role: "tubeB", radius: B_R, length: B_TOP - TANK.y0, axis: Y, at: [0, (B_TOP + TANK.y0) / 2, 0] },
       ],
     },
     { id: "labelB", kind: "group", pieces: [], label: "B", labelOffset: [1.2, -1.2, 0.6] },
     { id: "labelb", kind: "group", pieces: [], label: "b", labelOffset: [-0.25, 0.4, 0.5] },
     waterPart,
-    // A 與固定在它裡面的中央管 a(套在 b 外面)
-    bellPart({ pieces: [{ kind: "cylinder", radius: 0.15, length: BELL.h + 0.3, at: [0, 0, (BELL.h + 0.3) / 2] }] }),
+    // A 與固定在它裡面的中央管 a:套在 b 外面的套管(孔比 b 大 0.01,滑動配合),穿過 A 頂上的孔伸出去
+    bellPart({ profile: PROFILE, pieces: [{ kind: "cylinder", role: "tubeA", radius: A_R, inner: B_R + 0.01, length: A_LEN, at: [0, 0, A_LEN / 2] }] }),
     { id: "labela", kind: "group", pieces: [], label: "a", labelOffset: [0.3, 0, 0.5] },
   ],
   powered: ["bell"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件

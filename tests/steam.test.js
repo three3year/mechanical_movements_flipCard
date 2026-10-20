@@ -1,8 +1,8 @@
 // 第二十章「蒸汽與氣體裝置」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, assertShaftInBearings, assertBoxesOnePiece, polyGap, inSolid, plateLayers } from "./helpers.js";
-import { X } from "../models/kit.js";
+import { close, sweep, part, turned, assertOnePiece, assertShaftInBearings, assertBoxesOnePiece, polyGap, inSolid, plateLayers } from "./helpers.js";
+import { X, Y } from "../models/kit.js";
 import { penetrationDepth, edgeDistance, pointInPolygon } from "../models/contact.js";
 
 import * as m470 from "../models/fig470.js";
@@ -184,7 +184,7 @@ test("第 476 種:叉形管的壁連成一件:兩腿的外壁接上 C 的壁(間
 import * as m477 from "../models/fig477.js";
 import * as m478 from "../models/fig478.js";
 import * as gas from "../models/gasometer.js";
-import fig479 from "../models/fig479.js";
+import fig479, { PULLEY_Y, PULLEY_R, WEIGHT_R } from "../models/fig479.js";
 import fig480 from "../models/fig480.js";
 import * as m481 from "../models/fig481.js";
 import * as m482 from "../models/fig482.js";
@@ -303,11 +303,149 @@ test("第 479、480 種:儲氣槽:氣體進入時容器 A 上升,而且下緣一
   assert.ok(w(0.9) < w(0.1), "重物隨 A 上升而下降(部分平衡)");
 });
 
-test("第 481 種:濕式氣錶:水面在中心以上;氣體依序進入各隔室,鼓轉一圈通過四室的氣", () => {
+test("第 479、480 種:兩根氣管插進槽底、穿出槽外(原文「插入槽底的兩根管子」);氣的點沿管子走,不穿過槽底", () => {
+  const pipes = gas.tankParts().filter((q) => q.role === "pipe");
+  assert.ok(pipes.length >= 2, "兩根氣管");
+  const lowest = Math.min(...pipes.map((q) => q.at[1] - (q.axis?.[1] ? q.length / 2 : q.radius)));
+  assert.ok(lowest < gas.TANK.y0 - 0.2, `管子穿出槽底(最低 ${lowest.toFixed(2)},槽底 ${gas.TANK.y0})`);
+  const horizontal = pipes.filter((q) => q.axis?.[0]);
+  assert.equal(horizontal.length, 2, "穿出槽底後各橫著伸出");
+  for (const g of [0.2, 0.8]) {
+    for (const p of gas.gasFlows(g)[0].points) {
+      // 槽底的板:y0..y0+0.08、x 在槽內;點只能在管子裡穿過它
+      if (p[1] > gas.TANK.y0 - 1e-9 && p[1] < gas.TANK.y0 + 0.08 + 1e-9) assert.ok(pipes.some((q) => q.axis?.[1] && Math.abs(p[0] - q.at[0]) <= q.radius + 1e-9), `氣的點 (${p[0]}, ${p[1]}) 在管子裡穿過槽底`);
+    }
+  }
+});
+
+test("第 479 種:立柱立在槽旁的地面上(機架是一件);重球升到最高停在滑輪下、降到最低不碰地面", () => {
+  assertBoxesOnePiece(fig479, "frame");
+  const ground = part(fig479, "frame").pieces.filter((q) => q.role === "ground");
+  assert.equal(ground.length, 2, "槽兩旁的地面(原圖的斜線)");
+  for (const q of ground) close(q.at[1] + q.size[1] / 2, gas.TANK.y1, "地面與槽頂齊平", 1e-9);
+  for (const g of sweep(1, 48)) {
+    const p = fig479.pose(g).parts;
+    for (const k of ["L", "R"]) {
+      const top = p[`weight${k}`].position[1] + WEIGHT_R;
+      assert.ok(top < PULLEY_Y - PULLEY_R - 0.3, `重球(頂 ${top.toFixed(2)})停在滑輪下(滑輪底 ${(PULLEY_Y - PULLEY_R).toFixed(2)})`);
+      assert.ok(p[`weight${k}`].position[1] - WEIGHT_R > gas.TANK.y1 + 0.05, "重球不碰地面");
+    }
+  }
+});
+
+test("第 479 種:繩子繫在 A 的兩肩,鉛直上到滑輪、再從滑輪鉛直垂到重球;繩長不變,重球降多少 A 就升多少", () => {
+  const length = (pts) => pts.reduce((s, p, i) => (i ? s + Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0), 0);
+  const ropeAt = (g, k) => fig479.pose(g).paths[`rope${k}`].points;
+  const first = { L: length(ropeAt(0, "L")), R: length(ropeAt(0, "R")) };
+  for (const g of sweep(1, 24)) {
+    const bottom = fig479.pose(g).parts.bell.position[1];
+    for (const [k, s] of [["L", -1], ["R", 1]]) {
+      const pts = ropeAt(g, k);
+      close(pts[0][0], s * (gas.BELL.r + 0.06), "繩端在 A 的肩上(凸緣的外緣)", 1e-9);
+      close(pts[0][1], bottom + gas.BELL.h, "繩端在 A 的肩頂", 1e-9);
+      close(pts[1][0], pts[0][0], "從肩上鉛直上到滑輪的切點", 1e-9);
+      close(pts.at(-1)[0], pts.at(-2)[0], "從滑輪的切點鉛直垂下", 1e-9);
+      close(length(pts), first[k], "繩長不變", 1e-6);
+    }
+  }
+  const dw = fig479.pose(1).parts.weightL.position[1] - fig479.pose(0).parts.weightL.position[1];
+  close(dw, -(gas.bellBottom(1) - gas.bellBottom(0)), "重球降的距離等於 A 升的距離", 1e-9);
+});
+
+test("第 480 種:中央管 a 是套管,固定管 b 全程穿過整根 a、a 在 b 上滑(原文「在固定管 b 上滑動」)", () => {
+  const b = part(fig480, "frame").pieces.find((q) => q.role === "tubeB");
+  const a = part(fig480, "bell").pieces.find((q) => q.role === "tubeA");
+  assert.ok(b && a, "固定管 b 與中央管 a");
+  for (const g of sweep(1, 12)) {
+    const bottom = fig480.pose(g).parts.bell.position[1];
+    const sleeve = { ...a, axis: Y, at: [0, bottom + a.at[2], 0] }; // A 的局部 z 是世界 Y
+    assertShaftInBearings(b, [sleeve], `固定管 b(氣量 ${g.toFixed(2)})`);
+  }
+});
+
+test("第 481 種:濕式氣錶:鼓朝原圖周緣箭頭的方向(逆時針)轉;隔板從中心往外順時針彎;正在進氣的隔室在右側,浮力抬起右側", () => {
   assert.ok(m481.WATER > 0, "注水到中心以上");
-  const seen = new Set(sweep(1, 200).map((p) => m481.filling(-2 * Math.PI * p)).filter((k) => k >= 0));
-  assert.equal(seen.size, m481.CHAMBERS, "四個隔室輪流進氣");
+  assert.ok(turned(m481.default, "drum", 0, 0.25) > 0, "鼓逆時針轉(原圖周緣的箭頭)");
+  close(turned(m481.default, "drum", 0, 1), 2 * Math.PI, "進程一輪鼓轉一圈", 1e-9);
+  for (let k = 0; k < m481.CHAMBERS; k++) {
+    const pts = m481.partition(k);
+    const angle = (p) => Math.atan2(p[1], p[0]);
+    let prev = angle(pts[0]);
+    for (const p of pts.slice(1)) {
+      const d = Math.atan2(Math.sin(angle(p) - prev), Math.cos(angle(p) - prev));
+      assert.ok(d < 0, "隔板從內端往外、再沿外緣都是順時針走(原圖)");
+      prev = angle(p);
+    }
+  }
+  const xs = [];
+  for (const p of sweep(1, 360)) {
+    const a = 2 * Math.PI * p;
+    const cs = m481.chambers(a);
+    // 入口剛浮出水面時前一個隔室還在進氣:看入口最高的那一個
+    const k = cs.map((c, i) => i).filter((i) => cs[i].filling).sort((i, j) => Math.sin(cs[j].inlet) - Math.sin(cs[i].inlet))[0] ?? -1;
+    assert.ok(k >= 0, "隨時有一個隔室在進氣");
+    assert.ok(m481.R_IN * Math.sin(cs[k].inlet) > m481.WATER, "進氣隔室的入口在水面上方");
+    const gasPts = m481.chamberGas(a, k, m481.WATER - m481.DISPLACE);
+    assert.ok(gasPts.length > 3, "進氣的隔室裡有氣");
+    xs.push(gasPts.reduce((s, q) => s + q[0], 0) / gasPts.length);
+  }
+  assert.ok(xs.filter((x) => x > 0).length / xs.length > 0.85, "進氣隔室的氣體重心幾乎全程在軸的右側(右側被抬起 → 逆時針)");
+  assert.ok(xs.reduce((s, x) => s + x, 0) / xs.length > 0.2, "平均在右側");
   assert.match(m481.default.pose(1).readouts[0].value, /^4\.0/, "轉一圈記下四室");
+});
+
+test("第 481 種:每個隔室一圈裡依序進氣、出口浮出水面把水排出、轉過去又注滿水;排氣時入口在水面下;出口是外緣的開口", () => {
+  const order = [];
+  for (let k = 0; k < m481.CHAMBERS; k++) {
+    const phases = [];
+    for (const p of sweep(1, 720)) {
+      const c = m481.chambers(2 * Math.PI * p)[k];
+      assert.ok(!(c.filling && c.venting), "進氣與排氣不同時(氣不會直接穿過去)");
+      if (c.venting) {
+        assert.ok(m481.R * Math.sin(c.outlet) > m481.WATER, "排氣時出口在水面上");
+        assert.ok(m481.R_IN * Math.sin(c.inlet) < m481.WATER, "排氣時入口在水面下");
+      }
+      if (c.flooded) assert.ok(m481.R * Math.sin(c.outlet) < m481.WATER && m481.R_IN * Math.sin(c.inlet) < m481.WATER, "注水中的隔室入口、出口都在水面下");
+      const phase = c.filling ? "進氣" : c.venting ? "排氣" : c.flooded ? "注水" : "持氣";
+      if (phases.at(-1) !== phase) phases.push(phase);
+    }
+    const cycle = phases.join(" ").replace(/^(.*?) (.*) \1$/, "$2 $1");
+    assert.match(cycle, /^(進氣 持氣 排氣 注水|持氣 排氣 注水 進氣|排氣 注水 進氣 持氣|注水 進氣 持氣 排氣)$/, `隔室 ${k} 的順序:${phases.join(" → ")}`);
+  }
+  // 依序進氣:進氣的隔室一個接一個換
+  let last = -1;
+  for (const p of sweep(1, 720)) {
+    const k = m481.chambers(2 * Math.PI * p).findIndex((c) => c.filling);
+    if (k !== last) (order.push(k), (last = k));
+  }
+  assert.equal(new Set(order).size, m481.CHAMBERS, "四個隔室都輪到");
+  // 出口:隔板 k 的外緣段末端和隔板 k-1 的轉角之間真的有開口
+  for (let k = 0; k < m481.CHAMBERS; k++) {
+    const end = m481.partition(k).at(-1);
+    const corner = m481.partition((k + m481.CHAMBERS - 1) % m481.CHAMBERS)[12];
+    const opening = Math.hypot(end[0] - corner[0], end[1] - corner[1]);
+    assert.ok(opening > 0.2, `隔室的出口寬 ${opening.toFixed(2)}`);
+    const c = m481.chambers(0)[(k + m481.CHAMBERS - 1) % m481.CHAMBERS];
+    const mid = Math.atan2(end[1] + corner[1], end[0] + corner[0]);
+    close(Math.atan2(Math.sin(c.outlet - mid), Math.cos(c.outlet - mid)), 0, "chambers() 的出口角在開口的中間", 1e-6);
+  }
+});
+
+test("第 481 種:中央管 a 從外殼後面穿過軸承與鼓的空心軸頸到中心再往上彎出水面;鼓、外殼各是一件;錶盤由軸頸上的小齒輪帶動(4:1,推斷)", () => {
+  const casing = part(m481.default, "casing");
+  const drum = part(m481.default, "drum");
+  assertOnePiece(casing, "外殼(含管 a、軸承座、前托架)是一件");
+  assertOnePiece({ pieces: drum.pieces.filter((q) => q.kind !== "gear") }, "鼓(隔板、後盤、軸頸、前輻)是一件");
+  const pipe = casing.pieces.find((q) => q.role === "pipe");
+  const journal = drum.pieces.find((q) => q.role === "journal");
+  const riser = casing.pieces.find((q) => q.role === "riser");
+  assertShaftInBearings(journal, casing.pieces.filter((q) => q.role === "bearing"), "空心軸頸");
+  assertShaftInBearings(pipe, [journal], "中央管 a");
+  assert.ok(pipe.at[2] - pipe.length / 2 < casing.pieces.find((q) => q.role === "gland").at[2] - 0.1, "管 a 從外殼後面伸進來");
+  assert.ok(riser.at[1] + riser.length / 2 > m481.WATER + 0.05, "管 a 的出口在水面上方");
+  assert.ok(Math.hypot(riser.radius, riser.at[1] + riser.length / 2) < m481.R_IN - 0.03, "往上彎的那段留在隔板內端圍出的中央空間裡");
+  assertShaftInBearings(drum.pieces.find((q) => q.role === "frontJournal"), casing.pieces.filter((q) => q.role === "frontBearing"), "前軸頸");
+  close(turned(m481.default, "dial", 0, 1), -2 * Math.PI / 4, "鼓轉一圈錶盤反向轉 1/4 圈", 1e-9);
 });
 
 test("第 482 種:氣體調節器:主管壓力增加時杯子 H 升起、閥 D 沒入水銀,缺口縮小,送出的氣量大致不變", () => {
