@@ -662,30 +662,142 @@ test("第 427 種:軸 B 偏心;活塞 A 穿過輪轂上的填料 a 滑進滑出,
   assert.ok(Math.max(...rs) - Math.min(...rs) > 0.6, "活塞在輪轂裡滑進滑出");
 });
 
-test("第 428 種:蒸汽把橡膠內襯 E 壓向滾子,滾子繞汽缸轉、帶動主軸", () => {
-  for (const t of sweep(2 * Math.PI, 24)) {
-    const pose = m428.default.pose(t).parts;
-    for (const k of [1, 2, 3]) close(Math.hypot(...pose[`roller${k}`].position.slice(0, 2)) + m428.ROLLER, m428.BORE, "滾子壓著內襯貼到汽缸壁");
-    const span = m428.aheadOfInlet(t);
-    if (span > 0.6) {
-      const mid = Math.PI - span / 2;
-      assert.ok(m428.lining(t, mid) < m428.BORE - 0.2, "進汽口到前面的滾子之間,橡膠被蒸汽往內壓");
+test("第 428 種:滾子把橡膠內襯壓貼在汽缸壁上,蒸汽把內襯壓向滾子(包住滾子後側、不穿進滾子),滾子在內襯上滾動", () => {
+  const def = m428.default;
+  const CLEAR = m428.ROLLER + m428.THICK / 2; // 內襯中心線離滾子中心至少這麼遠
+  const WALL = m428.BORE - m428.THICK / 2;
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const pose = def.pose(t);
+    for (const k of [1, 2, 3]) {
+      const c = pose.parts[`roller${k}`].position;
+      close(Math.hypot(c[0], c[1]) + m428.ROLLER + m428.THICK, m428.BORE, "滾子壓著內襯貼到汽缸壁(間隙 0)");
+      close(m428.lining(t, Math.atan2(c[1], c[0])), WALL, "內襯從滾子和缸壁之間穿過");
+      let nearest = Infinity;
+      for (const p of pose.paths.lining.points) nearest = Math.min(nearest, Math.hypot(p[0] - c[0], p[1] - c[1]));
+      assert.ok(nearest > CLEAR - 1e-6, `主動量 ${t}:內襯穿進滾子 ${k}(離滾子中心 ${nearest} < ${CLEAR})`);
     }
-    assert.ok(Math.abs(m428.lining(t, -Math.PI / 2 + 0.01) - m428.BORE) < 1e-9 || span > Math.PI, "其餘部分的橡膠貼著汽缸");
+    for (const p of pose.paths.lining.points) assert.ok(Math.hypot(p[0], p[1]) < WALL + 1e-9, "內襯不穿進缸壁");
+    // 滾子在內襯上滾動、不打滑:接觸點的速度為零(自轉 × 滾子半徑 = −公轉 × 臂長)
+    const dv = 1e-4;
+    const spin = (def.pose(t + dv).parts.roller1.angle - pose.parts.roller1.angle) / dv;
+    close(spin * m428.ROLLER + m428.ARM, 0, "滾子沿內襯滾動(接觸點不滑)", 1e-6);
+  }
+  // 被蒸汽壓著的那段內襯包住前面那個滾子的後側:沿滾子外緣貼著走一段(間隙接近 0 的點不只接觸點一個)
+  const t0 = Math.PI / 2; // 一個滾子在正上方、它前面的滾子在右上,後面那段被壓著
+  const pose = def.pose(t0);
+  for (const k of [1, 2, 3]) {
+    const c = pose.parts[`roller${k}`].position;
+    const a = Math.atan2(c[1], c[0]);
+    if (a < 0.2 || a > Math.PI - 0.2) continue; // 只看上半圈、後面有被壓著的那段的滾子
+    const hugging = pose.paths.lining.points.filter((p) => Math.hypot(p[0] - c[0], p[1] - c[1]) < CLEAR + 0.01);
+    assert.ok(hugging.length >= 3, `主動量 ${t0}:內襯沒有包住滾子 ${k} 的後側(貼著的點只有 ${hugging.length} 個)`);
   }
 });
 
-test("第 429 種:兩個咬合的橢圓活塞朝相反方向轉,節曲線在兩軸連線上相切", () => {
+test("第 428 種:從進汽口順時針到排汽口之間,每兩個滾子之間的內襯都被蒸汽往內壓;其餘貼著汽缸;形狀隨主軸轉角連續變化", () => {
+  const WALL = m428.BORE - m428.THICK / 2;
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const chambers = m428.chambers(t);
+    assert.ok(chambers.length >= 1, "上半圈總有被壓著的內襯");
+    for (const { lo, hi } of chambers) {
+      assert.ok(lo >= -1e-9 && hi <= Math.PI + 1e-9, "被壓的只在進汽口到排汽口之間(上半圈)");
+      if (hi - lo > 1) assert.ok(m428.lining(t, (lo + hi) / 2) < WALL - 0.15, `主動量 ${t}:兩個滾子之間(${lo.toFixed(2)}–${hi.toFixed(2)})的內襯沒被壓進去`);
+    }
+    for (let i = 1; i < 180; i++) {
+      const phi = -Math.PI + (Math.PI * i) / 180; // 下半圈
+      close(m428.lining(t, phi), WALL, `主動量 ${t}:排汽口到進汽口之間(φ=${phi.toFixed(2)})的內襯沒貼著汽缸`);
+    }
+  }
+  // 滾子剛過進汽口:它前面那一段(膨脹段)仍被壓著,不是一瞬間彈平
+  const atInlet = Math.PI - (2 * Math.PI) / 3; // roller2 在進汽口
+  for (const t of [atInlet + 0.02, atInlet - 0.02]) {
+    const ahead = Math.PI - Math.PI / 3; // 進汽口前方 60°
+    assert.ok(m428.lining(t, ahead) < WALL - 0.3, `主動量 ${t}:滾子剛過進汽口時它前面那段的內襯彈平了`);
+  }
+  // 內襯的形狀對主軸轉角連續:轉一小步,每一點的半徑變化有限
+  const step = (2 * Math.PI) / 720;
+  let worst = 0;
+  for (let i = 0; i < 720; i++) {
+    const t = i * step;
+    for (let j = 0; j < 240; j++) {
+      const phi = (2 * Math.PI * j) / 240;
+      worst = Math.max(worst, Math.abs(m428.lining(t + step, phi) - m428.lining(t, phi)));
+    }
+  }
+  assert.ok(worst < 0.06, `主軸轉 0.5° 內襯的半徑最多跳了 ${worst}(整段彈平的話會跳 0.4 以上)`);
+});
+
+test("第 428 種:橡膠內襯的周長只有彈性壓縮(最多縮 5%),不被拉長", () => {
+  const WALL = m428.BORE - m428.THICK / 2;
+  const full = 2 * Math.PI * WALL;
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const pts = m428.default.pose(t).paths.lining.points;
+    let len = 0;
+    for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    assert.ok(len < full + 0.01, `主動量 ${t}:內襯被拉長了(${len} > ${full})`);
+    assert.ok(len > full * 0.95, `主動量 ${t}:內襯縮了超過 5%(${len} / ${full})`);
+  }
+});
+
+test("第 429 種:兩個一樣的卵形活塞各繞自己的中心轉、以齒咬合、朝相反方向轉;節曲線在兩軸連線上相切,轉速比一圈變兩次", () => {
   let prev = m429.partner(0).angle;
+  const ratios = [];
   for (const t of sweep(2 * Math.PI, 120).slice(1)) {
     const q = m429.partner(t);
-    // 接觸點離左軸 r1、離右軸 2a − r1:右輪在接觸方向上的半徑正好是 2a − r1
-    const local = Math.PI - q.angle; // 接觸方向(朝左)在右輪局部的角
-    close(m429.radius(local), m429.DIST - q.r1, "節曲線相切(半徑和 = 兩軸距離)", 1e-6);
+    // 左輪朝右輪的半徑 r1 + 右輪朝左輪的半徑 = 兩軸距離(純滾動、相切)
+    close(m429.radius(-t), q.r1, "左輪朝接觸點的半徑", 1e-9);
+    close(m429.radiusRight(Math.PI - q.angle), m429.DIST - q.r1, "節曲線相切(半徑和 = 兩軸距離)", 1e-5);
     const d = Math.atan2(Math.sin(q.angle - prev), Math.cos(q.angle - prev));
     assert.ok(d < 0, "左輪逆時針時右輪順時針(反向)");
     prev = q.angle;
+    ratios.push(q.r1 / (m429.DIST - q.r1));
   }
-  // 轉一圈後回到原位
-  close(Math.cos(m429.partner(2 * Math.PI).angle), Math.cos(m429.partner(0).angle), "兩輪同步轉一圈", 1e-9);
+  close(m429.partner(2 * Math.PI).angle, -2 * Math.PI, "兩輪一樣大:左輪轉一圈右輪也轉一圈", 1e-6);
+  // 繞中心轉的卵形:長軸每半圈朝向對方一次,轉速比一圈有兩個最大值
+  let peaks = 0;
+  for (let i = 0; i < ratios.length; i++) {
+    const a = ratios[(i + ratios.length - 1) % ratios.length];
+    const b = ratios[(i + 1) % ratios.length];
+    if (ratios[i] > a && ratios[i] > b) peaks++;
+  }
+  assert.equal(peaks, 2, `轉速比一圈應變兩次,實際 ${peaks} 個峰`);
+  assert.ok(Math.max(...ratios) > 1.15 && Math.min(...ratios) < 0.87, "卵形看得出來(轉速比在 0.87 以下到 1.15 以上之間變化)");
+  // 長軸兩端在軸心的兩側等距:軸在卵形的中心,不在焦點
+  close(m429.radius(0), m429.radius(Math.PI), "長軸兩端離軸心一樣遠", 1e-9);
+});
+
+test("第 429 種:兩輪的齒全程咬合不重疊,密封條貼著外殼的弧、經過咬合處時落進對方的齒槽;外殼在上下腰部開進、排汽口", () => {
+  const left = m429.rotorOutline("left");
+  const right = m429.rotorOutline("right");
+  const seal = m429.CASE; // 密封條外緣到軸心的距離 = 外殼內壁的半徑
+  for (const t of sweep(2 * Math.PI, 144)) {
+    const q = m429.partner(t);
+    const L = placeOutline(left, m429.LEFT, t);
+    const R = placeOutline(right, m429.RIGHT, q.angle);
+    const depth = penetrationDepth(L, R);
+    assert.ok(depth < 0.012, `主動量 ${t}:兩輪的齒(或密封條)互相穿入 ${depth}`);
+    // 轉子的每一點都在自己那一側的外殼弧之內;密封條的外緣貼著弧(間隙接近 0)
+    const reachL = Math.max(...L.map(([x, y]) => Math.hypot(x - m429.LEFT[0], y - m429.LEFT[1])));
+    const reachR = Math.max(...R.map(([x, y]) => Math.hypot(x - m429.RIGHT[0], y - m429.RIGHT[1])));
+    assert.ok(reachL <= seal + 1e-9 && reachR <= seal + 1e-9, `主動量 ${t}:轉子伸出外殼(${reachL}, ${reachR} > ${seal})`);
+    assert.ok(reachL > seal - 0.01 && reachR > seal - 0.01, `主動量 ${t}:密封條沒貼著外殼(${reachL}, ${reachR})`);
+  }
+  // 外殼:兩段以兩軸為圓心的弧,在上下腰部開口接汽管(腰部中線上沒有殼壁)
+  const [shellL, shellR] = m429.shells;
+  for (const y of [m429.WAIST + 0.01, m429.CASE, m429.CASE + 0.15]) {
+    for (const s of [1, -1]) assert.ok(!pointInPolygon([0, s * y], shellL) && !pointInPolygon([0, s * y], shellR), `腰部 (0, ${s * y}) 有殼壁擋住汽口`);
+  }
+  for (const a of [Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    const p = [m429.LEFT[0] + (m429.CASE + 0.1) * Math.cos(a), m429.LEFT[1] + (m429.CASE + 0.1) * Math.sin(a)];
+    assert.ok(pointInPolygon(p, shellL), `外殼的弧在 ${a.toFixed(2)} 方向缺了一塊`);
+  }
+  // 蒸汽從上方進來、沿兩側的外殼走、從下方出去;點不落在轉子上
+  for (const t of sweep(2 * Math.PI, 12)) {
+    const q = m429.partner(t);
+    const L = placeOutline(left, m429.LEFT, t);
+    const R = placeOutline(right, m429.RIGHT, q.angle);
+    const dots = m429.default.pose(t).flows.flatMap((f) => f.points);
+    assert.ok(dots.some(([x, y]) => Math.abs(x) < 0.1 && y > m429.CASE) && dots.some(([x, y]) => Math.abs(x) < 0.1 && y < -m429.CASE), "蒸汽在上方的進汽管與下方的排汽管裡");
+    for (const d of dots) assert.ok(!pointInPolygon([d[0], d[1]], L) && !pointInPolygon([d[0], d[1]], R), `主動量 ${t}:蒸汽的點落在轉子上 (${d[0].toFixed(2)}, ${d[1].toFixed(2)})`);
+  }
 });
