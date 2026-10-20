@@ -1,8 +1,8 @@
 // 第十七章「繪圖儀器」與第二十二章「儀錶與周轉輪系」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, plateLayers, inSolid, polyGap, assertOnePiece, assertShaftInBearings } from "./helpers.js";
-import { quatRotate, partPoint, add, sub, scale, norm, dot, dist } from "../models/kit.js";
+import { close, sweep, part, plateLayers, inSolid, polyGap, turned, pieceBox, assertOnePiece, assertShaftInBearings } from "./helpers.js";
+import { quatRotate, quatMul, quatFromZ, quatAxisAngle, partPoint, add, sub, scale, norm, dot, dist } from "../models/kit.js";
 import { pointInPolygon, placeOutline, edgeDistance } from "../models/contact.js";
 import * as pt from "../models/pencil-thread.js";
 import { pathLength } from "../models/flow.js";
@@ -979,29 +979,136 @@ test("第 495 種:Entwistle 齒輪:A 固定、三輪一樣大時,軸 D 每轉一
   close(m495.wheelC(-1), -2, "反轉亦然");
 });
 
-test("第 502 種:周轉輪系:A 固定時框架的轉動經 F、E 傳給 B;A 也轉時 B 的轉速不同;末輪也可以是與框架同心的 D", () => {
-  const fixed = m502.train(1, "bFixedA");
-  close(fixed.last, 1 + m502.E_AB * (0 - 1), "B = 框架 + e(A − 框架)");
-  const turning = m502.train(1, "bTurningA");
-  assert.notEqual(turning.last.toFixed(6), fixed.last.toFixed(6), "A 也轉時 B 的轉速不同");
-  const d = m502.train(1, "dFixedA");
-  assert.equal(d.which, "D");
-  close(m502.E_AB, (24 * 24) / (18 * 18), "輪系值 = (A/F)(E/B)");
-  // A 也轉時由副軸帶動(看得到傳動):A 與框架同向、轉速一半;A 固定時副軸拿開、夾塊鎖住 A
+// 第 502–507 種:齒輪、傘齒輪附件當成同樣大小、沿 z 的圓柱,檢查一個零件的各塊連成一件
+const asSolids = (pieces) =>
+  pieces.map((q) => (["gear", "bevel"].includes(q.kind) ? { kind: "cylinder", radius: q.radius, length: q.width ?? q.height ?? 0.25, at: q.at ?? [0, 0, 0] } : q));
+const onePiece = (pieces, what) => assertOnePiece({ pieces: asSolids(pieces) }, what);
+// 零件在主動量 v 時的位置與朝向(與繪圖層的擺法相同:rotation,或 axis 對齊後繞它轉 angle)
+function placeOf(def, id, v, state) {
+  const p = part(def, id);
+  const o = def.pose(v, state).parts[id] ?? {};
+  return { pos: o.position ?? p.center ?? [0, 0, 0], q: o.rotation ?? quatMul(quatFromZ(p.axis ?? [0, 0, 1]), quatAxisAngle([0, 0, 1], o.angle ?? 0)) };
+}
+/** 零件上此刻在世界座標 P 的那一點,主動量增加時的速度(數值微分) */
+function pointVelocity(def, id, v, state, P, h = 1e-6) {
+  const a = placeOf(def, id, v, state);
+  const b = placeOf(def, id, v + h, state);
+  const local = quatRotate([-a.q[0], -a.q[1], -a.q[2], a.q[3]], P.map((c, i) => c - a.pos[i]));
+  return quatRotate(b.q, local).map((c, i) => (c + b.pos[i] - P[i]) / h);
+}
+/** 兩個零件在接觸點 P 的表面速度相同(咬合、滾動不打滑) */
+function sameSurfaceSpeed(def, idA, idB, v, state, P, what, eps = 1e-5) {
+  const va = pointVelocity(def, idA, v, state, P);
+  const vb = pointVelocity(def, idB, v, state, P);
+  for (let i = 0; i < 3; i++) close(va[i], vb[i], `${what}:接觸點的表面速度相同(第 ${i} 分量)`, eps * Math.max(1, Math.hypot(...va)));
+}
+const rotY = ([x, y, z], a) => [x * Math.cos(a) + z * Math.sin(a), y, -x * Math.sin(a) + z * Math.cos(a)];
+
+test("第 502 種:周轉輪系:A 固定、對框架 C 施加運動,經 F、E 傳給 B;A 也與框架以不同的速度轉時,B 的轉速不同", () => {
   const def = m502.default;
-  const turn = (state) => def.pose(1, state).parts.wheelA.angle - def.pose(0, state).parts.wheelA.angle;
-  close(turn("bTurningA"), 0.5, "A 以框架一半的轉速同向轉");
-  close(turn("bFixedA"), 0, "A 固定");
-  assert.equal(def.pose(0.3, "bTurningA").parts.counter.visible, true, "A 也轉時副軸裝上");
-  assert.equal(def.pose(0.3, "bTurningA").parts.clamp.visible, false);
-  assert.equal(def.pose(0.3, "bFixedA").parts.counter.visible, false, "A 固定時副軸拿開");
-  assert.equal(def.pose(0.3, "bFixedA").parts.clamp.visible, true, "A 固定時夾塊鎖住 A");
+  const rate = (id, state) => turned(def, id, 0, 1, state);
+  close(m502.E_AB, (24 / 18) * (22 / 18), "輪系值 = (A/F)(E/B)");
+  // A 固定:B − 框架 = E_AB(0 − 框架)
+  const f1 = rate("frameC", "bFixedA");
+  assert.ok(Math.abs(f1) > 0.1, "對框架施加運動");
+  close(rate("wheelA", "bFixedA"), 0, "A 固定");
+  close(rate("wheelB", "bFixedA") - f1, m502.E_AB * (0 - f1), "B 繞自身的軸轉:B − 框架 = e(A − 框架)");
+  // A 也轉:第一個輪與框架以不同的速度轉(原文沒有給比例;A 為框架的一半是推斷)
+  const [f2, a2, b2] = ["frameC", "wheelA", "wheelB"].map((id) => rate(id, "bTurningA"));
+  assert.ok(Math.abs(a2) > 0.1 && Math.abs(a2 - f2) > 0.1, "A 與框架以不同的速度轉");
+  close(b2 - f2, m502.E_AB * (a2 - f2), "結果相同:B − 框架 = e(A − 框架)");
+  assert.ok(Math.abs(b2 / f2 - rate("wheelB", "bFixedA") / f1) > 0.1, "只是 B 的轉速不同");
+  // 換接法:A 固定時夾塊鎖住 A、副軸上帶 A 的齒輪滑出;A 也轉時副軸上的 K2 咬 A 套筒上的 T
+  const fixed = def.pose(0.3, "bFixedA").parts;
+  const turning = def.pose(0.3, "bTurningA").parts;
+  assert.equal(fixed.clamp.visible, true, "A 固定時夾塊鎖住 A");
+  assert.equal(fixed.gearK2.visible, false, "A 固定時帶 A 的齒輪滑出");
+  assert.equal(turning.clamp.visible, false);
+  assert.equal(turning.gearK2.visible, true, "A 也轉時副軸帶動 A");
+});
+
+test("第 502 種:F 與 E 固定在同一根軸上(同一個零件、中間有轂);F/E 的軸銷接進框架板;副軸的支柱接到軸承", () => {
+  const def = m502.default;
+  const fe = part(def, "wheelFE");
+  assert.ok(fe, "F、E 是同一個零件");
+  assert.deepEqual(fe.pieces.filter((q) => q.kind === "gear").map((q) => q.teeth).sort((a, b) => a - b), [m502.TEETH.F, m502.TEETH.E].sort((a, b) => a - b));
+  onePiece(fe.pieces, "F、轂、E 連成一件");
+  const frame = part(def, "frameC");
+  onePiece([{ kind: "plate", shape: frame.shape, thickness: frame.thickness }, ...frame.pieces], "框架板、中心軸、S 與兩根軸銷連成一件");
+  onePiece(part(def, "counterStand").pieces, "副軸的支柱接到軸承");
+});
+
+test("第 502 種:E 改咬與框架同心的 D:把運動給臂與一個端輪,另一個端輪得到合成轉動;把運動給兩端 A、D,臂得到合成轉動", () => {
+  const def = m502.default;
+  const rate = (id, state) => turned(def, id, 0, 1, state);
+  const ids = def.states.options.map((o) => o.id);
+  for (const s of ["dFixedA", "dTurningA", "adToArm"]) assert.ok(ids.includes(s), `接法 ${s}`);
+  assert.ok(Math.abs(m502.E_AD - m502.E_AB) > 0.05, "D 與 B 齒數不同,兩種輪系的轉速分得開");
+  // 給臂與 A(副軸咬框架的 S 與 A 的 T):D − 框架 = E_AD(A − 框架)
+  const [f, a, d] = ["frameC", "wheelA", "wheelD"].map((id) => rate(id, "dTurningA"));
+  assert.ok(Math.abs(a) > 0.1 && Math.abs(a - f) > 0.1, "臂與一個端輪 A 以不同的速度被帶動");
+  close(d - f, m502.E_AD * (a - f), "另一個端輪 D 得到合成轉動");
+  close(rate("wheelD", "dFixedA") - rate("frameC", "dFixedA"), m502.E_AD * (0 - rate("frameC", "dFixedA")), "A 固定時同理");
+  // 給兩端 A、D(副軸咬 A 的 T 與 D 套筒上的 U,不咬框架的 S):臂 = (D − e·A)/(1 − e)
+  const p = def.pose(0.7, "adToArm").parts;
+  assert.equal(p.gearK1.visible, false, "副軸不帶動框架");
+  assert.equal(p.gearK2.visible && p.gearK3.visible, true, "副軸帶動 A 與 D");
+  const [a2, d2, arm] = ["wheelA", "wheelDIn", "frameOut"].map((id) => rate(id, "adToArm"));
+  assert.ok(Math.abs(a2) > 0.1 && Math.abs(d2) > 0.1 && Math.abs(a2 - d2) > 0.1, "兩端以不同的速度被帶動");
+  close(arm, (d2 - m502.E_AD * a2) / (1 - m502.E_AD), "臂得到合成轉動");
+  // 目標件跟著接法:D、臂各畫兩份,結果的那一份塗目標件色
+  assert.equal(p.frameOut.visible && !p.frameC.visible && p.wheelDIn.visible && !p.wheelD.visible, true, "兩端輸入時,臂是結果、D 是輸入");
+  assert.ok(def.targets.includes("frameOut") && !def.targets.includes("wheelDIn") && !def.targets.includes("frameC"));
 });
 
 test("第 503 種:簡單的傘齒輪周轉輪系:臂的轉動是兩個輪 C、D 的平均", () => {
   close(m503.differential(1, "fixed").arm, 0.5, "D 固定:臂轉 C 的一半");
   close(m503.differential(1, "opposite").arm, 0, "C、D 反向同速:臂不轉");
   close(m503.differential(1, "same").arm, 1, "C、D 同向同速:臂跟著轉");
+});
+
+test("第 503 種:臂上的傘齒輪 B 夾在 C、D 之間滾動:接觸處 B 的表面與 C、D 同速(三種轉法)", () => {
+  const def = m503.default;
+  for (const state of ["fixed", "opposite", "same"]) {
+    const arm = def.pose(0.6, state).parts.shaftA.angle;
+    // 接觸點在 C、D 的節錐上:離軸 x,高度 ±x·RB/R(B 的節錐與 C、D 的節錐相切處)
+    sameSurfaceSpeed(def, "wheelB", "wheelC", 0.6, state, rotY([0.72, -0.72 * (0.5 / 0.85), 0], arm), `${state}:B 咬 C`);
+    sameSurfaceSpeed(def, "wheelB", "wheelD", 0.6, state, rotY([0.72, 0.72 * (0.5 / 0.85), 0], arm), `${state}:B 咬 D`);
+  }
+});
+
+test("第 503 種:D 固定、反向同速、同向同速由實體做出來:夾塊鎖住 D、機架上的惰輪同時咬 C 與 D、銷把 D 鎖在 C 上", () => {
+  const def = m503.default;
+  const frame = part(def, "frame");
+  assertOnePiece(frame, "機架(底板、支柱、橫樑、上下軸承座)連成一件");
+  // D 固定:夾塊(環)套在 D 的套筒上、頂著上方軸承座的底
+  const clamp = part(def, "clampD");
+  assert.ok(clamp, "D 固定時有夾塊");
+  const sleeve = part(def, "wheelD").pieces.find((q) => q.kind === "cylinder");
+  const bearing = frame.pieces.filter((q) => q.kind === "box" && q.at[0] === 0).reduce((a, b) => (a.at[1] > b.at[1] ? a : b));
+  close(clamp.inner, sleeve.radius, "夾塊的環套在 D 的套筒上");
+  close(clamp.center[1] + clamp.length / 2, bearing.at[1] - bearing.size[1] / 2, "夾塊頂著上方軸承座");
+  close(part(def, "wheelD").center[1] + sleeve.at[2] + sleeve.length / 2, bearing.at[1] - bearing.size[1] / 2, "D 的套筒伸到上方軸承座下面");
+  close(turned(def, "wheelD", 0, 1, "fixed"), 0, "D 不轉");
+  // 反向同速:惰輪的軸固定在支柱上,惰輪同時咬 C、D、只自轉不公轉
+  const op = (v) => def.pose(v, "opposite").parts;
+  assert.equal(op(0.3).wheelI.visible && op(0.3).idlerAxle.visible, true, "惰輪與它的軸裝上");
+  const axle = part(def, "idlerAxle");
+  const post = frame.pieces.find((q) => q.kind === "box" && q.at[0] < -1);
+  close(axle.center[0] - axle.length / 2, post.at[0] + post.size[0] / 2, "惰輪的軸接到支柱");
+  assert.deepEqual(placeOf(def, "wheelI", 0.3, "opposite").pos, placeOf(def, "wheelI", 1.3, "opposite").pos, "惰輪不公轉");
+  sameSurfaceSpeed(def, "wheelI", "wheelC", 0.6, "opposite", [-0.72, -0.72 * (0.5 / 0.85), 0], "惰輪咬 C");
+  sameSurfaceSpeed(def, "wheelI", "wheelD", 0.6, "opposite", [-0.72, 0.72 * (0.5 / 0.85), 0], "惰輪咬 D");
+  // 同向同速:銷從 C 的錐頂面穿到 D 的錐頂面,跟著 C 轉
+  const pin = part(def, "pinCD");
+  const same = (v) => def.pose(v, "same").parts;
+  assert.equal(same(0.4).pinCD.visible, true);
+  close(pin.length / 2, -part(def, "wheelC").center[1] - part(def, "wheelC").height / 2, "銷的兩端到 C、D 的錐頂面");
+  const p = same(0.4).pinCD.position;
+  close(Math.atan2(-p[2], p[0]) - Math.atan2(-pin.center[2], pin.center[0]), 0.4, "銷跟著 C 轉");
+  for (const s of ["opposite", "same"]) assert.equal(def.pose(0.3, s).parts.clampD.visible, false, `${s}:D 會轉,夾塊拿掉`);
+  for (const s of ["fixed", "same"]) assert.equal(def.pose(0.3, s).parts.wheelI.visible, false, `${s}:惰輪拿掉`);
+  for (const s of ["fixed", "opposite"]) assert.equal(def.pose(0.3, s).parts.pinCD.visible, false, `${s}:銷拿掉`);
 });
 
 test("第 504 種:弗格森悖論:臂轉動時 F 不轉,E 朝一個方向慢慢轉,G 朝另一個方向慢慢轉", () => {
@@ -1013,6 +1120,47 @@ test("第 504 種:弗格森悖論:臂轉動時 F 不轉,E 朝一個方向慢慢�
   assert.ok(p.E > 0 && p.G < 0 && Math.abs(p.F) < 1e-9, "三個輪轉向各不相同");
 });
 
+test("第 504 種:E、F、G 的指標裝在 E 的頂面以上、高過厚輪 B,越上面越短:俯視時三根都看得到,也不穿過 B", () => {
+  const def = m504.default;
+  const bTop = part(def, "wheelB").width / 2;
+  const layers = ["wheelE", "wheelF", "wheelG"].map((id) => {
+    const ptr = part(def, id).pieces.filter((q) => q.kind === "plate");
+    assert.equal(ptr.length, 1, `${id} 有一根指標`);
+    const xs = ptr[0].shape.outline.map((v) => v[0]);
+    const gear = part(def, id).pieces.find((q) => q.kind === "gear");
+    return { id, z0: ptr[0].at[2] - ptr[0].thickness / 2, len: Math.max(...xs), gearTop: gear.at[2] + gear.width / 2 };
+  });
+  const topOfWheels = Math.max(...layers.map((l) => l.gearTop));
+  for (const l of layers) {
+    assert.ok(l.z0 >= bTop, `${l.id} 的指標高過 B 的頂面(指標底 ${l.z0},B 頂 ${bTop})`);
+    assert.ok(l.z0 >= topOfWheels, `${l.id} 的指標在三個輪的頂面以上`);
+  }
+  const byHeight = [...layers].sort((a, c) => a.z0 - c.z0);
+  for (let i = 1; i < byHeight.length; i++) assert.ok(byHeight[i].len < byHeight[i - 1].len - 0.1, `${byHeight[i].id} 的指標比下面的短,下面那根的尖端露出來`);
+  // 套管:G 的在最裡面、F 的套在外面,往上穿過上面的輪
+  const tube = (id) => part(def, id).pieces.find((q) => q.kind === "cylinder" && q.inner);
+  assert.ok(tube("wheelG") && tube("wheelF"), "G、F 各有一根套管");
+  close(tube("wheelG").radius, tube("wheelF").inner, "F 的套管套在 G 的套管上");
+  close(part(def, "wheelF").pieces.find((q) => q.kind === "gear").bore, tube("wheelG").radius, "G 的套管穿過 F 的孔");
+  close(part(def, "wheelE").pieces.find((q) => q.kind === "gear").bore, tube("wheelF").radius, "F 的套管穿過 E 的孔");
+});
+
+test("第 504 種:臂 C、D 兩頭伸出輪外(讀者抓得到);凸柱下面有柱座與底板,臂在 A 與柱座之間", () => {
+  const def = m504.default;
+  const arm = part(def, "arm");
+  const xs = arm.shape.outline.map((v) => v[0]);
+  const post = part(def, "post");
+  const a = post.pieces.find((q) => q.kind === "gear");
+  const n = arm.pieces.reduce((p, q) => (q.at[0] > p.at[0] ? q : p)).at[0]; // 銷 N
+  const wheelOuter = part(def, "wheelE").pieces.find((q) => q.kind === "gear").radius + 0.06;
+  assert.ok(Math.max(...xs) >= n + wheelOuter + 0.4, "D 端伸出 E、F、G 的齒頂至少 0.4");
+  assert.ok(-Math.min(...xs) >= a.radius + 0.06 + 0.2, "C 端伸出 A 的齒頂");
+  const armBottom = arm.center[2] - arm.thickness / 2;
+  const base = post.pieces.filter((q) => (q.kind === "cylinder" || q.kind === "box") && pieceBox(q).hi[2] <= armBottom + 1e-9);
+  assert.ok(base.some((q) => q.kind === "cylinder" && q.radius > 0.15), "臂下面有比凸柱粗的柱座");
+  assertOnePiece({ pieces: post.pieces.filter((q) => q.kind !== "gear") }, "凸柱、柱座與底板連成一件");
+});
+
 test("第 505 種:臂帶著小齒輪 B 咬正齒輪 A 與內齒輪 C;固定其中一個,另一個就被帶動", () => {
   const { A, C } = m505.TEETH;
   close(m505.wheels(1, "C").A, 1 + C / A, "C 固定:A 轉 (1 + C/A) 倍");
@@ -1020,16 +1168,86 @@ test("第 505 種:臂帶著小齒輪 B 咬正齒輪 A 與內齒輪 C;固定其�
   assert.equal(m505.wheels(1, "C").C, 0);
 });
 
-test("第 506 種:兩端都不固定的周轉輪系:主動軸經 a、b 與 h、g 帶動兩端,臂得到合成的(很慢的)轉動;改接法時 f 得到合成轉動", () => {
-  const t = m506.train(1, "original");
-  close(t.arm, (t.c + t.f) / 2, "臂 = 兩端輪的平均(c、f 一樣大)");
-  assert.ok(Math.abs(t.arm) < 0.05, "兩端速度相近、方向相反,臂轉得很慢");
-  const m = m506.train(1, "modified");
-  close(m.arm, m.g, "改過的接法:臂跟著 g 轉");
-  close(m.f, 2 * m.g - m.c, "f 是合成的結果");
+test("第 505 種:A、C 與臂的軸同心:臂固定在中心軸上、轉在機架的軸承裡;固定的那個輪由夾塊鎖在機架上,而且不塗目標件色", () => {
+  const def = m505.default;
+  const stand = part(def, "stand");
+  assert.ok(stand, "有機架");
+  assertOnePiece(stand, "機架(底板、立柱、軸承)連成一件");
+  const shaft = part(def, "armD").pieces.find((q) => q.role === "shaft");
+  assert.ok(shaft, "臂固定在中心軸上");
+  const z = def.pose(0, "C").parts.armD.position[2];
+  assertShaftInBearings({ ...shaft, at: [0, 0, z + shaft.at[2]] }, stand.pieces, "臂的中心軸");
+  // A 的套筒套在中心軸上,C 的輪轂套在 A 的套筒上
+  const sleeve = part(def, "wheelA").pieces.find((q) => q.kind === "cylinder");
+  close(sleeve.inner, shaft.radius, "A 的套筒套在中心軸上");
+  close(part(def, "wheelC").pieces.find((q) => q.kind === "cylinder").inner, sleeve.radius, "C 的輪轂套在 A 的套筒上");
+  for (const [state, clamp] of [["C", "clampC"], ["A", "clampA"]]) {
+    const p = def.pose(0.5, state).parts;
+    assert.equal(p[clamp].visible, true, `固定 ${state}:夾塊鎖住它`);
+    // 看得到的目標件都在轉;看得到的、標著這個字母而不動的輪不是目標件
+    const visible = def.parts.filter((q) => p[q.id]?.visible !== false);
+    for (const t of def.targets.filter((id) => visible.some((q) => q.id === id))) assert.ok(Math.abs(turned(def, t, 0, 1, state)) > 0.1, `固定 ${state}:目標件 ${t} 被帶動`);
+    const still = visible.filter((q) => q.label === state && Math.abs(turned(def, q.id, 0, 1, state)) < 1e-12);
+    assert.equal(still.length, 1, `固定 ${state}:看得到一個不動的 ${state}`);
+    assert.ok(!def.targets.includes(still[0].id), `固定 ${state}:不動的 ${state} 不塗目標件色`);
+  }
+});
+
+test("第 506 種:兩端都不固定的周轉輪系:軸 A 經 a、b 帶動 c,經 h、g 帶動 f,臂 k、l 得到合成轉動;改接法時 f 得到合成轉動", () => {
+  const def = m506.default;
+  const T = m506.TEETH;
+  const rate = (id, state) => turned(def, id, 0, 1, state);
+  close(m506.E_CF, -(T.c / T.d) * (T.e / T.f), "c → f 的輪系值照齒數:−(c/d)(e/f)");
+  close(Math.abs(rate("wheelBC", "original")), T.a / T.b, "a 咬 b:b(與 c)轉 a/b");
+  close(Math.abs(rate("wheelFG", "original")), T.h / T.g, "h 咬 g:g(與 f)轉 h/g");
+  assert.ok(rate("wheelBC", "original") * rate("wheelFG", "original") < 0, "a、h 從同一側咬下面的 b 與上面的 g,兩端轉向相反");
+  const [c, f, arm] = ["wheelBC", "wheelFG", "shaftMN"].map((id) => rate(id, "original"));
+  close(f - arm, m506.E_CF * (c - arm), "傳給兩端的運動產生臂的合成運動(f − 臂 = e(c − 臂))");
+  assert.ok(Math.abs(arm) > 0.01, "臂在轉");
+  const [c2, g2, f2, arm2] = ["wheelBC", "wheelG", "wheelF", "shaftMN"].map((id) => rate(id, "modified"));
+  close(arm2, g2, "改過的接法:g 固定在軸上,臂跟著 g 轉");
+  close(f2 - arm2, m506.E_CF * (c2 - arm2), "鬆的 f 得到合成轉動");
+});
+
+test("第 506 種:軸 A 上的 a、h 與臂上的 d、e 各是兩個傘齒輪,大小照齒數、節錐頂在兩軸交點,嚙合處兩輪表面同速", () => {
+  const def = m506.default;
+  const T = m506.TEETH;
+  const gearsOf = (id) => part(def, id).pieces.filter((q) => q.kind === "gear");
+  assert.deepEqual(gearsOf("shaftA").map((q) => q.teeth).sort((a, b) => a - b), [T.a, T.h].sort((a, b) => a - b), "軸 A 上兩個輪 a、h");
+  assert.deepEqual(gearsOf("planetDE").map((q) => q.teeth).sort((a, b) => a - b), [T.e, T.d].sort((a, b) => a - b), "臂上兩個輪 d、e");
+  const G = m506.GEARS;
+  for (const [p, w] of [["a", "b"], ["h", "g"], ["c", "d"], ["e", "f"]]) close(G[p].radius / G[w].radius, T[p] / T[w], `${p}、${w} 的大小照齒數`, 1e-9);
+  for (const state of ["original", "modified"]) {
+    const v = 0.7;
+    const arm = def.pose(v, state).parts.shaftMN.angle;
+    const fg = state === "original" ? "wheelFG" : "wheelF";
+    const gg = state === "original" ? "wheelFG" : "wheelG";
+    sameSurfaceSpeed(def, "shaftA", "wheelBC", v, state, m506.CONTACTS.ab, `${state}:a 咬 b`);
+    sameSurfaceSpeed(def, "shaftA", gg, v, state, m506.CONTACTS.hg, `${state}:h 咬 g`);
+    sameSurfaceSpeed(def, "wheelBC", "planetDE", v, state, rotY(m506.CONTACTS.cd, arm), `${state}:c 咬 d`);
+    sameSurfaceSpeed(def, "planetDE", fg, v, state, rotY(m506.CONTACTS.ef, arm), `${state}:e 咬 f`);
+  }
+});
+
+test("第 506 種:b 與 c 連成一件;原來的接法 f 與 g 連成一件;d 與 e 連成一件", () => {
+  const def = m506.default;
+  for (const id of ["wheelBC", "wheelFG", "planetDE"]) {
+    assert.ok(part(def, id), `${id} 是一個零件`);
+    onePiece(part(def, id).pieces, `${id} 連成一件`);
+  }
+  assert.equal(def.pose(0.3, "original").parts.wheelFG.visible, true);
+  assert.equal(def.pose(0.3, "modified").parts.wheelFG.visible, false, "改過的接法:f、g 分開");
 });
 
 test("第 507 種:產生極慢運動的周轉輪系:照原文的齒數,C 每轉一圈,臂轉 25,000 圈", () => {
   close(Math.abs(m507.slow(1).arm), 25000, "臂 / C = 25,000", 1e-6);
   close(Math.abs(1 / m507.C_PER_ARM), 25000, "反過來,臂轉一圈 C 只轉 1/25,000 圈", 1e-6);
+});
+
+test("第 507 種:結合在一起的 F 與 G 連成一件(中間有轂);主動件的轉向箭頭畫在臂的高度", () => {
+  const def = m507.default;
+  onePiece(part(def, "planetFG").pieces, "F、轂、G 連成一件");
+  const arm = part(def, "arm");
+  const plate = arm.pieces.find((q) => q.kind === "plate");
+  close(arm.spinOffset ?? 0, plate.at[2], "箭頭在臂板的高度");
 });

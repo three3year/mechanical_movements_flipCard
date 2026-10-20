@@ -49,8 +49,10 @@ export default {
     { id: "wheelC", kind: "group", axis: X, center: [0.27, -1.12, 0], label: "C", labelOffset: [0.25, 0.75, 0.3], spin: 0.6, pieces: [{ kind: "bevel", radius: 0.5, height: 0.2, axis: [0, 0, -1] }, { kind: "cylinder", radius: 0.06, length: 0.9, at: [0, 0, 0.45] }] },
     { id: "labela", kind: "group", pieces: [], label: "a", labelOffset: [1.35, -0.85, 0.3] },
     // 臂 m、n 與凸柱上的 F、G
-    { id: "arm", kind: "group", axis: Y, label: "m", labelOffset: [-0.2, 1.75, 0.3], spin: 1.5, pieces: [{ kind: "plate", shape: shape(thickLine([[-0.2, 0], [1.45, 0]], 0.14)), thickness: 0.08, rotation: [Math.SQRT1_2, 0, 0, Math.SQRT1_2], at: [0, 0, 1.6], mark: [0.7, 0] }, { kind: "cylinder", radius: 0.05, length: 0.9, at: [1.3, 0, 1.2] }] },
-    { id: "planetFG", kind: "group", axis: Y, label: "F", labelOffset: [0.7, 0.2, 0.3], arrow: false, pieces: [{ kind: "gear", teeth: TEETH.F, radius: R_F, width: 0.1, at: [0, 0, 0.3] }, { kind: "gear", teeth: TEETH.G, radius: R_G, width: 0.1, at: [0, 0, 0] }] },
+    // 轉向箭頭畫在臂的高度(spinOffset = 臂板的 z;以前畫在零件原點,落在幾乎不轉的套筒中段)
+    { id: "arm", kind: "group", axis: Y, label: "m", labelOffset: [-0.2, 1.75, 0.3], spin: 1.5, spinOffset: 1.6, pieces: [{ kind: "plate", shape: shape(thickLine([[-0.2, 0], [1.45, 0]], 0.14)), thickness: 0.08, rotation: [Math.SQRT1_2, 0, 0, Math.SQRT1_2], at: [0, 0, 1.6], mark: [0.7, 0] }, { kind: "cylinder", radius: 0.05, length: 0.9, at: [1.3, 0, 1.2] }] },
+    // F 與 G 結合在一起:中間一段轂連成一件(原圖 F、G 之間畫有轂),套在凸柱上轉
+    { id: "planetFG", kind: "group", axis: Y, label: "F", labelOffset: [0.7, 0.2, 0.3], arrow: false, pieces: [{ kind: "gear", teeth: TEETH.F, radius: R_F, width: 0.1, bore: 0.05, at: [0, 0, 0.3] }, { kind: "cylinder", radius: 0.12, inner: 0.05, length: 0.22, at: [0, 0, 0.15] }, { kind: "gear", teeth: TEETH.G, radius: R_G, width: 0.1, bore: 0.05, at: [0, 0, 0] }] },
     { id: "labelG", kind: "group", pieces: [], label: "G", labelOffset: [0, 0, 0.3] },
   ],
   driver: { part: "arm", type: "rotation", speed: 0.8, initial: Math.PI }, // 起始時 F、G 在左邊(依原圖)
