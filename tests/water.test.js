@@ -157,6 +157,80 @@ test("第 441 種:波斯水車:水桶在低處裝滿,滿著升到高處,碰到�
   assert.ok(-m441.RIM < m441.RIVER, "輪的下半部浸在水流裡");
 });
 
+test("第 441 種:水流作用於浮板的凸面;轉過水平的浮板把舀起的水一路下坡導進空心軸;照原圖 6 片浮板、6 個水桶", () => {
+  const deg = Math.PI / 180;
+  // 最低處的浮板(外端在 270°):河水往 +x 流,輪逆時針轉、底部往右走;浮板要鼓向 −x(上游),迎著水流的才是凸面
+  const low = m441.floatAt(270 * deg);
+  const [hx, hy] = low[0];
+  const [ox, oy] = low.at(-1);
+  for (const [x, y] of low.slice(1, -1)) {
+    const side = (ox - hx) * (y - hy) - (oy - hy) * (x - hx); // 弦從軸端指向外端(往下),右側(負)是 −x
+    assert.ok(side < 0, "浮板鼓向上游:水流推的是凸面");
+    assert.ok(x < Math.max(hx, ox), "浮板整片在弦的上游側");
+  }
+  assert.ok(angle(m441.default, "wheel", 0.2) > 0, "輪逆時針轉,底部的浮板隨水流往右走");
+  // 右側升起、轉過水平的浮板:從外端到軸端一路往下,舀起的水沿浮板流進空心軸
+  for (const outer of [60, 75, 90, 105]) {
+    const pts = m441.floatAt(outer * deg).slice().reverse();
+    for (let i = 1; i < pts.length; i++) assert.ok(pts[i][1] < pts[i - 1][1], `外端在 ${outer}° 的浮板:從外端到軸端一路下坡(第 ${i} 段)`);
+  }
+  assert.equal(m441.FLOATS, 6, "照原圖 6 片浮板,每片末端掛一個水桶");
+  assert.equal(m441.default.parts.filter((p) => p.id.startsWith("bucket")).length, 6, "6 個水桶");
+});
+
+test("第 441 種:水桶掛在浮板外端的吊銷上、桶身在浮板前面一層,全程不穿進浮板;在最低處不穿進槽底", () => {
+  const def = m441.default;
+  const polar = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
+  const wheel = def.parts.find((p) => p.id === "wheel");
+  const floats = wheel.pieces.filter((p) => p.kind === "plate" && p.angle !== undefined);
+  const floatTop = Math.max(...floats.map((p) => (p.at?.[2] ?? 0) + p.thickness / 2));
+  const [ex, ey] = polar(m441.RIM, m441.SWEEP); // 浮板外端(浮板的軸端在 0°)
+  const pins = wheel.pieces.filter((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - ex, p.at[1] - ey) < 1e-6);
+  assert.equal(pins.length, 1, "浮板外端有一根吊銷");
+  const [pin] = pins;
+  const pinZ = [pin.at[2] - pin.length / 2, pin.at[2] + pin.length / 2];
+  assert.ok(pinZ[0] < floatTop && pinZ[1] > floatTop, "吊銷從浮板伸到前面");
+  const bucket = def.parts.find((p) => p.id === "bucket0");
+  const zRange = (p) => (p.kind === "box" ? [p.at[2] - p.size[2] / 2, p.at[2] + p.size[2] / 2] : [p.at[2] - p.thickness / 2, p.at[2] + p.thickness / 2]);
+  const bucketZ = bucket.pieces.map(zRange);
+  assert.ok(Math.min(...bucketZ.map((z) => z[0])) >= floatTop, "水桶整個在浮板那一層的前面,不會穿過浮板");
+  const eye = bucket.pieces.find((p) => p.kind === "plate" && p.shape.holes.length && p.shape.holes[0].every(([x, y]) => Math.hypot(x, y) < 0.1));
+  assert.ok(eye, "吊耳是套在吊銷上的環");
+  const [eyeZ0, eyeZ1] = zRange(eye);
+  assert.ok(pinZ[0] < eyeZ0 && pinZ[1] > eyeZ1, "吊銷穿過吊耳");
+  const hole = Math.max(...eye.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  assert.ok(hole > pin.radius && hole - pin.radius < 0.03, "吊耳的孔套著吊銷(間隙在貼合誤差內)");
+  // 水桶轉一圈,最低點都在槽底之上
+  for (const a of sweep(2 * Math.PI, 72)) {
+    const { tilt } = m441.bucket(a);
+    const poly = placeOutline(m441.BUCKET, polar(m441.RIM, a), tilt);
+    const lowest = Math.min(...poly.map((p) => p[1]));
+    assert.ok(lowest > m441.BASE_TOP, `水桶在 ${Math.round((a * 180) / Math.PI)}° 時不穿進槽底(最低 ${lowest.toFixed(3)},槽底 ${m441.BASE_TOP})`);
+  }
+});
+
+test("第 441 種:輪有固定軸穿過空心軸,兩岸各一根軸承柱;固定銷的支架與軸承柱都站在底座上", () => {
+  const def = m441.default;
+  const works = def.parts.find((p) => p.id === "works");
+  const base = works.pieces.find((p) => p.kind === "box" && p.size[0] > 5);
+  const baseTop = base.at[1] + base.size[1] / 2;
+  close(baseTop, m441.BASE_TOP, "槽底");
+  const axle = works.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0], p.at[1]) < 1e-9);
+  assert.ok(axle, "輪心有一根固定軸");
+  assert.ok(axle.radius < m441.HUB_BORE, "固定軸穿在空心軸的孔裡");
+  const stands = (p) => Math.abs(p.at[1] - p.size[1] / 2 - baseTop) < 0.06 && Math.abs(p.at[2]) + p.size[2] / 2 <= base.at[2] + base.size[2] / 2 + 1e-9;
+  const posts = works.pieces.filter((p) => p.kind === "box" && Math.abs(p.at[0]) < 1e-9 && p.size[1] > 1);
+  assert.equal(posts.length, 2, "兩根軸承柱");
+  for (const post of posts) {
+    assert.ok(stands(post), "軸承柱站在底座上");
+    assert.ok(post.at[1] + post.size[1] / 2 >= axle.radius, "軸承柱頂到軸");
+    assert.ok(Math.abs(post.at[2]) - post.size[2] / 2 < axle.length / 2, "軸伸進軸承柱");
+    assert.ok(Math.abs(post.at[2]) - post.size[2] / 2 > 0.6, "軸承柱在輪與水桶的外面");
+  }
+  const bracket = works.pieces.find((p) => p.kind === "box" && p.at[0] < -1 && p.size[1] > 3);
+  assert.ok(bracket && stands(bracket), "固定銷的支架立柱站在底座上");
+});
+
 test("第 434 種:福內隆渦輪:固定導葉 A 在中央,旋轉輪 B 在外側,水從圓周排出", () => {
   assert.ok(m434.GUIDE.r1 < m434.WHEEL.r0, "導葉在輪的內側");
   const def = m434.default;
@@ -228,6 +302,60 @@ test("第 440 種:分成兩半的水槽:一邊裝滿就翻過去倒出,另一邊
   assert.ok(b.tilt < 0 && b.left > 0 && b.right === 0, "翻過去後水落進左邊");
   assert.equal(m440.trough(0.99).count, 2, "一個來回倒兩次");
   assert.equal(m440.trough(3.2).count, 6, "計數累加");
+});
+
+test("第 440 種:水槽翻到底靠在擋柱上(間隙 0、再翻一點就穿入);裝滿的一端要降到軸以下才往外倒,存量隨傾角加大加速倒空", () => {
+  const deg = Math.PI / 180;
+  const bottom = (tilt) => placeOutline(m440.BOTTOM, m440.PIVOT, tilt);
+  for (const k of [1, -1]) {
+    const stop = m440.stopOutline(k);
+    assert.ok(!polygonsOverlap(bottom(-k * m440.TILT), stop), `翻到底時槽底不穿進 ${k > 0 ? "右" : "左"}邊的擋柱`);
+    assert.ok(polygonsOverlap(bottom(-k * (m440.TILT + 0.2 * deg)), stop), "再翻 0.2° 就穿進擋柱:槽底靠在擋柱上");
+    assert.ok(!polygonsOverlap(bottom(k * m440.TILT), stop), "另一邊抬高時離擋柱很遠");
+  }
+  // 右邊裝滿後翻過去(進程 0.4–0.5):右端還高於軸時水留在隔板邊,不倒;右端低於軸後才從開口的那一端流出
+  let prev = 1;
+  let poured = 0;
+  for (const v of sweep(0.5, 100, 0.4)) {
+    const t = m440.trough(v);
+    const out = m440.default.pose(v).flows.length - 1; // 第一條是斜槽的水
+    if (t.tilt > 1e-9) {
+      assert.equal(t.right, 1, `進程 ${v.toFixed(3)}:右端還抬著(傾角 ${((t.tilt * 180) / Math.PI).toFixed(1)}°),水還沒倒`);
+      assert.equal(out, 0, "沒有從右端流出的水");
+      assert.equal(t.count, 0, "還沒倒,不計數");
+    } else if (t.tilt < -1e-9) {
+      assert.ok(t.right <= prev, "右端降下去後存量只減不增");
+      assert.equal(out, t.right > 0 ? 1 : 0, "有水才有從右端流出的水");
+      assert.equal(t.count, 1, "翻過去就計一次");
+      poured++;
+    }
+    prev = t.right;
+  }
+  assert.ok(poured > 10, "翻過去之後有一段倒水的過程");
+  assert.equal(m440.trough(0.5).right, 0, "翻到底時倒空");
+  // 加速倒空:傾角到一半時倒出的不到一半
+  const half = sweep(0.5, 1000, 0.4).find((v) => m440.trough(v).tilt < -m440.TILT / 2);
+  assert.ok(m440.trough(half).right > 0.5, "傾角過半時倒出的還不到一半");
+  // 左邊同樣
+  const left = m440.trough(0.93);
+  assert.ok(left.tilt < 0 && left.left === 1, "左端還低於軸時不倒");
+  assert.equal(m440.default.pose(0.93).flows.length, 1);
+});
+
+test("第 440 種:軸由下方框架的直立支柱頂著(軸穿過支柱頂的軸孔,支柱站在底座上、斜撐接到支柱)", () => {
+  const frame = m440.default.parts.find((p) => p.id === "frame");
+  const [px, py, pz] = m440.PIVOT;
+  const xs = m440.POST.map((p) => p[0]);
+  const ys = m440.POST.map((p) => p[1]);
+  assert.ok(Math.min(...xs) < px - 0.05 && px + 0.05 < Math.max(...xs) && Math.min(...ys) < py - 0.05 && py + 0.05 < Math.max(...ys), "軸心在支柱的輪廓裡");
+  assert.ok(Math.min(...ys) <= m440.BASE_TOP, "支柱站在底座上");
+  const axle = frame.pieces.find((p) => p.kind === "cylinder" && Math.abs(p.at[0] - px) < 1e-9 && Math.abs(p.at[1] - py) < 1e-9);
+  const posts = frame.pieces.filter((p) => p.kind === "plate" && p.shape.outline === m440.POST);
+  assert.equal(posts.length, 2, "前後各一根支柱");
+  for (const post of posts) assert.ok(Math.abs(post.at[2]) + post.thickness / 2 <= axle.length / 2 + 1e-9 && Math.abs(post.at[2]) - post.thickness / 2 < axle.length / 2, "軸伸到支柱");
+  const trough = m440.default.parts.find((p) => p.id === "trough");
+  const bracket = trough.pieces.find((p) => p.kind === "plate");
+  for (const post of posts) assert.ok(Math.abs(post.at[2]) - post.thickness / 2 >= bracket.at[2] + bracket.thickness / 2, "支柱在水槽的支架外面");
 });
 
 test("第 444 種:水錘泵:右閥開時水流越流越快;右閥一關,水的動量打開左閥把水擠進空氣室;兩閥交替", () => {
