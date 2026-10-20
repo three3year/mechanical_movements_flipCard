@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep, part, inSolid, turned, pieceBox, assertShaftInBearings, assertOnePiece, assertBoxesOnePiece, polyGap, plateLayers } from "./helpers.js";
 import { X, Y, Z, deg, norm, cross, dot, sub, scale, add, rot2, polar, quatRotate } from "../models/kit.js";
-import { distanceToPath } from "../models/flow.js";
+import { distanceToPath, pathLength } from "../models/flow.js";
 import { placeOutline, polygonsOverlap, penetrationDepth, segmentsCross, pointInPolygon } from "../models/contact.js";
 import { bladeLine } from "../models/turbine.js";
 import { toothOutline, gearSize, rect } from "../models/shapes.js";
@@ -1995,26 +1995,128 @@ test("第 467 種:開閥放下:轉翼形螺絲把閥從管底的閥座退出、�
   assert.ok(opened.suction && opened.delivery, "兩個閥都真的張開過");
 });
 
-test("第 468 種:撓性輸水管:各節以鉸鏈相連,拖過河時順著河床的起伏", () => {
-  for (const u of sweep(1, 10)) {
-    const pts = m468.joints(u);
-    for (let k = 1; k < pts.length; k++) close(Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]), m468.SEGMENT, "每節長度不變", 1e-6);
-    for (const p of pts) close(p[1] - m468.bed(p[0]), 0.19, "鉸點都貼著河床", 1e-6);
+test("第 468 種:撓性輸水管:各節由接觸算、躺在河床上不切進去;接頭套筒套著兩邊的管端;管尾一直在南岸地面板上", () => {
+  for (const u of sweep(1, 20)) {
+    const j = m468.joints(u);
+    const pose = m468.default.pose(u);
+    for (let k = 0; k < m468.COUNT; k++) {
+      close(Math.hypot(j.pts[k + 1][0] - j.pts[k][0], j.pts[k + 1][1] - j.pts[k][1]), m468.SEGMENT, "每節長度不變", 1e-6);
+      const o = placeOutline(m468.SEG_OUTLINE, j.pts[k], j.angles[k]);
+      assert.ok(!polygonsOverlap(o, m468.BED_POLY), `拖曳 ${u.toFixed(2)}:第 ${k} 節切進河床`);
+      assert.ok(polyGap(o, m468.BED_POLY) < 1e-3, `拖曳 ${u.toFixed(2)}:第 ${k} 節躺在河床上(間隙 ${polyGap(o, m468.BED_POLY).toFixed(3)})`);
+      assert.ok(Math.abs(pose.parts[`segment${k}`].angle - j.angles[k]) < 1e-9 && Math.hypot(...sub(pose.parts[`segment${k}`].position, j.pts[k])) < 1e-9, "姿勢照 joints 擺");
+    }
+    for (let k = 1; k < m468.COUNT; k++) {
+      const joint = pose.parts[`joint${k}`];
+      const sleeve = placeOutline(rect(m468.SLEEVE.length, 2 * m468.SLEEVE.outer), j.pts[k], joint.angle);
+      assert.ok(penetrationDepth(sleeve, m468.BED_POLY) < 0.01, `拖曳 ${u.toFixed(2)}:接頭 ${k} 的套筒切進河床`);
+      // 兩邊的管端邊緣都留在套筒裡(原文:框架之間以帶水平樞軸的鉸鏈相連——管子在接頭處要能彎)
+      const rims = [
+        ...[1, -1].map((s) => add(j.pts[k - 1], [...rot2([m468.SEGMENT - m468.GAP, s * m468.PIPE_R], j.angles[k - 1]), 0])),
+        ...[1, -1].map((s) => add(j.pts[k], [...rot2([m468.GAP, s * m468.PIPE_R], j.angles[k]), 0])),
+      ];
+      for (const p of rims) {
+        const [x, y] = rot2(sub(p, j.pts[k]), -joint.angle);
+        assert.ok(Math.abs(y) < m468.SLEEVE.inner && Math.abs(x) < m468.SLEEVE.length / 2, `拖曳 ${u.toFixed(2)}:接頭 ${k} 的管端邊緣穿出套筒(${x.toFixed(3)}, ${y.toFixed(3)})`);
+      }
+      assert.ok(Math.abs(j.angles[k] - j.angles[k - 1]) < deg(38), "相鄰兩節的夾角在 37° 以內(套筒的餘裕是照這個算的)");
+    }
+    for (const p of j.pts) assert.ok(p[0] > m468.X0 + 0.3, `拖曳 ${u.toFixed(2)}:鉸點 x=${p[0].toFixed(2)} 懸在南岸地面板外`);
   }
-  assert.ok(m468.joints(1)[0][0] > m468.joints(0)[0][0] + 6, "管頭從南岸被拖到北岸");
+  assert.ok(m468.joints(1).pts[0][0] > m468.joints(0).pts[0][0] + 6, "管頭從南岸被拖到北岸");
+  assert.ok(m468.joints(0.45).pts[0][1] < -0.5 && m468.joints(0.45).pts[8][1] > 0.2, "順著河床的起伏:管頭在河底、管尾還在岸上");
 });
 
-test("第 469 種:溫差引擎:水車經齒輪帶動螺旋;空氣經管子越過頂上,從輪下方冒出", () => {
-  close(m469.screwAngle(1), -3, "螺旋與水車以齒輪相連(反向,3 : 1)");
-  const pose = m469.default.pose(0.5);
-  assert.equal(pose.flows[0].fluid, "air", "以空氣示意");
-  assert.ok(pose.flows[0].points.some((p) => p[1] > 2.0), "空氣越過頂上的管子");
-  assert.equal(pose.readouts[0].value, "原文未說明");
+test("第 468 種:拖纜從管頭直接到北岸的絞盤、不碰河床;纜縮短多少鼓就捲多少(繩長守恆),鼓順時針轉", () => {
+  const rest = m468.hawser(m468.joints(0)).straight;
+  const total = pathLength(m468.default.pose(0).paths.hawser.points);
+  let last = 0;
+  for (const u of sweep(1, 20)) {
+    const j = m468.joints(u);
+    const pose = m468.default.pose(u);
+    const pts = pose.paths.hawser.points;
+    for (const p of pts) assert.ok(!pointInPolygon(p, m468.BED_POLY), `拖曳 ${u.toFixed(2)}:拖纜的點在河床裡`);
+    for (let i = 1; i < pts.length; i++) for (let e = 0; e < m468.BED_POLY.length; e++) assert.ok(!segmentsCross(pts[i - 1], pts[i], m468.BED_POLY[e], m468.BED_POLY[(e + 1) % m468.BED_POLY.length]), `拖曳 ${u.toFixed(2)}:拖纜穿過河床`);
+    assert.ok(Math.hypot(...sub(pts[0], m468.nose(j))) < 1e-9, "拖纜繫在管頭");
+    const hauled = rest - m468.hawser(j).straight;
+    close(-pose.parts.winch.angle * (m468.WINCH.radius + 0.03), hauled, "鼓轉過的弧長 = 收進的纜長", 1e-9);
+    assert.ok(pose.parts.winch.angle <= last + 1e-12, "鼓順時針轉(從右邊看纜從上面進來)");
+    last = pose.parts.winch.angle;
+    close(pathLength(pts), total, "繩長不變(直段 + 捲在鼓上的)", 0.05);
+  }
+  assert.ok(last < -15, "整程鼓轉了好幾圈");
+});
+
+test("第 469 種:溫差引擎:水車經兩對傘齒輪與中間軸帶動螺旋,接觸點上兩輪的表面速度相等;螺紋往下走;比例照畫出來的齒數", () => {
+  const def = m469.default;
+  const h = 1e-4;
+  const rate = (id) => (def.pose(h).parts[id].angle - def.pose(0).parts[id].angle) / h;
+  const omega = { wheel: scale(Z, rate("wheel")), shaft: scale(m469.U3, rate("shaft")), screw: scale(m469.DIR, rate("screw")) };
+  const surface = (w, center, p) => cross(w, sub(p, center));
+  // 兩對傘齒輪:節錐頂重合、接觸點落在兩輪的節圓上(間隙 0),接觸點的表面速度相等(原文:以齒輪相連)
+  for (const [a, b, contact, ca, cb] of [
+    [m469.GEARS.crown, m469.GEARS.low, m469.CONTACTS.lower, omega.wheel, omega.shaft],
+    [m469.GEARS.up, m469.GEARS.screw, m469.CONTACTS.upper, omega.shaft, omega.screw],
+  ]) {
+    assert.ok(Math.hypot(...sub(a.apex, b.apex)) < 1e-9, "兩輪的節錐頂重合");
+    for (const g of [a, b]) {
+      const d = sub(contact, g.apex);
+      close(Math.acos(-dot(norm(d), g.axis)), g.cone, "接觸點在節錐面上(離錐頂的方向與軸夾節錐角)", 1e-9);
+      close(Math.hypot(...d), g.radius / Math.sin(g.cone), "接觸點在大端節圓上(錐距)", 1e-9);
+    }
+    const va = surface(ca, a.apex, contact);
+    const vb = surface(cb, b.apex, contact);
+    for (let i = 0; i < 3; i++) close(va[i], vb[i], "接觸點上兩輪的表面速度相等", 1e-6);
+    assert.ok(Math.hypot(...va) > 0.5, "接觸點真的在動");
+  }
+  // 比例:齒數 20 : 10 與 12 : 16 是推斷(原文只說以齒輪相連),水車一圈螺旋 1.5 圈
+  close(Math.abs(rate("screw") / rate("wheel")), (20 / 10) * (12 / 16), "水車一圈螺旋轉 1.5 圈", 1e-9);
   // 主動件是推著水車的空氣(虛擬的進程),目標件是水車:這組裝置的目的是「得到旋轉運動」
-  assert.equal(m469.default.driver.type, "virtual");
-  assert.equal(m469.default.target, "wheel");
+  assert.equal(def.driver.type, "virtual");
+  assert.equal(def.target, "wheel");
+  assert.ok(rate("wheel") > 0, "水車逆時針轉(氣泡從輪的右下方冒上來)");
   // 螺旋被水車帶著轉時,螺紋往下走,把空氣壓進管裡(原文:「將螺旋朝與抬水相反的方向轉動,藉此將空氣向下壓入管中」)
-  const wheel = m469.default.pose(0.1).parts.wheel.angle - m469.default.pose(0).parts.wheel.angle;
-  assert.ok(wheel > 0, "水車逆時針轉(氣泡從輪的右下方冒上來)");
-  assert.ok(m469.threadAdvance(m469.default.pose(0.1).parts.screw.angle - m469.default.pose(0).parts.screw.angle) < 0, "螺紋往下走");
+  assert.ok(m469.threadAdvance(rate("screw")) < 0, "螺紋往下走");
+  assert.equal(part(def, "screw").pieces[0].hand, m469.HAND, "畫出來的螺旋旋向就是算螺紋走向的旋向");
+});
+
+test("第 469 種:整支螺旋在左槽的筒裡、筒口在水面上;中間軸越過右槽的壁頂;軸都有軸承;管子從筒底的空氣室出發、越過頂上、管口在輪下", () => {
+  const def = m469.default;
+  const tanks = part(def, "tanks");
+  const left = tanks.pieces[0].shape.outline;
+  const innerL = Math.max(...left.filter((p) => p[0] < -1).map((p) => p[0]));
+  const innerR = Math.min(...left.filter((p) => p[0] > -1).map((p) => p[0]));
+  const floor = Math.max(...left.filter((p) => p[1] < -1.5).map((p) => p[1]));
+  const rim = Math.max(...left.map((p) => p[1]));
+  for (const s of [-0.02, m469.CASING.len]) {
+    const c = add(m469.BASE, scale(m469.DIR, s));
+    assert.ok(c[0] - m469.CASING.r > innerL && c[0] + m469.CASING.r < innerR, `筒(沿軸 ${s})在左槽的兩壁之間`);
+    assert.ok(c[1] - m469.CASING.r > floor, "筒在槽底上方");
+  }
+  assert.ok(add(m469.BASE, scale(m469.DIR, m469.CASING.len))[1] - m469.CASING.r * Math.abs(m469.DIR[0]) > m469.WATER, "筒口(斜的)最低的一點也在水面上(螺旋從筒口吸空氣)");
+  assert.ok(m469.BASE[1] + m469.CASING.r < m469.WATER - 0.5, "筒的下段浸在水裡");
+  // 中間軸從錐頂到水車軸,經過右槽左壁的上方
+  const rightWall = tanks.pieces[1].shape.outline;
+  const wallX = Math.min(...rightWall.map((p) => p[0]));
+  const t = (wallX + 0.08 - m469.APEX[0]) / m469.U3[0];
+  const over = add(m469.APEX, scale(m469.U3, t));
+  assert.ok(over[1] - 0.05 > rim, `中間軸越過右槽左壁的頂(軸心 ${over[1].toFixed(2)},壁頂 ${rim})`);
+  assert.ok(Math.hypot(...sub(m469.Q, m469.WHEEL.center)) > 0.25 + 0.1 && m469.Q[0] === m469.WHEEL.center[0] && m469.Q[1] === m469.WHEEL.center[1], "下端的錐頂在水車軸上、水車前面");
+  // 軸承:中間軸、水車軸在固定件的軸承環裡,螺旋軸在筒底與筒頂的軸承裡
+  assertShaftInBearings(m469.SHAFT, tanks.pieces, "中間軸");
+  assertShaftInBearings(m469.AXLE, tanks.pieces, "水車軸");
+  assertShaftInBearings(m469.SCREW_SHAFT, tanks.pieces, "螺旋軸");
+  assert.ok(tanks.pieces.filter((q) => q.kind === "cylinder" && q.inner && Math.abs(dot(norm(q.axis), m469.DIR)) > 0.999).length >= 2, "螺旋軸有兩個軸承");
+  for (const id of ["tanks", "wheel", "shaft"]) assertBoxesOnePiece(def, id);
+  // 空氣的路:筒口 → 筒底 → 空氣室 → 瓶頸 → 管子越過頂上 → 輪下的管口
+  const path = m469.AIR_PATH;
+  assert.ok(Math.hypot(...sub(path[0], add(m469.BASE, scale(m469.DIR, m469.CASING.len)))) < 0.1, "從筒口出發");
+  assert.ok(path.some((p) => p[1] > 1.9), "越過頂上");
+  const last = path[path.length - 1];
+  assert.ok(Math.abs(last[0] - m469.WHEEL.center[0]) < m469.WHEEL.radius && last[1] < m469.WHEEL.center[1] - m469.WHEEL.radius, "管口在輪的下方");
+  assert.ok(last[1] > path[path.length - 2][1], "管口朝上");
+  const pose = def.pose(0.5);
+  assert.equal(pose.flows[0].fluid, "air", "以空氣示意");
+  for (const p of pose.flows[0].points.slice(0, 20)) assert.ok(distanceToPath(path.map(([x, y]) => [x, y, 0.15]), p) < 1e-6 || distanceToPath([[m469.WHEEL.center[0] + 0.45, -0.9, 0.3], [m469.WHEEL.center[0] + 0.45, 0.85, 0.3]], p) < 0.2, "流體示意只在路徑上");
+  assert.equal(pose.readouts[0].value, "原文未說明");
 });
