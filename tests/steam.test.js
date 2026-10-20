@@ -1,10 +1,9 @@
 // 第二十章「蒸汽與氣體裝置」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, turned, assertOnePiece, assertShaftInBearings, assertBoxesOnePiece, polyGap, inSolid, plateLayers } from "./helpers.js";
+import { close, sweep, part, turned, assertOnePiece, assertShaftInBearings, assertBoxesOnePiece, polyGap, inSolid, plateLayers, sectionSolids } from "./helpers.js";
 import { X, Y } from "../models/kit.js";
 import { penetrationDepth, edgeDistance, pointInPolygon } from "../models/contact.js";
-import { rect } from "../models/shapes.js";
 
 import * as m470 from "../models/fig470.js";
 import * as m471 from "../models/fig471.js";
@@ -113,6 +112,55 @@ test("第 471 種:只有一個進氣孔 e(在汽缸壁的中段),汽缸上升與
     const e = pose[holes[0].id].position[1];
     close(e - bottom, m471.CYL_LEN / 2, "孔 e 在汽缸壁的中段(照原圖)", 1e-9);
   }
+});
+
+// 點 q(零件局部座標)在繞 y 的旋轉體附件裡:剖面多邊形之內、角度在 cut..cut+sweep 之間(角 0 是 +x、π/2 是 −z,見 section.js)
+function inYLathe(q, piece) {
+  assert.ok(!piece.axis || piece.axis[1] === 1, "繞 y 的旋轉體");
+  const [ax, ay, az] = piece.at ?? [0, 0, 0];
+  const [x, y, z] = [q[0] - ax, q[1] - ay, q[2] - az];
+  if (!pointInPolygon([Math.hypot(x, z), y], piece.profile)) return false;
+  const sweep = piece.sweep ?? 2 * Math.PI;
+  const a = (((Math.atan2(-z, x) - (piece.cut ?? 0)) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  return a <= sweep + 1e-9;
+}
+
+test("第 471 種:孔 e 真的開在汽缸壁上:孔心在壁厚之內、不在任何實體裡(空氣進得去),四周是壁;汽缸仍是一件", () => {
+  const def = m471.default;
+  const cyl = part(def, "cylinder");
+  const walls = cyl.pieces.filter((q) => q.kind === "lathe");
+  const inWall = (q) => walls.some((w) => inYLathe(q, w));
+  const [ex, ey, ez] = m471.HOLE_E; // 汽缸局部
+  const r = Math.hypot(ex, ez);
+  const dir = [ex / r, ez / r];
+  const at = (rr, y, turn = 0) => {
+    const [c, s] = [Math.cos(turn), Math.sin(turn)];
+    return [rr * (dir[0] * c - dir[1] * s), y, rr * (dir[0] * s + dir[1] * c)];
+  };
+  // 孔的上下方同一方向上量壁的內外半徑
+  const span = (y) => {
+    const rs = sweep(0.6, 600).filter((rr) => inWall(at(rr, y)));
+    return [Math.min(...rs), Math.max(...rs)];
+  };
+  for (const dy of [-0.12, 0.12]) {
+    const [r0, r1] = span(ey + dy);
+    assert.ok(r1 - r0 > 0.03 && r > r0 && r < r1, `孔心(半徑 ${r.toFixed(3)})在壁厚 ${r0.toFixed(3)}–${r1.toFixed(3)} 之內`);
+  }
+  // 孔穿透壁:從壁內到壁外整條徑向線都不在實體裡
+  for (const rr of sweep(r + 0.08, 40, r - 0.08)) assert.ok(!inWall(at(rr, ey)), `孔心那條徑向線在半徑 ${rr.toFixed(3)} 不在壁裡`);
+  assert.ok(!cyl.pieces.some((q) => q.accent), "不是記號色的實心小圓柱");
+  // 四周是壁(孔,不是整圈或整段開口)
+  for (const q of [at(r, ey + 0.1), at(r, ey - 0.1), at(r, ey, 0.25), at(r, ey, -0.25)]) assert.ok(inWall(q), `孔的四周 (${q.map((c) => c.toFixed(2))}) 是壁`);
+  // 活塞全程不會蓋到孔心(活塞在壁內側)
+  const piston = part(def, "hammer").pieces.find((q) => q.role === "piston");
+  assert.ok(piston.radius < r - 0.02, "活塞在壁的內側");
+  // 標籤 e 指在孔上
+  for (const t of sweep(2 * Math.PI, 12)) {
+    const pose = def.pose(t).parts;
+    const hole = pose.holeE.position.map((c, i) => c - pose.cylinder.position[i]);
+    close(Math.hypot(hole[0] - ex, hole[1] - ey, hole[2] - ez), 0, "標籤 e 在孔上", 1e-9);
+  }
+  assertBoxesOnePiece(def, "cylinder");
 });
 
 test("第 471 種:照原圖重排:汽缸 B 在窗口頂、曲柄 A 在窗口底的軸承裡、軸穿過錘身的長槽;錘身與汽缸凸緣貼著窗口兩側", () => {
@@ -630,33 +678,6 @@ test("第 481 種:中央管 a 從外殼後面穿過軸承與鼓的空心軸頸�
   close(turned(m481.default, "dial", 0, 1), -2 * Math.PI / 4, "鼓轉一圈錶盤反向轉 1/4 圈", 1e-9);
 });
 
-// 剖面模型裡零件的實體(沿 z 擠出的板件與方塊;零件只平移、不轉):世界座標的外形、孔與 z 範圍。
-// 流體示意的點要走在這些實體之外(不穿過壁)。
-function sectionSolids(def, pose, ids) {
-  const solids = [];
-  for (const id of ids) {
-    const p = part(def, id);
-    const at = pose.parts[id] ?? {};
-    assert.ok(!at.angle, `${id} 不轉`);
-    const [ox, oy, oz] = at.position ?? p.center ?? [0, 0, 0];
-    const add = (piece, [x, y, z]) => {
-      if (piece.kind === "plate") {
-        const t = piece.thickness ?? 0.2;
-        const mv = (loop) => loop.map(([u, v]) => [u + x, v + y]);
-        solids.push({ id, outline: mv(piece.shape.outline), holes: (piece.shape.holes ?? []).map(mv), z0: z - t / 2, z1: z + t / 2 });
-      } else if (piece.kind === "box") {
-        const [w, h, d] = piece.size;
-        solids.push({ id, outline: rect(w, h, x, y), holes: [], z0: z - d / 2, z1: z + d / 2 });
-      }
-    };
-    add(p, [ox, oy, oz]);
-    for (const c of p.pieces ?? []) {
-      const [x, y, z] = c.at ?? [0, 0, 0];
-      add(c, [ox + x, oy + y, oz + z]);
-    }
-  }
-  return solids;
-}
 const hitsWall = (q, solids) => solids.find((s) => q[2] >= s.z0 - 1e-9 && q[2] <= s.z1 + 1e-9 && inSolid(q, s));
 
 test("第 482 種:杯子 H 與閥 D 的下緣全程浸在水銀溝裡(杯緣在水銀面下、不碰溝底),H 是封閉的倒杯", () => {
@@ -683,7 +704,7 @@ test("第 482 種:氣體從 E 上來、經閥 D 的缺口 b 越過水銀面進�
   const def = m482.default;
   for (const p of sweep(m482.RANGE[1], 20, m482.RANGE[0])) {
     const pose = def.pose(p);
-    const solids = sectionSolids(def, pose, ["casing", "chamber", "cup", "valve"]);
+    const solids = sectionSolids(def, ["casing", "chamber", "cup", "valve"], { pose });
     const points = pose.flows.flatMap((f) => f.points);
     assert.ok(points.length > 0, `p=${p}:有氣在流`);
     for (const q of points) {
@@ -755,7 +776,7 @@ test("第 483 種:乾式氣錶:腔室 A、A' 在風箱張開時經滑閥 B 從�
   // 進氣與排氣的流體點不穿過閥座、隔板與滑閥
   for (const v of sweep(1, 16)) {
     const pose = def.pose(v);
-    const solids = sectionSolids(def, pose, ["case", "slide0", "slide1"]);
+    const solids = sectionSolids(def, ["case", "slide0", "slide1"], { pose });
     const points = pose.flows.flatMap((f) => f.points);
     assert.ok(points.length > 0, `v=${v}:有氣在流`);
     for (const q of points) {
@@ -769,7 +790,7 @@ test("第 483 種:兩片滑閥貼著閥座滑、互不相碰;閥座與隔板和�
   const def = m483.default;
   const seatTop = m483.SEAT.y1;
   for (const v of sweep(1, 60)) {
-    const solids = sectionSolids(def, def.pose(v), ["slide0", "slide1"]);
+    const solids = sectionSolids(def, ["slide0", "slide1"], { pose: def.pose(v) });
     const bodies = [0, 1].map((k) => solids.find((s) => s.id === `slide${k}` && s.outline.length === 8));
     for (const k of [0, 1]) close(Math.min(...bodies[k].outline.map((q) => q[1])), seatTop, `v=${v}:滑閥 ${k} 的下緣貼在閥座面上`);
     assert.ok(polyGap(bodies[0].outline, bodies[1].outline) > 0.03, `v=${v}:兩片滑閥之間有間隙`);

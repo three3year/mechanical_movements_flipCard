@@ -117,6 +117,7 @@ export function clipBand(profile, h0, h1) {
  * 開了口的旋轉體(繞 y、剖開前半):軸線在 x、底在 y0,剖面 profile([[r, h], …],h 從 0 起算)。
  * openings:[{ y0, y1, side, depth }]——世界高度 y0..y1 之間、side 那一側(-1 左、+1 右)的壁拿掉,
  * 口的寬度(往後的深度)是接進來的管的深度 depth(預設 0.4),再留一點餘裕;開口以外的弧照畫。
+ * 開口給 angle(後半上的角:0 是 +x、π 是 −x)與 width 時,是壁上四周有壁的孔:拿掉以 angle 為中心、內壁上寬 width 的弧。
  * 回傳一組 lathe 附件(沒開口的高度段是整個後半),可以展進 group 的 pieces。
  */
 export function openedLathe({ x, y0, profile, openings = [] }) {
@@ -132,17 +133,21 @@ export function openedLathe({ x, y0, profile, openings = [] }) {
     if (band.length < 3) continue;
     const mid = y0 + (sorted[i] + sorted[i + 1]) / 2;
     const inner = Math.min(...band.map(([r]) => r));
-    // 後半從 +x(角 0)經背面到 -x(角 π);開口那一側的弧從邊上截掉管的深度對應的角
-    let start = 0;
-    let end = Math.PI;
+    // 後半從 +x(角 0)經背面到 -x(角 π);開口那一側的弧從邊上截掉管的深度對應的角,孔則從弧中間挖掉一段
+    let arcs = [[0, Math.PI]];
     for (const o of openings) {
       if (mid <= o.y0 || mid >= o.y1) continue;
-      const half = Math.atan2((o.depth ?? 0.4) / 2, inner) + 0.03;
-      if (o.side > 0) start = Math.max(start, half);
-      else end = Math.min(end, Math.PI - half);
+      let gap;
+      if (o.angle !== undefined) {
+        const half = Math.atan2(o.width / 2, inner);
+        gap = [o.angle - half, o.angle + half];
+      } else {
+        const half = Math.atan2((o.depth ?? 0.4) / 2, inner) + 0.03;
+        gap = o.side > 0 ? [-Infinity, half] : [Math.PI - half, Infinity];
+      }
+      arcs = arcs.flatMap(([s, e]) => [[s, Math.min(e, gap[0])], [Math.max(s, gap[1]), e]]).filter(([s, e]) => e - s >= 1e-6);
     }
-    if (end - start < 1e-6) continue;
-    pieces.push({ kind: "lathe", axis: Y, profile: band, at: [x, y0, 0], cut: start, sweep: end - start });
+    for (const [s, e] of arcs) pieces.push({ kind: "lathe", axis: Y, profile: band, at: [x, y0, 0], cut: s, sweep: e - s });
   }
   return pieces;
 }

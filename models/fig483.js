@@ -38,13 +38,16 @@ const INLET_X = -1.5;
 /** 風箱的容積(相對量):隔膜偏離中心 d 時,隔膜到隔板外壁的距離 */
 export const chamberVolume = (d, k) => Math.abs(CENTERS[k] + d) - WALL;
 
-/** 進程 v → 兩片隔膜的位置(偏離中心)、兩片滑閥的位移、錶盤指針角、哪個腔室在進氣(風箱張開) */
-export function meter(v) {
+/** 進程 v → 兩片隔膜的位置(偏離中心)、兩片滑閥的位移、錶盤指針角 */
+function motion(v) {
   const a = TAU * v;
   const d = [STROKE * Math.sin(a), -STROKE * Math.cos(a)];
   const slide = [-THROW * Math.cos(a), -THROW * Math.sin(a)]; // 各比自己的隔膜早 90°(往外滑時露出進氣口)
-  return { a, d, slide, dial: -a / 4, filling: [Math.cos(a) < 0, Math.sin(a) > 0] };
+  return { a, d, slide, dial: -a / 4 };
 }
+
+/** 進程 v → motion 的各量,加上 filling:哪個腔室在進氣(進氣口露給閥箱,由 ports 的幾何推出) */
+export const meter = (v) => ({ ...motion(v), filling: ports(v).map((p) => p.toChest > 0) });
 
 // 滑閥的剖面(局部原點在靜止時的中心、閥座面上):兩端的唇、中間的 D 形閥腔(開口朝下,一直罩著排氣口)
 const CAVITY = [-(LIP + 0.035), LIP + 0.035]; // 閥腔的 x 範圍(靜止時):左唇 −0.235..−0.135、右唇 0.135..0.235
@@ -54,7 +57,7 @@ const slideOutline = [[CAVITY[0] - LIP, 0], [CAVITY[0], 0], [CAVITY[0], CAVITY_H
 
 /** 進程 v → 每個腔室的進氣口露給閥箱(入口)的寬度 toChest,與被閥腔罩住、和排氣口相通的寬度 toExhaust(照滑閥的唇算) */
 export function ports(v) {
-  const { slide } = meter(v);
+  const { slide } = motion(v);
   return [0, 1].map((k) => {
     const [x0, x1] = PORTS[k].chamber;
     const lipL = SLIDE_X[k] + slide[k] + (k === 0 ? CAVITY[0] - LIP : CAVITY[1]); // 蓋著進氣口的那片唇
