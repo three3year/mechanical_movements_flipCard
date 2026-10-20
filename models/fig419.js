@@ -1,16 +1,17 @@
 // 第 419 種:連續圓周運動轉換為搖動運動,用於自搖式搖籃。輪 A 轉動,以連桿接到半徑較大的輪 B 上,B 因而來回擺動;
 // 輪 B 上裝著兩條撓性皮帶 C、D,各接到搖籃弧形搖腳 E 上的立柱。
 // 主動件是輪 A(原圖的箭頭為逆時針)。
-// 推斷:A、B 裝在固定在地上的背板上;兩條皮帶從 B 的頂端分別往左、往右接到兩根立柱的頂端,各自繞在 B 上、
+// 推斷:A、B 裝在固定在地上的背板上(照原圖 A 在 B 正下方、兩輪不重疊,B 的半徑約 A 的兩倍,
+// A 的下緣貼近搖籃的床);兩條皮帶從 B 的頂端分別往左、往右接到兩根立柱的頂端,各自繞在 B 上、
 // 一條在 B 往一邊擺時捲緊、另一條放鬆,於是搖籃在弧形搖腳上來回滾動(皮帶不伸縮)。
 import { TAU, deg } from "./kit.js";
 import { circleCircle, solve } from "./linkage.js";
 import { shape, thickLine, arcPoints, rect } from "./shapes.js";
 
-export const A = { center: [0, 1.2, 0], crank: 0.25 };
-export const B = { center: [0, 2.15, 0], radius: 1.25, pin: 0.75 };
-const COUPLER = 1.15;
 export const ROCKER = 3.4; // 弧形搖腳 E 弧面的半徑;曲率中心與皮帶同高
+export const B = { center: [0, 2.5, 0], radius: ROCKER - 2.5, pin: 0.5 }; // 頂端與立柱頂同高
+export const A = { center: [0, 0.91, 0], radius: 0.45, crank: 0.28 };
+const COUPLER = 1.5;
 const POST_X = 1.9;
 const WRAP = deg(60); // 皮帶在 B 上繞的長度(以角度計,B 在中間位置時)
 
@@ -26,7 +27,7 @@ export const BETA_RANGE = [Math.min(...betas), Math.max(...betas)];
 const BETA_MID = (BETA_RANGE[0] + BETA_RANGE[1]) / 2;
 
 /** 搖籃轉 gamma(逆時針為正)→ 搖籃上一點的位置(弧面在地上滾動,曲率中心離地 ROCKER) */
-const cradle = (gamma, [x, y]) => [-ROCKER * gamma + x * Math.cos(gamma) - y * Math.sin(gamma), ROCKER + x * Math.sin(gamma) + y * Math.cos(gamma), 0];
+export const cradle = (gamma, [x, y]) => [-ROCKER * gamma + x * Math.cos(gamma) - y * Math.sin(gamma), ROCKER + x * Math.sin(gamma) + y * Math.cos(gamma), 0];
 
 /** 皮帶:從立柱頂端到 B 的切點,再繞到固定在 B 上的端點;回傳長度與路徑 */
 function belt(side, beta, gamma) {
@@ -54,17 +55,21 @@ export function rock(alpha) {
   return { pin, beta, gamma, left: belt(-1, beta, gamma), right: belt(1, beta, gamma) };
 }
 
-const rockerBand = thickLine(arcPoints(ROCKER - 0.17, deg(-90) - deg(34), deg(-90) + deg(34)), 0.34);
+/** 弧形搖腳(搖籃的床):搖籃局部座標,曲率中心在原點 */
+export const rockerBand = thickLine(arcPoints(ROCKER - 0.17, deg(-90) - deg(34), deg(-90) + deg(34)), 0.34);
+
+const STAND_TOP = B.center[1] + 0.35;
 
 export default {
   figure: 419,
   parts: [
     { id: "floor", kind: "box", center: [0, -0.1, 0], size: [6.5, 0.2, 1.6] },
     {
+      // 背板從搖腳後面伸下去、站在地板上(推斷)
       id: "stand",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape(rect(0.5, 2.0, 0, 1.55)), thickness: 0.08, at: [0, 0, -0.55] },
+        { kind: "plate", shape: shape(rect(0.5, STAND_TOP, 0, STAND_TOP / 2)), thickness: 0.08, at: [0, 0, -0.55] }, // 底邊貼在地板上
         { kind: "cylinder", radius: 0.05, length: 0.55, at: [A.center[0], A.center[1], -0.3] },
         { kind: "cylinder", radius: 0.06, length: 0.55, at: [B.center[0], B.center[1], -0.3] },
       ],
@@ -81,8 +86,8 @@ export default {
         { kind: "box", size: [0.12, 3.0, 0.12], at: [POST_X, -1.45, 0] },
       ],
     },
-    { id: "wheelA", kind: "pulley", style: "spoked", center: A.center, radius: 0.38, width: 0.12, label: "A", labelOffset: [0.1, -0.5, 0.2], pieces: [{ kind: "cylinder", radius: 0.05, length: 0.3, at: [A.crank, 0, 0.12] }] },
-    { id: "wheelB", kind: "pulley", style: "spoked", center: B.center, radius: B.radius, width: 0.36, label: "B", labelOffset: [-0.55, 0.35, 0.3], arrow: false, pieces: [{ kind: "cylinder", radius: 0.05, length: 0.3, at: [B.pin, 0, 0.2] }] },
+    { id: "wheelA", kind: "pulley", style: "spoked", center: A.center, radius: A.radius, width: 0.12, label: "A", labelOffset: [0.15, -0.28, 0.2], pieces: [{ kind: "cylinder", radius: 0.05, length: 0.36, at: [A.crank, 0, 0.17] }] },
+    { id: "wheelB", kind: "pulley", style: "spoked", center: B.center, radius: B.radius, width: 0.36, label: "B", labelOffset: [-0.45, 0.25, 0.3], arrow: false, pieces: [{ kind: "cylinder", radius: 0.05, length: 0.36, at: [B.pin, 0, 0.18] }] },
     { id: "coupler", kind: "link", width: 0.1, thickness: 0.05 },
     { id: "beltC", kind: "belt", label: "C", labelOffset: [-POST_X, ROCKER + 0.3, 0] }, // 路徑零件的標籤從原點量起
     { id: "beltD", kind: "belt", label: "D", labelOffset: [POST_X, ROCKER + 0.3, 0] },
@@ -103,9 +108,4 @@ export default {
       readouts: [{ label: "搖籃", value: `${((r.gamma * 180) / Math.PI).toFixed(1)}°` }],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["wheelA", "wheelB"], reason: "簡化齒形:兩輪的齒畫得比節圓深,嚙合處齒頂伸進對方的齒根 0.21" },
-    { check: "interference", parts: ["stand", "wheelB"], reason: "簡化畫法:輪 B 的輻條轉過支架的軸端時擦到 0.06(96 個取樣中 12 個)" },
-  ],
 };
-
