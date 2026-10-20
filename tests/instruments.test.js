@@ -1,8 +1,11 @@
 // 第十七章「繪圖儀器」與第二十二章「儀錶與周轉輪系」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part } from "./helpers.js";
-import { pointInPolygon } from "../models/contact.js";
+import { close, sweep, part, plateLayers } from "./helpers.js";
+import { quatRotate } from "../models/kit.js";
+import { pointInPolygon, placeOutline } from "../models/contact.js";
+import * as pt from "../models/pencil-thread.js";
+import { polylineLength } from "../models/pencil-thread.js";
 import fig500, { gauge } from "../models/fig500.js";
 import * as m403 from "../models/fig403.js";
 import * as m404 from "../models/fig404.js";
@@ -55,6 +58,20 @@ test("第 500 種:主動件是虛擬的「壓力」,不指向零件", () => {
 // ── 第十七章「繪圖儀器」(第 403–411 種) ──
 
 const near = (a, b, eps, msg) => assert.ok(Math.abs(a - b) < eps, `${msg} 期望 ${b},實際 ${a}`);
+const dist2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const paperTop = (def) => {
+  const p = part(def, "paper");
+  return p.center[2] + (p.kind === "box" ? p.size[2] : p.thickness) / 2;
+};
+// 旋轉體(鉛筆)在局部高度 z 的半徑(剖面各段線性內插)
+const latheRadiusAt = (profile, z) => {
+  for (let i = 1; i < profile.length; i++) {
+    const [[r0, z0], [r1, z1]] = [profile[i - 1], profile[i]];
+    if (z >= z0 && z <= z1) return r0 + ((r1 - r0) * (z - z0)) / (z1 - z0);
+  }
+  return 0;
+};
+const tipZ = (def, pose) => pose.parts.pencil.position[2] + part(def, "pencil").profile[0][1];
 
 test("第 403 種:弧線繪製儀:兩根直尺頂住弦兩端的銷滑動,夾角處的鉛筆畫出通過兩銷附近的圓弧", () => {
   const angles = [];
@@ -66,42 +83,244 @@ test("第 403 種:弧線繪製儀:兩根直尺頂住弦兩端的銷滑動,夾角
       near(Math.abs((pin[0] - e.at[0]) * Math.sin(e.a) - (pin[1] - e.at[1]) * Math.cos(e.a)), 0.08, 1e-9, "銷中心到下緣的距離 = 銷半徑");
       near((pin[0] - e.at[0]) * e.n[0] + (pin[1] - e.at[1]) * e.n[1], -0.08, 1e-9, "銷在下緣的內側、碰著它");
     });
-    // 鉛筆夾在兩條下緣的夾角裡,碰著兩條邊
-    for (const e of st.edges) near(Math.abs((st.tip[0] - e.at[0]) * Math.sin(e.a) - (st.tip[1] - e.at[1]) * Math.cos(e.a)), 0.06, 1e-9, "鉛筆碰著直尺的邊");
+    // 鉛筆夾在兩條下緣的夾角裡,碰著兩條邊(鉛筆的圓錐在上面那根尺的上緣高度剛好碰到尺邊)
+    for (const e of st.edges) near(Math.abs((st.tip[0] - e.at[0]) * Math.sin(e.a) - (st.tip[1] - e.at[1]) * Math.cos(e.a)), m403.PENCIL_R, 1e-9, "鉛筆碰著直尺的邊");
     angles.push(Math.abs(st.edges[0].a - st.edges[1].a));
     // 鉛筆畫的線離通過兩銷的圓不到銷的粗細
     near(Math.hypot(st.tip[0] - m403.CENTER[0], st.tip[1] - m403.CENTER[1]), m403.RADIUS, 0.1, "鉛筆在弧上");
   }
   for (const a of angles) near(a, angles[0], 1e-9, "兩根直尺的夾角固定(同弦所對的圓周角相等)");
+  const def = m403.default;
+  const pose = def.pose(Math.PI / 2);
+  const rulerTop = pose.parts.rulerR.position[2] + part(def, "rulerR").thickness / 2;
+  near(latheRadiusAt(part(def, "pencil").profile, rulerTop - pose.parts.pencil.position[2]), m403.PENCIL_R, 0.002, "鉛筆在上面那根尺的上緣高度的半徑 = 鉛筆到尺邊的距離(間隙接近 0)");
 });
 
-test("第 404 種:彈性拱形桿被螺絲彎曲,外緣始終是一段圓弧;螺絲越旋,弧越彎,兩端的滾子往內收", () => {
-  const a = m404.arch(0);
-  const b = m404.arch(m404.RANGE[1]);
-  assert.ok(b.h > a.h && b.r < a.r, "旋緊螺絲,弧更彎(半徑變小)");
-  assert.ok(b.c < a.c, "桿長不變:彎得越厲害,兩端越往內收(滾子在直桿上滾)");
-  for (const s of [a, b]) near(2 * s.r * Math.asin(s.c / s.r), m404.LENGTH, 1e-9, "拱形桿的長度不變");
-  const pts = m404.default.pose(10).paths.bar.points;
-  const s = m404.arch(10);
-  for (const p of pts) near(Math.hypot(p[0] - s.center[0], p[1] - s.center[1]), s.r, 1e-9, "桿上各點在同一圓上");
-});
-
-test("第 405 種:雙曲線:鉛筆畫出的各點到兩焦點的距離差為定值(2a)", () => {
-  for (const t of [m405.RANGE[0], 1.3, Math.PI / 2, 1.9, m405.RANGE[1]]) {
-    const P = m405.pencil(t);
-    const d1 = Math.hypot(P[0] - m405.F1[0], P[1] - m405.F1[1]);
-    const d2 = Math.hypot(P[0] - m405.F2[0], P[1] - m405.F2[1]);
-    near(d1 - d2, 2 * m405.A, 1e-9, "距離差 = 2a");
+test("第 403 種:鉛筆尖畫在紙上;兩根直尺平放疊在紙上,撐桿橫過兩者、兩端都夾在尺上", () => {
+  const def = m403.default;
+  const top = paperTop(def);
+  const t = part(def, "rulerL").thickness;
+  for (const phi of [m403.RANGE[0], Math.PI / 2, m403.RANGE[1]]) {
+    const pose = def.pose(phi);
+    near(tipZ(def, pose), top, 1e-9, "鉛筆尖在紙面上");
+    const L = pose.parts.rulerL;
+    const R = pose.parts.rulerR;
+    near(L.position[2] - t / 2, top, 1e-9, "左尺平放在紙上");
+    near(R.position[2] - t / 2, L.position[2] + t / 2, 1e-9, "右尺疊在左尺上");
+    // 撐桿是一塊板:本體壓在右尺上、左端下面的墊塊壓在左尺上;兩端各落在一根尺的尺身裡
+    const b = pose.parts.brace;
+    const layers = plateLayers(part(def, "brace")).map((l) => ({ z0: l.z0 + b.position[2], z1: l.z1 + b.position[2], solid: l.solid })).sort((p, q) => p.z0 - q.z0);
+    assert.equal(layers.length, 2, "撐桿本體與墊塊兩層");
+    near(layers[0].z0, L.position[2] + t / 2, 1e-9, "墊塊壓在左尺上");
+    near(layers[1].z0, R.position[2] + t / 2, 1e-9, "撐桿本體壓在右尺上");
+    const inRuler = (id, p) => {
+      const r = pose.parts[id];
+      return pointInPolygon([p[0], p[1]], placeOutline(part(def, id).shape.outline, r.position, r.angle));
+    };
+    const [c, s] = [Math.cos(b.angle), Math.sin(b.angle)];
+    const world = ([x, y]) => [b.position[0] + x * c - y * s, b.position[1] + x * s + y * c];
+    const spacer = layers[0].solid.outline;
+    const spacerCenter = world([spacer.reduce((a, p) => a + p[0], 0) / spacer.length, spacer.reduce((a, p) => a + p[1], 0) / spacer.length]);
+    assert.ok(inRuler("rulerL", spacerCenter), "墊塊落在左尺的尺身裡");
+    assert.ok(inRuler("rulerR", world([m403.BRACE_LEN, 0])), "撐桿右端落在右尺的尺身裡");
+    for (const p of pose.paths.arc.points) near(p[2], top + 0.01, 1e-9, "畫出的弧貼在紙面上");
   }
-  near(m405.pencil(Math.PI / 2)[1], m405.A, 1e-12, "直尺在中心線上時,鉛筆在頂點");
 });
 
-test("第 406 種:拋物線:鉛筆到焦點的距離等於到準線的距離", () => {
-  for (const x of [-2.4, -1, 0, 1.3, 2.4]) {
-    const P = m406.pencil(x);
-    near(Math.hypot(P[0] - m406.FOCUS[0], P[1] - m406.FOCUS[1]), m406.DIRECTRIX - P[1], 1e-9, "到焦點 = 到準線");
+test("第 404 種:每一端都透過一個小滾子被限制貼靠在直線桿上:滾子在釘在直桿上的立柱頂,壓著拱形桿的上面;桿兩端伸出滾子外往下垂", () => {
+  const def = m404.default;
+  const frame = part(def, "frame");
+  m404.ROLLERS.forEach(([x, y]) => {
+    assert.ok(frame.pieces.some((p) => p.kind === "plate" && pointInPolygon([x - (p.at?.[0] ?? 0), y - (p.at?.[1] ?? 0)], p.shape.outline)), "滾子的軸心在立柱板上");
+    assert.ok(frame.pieces.some((p) => p.kind === "cylinder" && Math.abs(p.at[0] - x) < 1e-9 && Math.abs(p.at[1] - y) < 1e-9), "立柱頂有滾子的軸銷");
+  });
+  for (const a of sweep(m404.RANGE[1], 6)) {
+    const s = m404.arch(a);
+    const pose = def.pose(a);
+    ["rollerL", "rollerR"].forEach((id, i) => {
+      const rc = pose.parts[id].position;
+      near(rc[0], m404.ROLLERS[i][0], 1e-12, "滾子的位置固定(在立柱上)");
+      near(rc[1], m404.ROLLERS[i][1], 1e-12, "滾子的位置固定(在立柱上)");
+      near(dist2(rc, s.center), s.r + m404.BAR_R + m404.ROLLER_R, 1e-9, "滾子壓在拱形桿的上面(間隙 0)");
+      assert.ok(rc[1] > s.center[1] + s.r * Math.cos(s.beta), "滾子在桿的上方");
+    });
+    assert.ok(s.alpha > s.beta + 0.05, "桿的兩端伸出滾子外");
+    assert.ok(s.center[1] + s.r * Math.cos(s.alpha) < s.center[1] + s.r * Math.cos(s.beta), "伸出的兩端往下垂");
   }
 });
+
+test("第 404 種:桿長不變、始終彎成真的圓弧;旋緊螺絲中間被頂高、弧更彎、桿身在滾子下往裡滑、滾子跟著轉;翼形手柄接在螺桿上", () => {
+  const def = m404.default;
+  const [a0, a1] = [m404.arch(0), m404.arch(m404.RANGE[1])];
+  assert.ok(a1.r < a0.r, "旋緊螺絲,弧更彎(半徑變小)");
+  assert.ok(a1.slid > a0.slid, "彎得越厲害,兩個滾子之間的桿身越長:桿在滾子下往裡滑");
+  for (const a of sweep(m404.RANGE[1], 6)) {
+    const s = m404.arch(a);
+    near(2 * s.r * s.alpha, m404.LENGTH, 1e-9, "拱形桿的長度不變");
+    const pose = def.pose(a);
+    const pts = pose.paths.bar.points;
+    for (const p of pts) near(dist2(p, s.center), s.r, 1e-9, "桿上各點在同一圓上");
+    near(polylineLength(pts), m404.LENGTH, 0.01, "路徑的長 = 桿長");
+    near(pose.parts.pad.position[1] + part(def, "pad").size[1] / 2, s.center[1] + s.r - m404.BAR_R, 1e-9, "壓塊頂著拱形桿正中的下面(間隙 0)");
+  }
+  // 滾子跟著轉:接觸點上滾子表面的速度和桿身滑過的速度同向同大
+  const h = 1e-4;
+  for (const a of [2, 6, 10, 16]) {
+    const s = m404.arch(a);
+    const ds = (m404.arch(a + h).slid - m404.arch(a - h).slid) / (2 * h);
+    ["rollerL", "rollerR"].forEach((id, i) => {
+      const side = i ? 1 : -1;
+      const dphi = (def.pose(a + h).parts[id].angle - def.pose(a - h).parts[id].angle) / (2 * h);
+      const rc = m404.ROLLERS[i];
+      const d = dist2(rc, s.center);
+      const radial = [(rc[0] - s.center[0]) / d, (rc[1] - s.center[1]) / d];
+      const tangent = side > 0 ? [radial[1], -radial[0]] : [-radial[1], radial[0]]; // 桿身往外滑的方向
+      const r = [-m404.ROLLER_R * radial[0], -m404.ROLLER_R * radial[1]]; // 滾子中心到接觸點
+      const surface = [-dphi * r[1], dphi * r[0]];
+      near(surface[0] * tangent[0] + surface[1] * tangent[1], ds, 1e-6, `${id} 表面在接觸點和桿身同向同速`);
+    });
+  }
+  const screw = part(def, "screw");
+  const worm = screw.pieces.find((p) => p.kind === "worm");
+  const handle = screw.pieces.find((p) => p.kind === "cylinder");
+  assert.ok(handle.at[2] + handle.length / 2 >= worm.at[2] - worm.length / 2 - 1e-9, "手柄的柄接到螺桿的下端");
+});
+
+test("第 405 種:雙曲線:直尺繞上焦點轉、尺邊通過該焦點;繩的彎曲處到兩焦點的距離差 = 2a,尺在中心線上時剛好到達頂點", () => {
+  for (const state of ["first", "second"]) {
+    for (const v of sweep(m405.SWING, 5)) {
+      const P = m405.bight(v, state);
+      near(dist2(P, m405.F1) - dist2(P, m405.F2), 2 * m405.A, 1e-9, "距離差 = 2a");
+      const u = m405.direction(v, state);
+      near((P[0] - m405.F1[0]) * u[1] - (P[1] - m405.F1[1]) * u[0], 0, 1e-9, "尺邊通過樞軸所在的焦點");
+    }
+  }
+  near(m405.bight(0, "first")[0], 0, 1e-12, "尺在中心線上時繩的彎曲處在頂點");
+  near(m405.bight(0, "first")[1], -m405.A, 1e-12, "頂點(畫下面那支)");
+  assert.ok(m405.F1[1] > 0 && m405.F2[1] < 0, "尺繞上焦點轉、繩的銷在下焦點(照原圖)");
+});
+
+test("第 405 種:繩長不變(= 尺長 − 2a);前半條尺身在左,後半條把尺翻面(以貼鉛筆的尺邊為軸)尺身在右,繩始終不橫過尺身", () => {
+  const def = m405.default;
+  assert.deepEqual(def.states.options.map((o) => o.id), ["first", "second"]);
+  for (const state of ["first", "second"]) {
+    const sign = state === "first" ? -1 : 1;
+    const lens = [];
+    for (const v of sweep(m405.RANGE[1], 6, m405.RANGE[0])) {
+      const P = m405.bight(v, state);
+      const u = m405.direction(v, state);
+      const end = [m405.F1[0] + m405.L * u[0], m405.F1[1] + m405.L * u[1]];
+      near(dist2(P, m405.F2) + dist2(end, P), m405.L - 2 * m405.A, 1e-9, "繩長 = 尺長 − 2a");
+      const pose = def.pose(v, state);
+      lens.push(polylineLength(pose.paths.string.points));
+      const q = pose.parts.ruler.rotation;
+      const ex = quatRotate(q, [1, 0, 0]);
+      near(ex[0] * u[0] + ex[1] * u[1], 1, 1e-9, "尺邊沿尺的方向(翻面以尺邊為軸)");
+      const body = quatRotate(q, [0, -1, 0]); // 尺身那一側
+      assert.ok(sign * body[0] > 0.5, `${state}:尺身在${sign < 0 ? "左" : "右"}`);
+      assert.ok(body[0] * (m405.F2[0] - P[0]) + body[1] * (m405.F2[1] - P[1]) < 0, "繩的銷在尺身的另一側,繩不橫過尺身");
+      assert.ok(sign * P[0] > 0, "各畫半條");
+    }
+    // 折線含繞過鉛筆的那段弧:繩在鉛筆上繞的角度隨尺的方向變,折線長度的變化不超過繞半圈(繃直的部分守恆:上面那一行)
+    assert.ok(Math.max(...lens) - Math.min(...lens) < Math.PI * pt.WRAP_R + 0.02, `繩的折線長度不變(${Math.min(...lens)}–${Math.max(...lens)})`);
+  }
+});
+
+test("第 405 種:尺平放在紙上、樞軸銷穿過尺端的孔插在焦點上;鉛筆尖在紙上、繩貼著尺邊、繞過鉛筆、套在下焦點的銷上", () => {
+  const def = m405.default;
+  const top = paperTop(def);
+  const ruler = part(def, "ruler");
+  assert.equal(ruler.shape.holes.length, 1);
+  for (const p of ruler.shape.holes[0]) assert.ok(pointInPolygon(p, ruler.shape.outline), "樞軸孔整個在尺的外形裡");
+  const holeR = Math.hypot(...ruler.shape.holes[0][0]);
+  const pin = part(def, "pivot");
+  near(dist2(pin.center, m405.F1), 0, 1e-9, "樞軸銷在上焦點");
+  assert.ok(pin && pin.radius < holeR && pin.radius > holeR - 0.02, "樞軸銷在尺的孔裡(有一點間隙)");
+  for (const state of ["first", "second"]) {
+    for (const v of [m405.RANGE[0], 0.25, m405.RANGE[1]]) {
+      const pose = def.pose(v, state);
+      const r = pose.parts.ruler;
+      near(r.position[2] - ruler.thickness / 2, top, 1e-9, "尺平放在紙上");
+      near(r.position[0], m405.F1[0], 1e-12, "尺繞上焦點轉");
+      near(r.position[1], m405.F1[1], 1e-12, "尺繞上焦點轉");
+      assert.ok(pin.center[2] - pin.length / 2 < top && pin.center[2] + pin.length / 2 > top + ruler.thickness, "樞軸銷穿過尺、插進紙");
+      near(tipZ(def, pose), top, 1e-9, "鉛筆尖在紙面上");
+      const P = m405.bight(v, state);
+      const u = m405.direction(v, state);
+      const off = (p) => Math.abs((p[0] - P[0]) * u[1] - (p[1] - P[1]) * u[0]); // 離尺邊的距離
+      const pencil = pose.parts.pencil.position;
+      near(off(pencil), pt.PEN_OFF, 1e-9, "鉛筆軸線離尺邊 = 繩的直徑 + 繩繞鉛筆的半徑");
+      const pts = pose.paths.string.points;
+      near(off(pts[0]), pt.EDGE_GAP, 1e-9, "繩繫在尺端、貼著尺邊");
+      near(off(pts[1]), pt.EDGE_GAP, 1e-9, "繩沿尺邊到鉛筆");
+      near(dist2(pts[1], pencil), pt.WRAP_R, 1e-9, "繩繞過鉛筆");
+      near(dist2(pts[pts.length - 1], m405.F2), pt.PIN_R + pt.EDGE_GAP, 1e-9, "繩套在下焦點的銷上");
+      for (const p of pts) near(p[2], pt.THREAD_Z, 1e-12, "繩平放在紙上");
+    }
+  }
+});
+
+test("第 406 種:拋物線:直尺的邊與準線重合、角尺的尺座靠著直尺、尺葉與軸平行;鉛筆到焦點的距離等於到準線的距離,繩長 = 尺葉長", () => {
+  const def = m406.default;
+  const edge = part(def, "straightedge");
+  const seLow = Math.min(...edge.shape.outline.map((p) => p[1])) + (edge.center?.[1] ?? 0);
+  near(seLow, m406.DIRECTRIX, 1e-9, "直尺近側的邊與準線重合");
+  for (const state of ["first", "second"]) {
+    const sign = state === "first" ? -1 : 1;
+    for (const v of sweep(m406.RANGE[1], 6, m406.RANGE[0])) {
+      const P = m406.bight(v, state);
+      near(dist2(P, m406.FOCUS), m406.DIRECTRIX - P[1], 1e-9, "到焦點 = 到準線");
+      near(dist2(P, m406.FOCUS) + (P[1] - (m406.DIRECTRIX - m406.BLADE)), m406.BLADE, 1e-9, "繩長 = 尺葉長");
+      assert.ok(sign * P[0] > 0, "各畫半條");
+      const pose = def.pose(v, state);
+      const q = pose.parts.square.rotation;
+      const ey = quatRotate(q, [0, 1, 0]);
+      near(Math.abs(ey[1]), 1, 1e-9, "尺葉與軸平行");
+      const body = quatRotate(q, [-1, 0, 0]); // 尺身(尺葉本體)那一側
+      assert.ok(sign * body[0] > 0.5, `${state}:尺葉本體在${sign < 0 ? "左" : "右"}`);
+      assert.ok(body[0] * (m406.FOCUS[0] - P[0]) < 0, "焦點的銷在尺葉本體的另一側,繩不橫過尺葉");
+      // 尺座靠著直尺:尺座的上緣貼著直尺的下緣,兩者在同一高度範圍
+      const sq = part(def, "square");
+      const stock = sq.pieces.find((p) => p.stock);
+      const stockTop = Math.max(...stock.shape.outline.map((p) => p[1])) + (stock.at?.[1] ?? 0) + pose.parts.square.position[1];
+      near(stockTop, m406.DIRECTRIX, 0.005, "尺座靠著直尺(間隙接近 0)");
+      const zs = (z0, t) => [z0 - t / 2, z0 + t / 2];
+      const [s0, s1] = zs(pose.parts.square.position[2] + (stock.at?.[2] ?? 0), stock.thickness);
+      const [e0, e1] = zs(edge.center[2], edge.thickness);
+      assert.ok(Math.min(s1, e1) - Math.max(s0, e0) > 0.04, "尺座與直尺在同一層");
+    }
+  }
+});
+
+test("第 406 種:角尺平放在紙上;鉛筆尖在紙上、繩貼著尺葉的邊、繞過鉛筆、套在焦點的銷上;前半條與後半條把角尺翻面", () => {
+  const def = m406.default;
+  assert.deepEqual(def.states.options.map((o) => o.id), ["first", "second"]);
+  const top = paperTop(def);
+  const pin = part(def, "pin").pieces.find((p) => p.kind === "cylinder");
+  near(pin.at[0], m406.FOCUS[0], 1e-12, "銷在焦點");
+  near(pin.at[1], m406.FOCUS[1], 1e-12, "銷在焦點");
+  for (const state of ["first", "second"]) {
+    const lens = [];
+    for (const v of [m406.RANGE[0], 1, m406.RANGE[1]]) {
+      const pose = def.pose(v, state);
+      const sq = part(def, "square");
+      for (const piece of sq.pieces) near(pose.parts.square.position[2] + (piece.at?.[2] ?? 0) - piece.thickness / 2, top, 1e-9, "角尺平放在紙上");
+      near(tipZ(def, pose), top, 1e-9, "鉛筆尖在紙面上");
+      const P = m406.bight(v, state);
+      const off = (p) => Math.abs(p[0] - P[0]); // 離尺葉邊(x = P.x 的垂直線)的距離
+      const pencil = pose.parts.pencil.position;
+      near(off(pencil), pt.PEN_OFF, 1e-9, "鉛筆軸線離尺葉的邊 = 繩的直徑 + 繩繞鉛筆的半徑");
+      const pts = pose.paths.string.points;
+      near(off(pts[0]), pt.EDGE_GAP, 1e-9, "繩繫在尺葉末端、貼著尺葉的邊");
+      near(pts[0][1], m406.DIRECTRIX - m406.BLADE, 1e-9, "繩繫在尺葉的末端");
+      near(dist2(pts[1], pencil), pt.WRAP_R, 1e-9, "繩繞過鉛筆");
+      near(dist2(pts[pts.length - 1], m406.FOCUS), pt.PIN_R + pt.EDGE_GAP, 1e-9, "繩套在焦點的銷上");
+      lens.push(polylineLength(pts));
+    }
+    assert.ok(Math.max(...lens) - Math.min(...lens) < Math.PI * pt.WRAP_R + 0.02, `繩的折線長度不變(${Math.min(...lens)}–${Math.max(...lens)};繞鉛筆的角度隨位置變)`);
+  }
+});
+
 
 test("第 407 種:尖拱:拱形尺的根部垂直固定在桿上,頂端由繩拉到溝槽裡的滑塊;滑塊一移,尺彎成不同的弧", () => {
   const ks = [0.35, 0.6, 0.9, 1.2, 1.45].map((x) => m407.curvature(x));
