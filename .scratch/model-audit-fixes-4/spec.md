@@ -1,6 +1,6 @@
 # 模型檢查第 23 族尾段到第 30 族的修正(第 401–507 種)
 
-Status: ready
+Status: done
 
 **來源:** 2026-10-20 用八類常見錯誤(`docs/agents/model-audit.md`)掃了第 401–507 種,同時對照 507movements.com(英文原文、網站註記、525 px 原圖、動畫)。報告在 `.scratch/model-audit/`:`23-misc-3.md`(第 401–402 種補在後半)、`24-drawing.md`、`25-rotary.md`、`26-water-1.md`、`27-water-2.md`、`28-steam.md`、`29-wind.md`、`30-instruments.md`。每一筆問題都有證據、建議修法與同類要一起查的圖。2026-10-20 維護者對七份報告「需要你決定的」25 題全部照建議 (a) 決定(寫在各報告裡),其中第 462 種推翻 2026-10-04「維持現狀」的舊決定(`.scratch/physical-verification/pending.md` 已補記)。同日維護者另外決定:以前的豁免原因很可能是當時檢驗機制不全造成的,豁免原因和這次的量測衝突時,一律以這次查的為準。
 

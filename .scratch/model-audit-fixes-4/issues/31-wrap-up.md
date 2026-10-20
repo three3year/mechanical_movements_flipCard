@@ -4,13 +4,15 @@
 
 **Blocked by:** 01–30
 
-**Status:** ready
+**Status:** done
 
-- [ ] 全書 `npm run verify` 通過,`npm test` 與 `npm run test:verify` 全過
-- [ ] `node tools/rigid-links.mjs 401-507` 與 `node tools/one-piece.mjs 401-507` 剩下的每一項在報告或 pending.md 寫出理由
-- [ ] 八份報告第 401–507 種的每一筆都有「狀態」行
-- [ ] pending.md 與複查入口的兩張表跟上
-- [ ] 規格的 Status 改成 done,報告與規格的鏡像重新發布
-- [ ] 以獨立暫存區提交(只放自己的檔案)
+- [x] 全書 `npm run verify` 通過,`npm test` 與 `npm run test:verify` 全過
+- [x] `node tools/rigid-links.mjs 401-507` 與 `node tools/one-piece.mjs 401-507` 剩下的每一項在報告或 pending.md 寫出理由
+- [x] 八份報告第 401–507 種的每一筆都有「狀態」行
+- [x] pending.md 與複查入口的兩張表跟上
+- [x] 規格的 Status 改成 done,報告與規格的鏡像重新發布
+- [x] 以獨立暫存區提交(只放自己的檔案)
 
 ## Comments
+
+2026-10-21 票 31:票 21–30 平行做完並合併到 main(各自的 worktree,import 衝突逐張併成一個模組一行)。全書 `node tools/verify.mjs` 507 張、0 個未豁免、沒有過時的豁免、124 項豁免(第 401–507 種從 249 項減到 16 項,沒有「未修」);`npm test` 3490 項、`npm run test:verify` 55 項通過。`node tools/outlines.mjs 401-507` 0 張;`rigid-links` 剩第 416 種螺旋彈簧、第 478 種受熱伸長的管(原理本身);`one-piece` 剩 10 張(第 408、419、433、439、440、445、446、447、487、488 種),理由在各票 Comments 與 pending.md「完成到什麼程度」第一條。八份報告第 401–507 種 250 筆都有「狀態」行,只有 #404-3 未修(理由已在 pending.md)。pending.md:「完成到什麼程度」加這一輪的狀態、這一輪冒出還沒決定的 19 題、第 491 種棘爪與冠狀齒互穿 0.026 的已知事項;未修清單拿掉已修的第 470、472 種(17 → 15 項)。複查入口的兩張表由票 06、12、30 登記(主動件第 502 種;目標件第 409、433、502、505、506 種)。規格 Status 改成 done;27-water-2、28-steam、29-wind、30-instruments、pending.md、規格的鏡像都重新發布。
