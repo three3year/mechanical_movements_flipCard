@@ -1,7 +1,12 @@
 // 第十八章「雜項與旋轉引擎」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, turned, assertMeshFree } from "./helpers.js";
+import { close, sweep, turned, assertMeshFree, part, pieceBox, polyGap, assertShaftInBearings } from "./helpers.js";
+import { thickLine } from "../models/shapes.js";
+import { placeOutline } from "../models/contact.js";
+import { signedAngle, dist } from "../models/kit.js";
+import { distanceToPath } from "../models/flow.js";
+import { WALL } from "../models/vertical-engine.js";
 
 import * as m412 from "../models/fig412.js";
 import * as m413 from "../models/fig413.js";
@@ -164,10 +169,12 @@ test("第 420 種:錘子敲到鐘之後,下方的彈簧把它抬離鐘面,不貼
   assert.ok(len(strikes[0].v) < len(0.9), "敲擊時壓縮彈簧,彈簧再把錘子推回");
 });
 
-test("第 421 種:筒狀引擎:筒管使活塞上側的有效面積大減;高壓蒸汽先推上側,再排進下側膨脹", () => {
-  assert.ok(m421.AREA.upper < m421.AREA.lower, "上側的有效面積比下側小");
+test("第 421 種:筒狀引擎:筒管使活塞上側的有效面積大減;連桿在筒管裡接活塞;高壓蒸汽先推上側,再排進下側膨脹", () => {
+  assert.ok(m421.AREA.upper / m421.AREA.lower < 0.8, "「活塞上側的有效面積因筒管而大幅減少」:上側不到下側的八成");
   const def = m421.default;
-  for (const t of sweep(2 * Math.PI, 16)) {
+  const rod = part(def, "rod");
+  const inner = m421.TRUNK - m421.TRUNK_WALL; // 筒管內半徑
+  for (const t of sweep(2 * Math.PI, 48)) {
     const pose = def.pose(t);
     const down = m421.downward(t);
     // 活塞往下走時,上側有新蒸汽、下側排汽;往上走時,蒸汽在下側(由上側轉來)
@@ -175,39 +182,153 @@ test("第 421 種:筒狀引擎:筒管使活塞上側的有效面積大減;高壓
       assert.ok(pose.parts.steamUp.level > 0 || t % Math.PI < 1e-9, "下行:上側有蒸汽");
       assert.equal(pose.parts.steamDown.level, 0, "下行:下側排汽");
     } else assert.ok(pose.parts.steamDown.level >= 0 && pose.flows.length === 1, "上行:蒸汽經轉汽管進下側");
-    // 連桿下端直接接在活塞上
-    close(pose.parts.rod.to[1], pose.parts.piston.position[1], "連桿直接接活塞");
+    // 「連桿在筒管下端直接與活塞相連」:桿的下端在活塞上,整根桿都在筒管的內壁之內(筒管頂端的高度是最斜的地方)
+    const { from, to } = pose.parts.rod;
+    close(to[1], pose.parts.piston.position[1], "連桿直接接活塞");
+    const top = pose.parts.trunk.position[1] + m421.TRUNK_LEN;
+    const xAtTop = to[0] + ((from[0] - to[0]) * (top - to[1])) / (from[1] - to[1]);
+    assert.ok(Math.abs(xAtTop) + rod.width / 2 < inner, `主動量 ${t.toFixed(2)}:連桿在筒管頂的橫向偏移 ${Math.abs(xAtTop).toFixed(3)} 加半寬仍在內半徑 ${inner} 之內`);
+    assert.ok(Math.abs(from[2]) + rod.thickness / 2 < inner && Math.abs(to[2]) + rod.thickness / 2 < inner, "連桿的深度在筒管內半徑之內");
+  }
+  // 汽缸剖掉前半(z > 0):三條汽管都在留下的後半,支管的端頭接在汽缸後半的外壁上
+  const frame = part(def, "frame");
+  const pipes = frame.pieces.filter((p) => p.role === "pipe" || p.role === "branch");
+  assert.ok(pipes.length >= 6, "進汽、轉汽、排汽三條汽管");
+  for (const p of pipes) assert.ok(pieceBox(p).hi[2] <= 0, "汽管不在剖掉的前半");
+  const outer = m421.CYL.radius + WALL;
+  const branches = frame.pieces.filter((p) => p.role === "branch");
+  assert.equal(branches.length, 4, "進汽一根、轉汽兩根、排汽一根支管接到汽缸");
+  for (const b of branches) {
+    const { lo, hi } = pieceBox(b);
+    const xEnd = lo[0] > 0 ? lo[0] : hi[0];
+    close(Math.hypot(xEnd, (lo[2] + hi[2]) / 2), outer, "支管的端頭在汽缸的外壁上", 0.03);
   }
 });
 
-test("第 422 種:擺動活塞:曲柄轉一圈,活塞 B 繞搖臂軸 C 來回擺一次,蒸汽輪流推它的兩側", () => {
-  const psis = sweep(2 * Math.PI, 72).map((p) => m422.vane(p));
-  assert.ok(Math.max(...psis) < m422.HALF && Math.min(...psis) > -m422.HALF, "活塞在扇形汽缸裡擺動");
-  assert.ok(Math.max(...psis) - Math.min(...psis) > 0.5, "擺幅明顯");
-  const sides = new Set(sweep(2 * Math.PI, 72).map((p) => m422.default.pose(p).readouts[0].value));
+test("第 422 種:擺動活塞:曲柄轉一圈,活塞 B 繞搖臂軸 C 來回擺一次;滑閥 D 輪流把蒸汽送到推它的那一側", () => {
+  const phis = sweep(2 * Math.PI, 288);
+  const psis = phis.map((p) => m422.vane(p));
+  const [lo, hi] = [Math.min(...psis), Math.max(...psis)];
+  assert.ok(hi < m422.HALF && lo > -m422.HALF, "活塞在扇形汽缸裡擺動");
+  assert.ok(hi - lo > 0.5, "擺幅明顯");
+  // 兩條汽道各走自己那一側(左口通左端、右口通右端),互不相交
+  const [left, right] = [1, -1].map((s) => thickLine(m422.passage(s), m422.PASSAGE_W));
+  assert.ok(m422.passage(1).every(([x]) => x < 0) && m422.passage(-1).every(([x]) => x > 0), "汽道各走自己那一側");
+  assert.ok(polyGap(left, right) > 0.05, "兩條汽道不相交");
+  const step = phis[1] - phis[0];
+  for (const phi of phis) {
+    // 閥動由接觸算:反向槓桿上端的銷一直在叉架兩指之間,滑閥只在銷頂著叉指時才動
+    const u = m422.pusherX(phi);
+    const yoke = m422.valveAt(phi) + m422.YOKE0;
+    assert.ok(Math.abs(u - yoke) <= m422.GAP / 2 + 1e-9, `主動量 ${phi.toFixed(2)}:銷在兩根叉指之間`);
+    if (Math.abs(m422.valveAt(phi) - m422.valveAt(phi - step)) > 1e-9) {
+      const touching = (p) => m422.GAP / 2 - Math.abs(m422.pusherX(p) - m422.valveAt(p) - m422.YOKE0) < 1e-6;
+      assert.ok(touching(phi) || touching(phi - step), `主動量 ${phi.toFixed(2)}:滑閥剛被推過,銷正頂著叉指`);
+    }
+    // 反向槓桿:撥臂的銷往哪邊走,槓桿上端就往另一邊走
+    const tip = m422.tipX(phi);
+    if (Math.abs(tip) > 0.05) assert.ok(Math.sign(u) === -Math.sign(tip), `主動量 ${phi.toFixed(2)}:槓桿上端與撥臂銷在支點的兩側`);
+    // 「蒸汽經滑閥輪流引進汽缸、作用在活塞的一側或另一側」:行程中段,開著的口接的那一端進汽,推活塞往它正在擺的方向;
+    // 另一口被滑閥蓋住,那一端排汽
+    const side = m422.admitting(phi);
+    const ahead = m422.vane(phi + 0.01) - m422.vane(phi);
+    const psi = m422.vane(phi);
+    // 撥桿式閥動在行程的最後四分之一才開始撥滑閥(截汽),最後 15% 撥過中線(換側、緩衝);中段之前一口全開、另一口蓋住
+    const frac = Math.abs(psi - (lo + hi) / 2) / ((hi - lo) / 2); // 離行程中點的比例(1 = 到了端點)
+    if (frac < 0.65) assert.equal(side, ahead < 0 ? 1 : -1, `主動量 ${phi.toFixed(2)}:進汽的那一側推活塞往它擺的方向`);
+    if (frac < 0.45) assert.ok(m422.portOpen(phi, side) > 0.99 && m422.portOpen(phi, -side) < 1e-9, `主動量 ${phi.toFixed(2)}:一口全開、另一口被滑閥蓋住`);
+  }
+  // 到了行程末端,滑閥已經撥到另一邊:活塞擺到最左(逆時針最遠)時左口開著,蒸汽接著把它推回右邊
+  assert.equal(m422.admitting(phis[psis.indexOf(hi)]), 1, "最左端:左側進汽");
+  assert.equal(m422.admitting(phis[psis.indexOf(lo)]), -1, "最右端:右側進汽");
+  const sides = new Set(phis.map((p) => m422.default.pose(p).readouts[0].value.slice(0, 4)));
   assert.equal(sides.size, 2, "蒸汽輪流進兩側");
 });
 
-test("第 423 種:雙象限引擎:兩個單動活塞接同一個曲柄,每個在曲柄約三分之二圈裡被蒸汽推,沒有死點", () => {
+test("第 423 種:雙象限引擎:兩個單動活塞接同一個曲柄,每個在曲柄約三分之二圈裡被蒸汽推,沒有死點;蒸汽從外側進、從兩活塞之間排出", () => {
+  const def = m423.default;
   const ts = sweep(2 * Math.PI, 360).slice(0, -1);
   for (const k of [0, 1]) {
     const frac = ts.filter((t) => m423.driving(t, k)).length / ts.length;
     close(frac, 2 / 3, `活塞 ${k + 1} 被推的時間約佔三分之二圈`, 0.03);
   }
   for (const t of ts) assert.ok(m423.driving(t, 0) || m423.driving(t, 1), "任何時候至少一個活塞被推(沒有死點)");
+  const casing = part(def, "casing");
+  const walls = casing.pieces.filter((p) => p.role === "endWall");
+  assert.equal(walls.length, 2, "兩道外側端壁");
+  let closest = Infinity;
+  for (const t of sweep(2 * Math.PI, 90)) {
+    const pose = def.pose(t);
+    for (const k of [0, 1]) {
+      const piston = part(def, `piston${k + 1}`);
+      const alpha = pose.parts[piston.id].angle;
+      // 「蒸汽作用在兩個活塞的外側」:外側的蒸汽點都在活塞朝汽室的面與端壁朝汽室的面之間(兩面都和轂的座孔相切)、弧壁之內
+      const across = (d, dir) => -(d[0] - m423.PIVOTS[k][0]) * Math.sin(dir) + (d[1] - m423.PIVOTS[k][1]) * Math.cos(dir); // 離 dir 方向的徑向線的橫向距離(逆時針為正)
+      for (const d of m423.chamber(t, k, 0)) {
+        const r = Math.hypot(d[0] - m423.PIVOTS[k][0], d[1] - m423.PIVOTS[k][1]);
+        assert.ok(r < m423.VANE + 0.03 && across(d, alpha) > -m423.SEAT && across(d, m423.OUTER[k]) < -m423.SEAT, `主動量 ${t.toFixed(2)}:活塞 ${k + 1} 的蒸汽點在汽室裡(r ${r.toFixed(2)}、離活塞面 ${(across(d, alpha) + m423.SEAT).toFixed(2)}、離端壁面 ${(-m423.SEAT - across(d, m423.OUTER[k])).toFixed(2)})`);
+      }
+      // 「從兩活塞之間的空間排出」:回程的活塞,排汽的點從它的內側出發、流到排汽口
+      if (!m423.driving(t, k)) {
+        const path = m423.exhaustPath(t, k);
+        const first = path[0];
+        const a0 = Math.atan2(first[1] - m423.PIVOTS[k][1], first[0] - m423.PIVOTS[k][0]);
+        assert.ok(signedAngle(alpha - a0) > 0 && signedAngle(alpha - a0) < Math.PI / 2, `主動量 ${t.toFixed(2)}:排汽從活塞 ${k + 1} 的內側出發`);
+        close(dist(path.at(-1), m423.EXHAUST), 0, "排汽流到排汽口", 1e-9);
+        const flow = pose.flows.find((f) => f.points.length && f.points.every((p) => distanceToPath(path, p) < 1e-6));
+        assert.ok(flow, `主動量 ${t.toFixed(2)}:姿勢裡有沿排汽路徑走的點`);
+      }
+      // 活塞與端壁:全程不穿入
+      const vane = piston.pieces.find((p) => p.role === "vane");
+      const poly = placeOutline(vane.shape.outline, m423.PIVOTS[k], alpha);
+      const gap = polyGap(poly, walls[k].shape.outline);
+      assert.ok(gap > 0, `主動量 ${t.toFixed(2)}:活塞 ${k + 1} 不穿進端壁`);
+      closest = Math.min(closest, gap);
+    }
+  }
+  assert.ok(closest < 0.02, `活塞擺到最外時貼著端壁(最小間隙 ${closest.toFixed(4)})`);
+  // 曲柄 D 的軸由軸承托住
+  const crank = part(def, "crank");
+  const shaft = crank.pieces.find((p) => p.role === "shaft");
+  assertShaftInBearings({ at: shaft.at, radius: shaft.radius, length: shaft.length }, casing.pieces, "曲柄 D 的軸");
+  // 底座接到汽缸
+  const base = casing.pieces.find((p) => p.role === "base");
+  const back = casing.pieces.find((p) => p.role === "back");
+  assert.ok(pieceBox(base).hi[1] >= pieceBox(back).lo[1], "底座頂到汽缸的外框");
 });
 
-test("第 424 種:方形活塞引擎:B 水平、C 在 B 裡垂直,一起使曲柄旋轉,沒有死點", () => {
+test("第 424 種:方形活塞引擎:B 水平、C 在 B 裡垂直,一起使曲柄旋轉,沒有死點;進汽口在壁的內側", () => {
+  const def = m424.default;
+  const ports = def.parts.filter((p) => p.role === "port");
+  assert.equal(ports.length, 4, "「蒸汽引入口以黑色表示」:A 兩端、B 上下各一個口");
   for (const t of sweep(2 * Math.PI, 36)) {
     const { b, c } = m424.pistons(t);
     close(Math.hypot(b, c), m424.CRANK, "曲柄銷 a 在 (B 的水平位置, C 的垂直位置)");
     assert.ok(m424.turning(t) >= 1 - 1e-9, "兩個活塞合起來在任何位置都推得動曲柄");
-    const pose = m424.default.pose(t).parts;
+    const pose = def.pose(t).parts;
     close(pose.pistonC.position[0], pose.pistonB.position[0], "C 隨 B 水平移動");
+    for (const p of ports) {
+      assert.ok(p.kind === "fill" && p.fluid === "steam" && pose[p.id].level === 1, `${p.id} 以蒸汽色填滿`);
+      const [x, y] = pose[p.id].position;
+      if (p.wall === "A") {
+        close(Math.abs(x) + p.size[1] / 2, m424.A_IN.w / 2, "A 的口貼著 A 的內壁", 1e-9);
+        assert.ok(Math.abs(y) + p.size[0] / 2 < m424.A_IN.h / 2, "A 的口在內壁的範圍裡");
+      } else {
+        close(x, b, "B 的口隨 B 移動", 1e-9);
+        close(Math.abs(y) + p.size[1] / 2, m424.B_IN.h / 2, "B 的口貼著 B 的內壁", 1e-9);
+      }
+    }
   }
   // 一個活塞在行程端點(死點)時,另一個正在行程中間
   close(m424.pistons(0).c, 0, "B 在端點時 C 在中間");
   close(m424.pistons(Math.PI / 2).b, 0, "C 在端點時 B 在中間");
+  // 主軸 b 由軸承托住;底座接到汽缸的外框
+  const cylinderA = part(def, "cylinderA");
+  const shaft = part(def, "shaft").pieces.find((p) => p.role === "shaft");
+  assertShaftInBearings({ at: shaft.at, radius: shaft.radius, length: shaft.length }, cylinderA.pieces, "主軸 b");
+  const base = cylinderA.pieces.find((p) => p.role === "base");
+  const frame = cylinderA.pieces.find((p) => p.role === "frame");
+  assert.ok(pieceBox(base).hi[1] >= pieceBox(frame).lo[1], "底座頂到汽缸的外框");
 });
 
 test("第 425 種:旋轉引擎:偏心活塞 C 在一點碰汽缸;擋板 D 退出活塞的路線讓它通過,又始終貼著活塞", () => {
