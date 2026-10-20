@@ -1,9 +1,9 @@
 // 第二十一章「風力、船舶與起重」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, polyGap, assertOnePiece, assertShaftInBearings } from "./helpers.js";
+import { close, sweep, part, polyGap, pieceBox, assertOnePiece, assertShaftInBearings } from "./helpers.js";
 import { X, Y, Z, add, sub, dot, norm, cross, rot2, partPoint, quatRotate, quatMul, quatFromZ, quatAxisAngle } from "../models/kit.js";
-import { placeOutline, polygonsOverlap, penetrationDepth } from "../models/contact.js";
+import { placeOutline, polygonsOverlap, penetrationDepth, swingUntilContact, circlePolygon } from "../models/contact.js";
 import { rect } from "../models/shapes.js";
 
 import fig484, * as m484 from "../models/fig484.js";
@@ -92,11 +92,10 @@ test("第 486 種:垂直式風車:受風的一側帆面正對著風,轉回迎風
   assert.equal(edge.face, 0);
 });
 
-// 附件的深度範圍(方塊、板件、沿 z 的圓柱;base 是零件的深度)
+// 附件的深度範圍(base 是零件的深度)
 const depth = (q, base = 0) => {
-  const h = q.kind === "box" ? q.size[2] / 2 : q.kind === "plate" ? (q.thickness ?? 0.2) / 2 : q.length / 2;
-  const z = base + (q.at?.[2] ?? 0);
-  return [z - h, z + h];
+  const { lo, hi } = pieceBox(q, [0, 0, base]);
+  return [lo[2], hi[2]];
 };
 
 test("第 486 種:細圓是接在六根臂端的輪圈;帆以樞軸銷鉸在臂端、在臂的上方一層,鉸點偏向帆的一端", () => {
@@ -108,7 +107,7 @@ test("第 486 種:細圓是接在六根臂端的輪圈;帆以樞軸銷鉸在臂�
   const inner = Math.min(...rim.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
   close((outer + inner) / 2, m486.ARM, "輪圈穿過六個帆的樞軸點(原圖:細圓半徑 = 臂長)", 0.005);
   const arms = wheel.pieces.filter((q) => q.role === "arm");
-  assert.equal(arms.length, 6);
+  assert.equal(arms.length, 6, "六根臂(原圖六根臂,各帶一片帆)");
   const [rz, az] = [depth(rim), depth(arms[0])];
   assert.ok(rz[0] < az[1] && az[0] < rz[1], "輪圈和臂在同一層,接在臂端");
   const pins = wheel.pieces.filter((q) => q.role === "pin");
@@ -141,10 +140,7 @@ test("第 487 種:明輪:輪轉時下方的槳板把水往後推,船往前", () 
 });
 
 // 繞 z 轉 angle 的方塊在平面上的外形
-const boxPoly = (q) => rect(q.size[0], q.size[1]).map((p) => {
-  const [x, y] = rot2(p, q.angle ?? 0);
-  return [x + (q.at?.[0] ?? 0), y + (q.at?.[1] ?? 0)];
-});
+const boxPoly = (q) => placeOutline(rect(q.size[0], q.size[1]), q.at ?? [0, 0], q.angle ?? 0);
 
 test("第 487 種:只有一圈輪緣(原圖沒有內圈),輻條伸出輪緣;槳板釘在輪緣背面、靠在輻條旁,不穿過輪緣與輻條", () => {
   const def = m487.default;
@@ -155,7 +151,7 @@ test("第 487 種:只有一圈輪緣(原圖沒有內圈),輻條伸出輪緣;槳�
   const rim = rings[0];
   const rimIn = Math.min(...rim.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
   const spokes = wheel.pieces.filter((q) => q.role === "spoke");
-  assert.equal(spokes.length, 8);
+  assert.equal(spokes.length, 8, "八根輻條(原圖)");
   for (const s of spokes) assert.ok(Math.hypot(s.at[0], s.at[1]) + s.size[0] / 2 > outer(rim) + 0.2, "輻條伸出輪緣(原圖)");
   // 槳板跟著輪轉(轉角相同),在輪上的位置固定:量一次就是全程
   for (const t of sweep(2 * Math.PI, 8)) assert.equal(def.pose(t).parts.floats.angle, def.pose(t).parts.wheel.angle);
@@ -238,8 +234,8 @@ test("第 489 種:槳板的樞軸穿過臂端的軸承,樞軸前端固定曲柄 
   const ring = part(def, "ring");
   const bearings = arms.pieces.filter((q) => q.role === "bearing");
   const eyes = ring.pieces.filter((q) => q.role === "eye");
-  assert.equal(bearings.length, 4);
-  assert.equal(eyes.length, 4);
+  assert.equal(bearings.length, 4, "四片槳板 a 各一個臂端軸承(原圖四片)");
+  assert.equal(eyes.length, 4, "環 d 的四個臂端孔接四支曲柄 c 的末端(原圖)");
   const layer = (p, base) => [depth(p, base), ...(p.pieces ?? []).filter((q) => q.kind !== "cylinder").map((q) => depth(q, base))];
   for (const t of sweep(2 * Math.PI, 24)) {
     const pose = def.pose(t).parts;
@@ -375,7 +371,7 @@ test("第 490 種:舵輪軸架在甲板上的兩個軸承裡,導引滑輪的軸�
 });
 
 test("第 491 種:絞盤:推桿轉動絞盤收進纜繩;棘爪在底座的棘齒上滑過,每過一齒落下一次(防止倒轉)", () => {
-  close(m491.capstan(2 * Math.PI).hauled, 2 * Math.PI * m491.DRUM_R, "轉一圈收進鼓周長的繩");
+  close(m491.capstan(2 * Math.PI).hauled, 2 * Math.PI * (m491.DRUM_R + m491.ROPE_R), "轉一圈收進繞鼓一圈的纜繩(中心線離軸 = 鼓半徑 + 纜繩半徑)");
   const tooth = (2 * Math.PI) / m491.TEETH;
   const tips = sweep(2 * tooth, 200).map((t) => m491.capstan(t).tip);
   assert.ok(Math.max(...tips) - Math.min(...tips) > 0.05, "爪尖沿緩坡抬起、越過齒頂後落下");
@@ -389,18 +385,96 @@ test("第 491 種:絞盤:推桿轉動絞盤收進纜繩;棘爪在底座的棘齒
   assert.ok(stop - start >= 4, "落下有過程");
   const mid = Math.floor((start + stop) / 2);
   assert.ok(tips[start - 1] - tips[mid] < tips[mid] - tips[stop], "落下越來越快");
-  // 由接觸算:爪尖不會沉進齒面以下
-  for (const t of sweep(2 * tooth, 60)) {
-    const c = m491.capstan(t);
-    assert.ok(c.tip >= m491.RING_TOP + m491.toothHeight(t - (m491.PAWL * Math.cos(c.tilt)) / m491.RATCHET_R) - 1e-6, "爪尖搭在齒面上(不穿入)");
-  }
 });
 
-// 爪尖離齒面的高度(爪靠在齒上時是 0,落下途中大於 0)
-const pawlGap491 = (t) => {
-  const c = m491.capstan(t);
-  return c.tip - (m491.RING_TOP + m491.toothHeight(t - (m491.PAWL * Math.cos(c.tilt)) / m491.RATCHET_R));
+// 第 491 種:棘爪(立體)離冠狀齒與棘輪環多遠(負的就是穿入;爪靠在齒上時是 0,落下途中大於 0)。
+// 棘爪伸到齒上的是直的那一段(長方體;圓頭在鉸點,離齒很高),每一齒是三角柱(局部 x 沿齒、y 朝上、z 朝軸心)。
+// 兩者的邊(線段)夾進對方的範圍,量夾剩的兩端:棘爪的邊在齒斜面上方多高、齒的邊在棘爪下緣底下多遠(都是沿邊線性變化,兩端就是最小)
+const pawlGap491 = (theta) => {
+  const def = m491.default;
+  const base = part(def, "base");
+  const teeth = base.pieces.filter((q) => q.kind === "plate");
+  const ring = base.pieces.find((q) => q.kind === "cylinder" && q.inner);
+  const pawl = part(def, "pawl");
+  const P = def.pose(theta).parts.pawl;
+  const conj = (q) => [-q[0], -q[1], -q[2], q[3]];
+  const ol = pawl.shape.outline;
+  const [L, W, T] = [Math.max(...ol.map(([x]) => x)), Math.max(...ol.map(([, y]) => y)) * 2, pawl.thickness];
+  const corners = (xs, ys, zs) => xs.flatMap((x) => ys.flatMap((y) => zs.map((z) => [x, y, z])));
+  const edges = (v) => v.flatMap((p, i) => v.slice(i + 1).filter((q) => p.filter((c, k) => c !== q[k]).length === 1).map((q) => [p, q]));
+  // 線段夾在各軸的範圍裡剩下的兩端(沒剩就是空的)
+  const clip = ([p, q], bounds) => {
+    let [t0, t1] = [0, 1];
+    for (const [k, lo, hi] of bounds) {
+      const d = q[k] - p[k];
+      if (Math.abs(d) < 1e-12) {
+        if (p[k] < lo || p[k] > hi) return [];
+        continue;
+      }
+      const [a, b] = [(lo - p[k]) / d, (hi - p[k]) / d].sort((x, y) => x - y);
+      [t0, t1] = [Math.max(t0, a), Math.min(t1, b)];
+      if (t0 > t1) return [];
+    }
+    return [t0, t1].map((t) => p.map((c, k) => c + (q[k] - c) * t));
+  };
+  const local = corners([0, L], [-W / 2, W / 2], [-T / 2, T / 2]);
+  const pawlBox = local.map((v) => add(P.position, quatRotate(P.rotation, v)));
+  const boxEdges = edges(local).map((e) => e.map((v) => pawlBox[local.indexOf(v)]));
+  let gap = Infinity;
+  for (const p of pawlBox) {
+    const r = Math.hypot(p[0], p[2]);
+    if (r >= ring.inner && r <= ring.radius) gap = Math.min(gap, p[1] - (ring.at[1] + ring.length / 2));
+  }
+  for (const t of teeth) {
+    const [, [arc], [, H]] = t.shape.outline;
+    const toTooth = (p) => quatRotate(conj(t.rotation), sub(p, t.at));
+    for (const e of boxEdges.map((e) => e.map(toTooth))) for (const [x, y] of clip(e, [[0, 0, arc], [2, -t.thickness / 2, t.thickness / 2]])) gap = Math.min(gap, y - (H * x) / arc);
+    const toPawl = (v) => quatRotate(conj(P.rotation), sub(add(t.at, quatRotate(t.rotation, v)), P.position));
+    const prism = [-1, 1].flatMap((s) => [[0, 0], [arc, 0], [arc, H]].map(([x, y]) => toPawl([x, y, (s * t.thickness) / 2])));
+    const prismEdges = [[0, 1], [1, 2], [2, 0], [3, 4], [4, 5], [5, 3], [0, 3], [1, 4], [2, 5]].map(([i, j]) => [prism[i], prism[j]]);
+    for (const e of prismEdges) for (const [, y] of clip(e, [[0, 0, L], [2, -T / 2, T / 2]])) if (y < W / 2) gap = Math.min(gap, -W / 2 - y);
+  }
+  return gap;
 };
+
+test("第 491 種:棘爪和冠狀齒在立體上全程不互穿:爪靠在齒上時貼著齒面(間隙接近 0)", () => {
+  const tooth = (2 * Math.PI) / m491.TEETH;
+  const gaps = sweep(2 * tooth, 160).map(pawlGap491);
+  const worst = Math.min(...gaps);
+  assert.ok(worst > -1e-4, `棘爪不穿進冠狀齒(最深 ${(-worst).toFixed(4)})`);
+  assert.ok(gaps.filter((g) => g < 1e-3).length > 80, "多數時候爪靠在齒上(貼著齒面)");
+});
+
+test("第 491 種:纜繩繞在鼓上:中心線離鼓面一個纜繩半徑(貼著、不陷進鼓面),繞的那一段都在鼓身直的那段上", () => {
+  const def = m491.default;
+  const ropeR = part(def, "rope").radius;
+  const profile = part(def, "drum").pieces.find((q) => q.kind === "lathe").profile;
+  // 鼓在高度 y 的半徑:剖面外緣(半徑大於孔的那些點)內插
+  const outer = profile.filter(([r]) => r > 0.2);
+  const drumAt = (y) => {
+    for (let i = 1; i < outer.length; i++) {
+      const [[r0, y0], [r1, y1]] = [outer[i - 1], outer[i]];
+      if ((y - y0) * (y - y1) <= 0 && y0 !== y1) return r0 + ((r1 - r0) * (y - y0)) / (y1 - y0);
+    }
+    return 0;
+  };
+  const pts = def.pose(0.3).paths.rope.points;
+  let wrapped = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const q = pts[i + 1];
+    for (const at of q ? [p, p.map((v, k) => (v + q[k]) / 2)] : [p]) {
+      const r = Math.hypot(at[0], at[2]);
+      if (r > m491.DRUM_R + 0.3) continue;
+      for (const dy of [-ropeR, 0, ropeR]) assert.ok(r - drumAt(at[1] + dy) >= ropeR - 0.002, `纜繩(${at.map((v) => v.toFixed(2))})不陷進鼓面(離鼓面 ${(r - drumAt(at[1] + dy)).toFixed(4)})`);
+      if (at === p) {
+        close(r - drumAt(at[1]), ropeR, "繞在鼓上的纜繩中心線離鼓面一個纜繩半徑", 1e-6);
+        wrapped++;
+      }
+    }
+  }
+  assert.ok(wrapped > 20, `纜繩繞在鼓上(${wrapped})`);
+});
 
 test("第 491 種:絞盤由棘爪防止倒轉:往回轉只能轉到最近的落定處(爪尖落在齒根、頂著直壁),往回時爪尖不被抬起;爪正在落下時往回轉,當下就擋住", () => {
   const { backstop } = m491.default.driver;
@@ -415,6 +489,8 @@ test("第 491 種:絞盤由棘爪防止倒轉:往回轉只能轉到最近的落�
     if (pawlGap491(v) > 1e-4) {
       falling++;
       close(stop, v, `轉角 ${v.toFixed(3)}:爪正在落下,往回轉當下就擋住`, 1e-9);
+    } else if (stop === v) {
+      assert.ok(pawlGap491(v + 0.005) > 1e-4, `轉角 ${v.toFixed(3)}:當下就擋住的只有剛開始落下(離齒面還不到 0.0001)的時刻`);
     } else {
       assert.ok(pawlGap491(stop) < 1e-4, `轉角 ${v.toFixed(3)}:擋住處爪尖搭在齒面上`);
       assert.ok(pawlGap491(stop - 0.003) > 1e-4, `轉角 ${v.toFixed(3)}:擋住處正是爪落定的那一刻(再早一點爪還在落下)`);
@@ -487,17 +563,19 @@ test("第 492 種:小艇脫鉤器:拉繩使槓桿上的環孔從舌片滑脫,舌
   assert.ok(slide[0] < TONGUE && slide[6] < TONGUE, "拉到一半環孔還套在舌片上");
   assert.ok(slide[12] > TONGUE, "拉到 SLIP 時環孔已滑過舌片尖端");
   assert.ok(EYE_R > TONGUE_W / 2, "舌片穿得過環孔");
-  // 環孔滑脫後,舌片被小艇的重量翻開、小艇掉下:都是加速的(每一步走得比上一步多),到底停住
-  const falls = sweep(1, 100, m492.SLIP).map((u) => m492.release(u).fall);
-  const moving = falls.map((f, i) => (i ? f - falls[i - 1] : 0)).filter((d) => d > 1e-9);
-  assert.ok(moving.length > 5 && moving.slice(0, -1).every((d, i) => i === 0 || d >= moving[i - 1] - 1e-9), "小艇加速掉下(最後一步是撞到底)");
+  // 環讓開後(放開的時刻由接觸算,見下一個測試),舌片被小艇的重量翻開、小艇掉下:都從靜止加速(每一步走得比上一步多),到底停住
+  const steps = (values) => values.map((f, i) => (i ? f - values[i - 1] : 0)).filter((d) => Math.abs(d) > 1e-9);
+  const accelerating = (d) => d.length > 5 && d.slice(0, -1).every((x, i) => i === 0 || Math.abs(x) >= Math.abs(d[i - 1]) - 1e-6);
+  const falls = sweep(1, 100, m492.RELEASE).map((u) => m492.release(u).fall);
+  assert.ok(accelerating(steps(falls)), "小艇加速掉下(最後一步是撞到底)");
   close(falls[falls.length - 1], m492.DROP, "掉到底停住");
+  assert.ok(accelerating(steps(sweep(1, 100, m492.RELEASE).map((u) => m492.release(u).tongue))), "舌片加速翻開(最後一步是翻到底)");
 });
 
-// 第 492 種:零件在姿勢下的平面外形(世界座標)
-const placed492 = (pose, id, shape) => placeOutline(shape.outline, pose.parts[id].position, pose.parts[id].angle ?? 0);
-// 圓(銷、彎鉤的斷面)近似成多邊形;槓桿的各塊板件外形
-const circlePolygon492 = (c, r) => Array.from({ length: 32 }, (_, i) => [c[0] + r * Math.cos((i / 32) * 2 * Math.PI), c[1] + r * Math.sin((i / 32) * 2 * Math.PI)]);
+// 零件在姿勢下的平面外形(世界座標)
+const placed = (pose, id, shape) => placeOutline(shape.outline, pose.parts[id].position, pose.parts[id].angle ?? 0);
+const placedPart = (def, pose, id) => placed(pose, id, part(def, id).shape);
+// 槓桿的各塊板件外形
 const plates492 = (p) => [p.shape, ...(p.pieces ?? []).filter((q) => q.kind === "plate").map((q) => q.shape)];
 
 test("第 492 種:滑車的鉤子鉤住舌片:鉤子的彎鉤和舌片在同一層、托在舌片下面(間隙接近 0、不穿入);環孔滑脫後舌片翻開、從鉤子滑出,小艇掉下時全程不碰鉤子", () => {
@@ -507,20 +585,58 @@ test("第 492 種:滑車的鉤子鉤住舌片:鉤子的彎鉤和舌片在同一�
   assert.ok(bight, "鉤子有托住舌片的彎鉤");
   const c = (hook.center ?? [0, 0, 0]).map((v, k) => v + bight.at[k]);
   const tongue = part(def, "tongue");
-  const ring = circlePolygon492(c, bight.radius);
+  const ring = circlePolygon(c, bight.radius, 32);
   for (const u of sweep(1, 100)) {
     const pose = def.pose(u);
-    const t = placed492(pose, "tongue", tongue.shape);
-    assert.ok(!polygonsOverlap(t, circlePolygon492(c, bight.radius - 0.002)), `拉繩 ${u.toFixed(2)}:舌片不穿進鉤子的彎鉤`);
-    if (u < m492.SLIP) {
+    const t = placed(pose, "tongue", tongue.shape);
+    assert.ok(!polygonsOverlap(t, circlePolygon(c, bight.radius - 0.002, 32)), `拉繩 ${u.toFixed(2)}:舌片不穿進鉤子的彎鉤`);
+    if (u < m492.RELEASE) {
       assert.ok(polyGap(t, ring) < 0.005, `拉繩 ${u.toFixed(2)}:彎鉤托在舌片下面(間隙 ${polyGap(t, ring).toFixed(4)})`);
       const z = pose.parts.tongue.position[2];
       const T = tongue.thickness / 2;
       assert.ok(c[2] - bight.length / 2 <= z - T && z + T <= c[2] + bight.length / 2, "彎鉤橫過舌片的整個厚度(同一層)");
     }
   }
-  const t1 = placed492(def.pose(1), "tongue", tongue.shape);
+  const t1 = placed(def.pose(1), "tongue", tongue.shape);
   assert.ok(polyGap(t1, ring) > 0.05, "小艇脫離後舌片已離開鉤子");
+});
+
+// 第 492 種:環在舌片那一層的斷面(世界座標的兩塊):環的軸在平面上,舌片從環孔穿過;舌片的上、下面離中面 T,
+// 那兩個面上環孔的半寬是 √(孔半徑² − T²),環的材料就是軸兩側離軸這麼遠到外半徑那一段(沿軸長 = 環厚)
+const ringJaws492 = (def, pose) => {
+  const lever = part(def, "lever");
+  const ring = lever.pieces.find((q) => q.kind === "cylinder" && q.inner);
+  const T = part(def, "tongue").thickness / 2;
+  const [inner, outer] = [ring.inner, ring.radius].map((r) => Math.sqrt(r * r - T * T));
+  const along = Math.atan2(ring.axis[1], ring.axis[0]);
+  const { position, angle } = pose.parts.lever;
+  return [1, -1].map((s) => placeOutline(placeOutline(rect(ring.length, outer - inner, 0, (s * (inner + outer)) / 2), [ring.at[0], ring.at[1]], along), position, angle));
+};
+
+test("第 492 種:脫鉤是接觸:環孔滑出舌片之前,舌片往上翻就碰到環(被擋住、不動);舌片開始翻開的那一刻正是環讓開舌片翻上去的路(少拉一點就還被擋住)", () => {
+  const def = m492.default;
+  const tongue = part(def, "tongue");
+  const { RELEASE, SLIP } = m492;
+  assert.ok(RELEASE > 0.3 && RELEASE < SLIP, `放開的時刻在拉繩途中(${RELEASE})`);
+  const ring = part(def, "lever").pieces.find((q) => q.kind === "cylinder" && q.inner);
+  close(def.pose(0).parts.lever.position[2] + ring.at[2], def.pose(0).parts.tongue.position[2], "環的中心在舌片的中面上(舌片從環孔中間穿過)", 1e-9);
+  const upright = m492.release(1).tongue;
+  // 舌片從現在的姿勢往上翻(順時針)到翻開的角度,途中第一次碰到環的轉角
+  const stop = (u) => {
+    const pose = def.pose(u);
+    const { position, angle } = pose.parts.tongue;
+    return swingUntilContact({ pivot: position, outline: tongue.shape.outline, from: angle, into: -1, sweep: angle - upright, steps: 240 }, ringJaws492(def, pose));
+  };
+  for (const u of sweep(RELEASE - 0.002, 40)) {
+    const pose = def.pose(u);
+    const t = placed(pose, "tongue", tongue.shape);
+    assert.ok(!ringJaws492(def, pose).some((j) => polygonsOverlap(t, j)), `拉繩 ${u.toFixed(3)}:舌片穿在環孔裡,不穿進環`);
+    assert.ok(stop(u) > upright + 0.05, `拉繩 ${u.toFixed(3)}:舌片往上翻會碰到環(還被擋住)`);
+    close(pose.parts.tongue.angle, def.pose(0).parts.tongue.angle, `拉繩 ${u.toFixed(3)}:舌片不動`, 1e-12);
+  }
+  assert.ok(stop(RELEASE - 0.002) > upright + 0.05, "少拉一點,環還擋著舌片翻上去的路");
+  close(stop(RELEASE + 1e-6), upright, "拉到放開的時刻,環已讓開舌片翻上去的整條路", 1e-6);
+  assert.ok(m492.release(RELEASE + 0.01).tongue < m492.release(RELEASE).tongue, "環一讓開,舌片就開始翻開");
 });
 
 test("第 492 種:槓桿以支柱中點處的支點作動:槓桿在支點處開孔,套在支柱的銷上", () => {
@@ -568,8 +684,20 @@ test("第 493 種:路易斯吊楔:吊起中央的楔子把兩邊的填塊擠緊�
   close(m493.lewis(1).lift, m493.LIFT, "之後石塊被吊起");
 });
 
-// 第 493 種:零件在姿勢下的外形(世界座標;只平移)
-const at493 = (def, pose, id) => part(def, id).shape.outline.map(([x, y]) => [x + pose.parts[id].position[0], y + pose.parts[id].position[1]]);
+test("第 493 種:主動件是吊繩:吊繩等速拉起,先只提起楔子(石塊不動),填塊一碰到孔壁(由接觸決定)就整組連石塊一起上升", () => {
+  const def = m493.default;
+  const top = (u) => def.pose(u).paths.rope.points[0][1];
+  for (const u of sweep(1, 40)) close(top(u) - top(0), u * (top(1) - top(0)), `吊起 ${u.toFixed(3)}:吊繩拉起的量和進度成正比`, 1e-9);
+  // 石塊開始上升的那一刻:填塊剛好碰到孔壁;再早一點填塊離孔壁還有空隙
+  const us = sweep(1, 2000);
+  const start = us.find((u) => m493.lewis(u).lift > 0);
+  const gapAt = (u) => {
+    const pose = def.pose(u);
+    return polyGap(placedPart(def, pose, "packerR"), placedPart(def, pose, "stone"));
+  };
+  assert.ok(gapAt(start) < 1e-6, `石塊開始上升時填塊貼著孔壁(間隙 ${gapAt(start).toFixed(6)})`);
+  assert.ok(gapAt(start - 0.01) > 1e-4, "再早一點填塊還沒碰到孔壁,石塊不動");
+});
 
 test("第 493 種:三塊一起插進石塊上鑽出的孔:孔壁是直的(原圖),三塊合起來在每個高度都不比孔口寬,插得進孔裡", () => {
   const def = m493.default;
@@ -579,7 +707,7 @@ test("第 493 種:三塊一起插進石塊上鑽出的孔:孔壁是直的(原圖
   assert.ok(walls.length >= 2 && walls.every(([x]) => Math.abs(Math.abs(x) - mouth) < 1e-9), "孔壁是直的(孔底和孔口一樣寬)");
   const pose = def.pose(0);
   for (const id of ["pin", "packerL", "packerR"]) {
-    const xs = at493(def, pose, id).filter(([, y]) => y < 0.25).map(([x]) => Math.abs(x));
+    const xs = placedPart(def, pose, id).filter(([, y]) => y < 0.25).map(([x]) => Math.abs(x));
     assert.ok(Math.max(...xs) <= mouth + 1e-9, `${id} 不比孔口寬(最寬 ${Math.max(...xs).toFixed(3)},孔口 ${mouth})`);
   }
 });
@@ -588,7 +716,7 @@ test("第 493 種:吊起中央的楔子時,它把填塊緊緊楔入孔壁:擠緊
   const def = m493.default;
   for (const u of sweep(1, 60)) {
     const pose = def.pose(u);
-    const [stone, pin, L, R] = ["stone", "pin", "packerL", "packerR"].map((id) => at493(def, pose, id));
+    const [stone, pin, L, R] = ["stone", "pin", "packerL", "packerR"].map((id) => placedPart(def, pose, id));
     for (const [a, b, what] of [[L, stone, "左填塊與孔壁"], [R, stone, "右填塊與孔壁"], [pin, L, "楔子與左填塊"], [pin, R, "楔子與右填塊"]]) {
       assert.ok(penetrationDepth(a, b) < 1e-6, `吊起 ${u.toFixed(2)}:${what}不穿入`);
       if (m493.lewis(u).tight) assert.ok(polyGap(a, b) < 1e-6, `吊起 ${u.toFixed(2)}:${what}貼緊(間隙 ${polyGap(a, b).toFixed(4)})`);
@@ -627,14 +755,13 @@ const armPlates494 = (def, pose, id) => {
     thickness: q.thickness ?? p.thickness,
   }));
 };
-const stone494 = (def, pose) => part(def, "stone").shape.outline.map(([x, y]) => [x + pose.parts.stone.position[0], y + pose.parts.stone.position[1]]);
 const centroid494 = (h) => [h.reduce((s, q) => s + q[0], 0) / h.length, h.reduce((s, q) => s + q[1], 0) / h.length];
 
 test("第 494 種:鉗臂繞過石塊的上角,只有尖端壓在石塊側面:全程鉗臂不穿進石塊,夾住時尖端貼著石塊(間隙接近 0)", () => {
   const def = m494.default;
   for (const u of sweep(1, 80)) {
     const pose = def.pose(u);
-    const stone = stone494(def, pose);
+    const stone = placedPart(def, pose, "stone");
     for (const id of ["armL", "armR"]) {
       const plates = armPlates494(def, pose, id);
       for (const q of plates) assert.ok(!polygonsOverlap(q.outline, stone), `拉起 ${u.toFixed(3)}:${id} 不穿進石塊`);
@@ -686,7 +813,7 @@ test("第 494 種:重量越大,吊鉗咬得越緊:尖端夾緊石塊的力和石
     const { from: U, to: S } = pose.parts.linkL;
     const d = [S[0] - U[0], S[1] - U[1]].map((v, _, a) => v / Math.hypot(...a));
     const tension = W / (2 * d[1]);
-    const stoneX = Math.max(...stone494(def, pose).map(([x]) => x));
+    const stoneX = Math.max(...placedPart(def, pose, "stone").map(([x]) => x));
     const tip = armPlates494(def, pose, "armL").flatMap((q) => q.outline).reduce((a, b) => (Math.abs(b[0] - stoneX) < Math.abs(a[0] - stoneX) ? b : a));
     const torque = (r, f) => (r[0] - P[0]) * f[1] - (r[1] - P[1]) * f[0];
     close(torque(U, [tension * d[0], tension * d[1]]) + torque(tip, [N, -W / 2]), 0, "鉗臂的力矩平衡", 1e-3);
