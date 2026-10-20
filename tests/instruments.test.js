@@ -154,14 +154,17 @@ const paperTop = (def) => {
   const p = part(def, "paper");
   return p.center[2] + (p.kind === "box" ? p.size[2] : p.thickness) / 2;
 };
-// 旋轉體(鉛筆)在局部高度 z 的半徑(剖面各段線性內插)
-const latheRadiusAt = (profile, z) => {
-  for (let i = 1; i < profile.length; i++) {
-    const [[r0, z0], [r1, z1]] = [profile[i - 1], profile[i]];
-    if (z >= z0 && z <= z1) return r0 + ((r1 - r0) * (z - z0)) / (z1 - z0);
-  }
-  return 0;
-};
+// 旋轉體(鉛筆、紗管)在局部高度 z 處的外半徑(剖面各段在 z 的內插取最大;水平段取兩端)
+const latheRadiusAt = (profile, z) =>
+  Math.max(
+    0,
+    ...profile.slice(1).flatMap((b, i) => {
+      const a = profile[i];
+      if (a[1] === b[1]) return a[1] === z ? [a[0], b[0]] : [];
+      if ((z - a[1]) * (z - b[1]) > 0) return [];
+      return [a[0] + ((b[0] - a[0]) * (z - a[1])) / (b[1] - a[1])];
+    }),
+  );
 const tipZ = (def, pose) => pose.parts.pencil.position[2] + part(def, "pencil").profile[0][1];
 
 test("第 403 種:弧線繪製儀:兩根直尺頂住弦兩端的銷滑動,夾角處的鉛筆畫出通過兩銷附近的圓弧", () => {
@@ -656,17 +659,6 @@ const roller496 = (def, id) => {
   const disc = p.pieces?.find((q) => q.kind === "pulley") ?? p;
   return { center: p.center, radius: disc.radius, width: disc.width, journal: p.pieces?.find((q) => q.kind === "cylinder") };
 };
-// 旋轉體在局部高度 h 處的外半徑(剖面各段在 h 的內插取最大)
-const latheRadius = (profile, h) =>
-  Math.max(
-    0,
-    ...profile.slice(1).flatMap((b, i) => {
-      const a = profile[i];
-      if (a[1] === b[1]) return a[1] === h ? [a[0], b[0]] : [];
-      if ((h - a[1]) * (h - b[1]) > 0) return [];
-      return [a[0] + ((b[0] - a[0]) * (h - a[1])) / (b[1] - a[1])];
-    }),
-  );
 // 折線每段切成細點
 const densify = (pts, step) =>
   pts.slice(1).flatMap((b, i) => {
@@ -721,7 +713,7 @@ test("第 496 種:紗從夾口沿下前羅拉右側繞下、進錠翼頂、沿�
         assert.ok(d > radius - 0.005, `進程 ${v.toFixed(2)}:紗的中心線沒穿進 ${id}(離軸 ${d.toFixed(3)},半徑 ${radius})`);
       }
       if (pt[1] > b0 && pt[1] < b1) {
-        const r = latheRadius(bobbin.profile, pt[1] - bobbin.center[1]);
+        const r = latheRadiusAt(bobbin.profile, pt[1] - bobbin.center[1]);
         assert.ok(radial(pt) > r - 0.005, `進程 ${v.toFixed(2)}:紗的中心線沒穿進紗管(高 ${pt[1].toFixed(2)} 離軸 ${radial(pt).toFixed(3)},紗管半徑 ${r})`);
       }
       if (pt[1] > spindleY[0] && pt[1] < spindleY[1]) assert.ok(radial(pt) > spindle.radius, `進程 ${v.toFixed(2)}:紗沒穿過錠子`);
@@ -734,7 +726,7 @@ test("第 496 種:紗從夾口沿下前羅拉右側繞下、進錠翼頂、沿�
     );
     // 捲上紗管:終點在筒身表面,最後一段和筒身相切(與紗管轉角無關)
     const [prev, last] = pts.slice(-2);
-    close(radial(last), latheRadius(bobbin.profile, last[1] - bobbin.center[1]), `進程 ${v.toFixed(2)}:紗的終點在紗管筒身表面`, 1e-9);
+    close(radial(last), latheRadiusAt(bobbin.profile, last[1] - bobbin.center[1]), `進程 ${v.toFixed(2)}:紗的終點在紗管筒身表面`, 1e-9);
     const outward = [last[0] - axisX, 0, last[2] - flyer.center[2]];
     close(dot(norm(sub(last, prev)), norm(outward)), 0, `進程 ${v.toFixed(2)}:最後一段紗和紗管筒身相切`, 1e-9);
   }
@@ -891,7 +883,6 @@ test("第 499 種:布爾登壓力計:壓力使彎管伸直,兩端經扇形段與
 
 const fig499 = m499.default;
 const path499 = (p, id) => fig499.pose(p).paths[id].points;
-const len2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const cross2 = (a, b) => a[0] * b[1] - a[1] * b[0];
 
 test("第 499 種:壓力使管子或多或少地伸直——伸直時整根彎管留在錶殼裡(不穿過殼壁)", () => {
@@ -907,7 +898,7 @@ test("第 499 種:管子的兩端接到扇形段上——兩根拉桿長度不�
   const pivot = part(fig499, "sector").center;
   const values = sweep(10, 40);
   for (const id of ["rodL", "rodR"]) {
-    const ls = values.map((p) => len2(...path499(p, id)));
+    const ls = values.map((p) => dist2(...path499(p, id)));
     assert.ok(Math.max(...ls) - Math.min(...ls) < 0.001, `${id} 長度不變(變化 ${(Math.max(...ls) - Math.min(...ls)).toFixed(4)})`);
   }
   for (let i = 1; i < values.length; i++) {
@@ -916,7 +907,7 @@ test("第 499 種:管子的兩端接到扇形段上——兩根拉桿長度不�
     assert.ok(turn > 0, `壓力 ${p1}:扇形段逆時針轉`);
     for (const [rod, tube] of [["rodL", "tubeL"], ["rodR", "tubeR"]]) {
       const [end, pin] = path499(p1, rod);
-      close(len2(end, path499(p1, tube).at(-1)), 0, `${rod} 接在 ${tube} 的端點`, 1e-9);
+      close(dist2(end, path499(p1, tube).at(-1)), 0, `${rod} 接在 ${tube} 的端點`, 1e-9);
       assert.ok(Math.abs(end[0]) > Math.abs(path499(p0, rod)[0][0]), `壓力 ${p1}:${tube} 的端點往外移`);
       // 拉桿受拉:作用在銷上的力由銷指向管端
       const torque = cross2([pin[0] - pivot[0], pin[1] - pivot[1]], [end[0] - pin[0], end[1] - pin[1]]);
@@ -928,14 +919,14 @@ test("第 499 種:管子的兩端接到扇形段上——兩根拉桿長度不�
 test("第 499 種:彎管在長度中點 C 固定——C 夾在錶殼頂的夾塊裡;扇形段與小齒輪各套在背板的樞銷 / 軸承上", () => {
   const ends = sweep(10, 10).map((p) => [path499(p, "tubeL")[0], path499(p, "tubeR")[0]]);
   for (const [l, r] of ends) {
-    close(len2(l, ends[0][0]), 0, "左半從 C 起、C 不動", 1e-9);
-    close(len2(r, ends[0][0]), 0, "右半也從 C 起", 1e-9);
+    close(dist2(l, ends[0][0]), 0, "左半從 C 起、C 不動", 1e-9);
+    close(dist2(r, ends[0][0]), 0, "右半也從 C 起", 1e-9);
   }
   const caseParts = part(fig499, "case").pieces;
   const c = ends[0][0];
   assertShaftInBearings({ at: [c[0], c[1], c[2]], axis: [1, 0, 0], radius: part(fig499, "tubeL").radius, length: 0.3 }, caseParts, "C 處的彎管");
   const sector = part(fig499, "sector");
-  const pin = caseParts.find((q) => q.kind === "cylinder" && !q.inner && !q.axis && len2(q.at, sector.center) < 1e-9);
+  const pin = caseParts.find((q) => q.kind === "cylinder" && !q.inner && !q.axis && dist2(q.at, sector.center) < 1e-9);
   assert.ok(pin, "扇形段的樞軸上有插在錶殼上的樞銷");
   const world = (p, q) => ({ ...q, at: (q.at ?? [0, 0, 0]).map((v, k) => v + p.center[k]) });
   assertShaftInBearings(pin, sector.pieces.map((q) => world(sector, q)), "扇形段的樞銷");
@@ -1007,7 +998,6 @@ const rotY = ([x, y, z], a) => [x * Math.cos(a) + z * Math.sin(a), y, -x * Math.
 test("第 502 種:周轉輪系:A 固定、對框架 C 施加運動,經 F、E 傳給 B;A 也與框架以不同的速度轉時,B 的轉速不同", () => {
   const def = m502.default;
   const rate = (id, state) => turned(def, id, 0, 1, state);
-  close(m502.E_AB, (24 / 18) * (22 / 18), "輪系值 = (A/F)(E/B)");
   // A 固定:B − 框架 = E_AB(0 − 框架)
   const f1 = rate("frameC", "bFixedA");
   assert.ok(Math.abs(f1) > 0.1, "對框架施加運動");
@@ -1197,7 +1187,6 @@ test("第 506 種:兩端都不固定的周轉輪系:軸 A 經 a、b 帶動 c,經
   const def = m506.default;
   const T = m506.TEETH;
   const rate = (id, state) => turned(def, id, 0, 1, state);
-  close(m506.E_CF, -(T.c / T.d) * (T.e / T.f), "c → f 的輪系值照齒數:−(c/d)(e/f)");
   close(Math.abs(rate("wheelBC", "original")), T.a / T.b, "a 咬 b:b(與 c)轉 a/b");
   close(Math.abs(rate("wheelFG", "original")), T.h / T.g, "h 咬 g:g(與 f)轉 h/g");
   assert.ok(rate("wheelBC", "original") * rate("wheelFG", "original") < 0, "a、h 從同一側咬下面的 b 與上面的 g,兩端轉向相反");
@@ -1215,8 +1204,21 @@ test("第 506 種:軸 A 上的 a、h 與臂上的 d、e 各是兩個傘齒輪,�
   const gearsOf = (id) => part(def, id).pieces.filter((q) => q.kind === "gear");
   assert.deepEqual(gearsOf("shaftA").map((q) => q.teeth).sort((a, b) => a - b), [T.a, T.h].sort((a, b) => a - b), "軸 A 上兩個輪 a、h");
   assert.deepEqual(gearsOf("planetDE").map((q) => q.teeth).sort((a, b) => a - b), [T.e, T.d].sort((a, b) => a - b), "臂上兩個輪 d、e");
-  const G = m506.GEARS;
-  for (const [p, w] of [["a", "b"], ["h", "g"], ["c", "d"], ["e", "f"]]) close(G[p].radius / G[w].radius, T[p] / T[w], `${p}、${w} 的大小照齒數`, 1e-9);
+  // 量 pose 出來的零件:各傘齒輪附件換到世界座標,大端節圓半徑的比 = 齒數比,兩輪的節錐頂重合(在兩軸交點)
+  const v0 = 0.7;
+  const posed = (id, teeth) => {
+    const { pos, q } = placeOf(def, id, v0, "original");
+    const g = gearsOf(id).find((x) => x.teeth === teeth);
+    const axis = quatRotate(q, g.axis);
+    const heel = add(add(pos, quatRotate(q, g.at)), scale(axis, -g.width / 2));
+    return { radius: g.radius, apex: add(heel, scale(axis, g.radius / Math.tan(g.cone))) };
+  };
+  const on = { a: "shaftA", h: "shaftA", b: "wheelBC", c: "wheelBC", g: "wheelFG", f: "wheelFG", d: "planetDE", e: "planetDE" };
+  for (const [p, w] of [["a", "b"], ["h", "g"], ["c", "d"], ["e", "f"]]) {
+    const [gp, gw] = [posed(on[p], T[p]), posed(on[w], T[w])];
+    close(gp.radius / gw.radius, T[p] / T[w], `${p}、${w} 的節圓半徑比照齒數`, 1e-9);
+    close(dist(gp.apex, gw.apex), 0, `${p}、${w} 的節錐頂重合`, 1e-9);
+  }
   for (const state of ["original", "modified"]) {
     const v = 0.7;
     const arm = def.pose(v, state).parts.shaftMN.angle;

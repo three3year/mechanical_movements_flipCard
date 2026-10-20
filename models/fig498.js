@@ -9,7 +9,8 @@
 // 左管腳的零點記號刻在管上;開口管腳的管口是一圈玻璃(管壁的兩半在這裡相連)。
 import { clamp } from "./kit.js";
 import { stream } from "./flow.js";
-import { shape, thickLine, circle, rect, arcPoints } from "./shapes.js";
+import { shape, thickLine, circle, rect } from "./shapes.js";
+import { uTubeBend } from "./u-tube.js";
 
 export const LEFT = -0.35;
 export const RIGHT = 0.35;
@@ -22,7 +23,8 @@ export const UNIT = 0.5; // 每單位壓力的刻度間距(水銀柱高度差 = 
 export const RANGE = [0, 6];
 export const BORE = 0.12; // 管壁中心線離管軸
 const WALL = 0.04; // 管壁厚
-const INSIDE = BORE - WALL / 2 - 0.005; // 水銀填色離管軸(留一點空隙,不畫進管壁)
+const BEND = uTubeBend({ legs: [LEFT, RIGHT], bendY: BEND_Y, bore: BORE, wall: WALL });
+const INSIDE = BEND.inside; // 水銀填色離管軸(留一點空隙,不畫進管壁)
 
 /** 壓力 p → 左、右水銀面的高度 */
 export function levels(p0) {
@@ -33,9 +35,6 @@ export function levels(p0) {
 
 const plate = (outline, z = 0, thickness = 0.1) => ({ kind: "plate", shape: shape(outline), thickness, ...(z ? { at: [0, 0, z] } : {}) });
 const tube = (x, top) => [1, -1].map((s) => plate(thickLine([[x + s * BORE, top], [x + s * BORE, BEND_Y]], WALL)));
-const bend = (r) => arcPoints(r, Math.PI, 2 * Math.PI, 0, BEND_Y);
-// 彎頭裡的水銀:兩道弧之間的半圈(彎頭一直裝滿)
-const bendFill = [...arcPoints(RIGHT + INSIDE, Math.PI, 2 * Math.PI), ...arcPoints(RIGHT - INSIDE, 2 * Math.PI, Math.PI)];
 const BOARD = { x0: RIGHT - BORE - WALL / 2, x1: RIGHT + 0.85, top: TOP_R - 0.05, z: -0.05 - 0.02 }; // 刻度板:貼在開口管腳後面(頂低於管口)
 
 export default {
@@ -47,8 +46,7 @@ export default {
       pieces: [
         // U 形管:接鍋爐的左管腳與下面的彎頭
         ...tube(LEFT, TOP_L),
-        plate(thickLine(bend(RIGHT + BORE), WALL)),
-        plate(thickLine(bend(RIGHT - BORE), WALL)),
+        ...BEND.walls.map((w) => plate(w)),
         // 左管腳頂收成接頭(推斷),接到往左彎的彎管與旋塞
         plate([[LEFT - BORE - WALL / 2, TOP_L], [LEFT + BORE + WALL / 2, TOP_L], [LEFT + 0.05, TOP_L + 0.12], [LEFT - 0.05, TOP_L + 0.12]]),
         plate(thickLine([[LEFT, TOP_L], [LEFT - 0.25, TOP_L + 0.3], [-2.0, TOP_L + 0.3]], 0.1)),
@@ -78,7 +76,7 @@ export default {
     ...Array.from({ length: 7 }, (_, k) => ({ id: `tick${k}`, kind: "group", pieces: [], label: String(k), labelOffset: [RIGHT + 0.6, ZERO + (k * UNIT) / 2, 0.1] })),
     { id: "leftMercury", kind: "fill", fluid: "mercury", center: [LEFT, (BEND_Y + ZERO) / 2, 0], size: [2 * INSIDE, ZERO - BEND_Y, 0.08], level: 1 },
     { id: "rightMercury", kind: "fill", fluid: "mercury", center: [RIGHT, (BEND_Y + TOP_R) / 2, 0], size: [2 * INSIDE, TOP_R - BEND_Y, 0.08], level: 0.5 },
-    { id: "bendMercury", kind: "fill", fluid: "mercury", center: [0, BEND_Y, 0], outline: bendFill, size: [0, 0, 0.08], level: 1 },
+    { id: "bendMercury", kind: "fill", fluid: "mercury", center: [...BEND.center, 0], outline: BEND.mercury, size: [0, 0, 0.08], level: 1 },
   ],
   driver: { type: "virtual", label: "壓力", mode: "balance", range: RANGE, initial: 2 },
   target: "gaugeLeg", // 水銀是流體(不上目標色);標水銀柱在裡面升起的那根刻度管腳
