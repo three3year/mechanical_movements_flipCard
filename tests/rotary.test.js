@@ -1,7 +1,9 @@
 // 第十八章「雜項與旋轉引擎」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, turned, assertMeshFree } from "./helpers.js";
+import { close, sweep, turned, assertMeshFree, part, polyGap } from "./helpers.js";
+import { add, sub, scale, dot, dist, rot2, quatRotate } from "../models/kit.js";
+import { placeOutline, circlePolygon, edgeDistance, pointInPolygon } from "../models/contact.js";
 
 import * as m412 from "../models/fig412.js";
 import * as m413 from "../models/fig413.js";
@@ -99,6 +101,50 @@ test("第 416 種:螺旋彈簧 A 把曲柄 B 推向與死點成直角的位置",
   }
 });
 
+test("第 416 種:曲柄軸在機架的軸承孔裡,踏板鉸在機架的支點銷上、不碰地板,連桿套在兩端的銷上", () => {
+  const def = m416.default;
+  const frame = part(def, "frame");
+  const holeRadius = (hole) => Math.hypot(hole[0][0] - hole.reduce((s, p) => s + p[0], 0) / hole.length, hole[0][1] - hole.reduce((s, p) => s + p[1], 0) / hole.length);
+  const zRange = (piece, base = 0) => {
+    const z = (piece.at?.[2] ?? 0) + base;
+    const half = (piece.kind === "cylinder" ? piece.length : piece.thickness) / 2;
+    return [z - half, z + half];
+  };
+  // 曲柄軸穿過機架板上的軸承孔(孔只比軸大一點),軸從輪轂伸到機架板後面
+  const bearing = frame.pieces.find((p) => p.kind === "plate" && p.shape.holes?.length);
+  const shaft = part(def, "crank").pieces.find((p) => p.kind === "cylinder" && (p.at?.[2] ?? 0) < -0.3);
+  const bore = holeRadius(bearing.shape.holes[0]);
+  assert.ok(shaft.radius < bore && bore - shaft.radius < 0.02, `曲柄軸(半徑 ${shaft.radius})在機架的軸承孔(半徑 ${bore})裡`);
+  const [b0, b1] = zRange(bearing);
+  const [s0, s1] = zRange(shaft);
+  assert.ok(s0 < b0 && s1 > b1 && s1 > -0.15, "軸從輪轂穿過整塊機架板");
+  // 踏板的支點銷穿過踏板的孔
+  const treadle = part(def, "treadle");
+  const pivotPin = frame.pieces.find((p) => p.kind === "cylinder" && Math.hypot(p.at[0] - m416.TREADLE_PIVOT[0], p.at[1] - m416.TREADLE_PIVOT[1]) < 1e-9);
+  const treadleBore = holeRadius(treadle.shape.holes[0]);
+  assert.ok(pivotPin.radius < treadleBore && treadleBore - pivotPin.radius < 0.02, "支點銷在踏板的孔裡");
+  assert.ok(treadle.shape.outline.every((p) => Math.hypot(p[0], p[1]) > treadleBore), "踏板的孔整個在外形裡");
+  for (const t of sweep(2 * Math.PI, 48)) {
+    const pose = def.pose(t).parts;
+    const [p0, p1] = zRange(pivotPin);
+    const [t0, t1] = zRange(treadle, pose.treadle.position[2]);
+    assert.ok(p0 < t0 && p1 > t1, "支點銷穿過踏板");
+    // 踏板的腳端全程在地板上方
+    const foot = add(pose.treadle.position, [...rot2([-m416.FOOT, 0], pose.treadle.angle), 0]);
+    assert.ok(foot[1] - 0.05 > m416.FLOOR_TOP, `踏板的腳端(y ${foot[1].toFixed(2)})不碰地板(頂 ${m416.FLOOR_TOP})`);
+    // 連桿在踏板前面一層、套在踏板的銷與曲柄銷上
+    const rod = part(def, "rod");
+    const [r0, r1] = [pose.rod.from[2] - rod.thickness / 2, pose.rod.from[2] + rod.thickness / 2];
+    assert.ok(r0 >= t1 - 1e-9, "連桿不和踏板重疊");
+    const treadlePin = treadle.pieces.find((p) => p.kind === "cylinder");
+    const [q0, q1] = zRange(treadlePin, pose.treadle.position[2]);
+    assert.ok(q0 < r0 && q1 > r1, "踏板的銷穿過連桿");
+    const crankPin = part(def, "crank").pieces.find((p) => p.kind === "cylinder" && Math.abs(p.at[0] - 0.55) < 1e-9);
+    const [c0, c1] = zRange(crankPin);
+    assert.ok(c0 < r0 && c1 > r1, "曲柄銷穿過連桿");
+  }
+});
+
 test("第 417 種:彎軸轉動,滑塊 C 沿直線往復;軸轉半圈後滑塊到另一端(原圖虛線)", () => {
   const xs = sweep(2 * Math.PI, 48).map((t) => {
     const s = m417.solve(t);
@@ -115,16 +161,82 @@ test("第 417 種:彎軸轉動,滑塊 C 沿直線往復;軸轉半圈後滑塊到
   close(m417.solve(2 * Math.PI).C[0], start, "轉一圈回到原處");
 });
 
-test("第 418 種:閥 A 在閥座上水平滑動,桿 B 上端的銷在垂直溝槽裡,滾子 C 沿弧形件 D 走", () => {
-  for (const v of sweep(4 * m418.SWING, 24)) {
-    const phi = m418.default.pose(v).parts.rod.angle;
-    const { C, Q, P } = m418.linkage(phi);
-    close(Math.hypot(C[0] - m418.TOP[0], C[1] - m418.TOP[1]), m418.ROLLER_AT, "滾子在弧上(弧以銷為圓心)");
-    close(P[1], m418.SEAT_Y, "閥貼著閥座、水平滑動");
-    close(Math.hypot(P[0] - Q[0], P[1] - Q[1]), m418.LINK, "短連桿長不變");
+test("第 417 種:桿 B 長度不變、裝在插座上;下端在滑塊 C 的套筒裡進出,套筒繞滑塊上的球心擺", () => {
+  const def = m417.default;
+  const rodPiece = part(def, "socket").pieces.find((p) => p.kind === "cylinder");
+  close(rodPiece.at[0] + rodPiece.length / 2, m417.ROD_B, "桿 B 從插座伸出固定的長度");
+  const sleeve = part(def, "sleeve");
+  const ball = sleeve.pieces.find((p) => p.kind === "sphere");
+  const reach = [];
+  for (const t of sweep(2 * Math.PI, 72)) {
+    const s = m417.solve(t);
+    const pose = def.pose(t).parts;
+    const end = add(s.S, scale(s.d, m417.ROD_B)); // 桿 B 的下端
+    close(dist(pose.sleeve.position, s.C), 0, "套筒的球心在滑塊 C 上", 1e-9);
+    const axis = quatRotate(pose.sleeve.rotation, [0, 0, 1]);
+    close(dot(axis, s.d), 1, "套筒與桿 B 同軸", 1e-6);
+    const along = dot(sub(end, s.C), s.d); // 下端在球心上方多遠(負值)
+    assert.ok(along < -ball.radius, `桿 B 的下端(離球心 ${(-along).toFixed(2)})不伸進球頭`);
+    assert.ok(along > -m417.SLEEVE, `桿 B 的下端在套筒(長 ${m417.SLEEVE})裡`);
+    reach.push(-along);
   }
-  const xs = sweep(4 * m418.SWING, 24).map((v) => m418.linkage(m418.default.pose(v).parts.rod.angle).P[0]);
+  assert.ok(Math.max(...reach) - Math.min(...reach) > 0.8, "桿在套筒裡進出的量就是以前桿長的變化");
+});
+
+test("第 418 種:閥 A 接在桿 B 的下端、在閥座上水平滑動;上端的銷在垂直溝槽裡滑;滾子 C 在兩個弧形件 D 之間", () => {
+  const def = m418.default;
+  const hanger = part(def, "hanger");
+  const head = hanger.pieces.find((p) => p.kind === "plate" && p.shape.holes?.length && p.shape.holes[0].length === 4);
+  const slot = head.shape.holes[0];
+  const slotX = [Math.min(...slot.map((p) => p[0])), Math.max(...slot.map((p) => p[0]))];
+  const slotY = [Math.min(...slot.map((p) => p[1])), Math.max(...slot.map((p) => p[1]))];
+  const band = hanger.pieces.find((p) => p.kind === "plate" && p.shape.holes?.length && p.shape.holes[0].length > 4);
+  const arcSlot = band.shape.holes[0];
+  const upperPin = part(def, "rod").pieces.find((p) => p.kind === "cylinder" && Math.abs(p.at[1]) < 1e-9);
+  const tops = [];
+  const xs = [];
+  for (const v of sweep(4 * m418.SWING, 48)) {
+    const pose = def.pose(v).parts;
+    const phi = pose.rod.angle;
+    const { T, C, P } = m418.linkage(phi);
+    close(dist(pose.rod.position, T), 0, "桿 B 繞上端的銷擺", 1e-9);
+    // 「Valve A is attached to lower end of rod B, and free to slide horizontally on valve-seat」
+    close(P[1], m418.SEAT_Y, "閥的銷高度不變:閥貼著閥座水平滑動");
+    close(pose.valve.position[0], P[0], "閥跟著桿 B 的下端走");
+    close(dist(T, P), m418.ROD, "桿 B 長度不變", 1e-9);
+    // 「Upper end of rod B is attached to a pin which slides in vertical slots」
+    close(T[0], 0, "上端的銷只上下滑、x 不變");
+    assert.ok(T[1] - upperPin.radius > slotY[0] && T[1] + upperPin.radius < slotY[1], "上端的銷在垂直溝槽的範圍裡");
+    assert.ok(slotX[1] - slotX[0] - 2 * upperPin.radius < 0.02, "溝槽只比銷寬一點");
+    tops.push(T[1]);
+    // 「a roller C, attached to the said rod, slides in two suspended … arcs D」:滾子在桿的中點,貼著下面那片弧滾、不碰上面那片
+    close(dist(C, scale(add(T, P), 0.5)), 0, "滾子在桿 B 的中點", 1e-9);
+    const r = dist(C, m418.ARC_CENTER);
+    close(r - m418.ROLLER_R, m418.SLOT[0], "滾子貼著下面的弧(間隙 0)", 1e-9);
+    assert.ok(r + m418.ROLLER_R < m418.SLOT[1], "滾子不碰上面的弧");
+    assert.ok(Math.abs(Math.atan2(C[0] - m418.ARC_CENTER[0], C[1] - m418.ARC_CENTER[1])) < m418.SLOT_SPAN, "滾子沒跑出弧形溝的兩端");
+    xs.push(P[0]);
+  }
   assert.ok(Math.max(...xs) - Math.min(...xs) > 0.8, "閥來回滑動");
+  assert.ok(Math.max(...tops) - Math.min(...tops) > 0.02, "上端的銷真的在溝裡上下滑");
+  // 弧形溝中間高、兩端低(原圖與網站的動畫)
+  const bearing = (p) => Math.abs(Math.atan2(p[0] - m418.ARC_CENTER[0], p[1] - m418.ARC_CENTER[1])); // 從弧心看、離正上方的角
+  const mid = arcSlot.filter((p) => bearing(p) < 0.05);
+  const ends = arcSlot.filter((p) => bearing(p) > 0.9 * Math.max(...arcSlot.map(bearing)));
+  const ys = (pts) => pts.map((p) => p[1]);
+  assert.ok(Math.min(...ys(mid)) > Math.min(...ys(ends)) + 0.05 && Math.max(...ys(mid)) > Math.max(...ys(ends)) + 0.05, "弧形溝的兩條弧都是中間高、兩端低");
+  // 滾子在弧上滾動不打滑:接觸點上滾子的材料速度為 0
+  const dv = 1e-4;
+  for (const v of sweep(4 * m418.SWING, 12, 0.01)) {
+    const a = def.pose(v).parts.roller;
+    const b = def.pose(v + dv).parts.roller;
+    const velocity = scale(sub(b.position, a.position), 1 / dv);
+    const omega = (b.angle - a.angle) / dv;
+    const toCenter = sub(m418.ARC_CENTER, a.position);
+    const q = scale(toCenter, m418.ROLLER_R / Math.hypot(toCenter[0], toCenter[1])); // 滾子中心到接觸點
+    const atContact = add(velocity, [-omega * q[1], omega * q[0], 0]);
+    assert.ok(Math.hypot(atContact[0], atContact[1]) < 1e-3 * Math.hypot(velocity[0], velocity[1]) + 1e-6, `主動量 ${v.toFixed(2)}:滾子在接觸點不打滑`);
+  }
 });
 
 test("第 419 種:輪 A 轉動,輪 B 來回擺動;皮帶 C、D 拉著立柱,搖籃在弧形搖腳 E 上來回搖", () => {
@@ -147,6 +259,25 @@ test("第 419 種:輪 A 轉動,輪 B 來回擺動;皮帶 C、D 拉著立柱,搖�
   }
 });
 
+test("第 419 種:輪 A 在半徑較大的輪 B 正下方、兩輪不重疊,A 全程不碰搖籃;B 的頂端與立柱頂同高;支架落在地板上", () => {
+  const def = m419.default;
+  const gapAB = dist(m419.A.center, m419.B.center) - m419.A.radius - m419.B.radius;
+  assert.ok(gapAB > 0.05, `兩輪分開(間隙 ${gapAB.toFixed(2)})`);
+  assert.ok(m419.B.radius > 1.5 * m419.A.radius, "B 的半徑比 A 大得多(原圖約 1.9 倍)");
+  close(m419.A.center[0], m419.B.center[0], "A 在 B 的正下方");
+  close(m419.B.center[1] + m419.B.radius, m419.ROCKER, "B 的頂端與立柱頂(皮帶的高度)同高", 1e-9);
+  const wheelA = circlePolygon(m419.A.center, m419.A.radius, 48);
+  for (const alpha of sweep(2 * Math.PI, 72)) {
+    const r = m419.rock(alpha);
+    const bed = m419.rockerBand.map((p) => m419.cradle(r.gamma, p).slice(0, 2));
+    const gap = polyGap(wheelA, bed);
+    assert.ok(gap > 0.02, `輪 A 的下緣不碰搖籃的床(間隙 ${gap.toFixed(3)})`);
+  }
+  const stand = part(def, "stand").pieces.find((p) => p.kind === "plate");
+  const bottom = Math.min(...stand.shape.outline.map((p) => p[1])) + (stand.at?.[1] ?? 0);
+  assert.ok(bottom <= 0, "支架的板伸到地板裡");
+});
+
 test("第 420 種:錘子敲到鐘之後,下方的彈簧把它抬離鐘面,不貼著鐘", () => {
   const phases = sweep(1, 200).map((v) => ({ v, ...m420.hammer(v) }));
   const strikes = phases.filter((p) => p.phase === "敲擊鐘面");
@@ -156,12 +287,42 @@ test("第 420 種:錘子敲到鐘之後,下方的彈簧把它抬離鐘面,不貼
   const after = m420.hammer(0.9);
   assert.ok(m420.gap(after.angle) > 0.05, "敲擊之後錘頭離開鐘面");
   close(after.angle, m420.REST, "停在彈簧撐住的位置");
-  // 敲擊時彈簧被壓得最短
-  const len = (v) => {
-    const sp = m420.default.pose(v).parts.spring;
-    return Math.hypot(sp.to[0] - sp.from[0], sp.to[1] - sp.from[1]);
+});
+
+test("第 420 種:錘柄下方是一片片彈簧:根部夾在底座上,尖端靜止時托著錘柄、敲擊時被壓彎、拉開時錘柄離開它;拉繩長度不變", () => {
+  const def = m420.default;
+  const hammer = part(def, "hammer");
+  const spring = part(def, "spring");
+  const tipGap = (v) => {
+    const pose = def.pose(v);
+    const arm = placeOutline(hammer.shape.outline, [0, 0], pose.parts.hammer.angle);
+    const pts = pose.paths.spring.points;
+    const tip = pts[pts.length - 1];
+    return { gap: edgeDistance(tip, arm) - spring.radius, tip, pts, arm };
   };
-  assert.ok(len(strikes[0].v) < len(0.9), "敲擊時壓縮彈簧,彈簧再把錘子推回");
+  const rest = tipGap(0.9);
+  close(rest.gap, 0, "靜止時彈簧的尖端托著錘柄", 0.01);
+  const pulled = tipGap(0.35);
+  assert.ok(pulled.gap > 0.05, `拉開時錘柄離開彈簧的尖端(間隙 ${pulled.gap.toFixed(2)})`);
+  close(dist(pulled.tip, rest.tip), 0, "錘柄離開後彈簧回到自由的形狀", 1e-9);
+  const strike = tipGap(0.47);
+  close(strike.gap, 0, "敲擊時尖端仍貼著錘柄", 0.01);
+  assert.ok(strike.tip[1] < rest.tip[1] - 0.02, "敲擊時彈簧被壓到靜止位置以下(壓彎)");
+  for (const v of sweep(1, 100)) {
+    const { pts, arm } = tipGap(v);
+    close(dist(pts[0], m420.SPRING_ROOT), 0, "彈簧的根部固定在底座的夾塊上", 1e-9);
+    for (const p of pts) {
+      assert.ok(!pointInPolygon(p, arm) && edgeDistance(p, arm) > spring.radius - 1e-6, `主動量 ${v.toFixed(2)}:彈簧不穿進錘柄`);
+    }
+  }
+  // 拉繩:長度不變,拉開時下端(手拉的地方)跟著左臂端往下
+  const wire = (v) => def.pose(v).paths.wire.points;
+  const length = (pts) => pts.slice(1).reduce((s, p, i) => s + dist(p, pts[i]), 0);
+  for (const v of sweep(1, 50)) close(length(wire(v)), m420.WIRE, "拉繩長度不變", 1e-9);
+  assert.ok(wire(0.35).at(-1)[1] < wire(0.9).at(-1)[1] - 0.3, "拉開時繩的下端往下移");
+  // 錘柄的樞軸孔整個在外形裡(支點銷穿過它)
+  const hole = hammer.shape.holes[0];
+  assert.ok(hole.every((p) => pointInPolygon(p, hammer.shape.outline)), "樞軸孔在錘柄的輪轂裡");
 });
 
 test("第 421 種:筒狀引擎:筒管使活塞上側的有效面積大減;高壓蒸汽先推上側,再排進下側膨脹", () => {

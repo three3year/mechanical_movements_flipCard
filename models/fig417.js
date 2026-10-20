@@ -1,16 +1,21 @@
 // 第 417 種:連續圓周運動轉換為直線往復運動。軸 A 在固定軸承 D 裡轉,一端彎曲,嵌在桿 B 上端的插座裡可以轉動;
 // 桿 B 的下端嵌在滑塊 C 的插座裡。原圖虛線是軸從實線位置轉半圈後,桿 B 與滑塊的位置。
 // 主動件是軸 A(右端的手柄)。
-// 推斷:彎端掃出一個圓錐,插座跟著擺;桿 B 與插座成直角,下端穿進滑塊 C 的插座(可以轉、也可以進出),
-// 滑塊只能沿底座直線滑動。
+// 推斷:彎端掃出一個圓錐,插座跟著擺;桿 B 固定在插座上、與插座成直角,長度不變;
+// 桿 B 的方向與下端到滑塊的距離都會變(軸轉一圈,插座中心到滑塊的距離在 1.52–2.41 之間),
+// 所以滑塊 C 的插座做成一根深套筒:下端是球頭、坐在滑塊的球座裡,能朝任何方向擺;桿 B 在筒裡進出。
+// 原圖的插座畫得很淺;照實物可行改成深套筒(原文 > 實物可行 > 插圖外形)。
 import { X, cross, norm, quatFromBasis } from "./kit.js";
 import { shape } from "./shapes.js";
 
 export const BEND = (25 * Math.PI) / 180; // 彎端與軸線的夾角
 export const JOINT = [0.5, 2.2, 0]; // 軸彎曲處
 const SOCKET_AT = 0.95; // 插座中心離彎曲處
-export const SLIDE_Y = 0.42; // 滑塊插座的高度
+export const SLIDE_Y = 0.42; // 滑塊上套筒球心的高度
 const BASE_TOP = 0.2;
+export const ROD_B = 1.38; // 桿 B 從插座中心到下端
+export const SLEEVE = 1.12; // 套筒從球心往上的長度
+const BALL = 0.12; // 套筒下端的球頭
 
 /** 軸轉 theta → 插座中心、插座軸向 u、桿 B 的方向 d、滑塊 C 的位置 */
 export function solve(theta) {
@@ -67,14 +72,24 @@ export default {
       ],
     },
     {
+      // 桿 B 上端的插座(套在彎端上)與固定在它上面的桿 B(局部 +x)
       id: "socket",
       kind: "lathe",
       profile: [[0, -0.55], [0.26, -0.55], [0.2, 0.55], [0, 0.55]],
+      label: "B",
+      labelOffset: [0.45, -0.55, 0.3],
       arrow: false,
-      pieces: [{ kind: "box", size: [0.5, 0.18, 0.18], at: [0.25, 0, -0.1] }],
+      pieces: [{ kind: "cylinder", radius: 0.07, length: ROD_B - 0.15, axis: X, at: [(ROD_B + 0.15) / 2, 0, 0] }],
     },
-    { id: "rodB", kind: "rod", radius: 0.07, label: "B", labelOffset: [0.25, 1.1, 0.3] }, // 路徑零件的標籤從原點量起
-    { id: "slider", kind: "box", size: [0.7, 0.22, 0.52], label: "C", labelOffset: [-0.5, 0, 0.3] },
+    {
+      // 滑塊 C 上的套筒(推斷):球頭坐在滑塊的球座裡,筒沿桿 B 的方向(局部 +z 朝下)
+      id: "sleeve",
+      kind: "lathe",
+      profile: [[0.075, -SLEEVE], [0.11, -SLEEVE], [0.11, -BALL + 0.03], [0.075, -BALL + 0.03]],
+      arrow: false,
+      pieces: [{ kind: "sphere", radius: BALL }],
+    },
+    { id: "slider", kind: "box", size: [0.7, 0.24, 0.52], label: "C", labelOffset: [-0.5, 0, 0.3] }, // 頂面在球心上方 0.02:球座
   ],
   driver: { part: "shaft", type: "rotation" },
   target: "slider",
@@ -86,11 +101,10 @@ export default {
       parts: {
         shaft: { angle: theta },
         socket: { position: s.S, rotation: quatFromBasis(s.d, y, s.u) },
-        slider: { position: [s.C[0], BASE_TOP + 0.11, 0] },
+        sleeve: { position: s.C, rotation: quatFromBasis(s.u, cross(s.d, s.u), s.d) },
+        slider: { position: [s.C[0], BASE_TOP + 0.12, 0] },
       },
-      paths: { rodB: { points: [s.S, s.C], closed: false } },
       readouts: [{ label: "滑塊 C 的位置", value: s.C[0].toFixed(2) }],
     };
   },
 };
-

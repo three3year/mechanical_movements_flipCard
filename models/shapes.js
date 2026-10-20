@@ -250,6 +250,26 @@ export function thickLine(points, w) {
 }
 
 /**
+ * 輪轂上伸出幾根臂的板件輪廓(槓桿、踏板、錘柄):圓形輪轂(半徑 boss)與各臂(寬 width、從原點沿 angle 伸 length)
+ * 併成一圈,臂根併進輪轂,輪轂裡可以再開樞軸孔。arms 依角度逆時針排列;相鄰兩臂的夾角要大於臂寬在輪轂上張開的角
+ */
+export function hubArms(boss, width, arms) {
+  const h = width / 2;
+  const open = Math.asin(h / boss); // 臂的一側在輪轂上張開的角
+  const sorted = [...arms].sort((a, b) => a.angle - b.angle);
+  return sorted.flatMap(({ angle, length }, i) => {
+    const t = [Math.cos(angle), Math.sin(angle)];
+    const n = [-t[1], t[0]];
+    const next = sorted[(i + 1) % sorted.length].angle + (i + 1 === sorted.length ? TAU : 0);
+    return [
+      [length * t[0] - h * n[0], length * t[1] - h * n[1]], // 臂端的右角
+      [length * t[0] + h * n[0], length * t[1] + h * n[1]], // 臂端的左角
+      ...arcPoints(boss, angle + open, next - open), // 從這根臂的左側根部繞輪轂到下一根臂的右側根部
+    ];
+  });
+}
+
+/**
  * 沿 z 從 z0 到 z1 的圓柱附件(銷、軸、凸台):半徑 radius、圓心在 (x, y)。base 是掛著它的零件的深度,
  * z0、z1 是世界深度時傳 base,回傳的 at 換成相對零件的座標
  */
