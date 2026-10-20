@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep, part, inSolid, turned, pieceBox, assertShaftInBearings, assertOnePiece, polyGap } from "./helpers.js";
-import { X, Y, Z, deg, norm, cross, dot, sub, scale, add, rot2, quatRotate } from "../models/kit.js";
+import { X, Y, Z, deg, norm, cross, dot, sub, scale, add, rot2, quatFromZ, quatRotate } from "../models/kit.js";
 import { distanceToPath } from "../models/flow.js";
 import { placeOutline, polygonsOverlap, penetrationDepth, segmentsCross, pointInPolygon } from "../models/contact.js";
 import { bladeLine } from "../models/turbine.js";
@@ -1482,12 +1482,143 @@ test("第 461 種:擺動式水槽:擺往兩邊擺時,交替的兩組管子輪流
 test("第 465 種:平衡泵:樑兩端交替往下,兩個泵的活塞一上一下輪流出水", () => {
   for (const a of sweep(m465.SWING[1], 10, m465.SWING[0])) {
     const [l, r] = m465.pistons(a);
-    close(l + r, 2 * (m465.PIVOT[1] - 1.75), "兩個活塞一上一下");
+    close(l + r, 2 * (m465.PIVOT[1] - m465.ROD), "兩個活塞一上一下(桿隨樑的孔微傾,差 1e-4 以內)", 1e-3);
   }
   const def = m465.default;
   assert.equal(def.pose(0.1).readouts[0].value, "右邊的泵", "樑往一邊轉時右邊的泵出水");
   const span = m465.SWING[1] - m465.SWING[0];
   assert.equal(def.pose(span + 0.1).readouts[0].value, "左邊的泵", "轉回來時換左邊");
+});
+
+// ── 第 465–467 種:泵的去處、支點與連桿、閥與管子 ─────────────────────
+// 零件的本體與每個附件(含附件的附件)的外接範圍,都換到零件的局部座標;附件的 at、axis / rotation 都算進去
+function pieceBoxes(p) {
+  const boxes = [];
+  const corners = ({ min, max }) => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => [i & 1 ? max[0] : min[0], i & 2 ? max[1] : min[1], i & 4 ? max[2] : min[2]]);
+  const bound = (pts) => ({ min: [0, 1, 2].map((i) => Math.min(...pts.map((q) => q[i]))), max: [0, 1, 2].map((i) => Math.max(...pts.map((q) => q[i]))) });
+  // 零件 / 附件在自己的局部座標(局部 z 是軸)裡的外接範圍
+  const own = (piece) => {
+    switch (piece.kind) {
+      case "box":
+        return { min: piece.size.map((s) => -s / 2), max: piece.size.map((s) => s / 2) };
+      case "plate": {
+        const pts = piece.shape.outline;
+        const t = (piece.thickness ?? 0.2) / 2;
+        return { min: [Math.min(...pts.map((q) => q[0])), Math.min(...pts.map((q) => q[1])), -t], max: [Math.max(...pts.map((q) => q[0])), Math.max(...pts.map((q) => q[1])), t] };
+      }
+      case "cylinder":
+        return { min: [-piece.radius, -piece.radius, -piece.length / 2], max: [piece.radius, piece.radius, piece.length / 2] };
+      case "lathe": {
+        const r = Math.max(...piece.profile.map((q) => q[0]));
+        const hs = piece.profile.map((q) => q[1]);
+        return { min: [-r, -r, Math.min(...hs)], max: [r, r, Math.max(...hs)] };
+      }
+      case "sphere":
+        return { min: [-piece.radius, -piece.radius, -piece.radius], max: [piece.radius, piece.radius, piece.radius] };
+      case "tube": {
+        const r = piece.radius ?? 0.05;
+        const b = bound(piece.points);
+        return { min: b.min.map((x) => x - r), max: b.max.map((x) => x + r) };
+      }
+      default:
+        return null;
+    }
+  };
+  // 附件的局部座標 → 上一層的座標(先轉 axis / rotation,再平移 at)
+  const lift = (piece, box) => {
+    const q = piece.rotation ?? quatFromZ(piece.axis ?? [0, 0, 1]);
+    const at = piece.at ?? [0, 0, 0];
+    return bound(corners(box).map((c) => add(quatRotate(q, c), at)));
+  };
+  const visit = (piece, toParent, label) => {
+    const b = own(piece);
+    if (b) boxes.push({ label, ...toParent(b) });
+    (piece.pieces ?? []).forEach((c, i) => visit(c, (box) => toParent(lift(c, box)), `${label}.pieces[${i}]`));
+  };
+  const body = own(p);
+  if (body) boxes.push({ label: "本體", ...body });
+  (p.pieces ?? []).forEach((c, i) => visit(c, (box) => lift(c, box), `pieces[${i}]`));
+  return boxes;
+}
+// 零件是一件:本體與所有附件的外接範圍互相接觸(間隙 1e-6 以內),連成一個群(外接範圍版;helpers 的 assertOnePiece 是用實體量)
+function assertBoxesOnePiece(def, id) {
+  const boxes = pieceBoxes(part(def, id));
+  const touch = (a, b) => [0, 1, 2].every((i) => a.min[i] <= b.max[i] + 1e-6 && b.min[i] <= a.max[i] + 1e-6);
+  const seen = new Set([0]);
+  const queue = [0];
+  while (queue.length) {
+    const i = queue.pop();
+    boxes.forEach((b, j) => {
+      if (!seen.has(j) && touch(boxes[i], b)) (seen.add(j), queue.push(j));
+    });
+  }
+  const loose = boxes.filter((_, j) => !seen.has(j)).map((b) => b.label);
+  assert.deepEqual(loose, [], `第 ${def.figure} 種 ${id} 不相連的塊`);
+}
+
+test("第 465 種:照原圖泵立在兩岸之間的坑底水裡,岸高於水面;閥瓣在水裡張開,全程碰不到岸與坑底", () => {
+  const def = m465.default;
+  assert.ok(m465.BARREL.y0 >= m465.PIT_FLOOR - 1e-9 && m465.BARREL.y0 - m465.PIT_FLOOR < 0.02, "泵筒底坐在坑底");
+  assert.ok(m465.WATER_TOP > m465.BARREL.y0 + 0.4, "泵筒的下段浸在水裡");
+  assert.ok(m465.BANK_TOP > m465.WATER_TOP, "兩岸高於水面");
+  const solids = sectionSolids(def, ["frame"]);
+  const span = m465.SWING[1] - m465.SWING[0];
+  let opened = false;
+  for (const v of sweep(4 * span, 48)) {
+    const pose = def.pose(v);
+    for (const k of [0, 1]) {
+      assert.ok(!overlapsAny(placedFlap(def, `valve${k}`, pose), solids), `主動量 ${v.toFixed(3)}:閥 ${k} 的閥瓣碰到岸或坑底`);
+      if (pose.parts[`valve${k}`].angle > 0.7) opened = true;
+    }
+  }
+  assert.ok(opened, "閥瓣真的張開過");
+});
+
+test("第 465 種:兩個泵的出水管合成 Y 形總管往外送;流體示意離開泵筒後沿管子走,送到平台旁的出口,不灑回原處", () => {
+  const def = m465.default;
+  const span = m465.SWING[1] - m465.SWING[0];
+  for (const [k, v] of [[1, 0.1], [0, span + 0.1], [1, 2 * span + 0.25]]) {
+    const flows = def.pose(v).flows;
+    assert.equal(flows.length, 1, "一次只有一個泵出水");
+    const path = [...m465.DELIVERY[k], ...m465.MAIN.slice(1)];
+    const out = flows[0].points.filter((p) => p[1] > m465.BARREL.y1 + 0.02 && p[0] > m465.MAIN.at(-1)[0] - 1e-6);
+    assert.ok(out.length > 3, "有水離開泵筒");
+    for (const p of out) assert.ok(distanceToPath(path, p) < 0.06, `點 (${p.map((x) => x.toFixed(2))}) 不在出水管上`);
+    assert.ok(flows[0].points.some((p) => p[0] < m465.MAIN.at(-1)[0] + 0.3 && p[1] > m465.BANK_TOP), "水送到總管的出口");
+    assert.ok(!flows[0].points.some((p) => p[1] < m465.BARREL.y1 && Math.abs(p[0] - (k ? m465.ATTACH : -m465.ATTACH)) > m465.BARREL.r), "沒有水灑回泵筒外");
+  }
+});
+
+test("第 465 種:活塞桿頂以銷鉸在搖樑的孔上(叉頭夾著樑),桿長不變;樑架在中柱頂的叉頭上;扶手框的立柱接到樑", () => {
+  const def = m465.default;
+  const span = m465.SWING[1] - m465.SWING[0];
+  const rod = part(def, "rod0");
+  const pin = rod.pieces.find((p) => p.kind === "cylinder" && p.axis);
+  assert.ok(pin, "活塞桿頂有銷");
+  for (const v of sweep(4 * span, 40)) {
+    const pose = def.pose(v);
+    const a = pose.parts.beam.angle;
+    const rods = m465.rods(a);
+    for (const k of [0, 1]) {
+      const hole = add(m465.PIVOT, [...rot2([(k ? 1 : -1) * m465.ATTACH, 0], a), 0]);
+      const { Q, C } = rods[k];
+      close(Math.hypot(Q[0] - hole[0], Q[1] - hole[1]), 0, "桿頂的銷在樑的孔上", 1e-9);
+      close(Math.hypot(Q[0] - C[0], Q[1] - C[1]), m465.ROD, "桿長不變", 1e-9);
+      close(C[0], (k ? 1 : -1) * m465.ATTACH, "活塞在泵筒的軸線上", 1e-9);
+      const posed = pose.parts[`rod${k}`];
+      const world = add(posed.position, quatRotate(posed.rotation, pin.at));
+      close(Math.hypot(world[0] - hole[0], world[1] - hole[1]), 0, "姿勢裡銷的位置就是樑的孔", 1e-6);
+    }
+  }
+  const beam = part(def, "beam");
+  assert.equal(beam.shape.holes.length, 3, "樑上有支點孔與兩個桿銷孔");
+  const legs = beam.pieces.filter((p) => p.kind === "plate" && Math.max(...p.shape.outline.map((q) => q[0])) - Math.min(...p.shape.outline.map((q) => q[0])) < 0.2);
+  assert.ok(legs.length >= 2 && legs.every((p) => Math.min(...p.shape.outline.map((q) => q[1])) <= 0.06 + 1e-9), "扶手框的立柱往下接到樑");
+  assertBoxesOnePiece(def, "beam");
+  assertBoxesOnePiece(def, "frame");
+  const frame = part(def, "frame");
+  const cheeks = frame.pieces.filter((p) => p.kind === "box" && Math.abs(p.at[0]) < 1e-9 && Math.abs(p.at[2]) > 0.06 && p.at[1] > 1.4);
+  assert.equal(cheeks.length, 2, "中柱頂是夾著樑的叉頭");
 });
 
 test("第 463 種:自動堰:平常水位時直立關閉;水位升高時上閘葉朝下游翻、下閘葉被推往上游,河床處打開", () => {
@@ -1527,11 +1658,63 @@ test("第 466 種:液壓機:力的倍數等於兩柱塞的直徑平方比;1 吋�
   close((30 / 1) ** 2, 900, "原文的例子");
   const def = m466.default;
   assert.match(def.pose(0).readouts[0].value, new RegExp(String(Math.round((m466.RAM_D / m466.PLUNGER_D) ** 2))));
-  // 泵每壓一次,柱塞升起一點;只有壓下的行程送水
+  // 泵每壓一次,柱塞升起一點;只有壓下的行程送水(第一程就是往下壓)
   const span = Math.abs(m466.SWING[1] - m466.SWING[0]);
   const rises = [0, 2, 4, 6].map((k) => m466.press(k * span + 0.01).rise);
   for (let i = 1; i < rises.length; i++) assert.ok(rises[i] > rises[i - 1], "每壓一下,柱塞升高");
-  assert.equal(m466.press(span * 0.5).rise, 0, "提起泵柱塞(吸水)時柱塞不動");
+  assert.ok(m466.press(span * 0.5).rise > 0, "壓下泵柱塞時水進柱塞缸,柱塞升起");
+  close(m466.press(span * 1.5).rise, m466.press(span).rise, "提起泵柱塞(吸水)時柱塞不動", 1e-9);
+});
+
+test("第 466 種:照原圖手柄的支點在泵柱塞左邊(掛在泵座上的吊桿),把手往右;往下壓把手就壓下柱塞送水;吊桿長不變、柱塞銷在泵筒軸線上", () => {
+  const def = m466.default;
+  const span = Math.abs(m466.SWING[1] - m466.SWING[0]);
+  const p0 = m466.press(0.01);
+  const p1 = m466.press(0.3);
+  assert.ok(p1.theta < p0.theta && p1.plunger < p0.plunger && p1.down, "把手往下壓,泵柱塞往下送水");
+  for (const v of sweep(4 * span, 60)) {
+    const p = m466.press(v);
+    close(Math.hypot(p.hang[0] - m466.HANGER.ear[0], p.hang[1] - m466.HANGER.ear[1]), m466.HANGER.length, "吊桿長不變", 1e-6);
+    close(p.top[0], m466.PUMP_X, "柱塞銷在泵筒軸線上", 1e-9);
+    assert.ok(p.hang[0] < m466.PUMP_X, "支點(吊桿的上銷)在柱塞左邊");
+    const pose = def.pose(v);
+    close(pose.parts.handle.position[0], p.hang[0], "手柄的左端掛在吊桿上", 1e-9);
+    close(pose.parts.handle.position[1], p.hang[1], "手柄的左端掛在吊桿上", 1e-9);
+    const hole = add([p.hang[0], p.hang[1], 0], [...rot2([m466.HANGER.short, 0], pose.parts.handle.angle), 0]);
+    close(hole[0], p.top[0], "手柄上的銷孔對著柱塞頂的銷", 1e-9);
+    close(hole[1], p.top[1], "手柄上的銷孔對著柱塞頂的銷", 1e-9);
+    assert.ok(pose.parts.hanger, "吊桿是零件");
+  }
+  const handle = part(def, "handle");
+  const grip = handle.pieces.find((p) => p.kind === "sphere");
+  assert.ok(grip.at[0] > m466.HANGER.short, "把手往右伸過柱塞");
+});
+
+test("第 466 種:小管接進開著口的泵筒與柱塞缸,出水閥在閥室裡;流體示意全程不穿過壁、閥瓣開到底不穿過壁;機架一件、立柱立在缸座的凸緣上", () => {
+  const def = m466.default;
+  const span = Math.abs(m466.SWING[1] - m466.SWING[0]);
+  const solids = sectionSolids(def, ["frame", "ramCylinder", "pump"]);
+  let opened = { suction: false, delivery: false };
+  for (const v of sweep(4 * span, 48)) {
+    const pose = def.pose(v);
+    for (const flow of pose.flows) for (const q of flow.points) assert.ok(!inAny([q[0], q[1]], solids), `主動量 ${v.toFixed(3)} 的點 (${q[0].toFixed(2)}, ${q[1].toFixed(2)}) 在壁裡`);
+    for (const id of ["suction", "delivery"]) {
+      assert.ok(!digsInto(placedFlap(def, id, pose), solids), `主動量 ${v.toFixed(3)}:${id} 的閥瓣穿過壁`);
+      if (Math.abs(pose.parts[id].angle - (id === "suction" ? 0 : Math.PI / 2)) > 0.7) opened[id] = true;
+    }
+  }
+  assert.ok(opened.suction && opened.delivery, "兩個閥都真的張開過");
+  assertBoxesOnePiece(def, "frame");
+  assertBoxesOnePiece(def, "pump");
+  const frame = part(def, "frame");
+  const columns = frame.pieces.filter((p) => p.kind === "box" && p.size[1] > 3);
+  const flange = frame.pieces.find((p) => p.kind === "box" && p.size[0] > 2 && p.size[0] < 4 && p.at[1] < -1);
+  assert.ok(columns.length >= 2 && flange, "有立柱與缸座的凸緣");
+  for (const c of columns) {
+    close(c.at[1] - c.size[1] / 2, flange.at[1] + flange.size[1] / 2, "立柱立在凸緣上", 1e-9);
+    assert.ok(Math.abs(c.at[0] - flange.at[0]) < flange.size[0] / 2, "立柱在凸緣的範圍內");
+  }
+  assert.ok(!frame.pieces.some((p) => p.kind === "box" && p.at[0] > 1 && p.at[1] > 0.5), "沒有浮在空中的手柄支柱");
 });
 
 test("第 467 種:液壓千斤頂:壓手柄把液壓缸沿固定的柱塞抬起;開閥時水流回、慢慢放下", () => {
@@ -1540,6 +1723,83 @@ test("第 467 種:液壓千斤頂:壓手柄把液壓缸沿固定的柱塞抬起;
   assert.ok(lifts[2] > lifts[1] && lifts[1] > lifts[0], "壓越多下,升得越高");
   const r = [0, 1, 3].map((v) => m467.jack(v, "release").rise);
   assert.ok(r[0] > r[1] && r[1] > r[2], "開閥後慢慢降下");
+});
+
+test("第 467 種:托座在液壓缸頂上(局部 z 軸向)、爪鉤在側面,和缸連成一件;底座、柱塞、螺絲各是一件", () => {
+  const def = m467.default;
+  const cyl = part(def, "cylinder");
+  const saddle = cyl.pieces[0];
+  close(saddle.at[2], m467.CYL.len, "托座坐在缸頂(lathe 的局部 z 是世界的 +Y)", 1e-9);
+  close(saddle.at[1], 0, "托座沒有往後偏", 1e-9);
+  for (const id of ["cylinder", "base", "plunger", "screw"]) assertBoxesOnePiece(def, id);
+});
+
+test("第 467 種:照原圖:手柄下端在缸的左下,經搖桿銷接到底座;柱塞銷在手柄上、沿泵筒軸線滑;兩銷距離與搖桿長不變;壓下手柄柱塞往下送水", () => {
+  const def = m467.default;
+  const span = Math.abs(m467.SWING[0] - m467.SWING[1]);
+  const j0 = m467.jack(0.01);
+  const j1 = m467.jack(0.3);
+  assert.ok(j1.handle < j0.handle && j1.s < j0.s && j1.pressing, "壓下手柄,柱塞沿泵筒往下送水");
+  const { anchor, length } = m467.ROCKER;
+  const { origin, dir } = m467.LINE;
+  for (const v of sweep(4 * span, 60)) {
+    const j = m467.jack(v);
+    close(Math.hypot(j.F[0] - anchor[0], j.F[1] - anchor[1]), length, "搖桿長不變", 1e-6);
+    close(Math.hypot(j.P[0] - j.F[0], j.P[1] - j.F[1]), m467.SHORT, "手柄兩銷的距離不變", 1e-6);
+    close((j.P[0] - origin[0]) * dir[1] - (j.P[1] - origin[1]) * dir[0], 0, "柱塞銷在泵筒的軸線上", 1e-6);
+    assert.ok(j.F[0] < j.P[0] && j.P[0] < 0, "手柄下端與柱塞都在缸的左下");
+    assert.ok(j.s - m467.PLUNGER > m467.BARREL.lo + 0.1 && j.s - m467.PLUNGER < m467.BARREL.hi - 0.1, "柱塞的下端全程在泵筒裡");
+    const pose = def.pose(v);
+    close(pose.parts.handle.position[0], j.F[0], "手柄的下端在搖桿的銷上", 1e-9);
+    close(pose.parts.handle.position[1], j.F[1], "手柄的下端在搖桿的銷上", 1e-9);
+    close(pose.parts.handle.angle, j.handle, "手柄角", 1e-9);
+    const hole = add([j.F[0], j.F[1], 0], [...rot2([m467.SHORT, 0], j.handle), 0]);
+    close(Math.hypot(hole[0] - j.P[0], hole[1] - j.P[1]), 0, "手柄上的銷孔對著柱塞的銷", 1e-9);
+    assert.ok(pose.parts.rocker, "搖桿是零件");
+  }
+  assert.ok(anchor[0] < -0.9 && anchor[1] > -1.05 && anchor[1] < -0.7, "搖桿的固定銷在底座左上角");
+});
+
+test("第 467 種:開閥放下:轉翼形螺絲把閥從管底的閥座退出、手柄不動;回流從液壓缸經柱塞裡的管子到管底、從閥流回底座;兩個狀態的流體示意都不穿過壁,閥瓣開到底不穿過壁", () => {
+  const def = m467.default;
+  const span = Math.abs(m467.SWING[0] - m467.SWING[1]);
+  const solids = sectionSolids(def, ["base"]);
+  const rel = [0, 0.5, 1.5, 3].map((v) => def.pose(v, "release"));
+  for (let i = 1; i < rel.length; i++) {
+    assert.ok(rel[i].parts.screw.position[0] <= rel[i - 1].parts.screw.position[0], "螺絲往外退");
+    assert.ok(rel[i].parts.screw.angle > rel[i - 1].parts.screw.angle, "螺絲在轉");
+    close(rel[i].parts.handle.angle, rel[0].parts.handle.angle, "手柄不動", 1e-12);
+    assert.ok(rel[i].parts.cylinder.position[1] < rel[i - 1].parts.cylinder.position[1], "液壓缸慢慢降下");
+  }
+  // 閥座在管子的底部:閉著時塞子在管底的口裡,開著時整個退出口外
+  const screw = part(def, "screw");
+  const plug = screw.pieces.find((p) => p.kind === "cylinder" && p.radius > 0.06);
+  const plugRight = (pose) => pose.parts.screw.position[0] + plug.at[2] + plug.length / 2;
+  assert.ok(plugRight(def.pose(0.5, "lift")) > m467.PIPE_END + 0.05, "抬升時塞子塞在管底的口裡");
+  assert.ok(plugRight(rel[3]) < m467.PIPE_END - 0.01, "開閥時塞子退出管底的口");
+  assert.ok(def.pose(3, "release").flows.length, "開閥時有回流");
+  for (const [state, vs] of [["lift", sweep(4 * span, 48)], ["release", sweep(4, 20)]]) {
+    for (const v of vs) {
+      const pose = def.pose(v, state);
+      for (const flow of pose.flows) {
+        for (const q of flow.points) assert.ok(!inAny([q[0], q[1]], solids), `${state} 主動量 ${v.toFixed(3)} 的點 (${q[0].toFixed(2)}, ${q[1].toFixed(2)}) 在壁裡`);
+        if (state === "release") {
+          const inBase = flow.points.filter((q) => q[1] < m467.BASE.y1 && q[0] > m467.PIPE_END);
+          for (const q of inBase) assert.ok(distanceToPath(m467.PIPE.map(([x, y]) => [x, y, 0]), [q[0], q[1], 0]) < 0.08, "回流在底座裡走管子");
+          assert.ok(flow.points.some((q) => q[0] < m467.PIPE_END), "回流從管底的閥流出到底座");
+        }
+      }
+    }
+  }
+  let opened = { suction: false, delivery: false };
+  for (const v of sweep(4 * span, 48)) {
+    const pose = def.pose(v, "lift");
+    for (const id of ["suction", "delivery"]) {
+      assert.ok(!digsInto(placedFlap(def, id, pose), solids), `主動量 ${v.toFixed(3)}:${id} 的閥瓣穿過壁`);
+      if (Math.abs(pose.parts[id].angle - (id === "suction" ? m467.SUCTION_CLOSED : Math.PI / 2)) > 0.6) opened[id] = true;
+    }
+  }
+  assert.ok(opened.suction && opened.delivery, "兩個閥都真的張開過");
 });
 
 test("第 468 種:撓性輸水管:各節以鉸鏈相連,拖過河時順著河床的起伏", () => {
