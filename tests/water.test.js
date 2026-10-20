@@ -47,6 +47,9 @@ import * as m466 from "../models/fig466.js";
 import * as m467 from "../models/fig467.js";
 import * as m468 from "../models/fig468.js";
 import * as m469 from "../models/fig469.js";
+import { part, assertOnePiece, plateLayers, inSolid, pieceBox } from "./helpers.js";
+import { toothOutline, gearSize } from "../models/shapes.js";
+import { deg as degrees, polar } from "../models/kit.js";
 
 test("第 430 種:上射式水車,進程增加時水車依原圖箭頭順時針轉", () => {
   const a = fig430.pose(0.1).parts.wheel.angle;
@@ -406,7 +409,7 @@ test("第 455 種:舊式旋轉泵:閥門貼著泵缸內面轉,到擋板處被闔
   for (const phi of sweep(2 * Math.PI, 72)) {
     const open = m455.opening(phi);
     const a = Math.atan2(Math.sin(phi), Math.cos(phi));
-    if (a > m455.ABUT[0] && a < m455.ABUT[1] - m455.RAMP_IN) assert.ok(open < 0.8, "鉸點在擋板的平面段時閥門被壓下");
+    if (a > m455.ABUT[0] && a < m455.ABUT[1] - m455.RAMP_IN) assert.ok(open < 0.8, "鉸點在擋板的平面段時閥門至少被壓下一部分(閥身還拖在斜面下)");
     // 由接觸算:閥門上沒有一點超出擋板的內面或泵缸的內壁
     const ang = m455.valveAngle(phi);
     for (const t of sweep(m455.VALVE, 8, 0.05)) {
@@ -420,6 +423,35 @@ test("第 455 種:舊式旋轉泵:閥門貼著泵缸內面轉,到擋板處被闔
     }
   }
   assert.ok(m455.opening(90 * deg) > 0.95, "其他地方閥門張開");
+  // 閥門拖在鉸點後面:鉸點在 −70°(已過斜面、在平面段)時閥身還在長斜面底下,只壓下一部分(開度 0.61);
+  // 鉸點走到 −110°~−120°、閥身整個在擋板的平面段底下時才被壓到最平——開度 0.23、閥身最遠點貼著擋板的內面
+  close(m455.opening(-70 * deg), 0.61, "鉸點在 −70° 時的開度", 0.02);
+  const flat = m455.reachAt(m455.ABUT[1] - m455.RAMP_IN - 5 * deg); // 擋板平面段的內面(閥門中心線最多能到的半徑)
+  for (const a of [-110, -115, -120]) {
+    const phi = a * deg;
+    close(m455.opening(phi), 0.23, `鉸點在 ${a}° 時閥身在擋板底下,壓到最平`, 0.02);
+    const ang = m455.valveAngle(phi);
+    const far = Math.max(...sweep(m455.VALVE, 16, 0.05).map((t) => Math.hypot(m455.DRUM * Math.cos(phi) + t * Math.cos(ang), m455.DRUM * Math.sin(phi) + t * Math.sin(ang))));
+    close(far, flat, `鉸點在 ${a}° 時閥身最遠點貼著擋板平面段的內面`, 0.015);
+  }
+});
+
+test("第 456 種:出水管 H 與吸水管 F 的管壁都在泵缸外,水經泵缸壁上的孔口 L、M 進出;鼓緣、背板與軸連成一件", () => {
+  const def = m456.default;
+  const casing = part(def, "casing");
+  const pipes = casing.pieces.filter((p) => p.role === "pipe");
+  assert.ok(pipes.length >= 4, "F 與 H 各兩道管壁");
+  for (const p of pipes) for (const [x, y] of p.shape.outline) assert.ok(Math.hypot(x, y - m456.ECC) >= m456.BORE - 1e-6, `管壁不伸進腔室(${x.toFixed(2)}, ${y.toFixed(2)})`);
+  // 孔口 L、M 開在泵缸壁上(壁厚中央那一點不在任何一塊板裡);兩孔之間的 E 是實壁
+  const layers = plateLayers(casing).filter((l) => l.z0 < 0 && l.z1 > 0);
+  const midWall = (a) => {
+    const q = polar(m456.reach(a), a);
+    const d = Math.hypot(q[0], q[1] - m456.ECC);
+    return [q[0] * (1 + 0.075 / d), m456.ECC + (q[1] - m456.ECC) * (1 + 0.075 / d)];
+  };
+  for (const a of [m456.L_AT, m456.M_AT]) assert.ok(!layers.some((l) => inSolid(midWall(a), l.solid)), `孔口(${((a * 180) / Math.PI).toFixed(0)}°)開在泵缸壁上`);
+  assert.ok(layers.some((l) => inSolid(midWall(-Math.PI / 2), l.solid)), "兩孔之間(E)是實壁");
+  assertOnePiece(part(def, "drum"), "鼓緣、背板、軸連成一件");
 });
 
 test("第 456 種:Cary 旋轉泵:活塞依心形凸輪進出;對準 E 時被推回座裡,另一個同時完全伸出", () => {
@@ -476,6 +508,36 @@ test("第 458 種:滑輪與兩個水桶:把空桶往下拉,另一邊的滿桶就
   assert.ok(b.rightFull && !b.leftFull, "往下拉的左桶是空的,上來的右桶是滿的");
 });
 
+test("第 457 種:地面在井口開孔,水桶與繩從井口垂到井水裡,不穿過地面;井壁、井欄與地面連成一件", () => {
+  const def = m457.default;
+  const ground = part(def, "ground");
+  const boxes = ground.pieces.filter((p) => p.kind === "box").map((p) => pieceBox(p));
+  const r = Math.max(...part(def, "bucket").pieces[0].profile.map(([x]) => x));
+  for (const v of sweep(2 * Math.abs(m457.SWING[0] - m457.SWING[1]), 80)) {
+    const b = def.pose(v).parts.bucket.position;
+    const lo = [b[0] - r, b[1] - 0.25, b[2] - r];
+    const hi = [b[0] + r, b[1] + 0.34, b[2] + r];
+    for (const g of boxes) assert.ok([0, 1, 2].some((k) => lo[k] >= g.hi[k] - 1e-9 || hi[k] <= g.lo[k] + 1e-9), `主動量 ${v.toFixed(2)}:水桶不穿過地面`);
+    if (lo[1] < m457.GROUND) assert.ok(Math.hypot(b[0] - m457.WELL_X, b[2]) + r <= m457.WELL_INNER + 1e-9, `主動量 ${v.toFixed(2)}:水桶在井壁之內`);
+  }
+  assertOnePiece(ground, "地面、井壁、井欄與叉形柱連成一件");
+});
+
+test("第 458 種:滑輪的轉向和繩一致——左桶往下走多少,滑輪左側的輪緣就往下走多少(不打滑);吊架接在橫樑上", () => {
+  const def = m458.default;
+  const pulley = part(def, "pulley");
+  const vs = sweep(2 * (m458.TOP - m458.BOTTOM), 80);
+  for (let i = 1; i < vs.length; i++) {
+    const a = def.pose(vs[i - 1]).parts;
+    const b = def.pose(vs[i]).parts;
+    // 滑輪逆時針轉 dθ 時,左側切點 (−r, 0) 的切線速度朝下 r·dθ
+    const rimDown = (b.pulley.angle - a.pulley.angle) * pulley.radius;
+    const ropeDown = a.bucketL.position[1] - b.bucketL.position[1];
+    close(rimDown, ropeDown, `主動量 ${vs[i].toFixed(2)}:輪緣和繩同向同速`, 1e-9);
+  }
+  assertOnePiece(part(def, "house"), "吊架的夾板與軸銷接在橫樑上");
+});
+
 test("第 459 種:往復式升降機:風車一直朝同一方向轉,水桶一上一下,到頂撞撥爪後換方向", () => {
   let prev = m459.lift(0);
   let flips = 0;
@@ -496,12 +558,12 @@ test("第 459 種:往復式升降機:風車一直朝同一方向轉,水桶一上
     const l = m459.lift(w);
     // 撥爪(搖臂)倒向哪邊,蝸桿軸的下端就往哪邊偏、咬上那一邊的輪:倒向左(逆時針)時咬左輪、左桶上升
     if (Math.abs(l.beta) > m459.TILT / 2) assert.equal(Math.sign(m459.worm(l.beta).shift), -Math.sign(l.beta), "搖臂把蝸桿推向一個輪");
-    if (!l.atTop) assert.equal(l.engaged === 0, l.leftUp, "咬左輪時左桶上升,咬右輪時右桶上升");
+    assert.equal(l.engaged === 0, l.leftUp, "咬左輪時左桶上升,咬右輪時右桶上升");
     // 一條繩繞過兩個滑輪的頂上:兩個滑輪一起轉
     const parts = def.pose(v).parts;
     close(parts.wheelL.angle, parts.wheelR.angle, "兩個滑輪同轉");
     // 由接觸算:撥爪被水桶頂起的時候,撞銷的底恰好擱在上升水桶的提把上(原文:水桶上升時會撞擊到它)
-    if (!l.atTop && Math.abs(l.beta) < m459.TILT - 1e-6) {
+    if (l.pushing) {
       const s = l.leftUp ? -1 : 1;
       const pinBottom = m459.PIVOT[1] + s * m459.ARM * Math.sin(l.beta) + m459.PIN_Y - m459.PIN_R;
       const handle = (l.leftUp ? l.left : l.right) + m459.HANDLE;
@@ -510,6 +572,83 @@ test("第 459 種:往復式升降機:風車一直朝同一方向轉,水桶一上
   }
   // 單頭蝸桿配 12 齒的蝸輪:風車轉一圈,咬著的蝸輪轉 1/12 圈(繩走 1/12 圈的滑輪周長)
   close(m459.lift(2 * Math.PI).left - m459.lift(0).left, (2 * Math.PI * m459.RATIO) * m459.DRUM_R, "風車一圈,水桶升一段", 1e-9);
+});
+
+test("第 459 種:蝸桿一次只作用於一個蝸輪——倒到底時咬著的輪齒頂貼著蝸桿的芯、另一輪離螺紋外徑有空隙;撥爪水平時兩輪的齒頂都剛碰到螺紋外徑", () => {
+  // wormGap:蝸輪齒頂圓到螺紋外徑的間隙(負的是齒頂伸進螺紋的深度)
+  close(m459.wormGap(m459.TILT, 0), -m459.THREAD, "撥爪倒向左邊到底:左輪齒頂貼著蝸桿的芯", 1e-6);
+  assert.ok(m459.wormGap(m459.TILT, 1) > 0.02, "那時右輪的齒頂離螺紋外徑有空隙");
+  close(m459.wormGap(-m459.TILT, 1), -m459.THREAD, "撥爪倒向右邊到底:右輪齒頂貼著蝸桿的芯", 1e-6);
+  assert.ok(m459.wormGap(-m459.TILT, 0) > 0.02, "那時左輪的齒頂離螺紋外徑有空隙");
+  close(m459.wormGap(0, 0), 0, "撥爪水平時左輪的齒頂剛碰到螺紋外徑", 1e-6);
+  close(m459.wormGap(0, 1), 0, "撥爪水平時右輪的齒頂剛碰到螺紋外徑", 1e-6);
+  for (const w of sweep(3 * m459.MOVE, 900)) {
+    const l = m459.lift(w);
+    const gaps = [m459.wormGap(l.beta, 0), m459.wormGap(l.beta, 1)];
+    assert.ok(!(gaps[0] < -1e-6 && gaps[1] < -1e-6), `風車轉角 ${w.toFixed(1)}:一次只咬一個蝸輪`);
+    assert.ok(gaps[l.engaged] <= 1e-6, `風車轉角 ${w.toFixed(1)}:帶動水桶的那個輪咬著蝸桿`);
+    assert.ok(gaps[1 - l.engaged] >= -1e-6, `風車轉角 ${w.toFixed(1)}:另一個輪沒碰到螺紋`);
+  }
+});
+
+test("第 459 種:蝸桿的螺距等於蝸輪的周節,齒塞得進兩圈螺紋之間", () => {
+  const def = m459.default;
+  const screw = part(def, "worm").pieces.find((p) => p.kind === "worm");
+  const gear = part(def, "wheelL").pieces.find((p) => p.kind === "gear");
+  const { addendum, dedendum } = gearSize(gear.radius, gear.teeth);
+  close(screw.pitch, (2 * Math.PI * gear.radius) / gear.teeth, "螺距 = 周節(風車一圈,蝸輪走一齒)", 1e-9);
+  // 齒在半徑 r 處的寬(齒形外廓上在那個半徑的點之間的最大距離)
+  const tooth = toothOutline(gear);
+  const widthAt = (r) => {
+    const pts = tooth.filter(([x, y]) => Math.abs(Math.hypot(x, y) - r) < 1e-6);
+    return Math.max(...pts.flatMap(([x, y]) => pts.map(([u, v]) => Math.hypot(x - u, y - v))));
+  };
+  const tipW = widthAt(gear.radius + addendum);
+  const rootW = widthAt(gear.radius - dedendum);
+  // 螺紋的斷面是半徑 thread 的圓,圓心在芯的表面:芯上寬 2·thread,離芯 d 處寬 2·√(thread² − d²)
+  assert.ok(tipW + 2 * screw.thread < screw.pitch, `齒頂(寬 ${tipW.toFixed(3)})塞得進芯上兩圈螺紋之間(${(screw.pitch - 2 * screw.thread).toFixed(3)})`);
+  const half = m459.THREAD / 2;
+  const toothHalfway = tipW + ((rootW - tipW) * half) / (addendum + dedendum);
+  const ridgeHalfway = 2 * Math.sqrt(screw.thread ** 2 - (screw.thread - half) ** 2);
+  assert.ok(toothHalfway + ridgeHalfway < screw.pitch, "咬進一半深時齒也塞得進螺紋之間");
+});
+
+test("第 459 種:到頂的水桶被擋鉤勾住、繞提把的軸翻倒,水倒進井壁邊的水槽;倒完水的水桶被降下,另一個滿桶被抬起", () => {
+  const def = m459.default;
+  const top = m459.MOVE / (2 * Math.PI); // 左桶到頂的進程
+  let tipped = 0;
+  for (const v of sweep(top + 1.2, 240, top - 1.2)) {
+    const l = m459.lift(2 * Math.PI * v);
+    const pose = def.pose(v);
+    const side = l.leftUp ? -1 : 1;
+    const id = l.leftUp ? "L" : "R";
+    const rising = l.leftUp ? l.left : l.right;
+    if (l.tilt > 1e-9) {
+      tipped++;
+      // 由接觸算:桶緣勾在擋鉤的底面上滑,提把繼續上升,桶身就繞提把的軸翻過去
+      const lip = m459.lipOf(side, rising, l.tilt);
+      close(lip[1], m459.HOOK_Y, `進程 ${v.toFixed(2)}:桶緣貼著擋鉤的底面`, 1e-9);
+      assert.ok(Math.abs(lip[0]) >= m459.HOOK_X[0] && Math.abs(lip[0]) <= m459.HOOK_X[1], `進程 ${v.toFixed(2)}:桶緣在擋鉤底面的範圍內(${lip[0].toFixed(3)})`);
+      close(pose.parts[`bucket${id}`].angle, -side * l.tilt, "桶身往水槽那一邊翻", 1e-9);
+      assert.ok(pose.parts[`water${id}`].level < 0.85, "翻倒時桶裡的水變少");
+      if (l.tilt > 10 * degrees) {
+        const path = m459.pourPath(side, lip);
+        const end = path.at(-1);
+        assert.ok(Math.abs(end[0]) >= m459.TROUGH.x0 && Math.abs(end[0]) <= m459.TROUGH.x1 && end[1] >= m459.TROUGH.y0 && end[1] <= m459.TROUGH.y1, "水倒進水槽裡");
+        assert.ok(Math.hypot(path[0][0] - lip[0], path[0][1] - lip[1]) < 1e-9, "水從桶緣倒出");
+        const pour = pose.flows.find((f) => f.points.length);
+        assert.ok(pour && pour.points.every((p) => distanceToPath(path, p) < 1e-6), "流體示意的點都在倒水的路徑上");
+      }
+    } else assert.ok(pose.flows.every((f) => !f.points.length), "沒翻倒時沒有水倒出");
+    if (v > top + 1e-9) {
+      assert.ok(!l.leftUp && l.left < m459.TOP, "倒完水的左桶被降下");
+      assert.equal(pose.parts.waterL.level, 0, "降下的桶是空的");
+      assert.ok(pose.parts.waterR.level > 0.8, "另一個滿桶被抬起");
+    }
+  }
+  assert.ok(tipped > 20, "翻倒佔了一段看得出來的進程");
+  close(m459.lift(m459.MOVE - 1e-9).tilt, m459.TIP_MAX, "到頂時翻到最大角度", 1e-6);
+  assert.equal(m459.lift(m459.MOVE - 2 * Math.PI * 1.5).tilt, 0, "到頂前一圈半還沒碰到擋鉤");
 });
 
 test("第 460 種:舀水斗:槓桿經連桿把舀斗抬起,水流到鉸點倒上岸;凹槽越遠抬得越多", () => {
