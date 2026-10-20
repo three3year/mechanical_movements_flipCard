@@ -42,9 +42,10 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(circle(1.97), [circle(1.92).reverse()]), thickness: 0.06, at: [0, 0, 0.18] },
         { kind: "plate", shape: shape(circle(1.24), [circle(1.19).reverse()]), thickness: 0.06, at: [0, 0, 0.18], mark: [0, 1.21], markSize: 0.06 },
-        { kind: "plate", shape: shape(circle(1.97), [circle(1.19).reverse()]), thickness: 0.04, at: [0, 0, -0.18] },
+        // 下環:往下加厚到碰到底盤(導葉底板只到半徑 1.15,下環的內緣 1.19 在它外面),水斗的力才傳得到軸
+        { kind: "plate", shape: shape(circle(1.97), [circle(1.19).reverse()]), thickness: 0.06, at: [0, 0, -0.19] },
         ...blades({ ...WHEEL, thickness: 0.36 }),
-        // 轉輪的底盤與軸(推斷;原圖是俯視的剖面):底盤從導葉的背面繞過去接到軸上,軸穿過導葉中央的套筒
+        // 轉輪的底盤與軸(推斷;原圖是俯視的剖面):底盤從導葉底板的背面繞過去、在底板外面那一圈接住下環,軸穿過導葉中央的套筒
         { kind: "plate", shape: shape(circle(1.97)), thickness: 0.04, at: [0, 0, -0.24] },
         { kind: "cylinder", radius: 0.1, length: 0.9, at: [0, 0, 0.19] },
       ],

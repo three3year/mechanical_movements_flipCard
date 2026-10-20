@@ -5,6 +5,8 @@
 import { TAU, deg, polar, wrap } from "./kit.js";
 import { stream, ramp } from "./flow.js";
 import { shape, arcPoints } from "./shapes.js";
+import { pedestal } from "./supports.js";
+import { sluice } from "./sluice.js";
 
 const R = { rim: 1.42, float: 2.05 };
 const FLOATS = 16;
@@ -12,6 +14,10 @@ const DEPTH = 0.6;
 const SPEED = TAU * 1.9;
 export const ENTRY = deg(-4); // 水流進輪子的地方(與軸同高)
 export const RELEASE = deg(-100); // 胸牆的下端,水在這裡離開
+export const BANK_TOP = -0.2; // 上游渠底的頂面(閘門的立柱打進這裡)
+const TAIL_BED_TOP = -2.495; // 尾水渠底的頂面
+// 右邊的閘門與升降它的螺桿(立柱、橫樑、螺桿、螺帽是推斷,見 sluice.js):原圖只畫螺桿伸到畫面頂,沒有手柄
+export const SLUICE = sluice({ x: 2.4, bottom: 0.05, height: 1.9, depth: DEPTH * 1.2, bed: BANK_TOP - 0.3, top: 2.4, reach: 1.0, handle: false });
 
 // 胸牆:緊貼輪的外緣,從軸的高度到輪底
 const breast = shape([...arcPoints(R.float + 0.06, deg(2), deg(-104)), ...arcPoints(R.float + 0.5, deg(-104), deg(2))]);
@@ -35,7 +41,7 @@ export default {
       kind: "cylinder",
       center: [0, 0, 0],
       radius: 0.08,
-      length: 1.6, // 水車的固定軸(軸承座沒畫,推斷)
+      length: 1.6, // 水車的固定軸(推斷;兩端架在渠底的軸承座上)
     },
     {
       id: "wheel",
@@ -55,13 +61,14 @@ export default {
       kind: "group",
       pieces: [
         { kind: "plate", shape: breast, thickness: DEPTH * 1.3 },
-        // 上游的檻與渠、閘門與立柱
-        { kind: "box", size: [2.0, 2.4, DEPTH * 1.3], at: [3.1, -1.4, 0] },
-        { kind: "box", size: [0.12, 1.9, DEPTH * 1.2], at: [2.4, 1.0, 0] },
-        { kind: "box", size: [0.14, 3.0, 0.14], at: [2.25, 0.9, DEPTH * 0.7] },
-        { kind: "box", size: [0.14, 3.0, 0.14], at: [2.55, 0.9, DEPTH * 0.7] },
-        // 尾水渠底
-        { kind: "box", size: [4.4, 0.25, DEPTH * 1.3], at: [-2.0, -2.62, 0] },
+        // 上游的檻與渠(頂面是 BANK_TOP)、閘門與立柱、橫樑、螺桿
+        { kind: "box", size: [2.0, BANK_TOP + 2.6, DEPTH * 1.3], at: [3.1, (BANK_TOP - 2.6) / 2, 0] },
+        ...SLUICE.pieces,
+        // 尾水渠底(往右伸到輪下、寬到放得下兩座軸承座)
+        { kind: "box", size: [5.4, 0.25, 2.2], at: [-1.5, TAIL_BED_TOP - 0.125, 0] },
+        // 固定軸兩端的軸承座(推斷;原圖沒畫),立在尾水渠底上
+        ...pedestal({ at: [0, 0], z: 0.75, bore: 0.08, floor: TAIL_BED_TOP + 0.18 }),
+        ...pedestal({ at: [0, 0], z: -0.75, bore: 0.08, floor: TAIL_BED_TOP + 0.18 }),
       ],
     },
     { id: "head", kind: "fill", fluid: "water", center: [3.2, 0.1, 0], size: [1.6, 0.6, DEPTH * 1.1], level: 0.5 },

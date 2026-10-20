@@ -2,9 +2,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep, part, inSolid } from "./helpers.js";
+import { Y, Z, cross, dot, sub, scale, quatRotate } from "../models/kit.js";
 import { distanceToPath } from "../models/flow.js";
 import { placeOutline, polygonsOverlap, penetrationDepth } from "../models/contact.js";
-import fig430, { INFLOW, SPILL } from "../models/fig430.js";
+import fig430, { INFLOW, SPILL, PIER } from "../models/fig430.js";
 import * as m431 from "../models/fig431.js";
 import * as m432 from "../models/fig432.js";
 import * as m433 from "../models/fig433.js";
@@ -112,10 +113,139 @@ test("第 432 種:胸射式水車:水在與軸同高處流進浮板之間,被胸
 test("第 433 種:水平式上射水車:斜槽的水射到水平輪的葉片上,輪與直立軸一起轉", () => {
   const def = m433.default;
   const a = angle(def, "wheel", 0.2);
-  close(a, 2 * Math.PI * 0.2, "進程一圈,輪轉一圈");
+  close(a, -2 * Math.PI * 0.2, "進程一圈,輪轉一圈(從上往下看順時針,見 #433-1)");
   const end = m433.JET[m433.JET.length - 1];
   const r = Math.hypot(end[0], end[2]);
   assert.ok(r > 0.42 && r < 1.6 && Math.abs(end[1] - m433.WHEEL_Y) < 0.3, "水射到輪的葉片上");
+});
+
+// 盒子的範圍(沒有 angle 的 box)
+const span = (p, k) => [p.at[k] - p.size[k] / 2, p.at[k] + p.size[k] / 2];
+
+/** 固定軸兩端各架在一座軸承座上:軸端在軸承環裡、立柱從環往下站在底板上、底板擱在渠底上(每一對接觸的間隙 0) */
+function assertAxleOnBearings(def) {
+  const axle = part(def, "axle");
+  const pieces = part(def, "works").pieces;
+  const rings = pieces.filter((p) => p.kind === "cylinder" && p.inner != null && Math.abs(p.at[0]) < 1e-9 && Math.abs(p.at[1]) < 1e-9);
+  assert.equal(rings.length, 2, "軸的兩端各一個軸承環");
+  assert.ok(rings[0].at[2] * rings[1].at[2] < 0, "兩座軸承座在輪的前後兩側");
+  for (const ring of rings) {
+    close(ring.inner, axle.radius, "軸承的孔徑就是軸徑");
+    const end = (Math.sign(ring.at[2]) * axle.length) / 2;
+    assert.ok(Math.abs(end - ring.at[2]) <= ring.length / 2, "軸端在軸承環的厚度裡");
+    const column = pieces.find((p) => p.kind === "box" && Math.abs(p.at[2] - ring.at[2]) < 1e-9 && p.at[1] < ring.at[1] && p.size[1] > 1);
+    assert.ok(column, "軸承環下面有立柱");
+    const top = span(column, 1)[1];
+    assert.ok(top < ring.at[1] - ring.inner && top > ring.at[1] - ring.radius, "立柱頂接在軸承環的環身上");
+    const base = pieces.find((p) => p.kind === "box" && p !== column && Math.abs(p.at[2] - ring.at[2]) < 1e-9 && Math.abs(span(p, 1)[1] - span(column, 1)[0]) < 1e-9);
+    assert.ok(base, "立柱站在底板上(間隙 0)");
+    const ground = pieces.find(
+      (p) => p.kind === "box" && !p.angle && p !== base && p !== column && Math.abs(span(p, 1)[1] - span(base, 1)[0]) < 1e-9 && span(p, 0)[0] <= span(base, 0)[0] && span(p, 0)[1] >= span(base, 0)[1] && span(p, 2)[0] <= span(base, 2)[0] && span(p, 2)[1] >= span(base, 2)[1],
+    );
+    assert.ok(ground, "底板整塊擱在渠底上(間隙 0)");
+  }
+}
+
+/** 閘門夾在前後兩對立柱之間、立柱打進渠底;橫樑擱在立柱頂上、跨在閘門正上方;螺桿從閘門頂穿過橫樑伸到上方 */
+function assertSluice(def, sluice, bedTop) {
+  const works = part(def, "works").pieces;
+  for (const p of sluice.pieces) assert.ok(works.includes(p), "閘門、立柱、橫樑、螺桿都在機架裡");
+  const gate = sluice.gate;
+  assert.equal(sluice.posts.length, 4, "前後各一對立柱");
+  for (const post of sluice.posts) {
+    const side = Math.sign(post.at[0] - gate.at[0]);
+    const inner = post.at[0] - (side * post.size[0]) / 2;
+    close(inner, gate.at[0] + (side * gate.size[0]) / 2, "立柱貼著閘門的面(間隙 0)");
+    assert.ok(Math.abs(post.at[2]) + post.size[2] / 2 <= gate.size[2] / 2 + 1e-9, "立柱在閘門的邊緣以內");
+    assert.ok(span(post, 1)[0] < bedTop, "立柱打進渠底");
+    close(span(post, 1)[1], span(sluice.beam, 1)[0], "橫樑擱在立柱頂上(間隙 0)");
+  }
+  assert.ok(sluice.posts.some((p) => p.at[2] > 0) && sluice.posts.some((p) => p.at[2] < 0), "立柱分在閘門兩邊緣");
+  const gateTop = span(gate, 1)[1];
+  close(sluice.rod.at[1] - sluice.rod.length / 2, gateTop, "螺桿下端接在閘門頂上");
+  assert.ok(sluice.rod.at[1] + sluice.rod.length / 2 > span(sluice.beam, 1)[1], "螺桿穿過橫樑伸到上方");
+  close(sluice.rod.at[0], gate.at[0], "螺桿在閘門正上方");
+  close(sluice.beam.at[0], gate.at[0], "橫樑在閘門正上方");
+}
+
+test("第 430 種:水槽擱在石墩上(原圖水槽擱在左邊的石砌牆頂)", () => {
+  const works = part(fig430, "works").pieces;
+  const trough = works.find((p) => p.kind === "box" && p.angle && p.size[1] < 0.2);
+  const pier = PIER;
+  assert.ok(works.includes(pier), "石墩在機架裡");
+  const tan = Math.tan(trough.angle);
+  const half = trough.size[1] / 2 / Math.cos(trough.angle);
+  const bottomAt = (x) => trough.at[1] + (x - trough.at[0]) * tan - half;
+  const pierTop = span(pier, 1)[1];
+  close(pierTop, bottomAt(pier.at[0]), "石墩頂貼著水槽底(間隙 0)", 1e-6);
+  for (const x of span(pier, 0)) {
+    assert.ok(pierTop < bottomAt(x) + 2 * half, "石墩沒有戳穿水槽底");
+    assert.ok(bottomAt(x) - pierTop < 0.06, "水槽底沿石墩的寬度都貼著");
+  }
+});
+
+test("第 430 種:水車的固定軸兩端架在軸承座上", () => assertAxleOnBearings(fig430));
+test("第 431 種:水車的固定軸兩端架在軸承座上", () => assertAxleOnBearings(m431.default));
+test("第 432 種:水車的固定軸兩端架在軸承座上", () => assertAxleOnBearings(m432.default));
+
+test("第 431 種:閘門夾在立柱之間、橫樑跨在閘門正上方、螺桿從閘門頂穿過橫樑接手柄", () => {
+  assertSluice(m431.default, m431.SLUICE, m431.BED);
+  assert.ok(span(m431.SLUICE.gate, 1)[0] > m431.BED + 0.1, "閘門下緣離渠底一段,水從閘門底下衝出");
+});
+
+test("第 432 種:閘門夾在立柱之間、橫樑跨在閘門正上方、螺桿從閘門頂穿過橫樑", () => {
+  assertSluice(m432.default, m432.SLUICE, m432.BANK_TOP);
+});
+
+test("第 433 種:葉片裝在輪上(目標件),斜向與水柱都把輪往它的轉向推(從上往下看順時針)", () => {
+  const def = m433.default;
+  const wheel = part(def, "wheel");
+  assert.equal(part(def, "vanes"), undefined, "葉片不再是另一個零件");
+  assert.equal(m433.VANES.length, 18);
+  for (const v of m433.VANES) assert.ok(wheel.pieces.includes(v), "每片葉片都是輪的一塊");
+  const omega = (angle(def, "wheel", 0.01) - angle(def, "wheel", 0)) / 0.01; // 繞輪軸(局部 z = 世界 +y)
+  assert.ok(omega < 0, "從上往下看順時針");
+  for (const v of m433.VANES) {
+    // 葉片面上水往下滑的方向(局部座標,z 朝上):重力在葉片面內的分量
+    const n = quatRotate(v.rotation, Y); // 葉片的厚度方向 = 面的法線
+    const down = sub(scale(Z, -1), scale(n, dot(scale(Z, -1), n)));
+    const velocity = scale(cross(Z, v.at), omega); // 葉片所在處的切線速度
+    assert.ok(dot(down, velocity) < -0.1, "水沿葉片往下滑的方向逆著葉片的走向,反作用力推著葉片往轉向走");
+  }
+  // 水柱:斜槽的方向與落在葉片上那一段的方向,都順著打到處葉片的走向(世界座標)
+  const hit = sub(m433.JET[m433.JET.length - 1], wheel.center);
+  const velocity = scale(cross(Y, hit), omega);
+  assert.ok(dot(sub(m433.JET[1], m433.JET[0]), velocity) > 0, "斜槽把水往葉片走的方向射");
+  assert.ok(dot(sub(m433.JET[2], m433.JET[1]), velocity) > 0, "水落到葉片上時順著葉片走");
+});
+
+test("第 433 種:軸承座塊掛在橫樑底下,直立軸的上端在軸承裡", () => {
+  const def = m433.default;
+  const frame = part(def, "frame").pieces;
+  const beam = frame.find((p) => p.kind === "box" && p.size[0] >= 4);
+  const block = frame.find((p) => p.kind === "box" && p.size[0] < 1 && p.at[1] > 2);
+  const bearing = frame.find((p) => p.kind === "cylinder");
+  close(span(block, 1)[1], span(beam, 1)[0], "座塊頂貼著橫樑底(間隙 0)");
+  assert.ok(bearing.at[1] + bearing.length / 2 >= span(block, 1)[0] - 1e-9, "軸承接在座塊上");
+  const shaft = part(def, "wheel").pieces.find((p) => p.kind === "cylinder" && p.length > 3);
+  const top = m433.WHEEL_Y + shaft.at[2] + shaft.length / 2;
+  assert.ok(top > bearing.at[1] - bearing.length / 2 && top < bearing.at[1] + bearing.length / 2, "直立軸的上端在軸承裡");
+});
+
+test("第 434 種:轉輪的底盤與軸接上水斗的下環(底盤從導葉底板外面那一圈碰到下環)", () => {
+  const def = m434.default;
+  const plates = part(def, "wheel").pieces.filter((p) => p.kind === "plate");
+  const disc = plates.find((p) => !p.shape.holes.length && Math.min(...p.shape.outline.map(([x, y]) => Math.hypot(x, y))) > 1.9);
+  const lowerRing = plates.filter((p) => p.shape.holes.length && p.at[2] < 0).sort((a, b) => a.at[2] - b.at[2])[0];
+  const shaft = part(def, "wheel").pieces.find((p) => p.kind === "cylinder");
+  const z = (p, s) => p.at[2] + (s * p.thickness) / 2;
+  close(z(lowerRing, -1), z(disc, 1), "下環的底貼著底盤的頂(間隙 0)", 1e-9);
+  assert.ok(shaft.at[2] - shaft.length / 2 <= z(disc, 1) && shaft.at[2] + shaft.length / 2 >= z(disc, -1), "軸接在底盤上");
+  // 下環在導葉底板(固定件)外面那一圈,高度上和底板重疊也碰不到
+  const guidePlate = part(def, "guides").pieces.find((p) => p.kind === "plate" && p.shape.outline.length > 20 && p.at[2] < 0);
+  const guideR = Math.max(...guidePlate.shape.outline.map(([x, y]) => Math.hypot(x, y)));
+  const ringInner = Math.min(...lowerRing.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  assert.ok(ringInner > guideR, "下環的內緣在導葉底板之外");
 });
 
 test("第 437 種:渦殼式水輪:蝸殼使水作用在輪周所有葉片上;蝸殼越轉越窄", () => {

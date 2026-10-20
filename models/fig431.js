@@ -3,6 +3,8 @@
 // 輪子逆時針轉(原圖箭頭)。主動件是虛擬的「進程」:水已帶著水車轉了幾圈。水流以沿固定路徑移動的點表示。
 import { TAU, polar } from "./kit.js";
 import { stream } from "./flow.js";
+import { pedestal } from "./supports.js";
+import { sluice } from "./sluice.js";
 
 export const R = { rim: 1.45, float: 2.05 };
 const FLOATS = 16;
@@ -12,6 +14,8 @@ export const TAIL_LEVEL = -1.72; // 下游水面
 const GATE_X = -2.6;
 const GATE_BOTTOM = BED + 0.42;
 const SPEED = TAU * 1.9; // 每圈水流過的距離(與浮板的線速度相同)
+// 閘門與升降它的螺桿(立柱、橫樑、螺桿、螺帽是推斷,見 sluice.js):閘門下緣離渠底 0.42,水從底下衝出
+export const SLUICE = sluice({ x: GATE_X, bottom: GATE_BOTTOM, height: 2.3, depth: DEPTH * 1.3, bed: BED - 0.2, top: BED + 3.4 });
 
 // 水流:從閘門後面往下,從閘門底下衝出,沿渠底流過輪子下方
 export const FLOW = [
@@ -30,7 +34,7 @@ export default {
       kind: "cylinder",
       center: [0, 0, 0],
       radius: 0.08,
-      length: 1.6, // 水車的固定軸(軸承座沒畫,推斷)
+      length: 1.6, // 水車的固定軸(推斷;兩端架在渠底的軸承座上)
     },
     {
       id: "wheel",
@@ -50,15 +54,13 @@ export default {
       id: "works",
       kind: "group",
       pieces: [
-        // 渠底
-        { kind: "box", size: [7.6, 0.25, DEPTH * 1.6], at: [-0.45, BED - 0.125, 0] },
-        // 閘門與兩側立柱、橫樑、上面的螺桿手柄
-        { kind: "box", size: [0.12, 2.3, DEPTH * 1.3], at: [GATE_X, GATE_BOTTOM + 1.15, 0] },
-        { kind: "box", size: [0.14, 3.4, 0.14], at: [GATE_X - 0.15, BED + 1.7, DEPTH * 0.72] },
-        { kind: "box", size: [0.14, 3.4, 0.14], at: [GATE_X + 0.15, BED + 1.7, DEPTH * 0.72] },
-        { kind: "box", size: [0.5, 0.12, 0.2], at: [GATE_X, BED + 3.45, DEPTH * 0.72] },
-        { kind: "cylinder", radius: 0.04, length: 1.0, axis: [0, 1, 0], at: [GATE_X, BED + 3.2, 0] },
-        { kind: "box", size: [1.0, 0.07, 0.07], at: [GATE_X, BED + 3.7, 0], accent: true },
+        // 渠底(寬到放得下兩座軸承座)
+        { kind: "box", size: [7.6, 0.25, 2.2], at: [-0.45, BED - 0.125, 0] },
+        // 閘門、前後兩對立柱、橫樑、螺桿與手柄
+        ...SLUICE.pieces,
+        // 固定軸兩端的軸承座(推斷;原圖沒畫),立在渠底上
+        ...pedestal({ at: [0, 0], z: 0.75, bore: 0.08, floor: BED + 0.18 }),
+        ...pedestal({ at: [0, 0], z: -0.75, bore: 0.08, floor: BED + 0.18 }),
       ],
     },
     { id: "head", kind: "fill", fluid: "water", center: [-3.6, BED + 1.0, 0], size: [1.9, 2.0, DEPTH * 1.2], level: 0.62 },
