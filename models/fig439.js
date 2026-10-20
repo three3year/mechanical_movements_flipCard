@@ -5,18 +5,24 @@
 // 2026-10-07 複查:閥門原本照時序瞬間翻開(演出的動作)。改成:閥瓣下面有一根閥桿,水桶落到底時閥桿先頂到地上的墊塊,
 // 水桶再往下落一點坐到墊塊上,閥瓣就被頂離閥座(由接觸算);水桶被拉起時閥瓣靠自重落回閥座。
 // 水桶裝滿後比配重重,加速落下、撞到墊塊停住;排空後配重比水桶重,把水桶加速拉上去、撞到頂上的擋停住(推斷)。
+// 2026-10-20:滑輪的軸架在一根落地的立柱上(推斷,原圖沒畫支架),配重的擋由立柱伸出的橫臂托著、在繩的旁邊;
+// 水桶的提把接在桶口上(桶的局部 z 是直立方向)。
 import { clamp } from "./kit.js";
 import { falling } from "./jumps.js";
 import { stream } from "./flow.js";
 import { shape } from "./shapes.js";
 
 const PULLEY = { center: [0, 2.2, 0], radius: 0.45 };
+const POST = { x: 0, z: -0.3, w: 0.14 }; // 立柱(在滑輪後面)
+const AXLE = { z0: -0.3 + 0.07, z1: 0.03 }; // 滑輪的軸:從立柱的前面(穿過軸承環)到滑輪前面一點
 const GROUND = -2.05;
 const PAD = GROUND + 0.15; // 地上墊塊的頂面(水桶撞到這裡停住)
 export const TOP = 1.0; // 水桶在頂端時的中心高度
 export const BOTTOM = PAD + 0.38; // 水桶坐在墊塊上時(桶底在桶中心下方 0.38)
 const L = PULLEY.radius;
 const SUM = TOP + (BOTTOM + 0.2); // 水桶與配重的高度和(繩長不變)
+const STOP_Y = SUM - TOP - 0.28; // 配重的擋的中心高度:水桶在頂端時配重的底落在擋的頂面
+const BAIL_Z = 0.395; // 提把的中心離桶中心的高度(桶口在 0.38)
 const SEAT = -0.325; // 閥瓣坐在閥座(桶底上面)時,離桶中心的高度
 export const STEM = 0.175; // 閥桿長:閥瓣坐著時,閥桿下端比桶底低 0.12(穿過桶底中間的孔)
 
@@ -41,7 +47,7 @@ const ropePath = (yb, yw) => {
     const a = Math.PI - (Math.PI * i) / 12;
     return [cx + L * Math.cos(a), cy + L * Math.sin(a), 0];
   });
-  return [[cx - L, yw + 0.25, 0], ...arc, [cx + L, yb + 0.42, 0]];
+  return [[cx - L, yw + 0.25, 0], ...arc, [cx + L, yb + BAIL_Z, 0]];
 };
 const SPOUT = [[2.6, 1.95, 0], [0.75, 1.6, 0], [0.5, 1.2, 0]];
 
@@ -52,16 +58,22 @@ export default {
       id: "frame",
       kind: "group",
       pieces: [
-        { kind: "box", size: [4.0, 0.2, 1.2], at: [0.5, GROUND - 0.1, 0] },
-        { kind: "box", size: [0.5, 0.15, 0.3], at: [0.45, GROUND + 0.075, 0] }, // 墊塊
-        { kind: "box", size: [0.3, 0.06, 0.3], at: [-L, SUM - TOP - 0.28, 0] }, // 擋:水桶被拉到頂時,配重落到這裡停住
-        { kind: "box", size: [2.2, 0.1, 0.3], at: [1.7, 1.86, 0], angle: -0.2 },
+        { kind: "box", role: "ground", size: [4.0, 0.2, 1.2], at: [0.5, GROUND - 0.1, 0] },
+        { kind: "box", role: "pad", size: [0.5, 0.15, 0.3], at: [0.45, GROUND + 0.075, 0] }, // 墊塊
+        // 立柱(推斷)從地面立到滑輪的軸,在滑輪後面;軸承環套著滑輪的軸
+        { kind: "box", role: "post", size: [POST.w, PULLEY.center[1] + 0.2 - GROUND, POST.w], at: [POST.x, (PULLEY.center[1] + 0.2 + GROUND) / 2, POST.z] },
+        { kind: "cylinder", role: "bearing", radius: 0.1, inner: 0.05, length: 0.1, at: [PULLEY.center[0], PULLEY.center[1], POST.z + POST.w / 2 + 0.05] },
+        // 擋:水桶被拉到頂時,配重落到這裡停住;由立柱伸出的橫臂托著,在繩(x = −L)的左邊、接住配重左側的一條
+        { kind: "box", role: "bracket", size: [0.75 + POST.w / 2, 0.06, POST.w], at: [(-0.75 + POST.w / 2) / 2, STOP_Y, POST.z] },
+        { kind: "box", role: "stop", size: [0.2, 0.06, 0.2 - (POST.z - POST.w / 2)], at: [-0.65, STOP_Y, (0.2 + POST.z - POST.w / 2) / 2] },
+        { kind: "box", role: "spout", size: [2.2, 0.1, 0.3], at: [1.7, 1.86, 0], angle: -0.2 },
       ],
     },
-    { id: "pulley", kind: "pulley", style: "spoked", center: PULLEY.center, radius: L, width: 0.16 },
+    // 滑輪的軸(往後伸進立柱上的軸承環,跟著滑輪轉)
+    { id: "pulley", kind: "pulley", style: "spoked", center: PULLEY.center, radius: L, width: 0.16, pieces: [{ kind: "cylinder", role: "axle", radius: 0.05, length: AXLE.z1 - AXLE.z0, at: [0, 0, (AXLE.z0 + AXLE.z1) / 2] }] },
     { id: "rope", kind: "rope", radius: 0.02 },
     { id: "weight", kind: "box", size: [0.4, 0.5, 0.4] },
-    { id: "bucket", kind: "lathe", axis: [0, 1, 0], profile: [[0.28, -0.38], [0.36, 0.38], [0.32, 0.38], [0.24, -0.34], [0.05, -0.34], [0.05, -0.38]], pieces: [{ kind: "box", size: [0.72, 0.03, 0.03], at: [0, 0.42, 0] }] },
+    { id: "bucket", kind: "lathe", axis: [0, 1, 0], profile: [[0.28, -0.38], [0.36, 0.38], [0.32, 0.38], [0.24, -0.34], [0.05, -0.34], [0.05, -0.38]], pieces: [{ kind: "box", role: "bail", size: [0.72, 0.03, 0.03], at: [0, 0, BAIL_Z] }] },
     // 閥瓣與往下伸出桶底的閥桿
     { id: "valve", kind: "group", arrow: false, pieces: [{ kind: "cylinder", axis: [0, 1, 0], radius: 0.12, length: 0.03 }, { kind: "cylinder", axis: [0, 1, 0], radius: 0.025, length: STEM, at: [0, -STEM / 2, 0] }] },
     { id: "water", kind: "fill", fluid: "water", shape: "cylinder", size: [0.55, 0.66, 0], level: 0 },
