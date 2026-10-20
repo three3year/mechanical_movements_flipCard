@@ -13,10 +13,11 @@ export function bladeLine(r0, r1, a, sweep, n = 10) {
   });
 }
 
-/** n 片等距的彎曲葉片(板件) */
+/** n 片等距的彎曲葉片(板件,role 是 blade) */
 export const blades = ({ count, r0, r1, sweep, width = 0.05, thickness = 0.3, z = 0, offset = 0 }) =>
   Array.from({ length: count }, (_, i) => ({
     kind: "plate",
+    role: "blade",
     shape: shape(thickLine(bladeLine(r0, r1, offset + (i * TAU) / count, sweep), width)),
     thickness,
     at: [0, 0, z],

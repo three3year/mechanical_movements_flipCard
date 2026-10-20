@@ -1,22 +1,26 @@
 // 第 435 種:華倫中央排水式渦輪機的平面圖。導葉 a 在外側,輪 b 在導葉內側旋轉,水從中央排出。
 // 主動件是虛擬的「進程」:水已帶著輪轉了幾圈。
-// 推斷:水從外圍經導葉轉向後往內衝進輪上的水斗,推輪逆時針轉(原圖輪內側的箭頭),從中央流出;導葉與水斗的數目依原圖。
+// 轉向(2026-10-20 決定,照原圖的葉片與外圍的大箭頭):原圖右側的導葉由外往內、內端往下彎(順時針),兩個進水箭頭往左下,
+// 水經導葉得到順時針的旋轉;輪的水斗由外往內、內端往上彎(逆時針),把水轉成逆時針送出,反作用力推輪順時針轉——
+// 和外圍的大箭頭一致。輪轂與水斗環之間那個朝上的小箭頭是水往中央排出時(相對於輪)的流向,不是輪的轉向。
+// 導葉與水斗的數目依原圖。
 import { TAU, deg, polar } from "./kit.js";
 import { stream } from "./flow.js";
 import { blades, bladePath } from "./turbine.js";
 import { shape, circle, rect } from "./shapes.js";
 
-export const GUIDE = { count: 24, r0: 2.0, r1: 1.52, sweep: deg(28) };
-export const WHEEL = { count: 22, r0: 1.45, r1: 0.95, sweep: deg(-32) };
+// 葉片中線由外(r0)往內(r1),角度轉 sweep:負是順時針
+export const GUIDE = { count: 24, r0: 2.04, r1: 1.52, sweep: deg(-28) };
+export const WHEEL = { count: 22, r0: 1.45, r1: 0.95, sweep: deg(32) };
 const SPEED = TAU * 1.1;
 
-// 水:從外圍沿導葉往內(逆時針轉向),穿過水斗,從中央排出
-const paths = [0, 6, 12, 18].map((k) => {
-  const a = (k * TAU) / GUIDE.count + deg(4);
-  const outer = bladePath(GUIDE.r0 + 0.25, GUIDE.r1, a, GUIDE.sweep, 0.25);
+// 水:從外圍沿導葉往內(順時針轉向),穿過水斗,從中央排出
+export const PATHS = [0, 6, 12, 18].map((k) => {
+  const a = (k * TAU) / GUIDE.count - deg(4);
+  const outer = bladePath(GUIDE.r0 + 0.21, GUIDE.r1, a, GUIDE.sweep, 0.25);
   const end = outer[outer.length - 1];
   const at = Math.atan2(end[1], end[0]);
-  return [...outer, polar(1.2, at + deg(18), 0.25), polar(0.75, at + deg(30), 0.25), polar(0.3, at + deg(36), 0.25)];
+  return [...outer, polar(1.2, at - deg(18), 0.25), polar(0.75, at - deg(30), 0.25), polar(0.3, at - deg(36), 0.25)];
 });
 
 export default {
@@ -30,7 +34,8 @@ export default {
       pieces: [
         { kind: "plate", shape: shape(circle(2.08), [circle(2.02).reverse()]), thickness: 0.36 },
         { kind: "plate", shape: shape(circle(2.08), [circle(1.5).reverse()]), thickness: 0.04, at: [0, 0, -0.2] },
-        ...blades({ ...GUIDE, thickness: 0.34 }),
+        // 導葉片:底貼著底板(z −0.18),外端伸進外環
+        ...blades({ ...GUIDE, thickness: 0.36 }),
       ],
     },
     {
@@ -57,8 +62,8 @@ export default {
   pose(progress) {
     const travel = progress * SPEED;
     return {
-      parts: { wheel: { angle: TAU * progress } },
-      flows: [{ fluid: "water", points: paths.flatMap((p) => stream(p, travel, { spacing: 0.18 })) }],
+      parts: { wheel: { angle: -TAU * progress } }, // 順時針
+      flows: [{ fluid: "water", points: PATHS.flatMap((p) => stream(p, travel, { spacing: 0.18 })) }],
       readouts: [],
     };
   },

@@ -1,10 +1,11 @@
 // 第十九章「水車與泵」:斷言對應原文;流體示意只驗它是主動量的函式、只在路徑上
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, inSolid } from "./helpers.js";
-import { Y, Z, cross, dot, sub, scale, quatRotate } from "../models/kit.js";
+import { close, sweep, part, inSolid, turned, pieceBox, assertShaftInBearings, assertOnePiece } from "./helpers.js";
+import { X, Y, Z, deg, norm, cross, dot, sub, scale, quatRotate } from "../models/kit.js";
 import { distanceToPath } from "../models/flow.js";
-import { placeOutline, polygonsOverlap, penetrationDepth } from "../models/contact.js";
+import { placeOutline, polygonsOverlap, penetrationDepth, segmentsCross, pointInPolygon } from "../models/contact.js";
+import { bladeLine } from "../models/turbine.js";
 import fig430, { INFLOW, SPILL, PIER } from "../models/fig430.js";
 import * as m431 from "../models/fig431.js";
 import * as m432 from "../models/fig432.js";
@@ -254,8 +255,82 @@ test("第 437 種:渦殼式水輪:蝸殼使水作用在輪周所有葉片上;蝸
   assert.ok(angle(m437.default, "wheel", 0.2) < 0, "輪順時針轉(原圖箭頭)");
 });
 
-test("第 438 種:巴克氏水車:水從臂端噴出,軸的轉向與噴水方向相反", () => {
+// 方塊附件(at、rotation 四元數)在零件局部座標的八個角
+const boxCorners = (q) => {
+  const [sx, sy, sz] = q.size;
+  const corners = [];
+  for (const i of [-1, 1]) for (const j of [-1, 1]) for (const k of [-1, 1]) {
+    const c = quatRotate(q.rotation, [(i * sx) / 2, (j * sy) / 2, (k * sz) / 2]);
+    corners.push([c[0] + q.at[0], c[1] + q.at[1], c[2] + q.at[2]]);
+  }
+  return corners;
+};
+
+test("第 437 種:蝸殼壁的輪廓不自交;壁與舌都在輪葉外面,輪在壁裡轉不碰壁", () => {
+  const casing = part(m437.default, "casing");
+  const plates = casing.pieces.filter((q) => q.kind === "plate");
+  assert.ok(plates.some((q) => q.role === "wall") && plates.some((q) => q.role === "tongue"), "蝸殼壁與進水道下壁的舌");
+  for (const p of plates) {
+    const o = p.shape.outline;
+    const n = o.length;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;
+        assert.ok(!segmentsCross(o[i], o[(i + 1) % n], o[j], o[(j + 1) % n]), `${p.role} 的外輪廓自交(邊 ${i} 與 ${j})`);
+      }
+    }
+    if (p.role === "wall" || p.role === "tongue") for (const q of o) assert.ok(Math.hypot(q[0], q[1]) > m437.WHEEL + 0.03, `${p.role} 在輪葉外面(半徑 ${Math.hypot(q[0], q[1]).toFixed(3)})`);
+  }
+});
+
+test("第 437 種:在底部加裝傾斜的水斗 c,水從水斗的開口逸出時以額外的力推輪", () => {
+  const def = m437.default;
+  const wheel = part(def, "wheel");
+  const disc = wheel.pieces.find((q) => q.role === "disc");
+  const buckets = wheel.pieces.filter((q) => q.role === "bucket");
+  const floor = part(def, "casing").pieces.find((q) => q.role === "floor");
+  const discBottom = disc.at[2] - disc.thickness / 2;
+  const w = turned(def, "wheel", 0, 0.1);
+  assert.ok(buckets.length >= 2 && disc.shape.holes.length === buckets.length, "每個水斗有一個開口");
+  for (const b of buckets) {
+    const corners = boxCorners(b);
+    const zs = corners.map((c) => c[2]);
+    assert.ok(Math.max(...zs) <= discBottom + 0.03 && Math.max(...zs) >= discBottom - 0.01, "水斗接在輪盤的底面(在底部)");
+    assert.ok(Math.min(...zs) < discBottom - 0.15, "水斗往下伸");
+    const nrm = quatRotate(b.rotation, Y);
+    assert.ok(Math.abs(nrm[2]) > 0.3 && Math.abs(nrm[2]) < 0.95, `水斗是傾斜的(板面法線的 z 分量 ${nrm[2].toFixed(2)})`);
+    let d = quatRotate(b.rotation, Z);
+    if (d[2] > 0) d = d.map((v) => -v);
+    const r = norm([b.at[0], b.at[1], 0]);
+    const t = [-r[1], r[0], 0];
+    assert.ok(Math.sign(dot(d, t)) === -Math.sign(w), "水沿水斗的斜面往輪轉的反方向流出,反作用力推輪");
+    // 開口:水斗的上緣在輪盤的一個洞裡
+    const top = [b.at[0] - (d[0] * b.size[2]) / 2, b.at[1] - (d[1] * b.size[2]) / 2];
+    assert.ok(disc.shape.holes.some((h) => pointInPolygon(top, h)), "水斗的上緣對著輪盤上的開口");
+    // 水斗穿過底板中央的出水口
+    for (const c of corners) if (c[2] < floor.at[2] + floor.thickness / 2) assert.ok(pointInPolygon([c[0], c[1]], floor.shape.holes[0]), "水斗伸進底板中央的出水口裡");
+  }
+  const dots = def.pose(0.3).flows[0].points;
+  assert.ok(dots.some((p) => p[2] < floor.at[2] - floor.thickness / 2 - 0.05), "水從水斗往下逸出到底板下面");
+});
+
+test("第 437 種:葉片 a 照原圖:八片只在外圈(內環到外緣),頂端那一片直立", () => {
+  const vanes = part(m437.default, "wheel").pieces.filter((q) => q.role === "vane");
+  assert.equal(vanes.length, 8);
+  for (const v of vanes) {
+    const mid = Math.hypot(v.at[0], v.at[1]);
+    assert.ok(mid - v.size[0] / 2 >= 0.55 * m437.WHEEL, "葉片的內端在外圈(不伸到輪轂)");
+    assert.ok(mid + v.size[0] / 2 <= m437.WHEEL + 1e-9, "葉片的外端在輪緣");
+  }
+  assert.ok(vanes.some((v) => Math.abs(((v.angle - Math.PI / 2) % Math.PI) + Math.PI) % Math.PI < 1e-9), "頂端那一片直立");
+});
+
+test("第 438 種:巴克氏水車:水從臂端噴出,軸的轉向與噴水方向相反;兩根管十字交叉、四個噴口", () => {
   const def = m438.default;
+  assert.equal(m438.nozzles(0).length, 4, "四個噴口(原圖兩根管十字交叉)");
+  const tips = m438.nozzles(0).map(({ tip }) => Math.atan2(-tip[2], tip[0])).sort((a, b) => a - b);
+  for (let i = 1; i < 4; i++) close(tips[i] - tips[i - 1], Math.PI / 2, "四個噴口相隔 90°", 1e-9);
+  assert.ok(part(def, "arms") === undefined && part(def, "shaft").pieces.some((q) => q.role === "arm"), "臂裝在軸上");
   for (const p of sweep(1, 8)) {
     const a = angle(def, "shaft", p);
     for (const { tip, dir } of m438.nozzles(a)) {
@@ -267,6 +342,20 @@ test("第 438 種:巴克氏水車:水從臂端噴出,軸的轉向與噴水方向
       close(Math.hypot(tip[0], tip[2]), Math.hypot(m438.ARM, 0.25), "噴口在臂端");
     }
   }
+});
+
+test("第 438 種:軸的下端收成尖頂,尖頂接在軸底、立在底座上", () => {
+  const def = m438.default;
+  const shaft = part(def, "shaft");
+  const rod = shaft.pieces.find((q) => q.role === "shaft");
+  const tip = shaft.pieces.find((q) => q.role === "tip");
+  const base = part(def, "frame").pieces.find((q) => q.role === "base");
+  const rodBottom = rod.at[2] - rod.length / 2;
+  const tipTop = tip.at[2] + Math.max(...tip.profile.map((p) => p[1]));
+  const tipPoint = tip.at[2] + Math.min(...tip.profile.map((p) => p[1]));
+  close(tipTop, rodBottom, "尖頂的頂面接在軸底", 1e-9);
+  close(shaft.center[1] + tipPoint, base.at[1] + base.size[1] / 2, "尖頂立在底座上", 0.01);
+  assert.ok(pieceBox(base).lo[1] <= pieceBox(part(def, "frame").pieces.find((q) => q.role === "floor")).hi[1] + 1e-9, "底座立在地板上");
 });
 
 test("第 441 種:波斯水車:水桶在低處裝滿,滿著升到高處,碰到固定銷傾斜倒空,下降時空著", () => {
@@ -304,12 +393,111 @@ test("第 435 種:華倫渦輪:導葉 a 在外側,輪 b 在內側轉,水從中�
   assert.ok(dots.some((p) => Math.hypot(p[0], p[1]) < m435.WHEEL.r1 - 0.2), "水流到中央排出");
 });
 
-test("第 436 種:容瓦爾渦輪:導水槽固定在筒身裡,輪 c 的水斗比導水槽多、斜向排列", () => {
-  assert.ok(m436.WHEEL.count > m436.GUIDE.count, "水斗比導水槽多");
-  assert.ok(Math.sign(m436.WHEEL.tilt) !== Math.sign(m436.GUIDE.tilt), "水斗斜向與導水槽相反(水轉向後推輪)");
-  assert.ok(m436.WHEEL.y < m436.GUIDE.y, "輪在導水槽下面");
+test("第 435 種:導葉由外往內彎向順時針、水斗彎向逆時針(原圖);輪順時針轉,和導葉送出的水同向", () => {
+  const def = m435.default;
+  // 葉片中線由外往內走到內端時的轉向:r × v 的 z 分量,> 0 逆時針
+  const exitTurn = (line) => {
+    const [p, q] = line.slice(-2);
+    return p[0] * (q[1] - p[1]) - p[1] * (q[0] - p[0]);
+  };
+  const guide = exitTurn(bladeLine(m435.GUIDE.r0, m435.GUIDE.r1, 0, m435.GUIDE.sweep));
+  const bucket = exitTurn(bladeLine(m435.WHEEL.r0, m435.WHEEL.r1, 0, m435.WHEEL.sweep));
+  const w = turned(def, "wheel", 0, 0.2);
+  assert.ok(guide < 0, "導葉的內端往順時針彎,水順時針進來(原圖右側的進水箭頭往左下)");
+  assert.ok(w < 0, "輪順時針轉(原圖外圍的大箭頭)");
+  assert.ok(bucket > 0, "水斗的內端往逆時針彎,把水轉成逆時針送出,反作用力推輪順時針");
+  // 水流記號:進到輪裡之後順時針繞向中央(同一條路徑上越靠內的點,角度越小)
+  for (const p of m435.PATHS) {
+    const inner = p.filter(([x, y]) => Math.hypot(x, y) < m435.GUIDE.r1);
+    const angles = inner.map(([x, y]) => Math.atan2(y, x));
+    for (let i = 1; i < angles.length; i++) assert.ok(Math.sin(angles[i] - angles[i - 1]) < 0, "水流記號在輪裡順時針繞向中央");
+  }
+});
+
+test("第 435 種:導葉片接在底板上,外端接在外環上", () => {
+  const g = part(m435.default, "guides");
+  const [ring, floor] = g.pieces;
+  const blades = g.pieces.filter((q) => q.role === "blade");
+  assert.equal(blades.length, m435.GUIDE.count);
+  const floorTop = pieceBox(floor).hi[2];
+  const ringInner = Math.min(...ring.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  for (const b of blades) {
+    const box = pieceBox(b);
+    assert.ok(box.lo[2] <= floorTop + 1e-9 && box.hi[2] > floorTop, `導葉的底貼著底板(底 ${box.lo[2].toFixed(3)}、底板頂 ${floorTop.toFixed(3)})`);
+    const outer = Math.max(...b.shape.outline.map(([x, y]) => Math.hypot(x, y)));
+    assert.ok(outer >= ringInner - 1e-9, `導葉的外端伸到外環(${outer.toFixed(3)} < ${ringInner.toFixed(3)})`);
+  }
+});
+
+// 第 436 種:一圈葉片(role 是 guide 或 bucket,blade 是第幾片)各片的平面偏角 skew(葉片的長軸和半徑方向的夾角)
+// 與由上到下各段的斜角 tilts(往下的方向偏離鉛直、朝逆時針切線方向為正)
+function blades436(p, role, y) {
+  const byBlade = new Map();
+  for (const q of p.pieces.filter((q) => q.role === role)) (byBlade.get(q.blade) ?? byBlade.set(q.blade, []).get(q.blade)).push(q);
+  return [...byBlade.values()].map((segments) => {
+    segments.sort((a, b) => b.at[2] - a.at[2]);
+    // 偏角量中段(最接近這圈的中心高度那一段):它的中心在葉片的中線上
+    const middle = segments.reduce((m, s) => (Math.abs(s.at[2] - y) < Math.abs(m.at[2] - y) ? s : m));
+    const r = norm([middle.at[0], middle.at[1], 0]);
+    const t = [-r[1], r[0], 0];
+    const ex = quatRotate(middle.rotation, X);
+    const skew = Math.acos(Math.min(1, Math.abs(dot(ex, r))));
+    const tilts = segments.map((s) => {
+      let d = quatRotate(s.rotation, Z);
+      if (d[2] > 0) d = d.map((v) => -v);
+      return Math.atan2(dot(d, t), -d[2]);
+    });
+    return { skew, tilts };
+  });
+}
+
+test("第 436 種:容瓦爾渦輪:導水槽放射狀固定在筒身裡;水斗比導水槽多、略呈切線方向而非放射方向、曲線由幾段板拼成", () => {
   const def = m436.default;
+  const guides = blades436(part(def, "casing"), "guide", m436.GUIDE.y);
+  const buckets = blades436(part(def, "wheel"), "bucket", 0);
+  assert.equal(guides.length, m436.GUIDE.count, "導水槽固定在筒身(外殼)裡");
+  assert.equal(buckets.length, m436.WHEEL.count, "水斗裝在輪上");
+  assert.ok(buckets.length > guides.length, "水斗比導水槽多");
+  assert.ok(m436.WHEEL.y < m436.GUIDE.y, "輪在導水槽下面");
+  const w = turned(def, "wheel", 0, 0.2);
   close(def.pose(0.25).parts.wheel.angle, Math.PI / 2, "進程四分之一圈,輪轉 90°");
+  const monotone = (xs, sign) => xs.every((x, i) => i === 0 || Math.sign(x - xs[i - 1]) === sign);
+  for (const g of guides) {
+    assert.ok(g.skew < deg(1), `導水槽放射狀(偏角 ${((g.skew * 180) / Math.PI).toFixed(1)}°)`);
+    assert.ok(g.tilts.length >= 3 && monotone(g.tilts, 1), "導水槽是彎的:由上到下越來越斜");
+    assert.ok(Math.abs(g.tilts[0]) < deg(12) && Math.abs(g.tilts.at(-1)) > deg(30), "水直著進導水槽、斜著出來");
+    assert.ok(Math.sign(g.tilts.at(-1)) === Math.sign(w), "導水槽出口把水甩向輪轉的方向");
+  }
+  for (const b of buckets) {
+    assert.ok(b.skew > deg(8) && b.skew < deg(30), `水斗略呈切線方向而非放射方向(和半徑夾 ${((b.skew * 180) / Math.PI).toFixed(1)}°)`);
+    assert.ok(b.tilts.length >= 3 && monotone(b.tilts, -1), "水斗是彎的(擺線或拋物線):由上到下轉向另一邊");
+    assert.ok(Math.sign(b.tilts[0]) === Math.sign(w) && Math.sign(b.tilts.at(-1)) === -Math.sign(w), "水斗的進口順著導水槽送來的水,出口把水轉回去,反作用力推輪");
+  }
+});
+
+test("第 436 種:輪 c 在筒身裡,軸的下端立在底橋的軸承上,底橋架在筒身上", () => {
+  const def = m436.default;
+  const casing = part(def, "casing");
+  const wheel = part(def, "wheel");
+  const shell = casing.pieces.find((q) => q.role === "shell");
+  const zs = shell.profile.map((p) => p[1]);
+  const [bottom, top] = [Math.min(...zs), Math.max(...zs)];
+  // 兩個零件的 axis 都是 Y:局部 z 就是世界的 y
+  const worldY = (q, dz) => wheel.center[1] + (q.at?.[2] ?? 0) + dz;
+  for (const b of wheel.pieces.filter((q) => q.role === "bucket")) {
+    const half = (b.size[1] + b.size[2]) / 2;
+    assert.ok(worldY(b, -half) >= bottom && worldY(b, half) <= top, "水斗整個在筒身裡");
+  }
+  const shaft = wheel.pieces.find((q) => q.role === "shaft");
+  const beam = casing.pieces.find((q) => q.role === "beam");
+  const bearing = casing.pieces.find((q) => q.role === "bearing");
+  const beamTop = beam.at[2] + beam.size[2] / 2;
+  close(worldY(shaft, -shaft.length / 2), beamTop, "軸的下端立在底橋上", 0.005);
+  assertShaftInBearings({ at: [0, worldY(shaft, 0), 0], axis: [0, 1, 0], radius: shaft.radius, length: shaft.length }, [{ ...bearing, at: [0, bearing.at[2], 0], axis: [0, 1, 0] }], "軸的下端");
+  assert.ok(beamTop - 1e-9 <= bearing.at[2] - bearing.length / 2 && bearing.at[2] - bearing.length / 2 <= beamTop + 1e-9, "軸承座在底橋上");
+  const hub = wheel.pieces.find((q) => q.role === "hub");
+  assert.ok(beam.at[2] - beam.size[2] / 2 + 1e-9 >= bottom && bearing.at[2] + bearing.length / 2 < worldY(hub, -hub.length / 2), "底橋在筒身底部、輪轂下面");
+  close(Math.hypot(beam.size[0] / 2, beam.size[1] / 2), m436.R.case, "底橋的兩端頂著筒身的內壁", 0.01);
 });
 
 test("第 442 種:戽水車:罐子依序在水裡裝滿,升到上方倒進水槽", () => {
@@ -349,6 +537,35 @@ test("第 439 種:水桶裝滿就下降,觸地時底部的閥門打開排空,再
   const ys = [0.32, 0.37, 0.42, 0.47].map((v) => m439.cycle(v).y);
   const drops = ys.slice(1).map((y, i) => ys[i] - y);
   assert.ok(drops.every((d, i) => i === 0 || d > drops[i - 1]), "水桶越落越快");
+});
+
+test("第 439 種:滑輪的軸架在立柱上,配重落到立柱上的擋停住,提把接在桶口上", () => {
+  const def = m439.default;
+  const frame = part(def, "frame");
+  const pulley = part(def, "pulley");
+  const axle = pulley.pieces.find((q) => q.role === "axle");
+  const post = frame.pieces.find((q) => q.role === "post");
+  const stop = frame.pieces.find((q) => q.role === "stop");
+  assert.ok(post && axle && stop, "立柱、滑輪的軸與配重的擋");
+  const ground = pieceBox(frame.pieces.find((q) => q.role === "ground"));
+  const postBox = pieceBox(post);
+  assert.ok(postBox.lo[1] <= ground.hi[1] + 1e-9 && postBox.hi[1] >= pulley.center[1], "立柱從地面立到滑輪的軸");
+  assertShaftInBearings({ at: [pulley.center[0] + axle.at[0], pulley.center[1] + axle.at[1], pulley.center[2] + axle.at[2]], radius: axle.radius, length: axle.length }, frame.pieces, "滑輪的軸");
+  // 立柱、軸承、擋與托它的橫臂連成一件,都接在地上
+  assertOnePiece({ pieces: frame.pieces.filter((q) => ["ground", "pad", "post", "bearing", "bracket", "stop"].includes(q.role)) }, "立柱、軸承、擋連成一件");
+  // 水桶在頂端時配重落在擋上;繩從擋旁邊過
+  const top = def.pose(0).parts;
+  const weight = part(def, "weight");
+  close(top.weight.position[1] - weight.size[1] / 2, pieceBox(stop).hi[1], "配重落到擋上停住", 0.005);
+  const stopBox = pieceBox(stop);
+  assert.ok(stopBox.hi[0] < top.weight.position[0] - 0.03 || stopBox.lo[0] > top.weight.position[0] + 0.03, "繩從擋的旁邊過");
+  assert.ok(stopBox.hi[0] > top.weight.position[0] - weight.size[0] / 2 && stopBox.lo[0] < top.weight.position[0] + weight.size[0] / 2, "擋在配重底下");
+  const bucket = part(def, "bucket");
+  const bail = bucket.pieces.find((q) => q.role === "bail");
+  const rim = Math.max(...bucket.profile.map((p) => p[1]));
+  close(bail.at[2] - bail.size[2] / 2, rim, "提把接在桶口上(桶的局部 z 是直立方向)", 0.005);
+  const rope = def.pose(0.1).paths.rope.points;
+  close(rope.at(-1)[1], def.pose(0.1).parts.bucket.position[1] + bail.at[2], "繩拴在提把上", 1e-9);
 });
 
 test("第 440 種:分成兩半的水槽:一邊裝滿就翻過去倒出,另一邊轉到水流下方;可當水錶計數", () => {
