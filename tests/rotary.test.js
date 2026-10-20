@@ -1,7 +1,10 @@
 // 第十八章「雜項與旋轉引擎」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, turned, assertMeshFree } from "./helpers.js";
+import { close, sweep, turned, assertMeshFree, part, plateLayers, inSolid, polyGap } from "./helpers.js";
+import { pointInPolygon, edgeDistance, penetrationDepth, placeOutline } from "../models/contact.js";
+import { gearProfile } from "../models/shapes.js";
+import { TAU, rot2, add, scale, planeBasis, dist } from "../models/kit.js";
 
 import * as m412 from "../models/fig412.js";
 import * as m413 from "../models/fig413.js";
@@ -79,6 +82,246 @@ test("第 415 種:C 嚙合時槓桿往一邊擺就帶著輪 D 轉、擺回時 D 
   const pose = m415.default.pose(0.1, "C").parts;
   close(pose.pawlC.angle, pose.lever.angle, "C 隨槓桿貼著輪緣");
   assert.notEqual(pose.pawlB.angle, pose.lever.angle, "B 被抬起");
+});
+
+// 板件的孔裡包著點 q 的那一個孔(局部座標)
+const holeAround = (layers, q) => layers.flatMap((l) => l.solid.holes).find((h) => pointInPolygon(q, h));
+// 圓柱附件沿 z 的範圍
+const zRange = (piece, base = 0) => [base + (piece.at?.[2] ?? 0) - piece.length / 2, base + (piece.at?.[2] ?? 0) + piece.length / 2];
+const overlapsZ = ([a0, a1], [b0, b1]) => a0 <= b1 + 1e-9 && b0 <= a1 + 1e-9;
+
+test("第 412 種:三個小齒輪裝在 Y 形行星架的銷上;解鎖時行星架由插銷鎖在底座上不動,鎖定時插銷拔起、行星架隨整組轉", () => {
+  const def = m412.default;
+  const carrier = plateLayers(part(def, "carrier"));
+  const base = plateLayers(part(def, "base"));
+  const latch = part(def, "latch");
+  const axleR = (id) => part(def, id).pieces.find((p) => p.kind === "cylinder").radius;
+  for (const state of ["free", "locked"]) {
+    for (const v of sweep(TAU, 8, 0.1)) {
+      const p = def.pose(v, state).parts;
+      const c = p.carrier.angle;
+      if (state === "free") close(c, 0, "解鎖:行星架鎖在底座上不轉");
+      else {
+        close(c, p.sun.angle, "鎖定:行星架隨鼓頭轉");
+        close(c, p.barrel.angle, "鎖定:行星架隨鼓輪轉");
+      }
+      for (let i = 1; i <= 3; i++) {
+        const local = rot2(p[`planet${i}`].position, -c);
+        const hole = holeAround(carrier, local);
+        assert.ok(hole, `小齒輪 ${i} 的銷穿在行星架的孔裡`);
+        const gap = edgeDistance(local, hole) - axleR(`planet${i}`);
+        assert.ok(gap >= 0 && gap < 0.01, `小齒輪 ${i} 的銷和行星架的孔貼合(間隙 ${gap})`);
+      }
+      // 插銷:整根在行星架的孔裡;解鎖時插進底座的孔,鎖定時拔起、離開底座、跟著行星架走
+      const [lx, ly, lz] = p.latch.position;
+      const latchZ = [lz - latch.length / 2, lz + latch.length / 2];
+      const inCarrier = holeAround(carrier, rot2([lx, ly], -c));
+      assert.ok(inCarrier && overlapsZ(latchZ, [carrier[0].z0, carrier[0].z1]), "插銷穿在行星架的孔裡");
+      assert.ok(edgeDistance(rot2([lx, ly], -c), inCarrier) - latch.radius < 0.01, "插銷和行星架的孔貼合");
+      const baseLayer = base.find((l) => l.solid.holes.some((h) => pointInPolygon([lx, ly], h)));
+      if (state === "free") {
+        assert.ok(baseLayer && latchZ[0] < baseLayer.z1 - 0.02, "解鎖:插銷插進底座的孔裡");
+        assert.ok(!inSolid([lx, ly], baseLayer.solid), "插銷在底座的孔裡,不是穿進底座的板");
+      } else {
+        for (const l of base) assert.ok(!overlapsZ(latchZ, [l.z0, l.z1]), "鎖定:插銷拔起,離開底座");
+        close(lx, rot2(def.pose(0.1, "free").parts.latch.position, c)[0], "鎖定:插銷隨行星架公轉", 1e-9);
+      }
+    }
+  }
+});
+
+test("第 412 種:兩個掣子鉸在底座的柱上,尖端靠在鼓輪的輪緣上;鼓輪順時針轉時掣子被輪緣的台階頂起再落下(擋住反轉)", () => {
+  const def = m412.default;
+  const rim = part(def, "barrel").pieces[0];
+  const posts = part(def, "base").pieces.filter((p) => p.kind === "cylinder");
+  for (const id of ["pawlTop", "pawlBottom"]) {
+    const pawl = part(def, id);
+    const at = def.pose(0, "free").parts[id].position;
+    const post = posts.find((c) => Math.hypot(c.at[0] - at[0], c.at[1] - at[1]) < 1e-9);
+    assert.ok(post, `${id} 鉸在底座的柱上`);
+    const clearance = edgeDistance([0, 0], pawl.shape.holes[0]) - post.radius;
+    assert.ok(clearance >= 0 && clearance < 0.01, `${id} 的孔套在柱上(間隙 ${clearance})`);
+    assert.ok(overlapsZ([at[2] - pawl.thickness / 2, at[2] + pawl.thickness / 2], zRange(post)), `${id} 在柱的高度範圍裡`);
+    // 鼓頭逆時針轉 6π → 鼓輪順時針轉一圈
+    const angles = [];
+    for (const v of sweep(6 * Math.PI, 360)) {
+      const p = def.pose(v, "free").parts;
+      const placed = placeOutline(pawl.shape.outline, p[id].position, p[id].angle);
+      const wall = placeOutline(rim.shape.outline, [0, 0], p.barrel.angle);
+      assert.ok(penetrationDepth(placed, wall) < 0.002, `${id} 不穿進輪緣(主動量 ${v})`);
+      assert.ok(polyGap(placed, wall) < 0.004, `${id} 的尖端靠在輪緣上(主動量 ${v})`);
+      angles.push(p[id].angle);
+    }
+    // 落下:連續幾步轉角變大(台階的角沿平的尖端滑過去);其餘各步只能被斜面頂起(轉角不變大)
+    const drops = [];
+    for (let i = 1; i < angles.length; i++) {
+      const d = angles[i] - angles[i - 1];
+      if (d > 1e-6) {
+        if (angles[i - 1] - angles[i - 2] > 1e-6) drops[drops.length - 1] += d;
+        else drops.push(d);
+      }
+    }
+    assert.equal(drops.length, 2, `${id} 一圈落下兩次(輪緣有兩個台階):${drops.map((d) => d.toFixed(4))}`);
+    for (const d of drops) assert.ok(d > 0.01, `${id} 過台階時落下的量 ${d}`);
+  }
+});
+
+// 旋轉體剖面([半徑, 沿軸])在沿軸位置 a 的表面半徑(最大半徑)
+function surfaceRadius(profile, a) {
+  let best = -Infinity;
+  for (let i = 0; i < profile.length; i++) {
+    const [r1, a1] = profile[i];
+    const [r2, a2] = profile[(i + 1) % profile.length];
+    if (a1 === a2) {
+      if (Math.abs(a - a1) < 1e-12) best = Math.max(best, r1, r2);
+      continue;
+    }
+    const f = (a - a1) / (a2 - a1);
+    if (f >= -1e-12 && f <= 1 + 1e-12) best = Math.max(best, r1 + (r2 - r1) * f);
+  }
+  return best;
+}
+
+test("第 413 種:V 形邊緣的橡膠碟兩側斜面貼著溝面——放鬆時輕貼、尖端離溝底留空;旋緊後斜面壓進溝面、尖端仍不頂溝底", () => {
+  const def = m413.default;
+  const lower = part(def, "lower");
+  const groove = lower.pieces[0].profile;
+  const D = dist(lower.center, part(def, "rubberLoose").center);
+  const gap = (id, a) => D - surfaceRadius(groove, a) - surfaceRadius(part(def, id).profile, a);
+  // 放鬆:斜面貼著溝面(間隙 0),尖端離溝底
+  for (const a of [-0.18, -0.12, -0.06, 0.06, 0.12, 0.18]) close(gap("rubberLoose", a), 0, `放鬆時斜面貼著溝面(沿軸 ${a})`, 1e-6);
+  assert.ok(gap("rubberLoose", 0) > 0.01, "放鬆時尖端離溝底留空");
+  // 旋緊:橡膠碟徑向擴張,斜面壓進溝面(以重疊量表示橡膠的壓縮),尖端仍不頂溝底
+  for (const a of [-0.1, -0.05, 0.05, 0.1]) assert.ok(gap("rubberTight", a) < -0.02, `旋緊時斜面壓進溝面(沿軸 ${a}:${gap("rubberTight", a)})`);
+  assert.ok(gap("rubberTight", 0) > 0, "旋緊時尖端仍不頂溝底");
+  // 兩個狀態看得出差別:金屬板夾近、螺帽 B 轉進
+  const plateGap = (state) => def.pose(0, state).parts.plateR.position[0] - def.pose(0, state).parts.plateL.position[0];
+  assert.ok(plateGap("loose") - plateGap("tight") > 0.1, "旋緊後兩片金屬板明顯夾近");
+  const nutOff = (state) => def.pose(0, state).parts.nut.position[0] - def.pose(0, state).parts.plateR.position[0];
+  assert.ok(nutOff("loose") - nutOff("tight") > 0.1, "放鬆時螺帽 B 退出一段");
+  assert.notEqual(part(def, "rubberLoose").arrow, false, "放鬆時 A 也有轉向箭頭(轉得慢)");
+  // 下輪套在自己的軸上:孔和軸同徑
+  close(Math.min(...groove.map(([r]) => r)), lower.pieces.find((p) => p.kind === "cylinder").radius, "下輪的孔和軸同徑");
+});
+
+test("第 414 種:渦形盤的齒照小齒輪滾過的量排:每個姿勢小齒輪的齒都落在渦形齒之間、不撞齒,而且咬著(間隙接近 0)", () => {
+  const def = m414.default;
+  const pinion = part(def, "pinion");
+  const teeth = part(def, "volute").pieces.filter((p) => p.kind === "box");
+  const [u, w] = planeBasis(pinion.axis);
+  for (const v of sweep(m414.RANGE[1] * 0.995, 96, 0.05)) {
+    const p = def.pose(v).parts;
+    const c = p.pinion.position;
+    const r = -c[1];
+    // 小齒輪的齒形投影到它自己的平面(世界 x–z)
+    const prof = gearProfile(pinion).map((q) => {
+      const [x, y] = rot2(q, p.pinion.angle);
+      const q3 = add(c, add(scale(u, x), scale(w, y)));
+      return [q3[0], q3[2]];
+    });
+    let nearest = Infinity;
+    for (const tooth of teeth) {
+      const [tx, ty] = rot2([tooth.at[0], tooth.at[1]], p.volute.angle);
+      if (Math.abs(tx) > 0.45 || Math.abs(-ty - r) > 0.2) continue;
+      const hw = (tooth.size[1] / 2) * Math.abs(Math.cos(tooth.angle + p.volute.angle));
+      const z0 = tooth.at[2] - tooth.size[2] / 2;
+      const z1 = tooth.at[2] + tooth.size[2] / 2;
+      const rect = [[tx - hw, z0], [tx + hw, z0], [tx + hw, z1], [tx - hw, z1]];
+      assert.ok(penetrationDepth(prof, rect) < 0.003, `主動量 ${v}:小齒輪的齒撞上渦形齒(x ${tx.toFixed(3)})`);
+      nearest = Math.min(nearest, polyGap(prof, rect));
+    }
+    assert.ok(nearest < 0.01, `主動量 ${v}:小齒輪咬著渦形齒(最近的間隙 ${nearest})`);
+  }
+});
+
+test("第 414 種:渦線約一圈半(原圖);輪轂接著輻條,渦形盤的軸與小齒輪的軸都有軸承托著", () => {
+  const def = m414.default;
+  assert.ok(m414.SPAN >= 1.5 * TAU && m414.SPAN <= 1.8 * TAU, "渦線約一圈半多");
+  const volute = part(def, "volute");
+  const hub = volute.pieces.find((p) => p.kind === "cylinder");
+  const spokes = plateLayers(volute).filter((l) => inSolid([0, 0], l.solid));
+  assert.ok(spokes.some((l) => overlapsZ([l.z0, l.z1], zRange(hub))), "輪轂接著輻條");
+  const frame = plateLayers(part(def, "frame"));
+  const seat = frame.find((l) => l.solid.holes.some((h) => pointInPolygon([0, 0], h)));
+  assert.ok(seat && overlapsZ([seat.z0, seat.z1], zRange(hub)), "渦形盤的輪轂穿在軸承座的孔裡");
+  const seatGap = edgeDistance([0, 0], holeAround(frame, [0, 0])) - hub.radius;
+  assert.ok(seatGap >= 0 && seatGap < 0.01, `輪轂和軸承孔貼合(間隙 ${seatGap})`);
+  const shaft = part(def, "shaft").pieces.find((p) => p.kind === "cylinder");
+  const eyes = part(def, "frame").pieces.filter((p) => p.kind === "lathe");
+  assert.equal(eyes.length, 2, "小齒輪的軸兩端各一個軸承");
+  for (const eye of eyes) {
+    assert.deepEqual(eye.axis, [0, 1, 0], "軸承的孔沿小齒輪的軸");
+    const bore = Math.min(...eye.profile.map(([r]) => r));
+    assert.ok(bore - shaft.radius >= 0 && bore - shaft.radius < 0.01, "軸和軸承孔貼合");
+    close(eye.at[2], def.pose(0).parts.shaft.position[2], "軸承在軸的高度上");
+    assert.ok(Math.abs(eye.at[1]) < shaft.length / 2, "軸穿過軸承");
+  }
+});
+
+test("第 415 種:槓桿 A 是一件、套在輪 D 的軸上;棘爪 B、C 的鉸銷與曲柄 E 的銷都立在槓桿上", () => {
+  const def = m415.default;
+  const lever = part(def, "lever");
+  const layers = plateLayers(lever);
+  const axle = part(def, "wheel").pieces.find((p) => p.kind === "cylinder");
+  const hubHole = holeAround(layers, [0, 0]);
+  assert.ok(hubHole, "槓桿中央有套在輪軸上的輪轂孔");
+  const fit = edgeDistance([0, 0], hubHole) - axle.radius;
+  assert.ok(fit >= 0 && fit < 0.01, `輪轂孔和輪軸貼合(間隙 ${fit})`);
+  const pins = lever.pieces.filter((p) => p.kind === "cylinder");
+  assert.ok(pins.length >= 4, "兩個棘爪的鉸銷、曲柄 E 的銷、拉桿的銷");
+  for (const pin of pins) {
+    const on = layers.find((l) => inSolid([pin.at[0], pin.at[1]], l.solid) && overlapsZ([l.z0, l.z1], zRange(pin)));
+    assert.ok(on, `銷〔${pin.at[0]}, ${pin.at[1]}〕立在槓桿的板上`);
+  }
+  for (const id of ["pawlB", "pawlC"]) {
+    const p0 = rot2(def.pose(0, "C").parts[id].position, -def.pose(0, "C").parts.lever.angle);
+    assert.ok(pins.some((pin) => Math.hypot(pin.at[0] - p0[0], pin.at[1] - p0[1]) < 1e-9), `${id} 鉸在槓桿的銷上`);
+  }
+});
+
+test("第 415 種:作動的棘爪尖端全程貼著輪 D 的輪緣內側、不穿入,被抬起的棘爪離開輪緣;拉桿與槓桿都在輪緣前面、輪緣以內", () => {
+  const def = m415.default;
+  const wheel = part(def, "wheel");
+  const rimIn = Math.min(...wheel.pieces[0].shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  const rimFront = wheel.pieces[0].thickness / 2;
+  const span = 2 * m415.SWING;
+  for (const state of ["C", "B"]) {
+    const active = `pawl${state}`;
+    const idle = state === "C" ? "pawlB" : "pawlC";
+    for (const v of sweep(2 * span, 16)) {
+      const p = def.pose(v, state).parts;
+      const reach = (id) => Math.max(...placeOutline(part(def, id).shape.outline, p[id].position, p[id].angle).map(([x, y]) => Math.hypot(x, y)));
+      assert.ok(reach(active) <= rimIn + 1e-6, `${active} 不穿進輪緣(主動量 ${v})`);
+      assert.ok(rimIn - reach(active) < 0.002, `${active} 的尖端貼著輪緣內側(主動量 ${v},離 ${rimIn - reach(active)})`);
+      assert.ok(reach(idle) < rimIn - 0.02, `${idle} 被抬起、離開輪緣(主動量 ${v})`);
+      assert.ok(p.rod.from[2] - part(def, "rod").thickness / 2 >= rimFront, "拉桿在輪緣前面");
+    }
+  }
+  for (const l of plateLayers(part(def, "lever"))) for (const [x, y] of l.solid.outline) assert.ok(Math.hypot(x, y) < rimIn, "槓桿整個在輪緣以內");
+  assert.ok(!wheel.pieces.some((p, i) => i > 0 && p.kind === "plate" && p.shape.holes.length), "輪 D 只有一圈輪緣(沒有內輪緣)");
+});
+
+test("第 415 種:一根繩從棘爪 B 經曲柄 E 到棘爪 C,換狀態、整個往復長度都不變;被抬起那側拉直,作動那側鬆垂", () => {
+  const def = m415.default;
+  const span = 2 * m415.SWING;
+  const length = (pts) => pts.reduce((s, q, i) => (i ? s + dist(q, pts[i - 1]) : 0), 0);
+  const L0 = length(def.pose(0, "C").paths.cord.points);
+  for (const state of ["C", "B"]) {
+    for (const v of sweep(2 * span, 8)) {
+      const pose = def.pose(v, state);
+      const pts = pose.paths.cord.points;
+      close(length(pts), L0, `繩長不變(${state},主動量 ${v})`, 1e-4);
+      // 曲柄 E 的末端(外形離銷最遠的角)
+      const far = part(def, "crank").shape.outline.reduce((b, q) => (Math.hypot(...q) > Math.hypot(...b) ? q : b));
+      const e = [...rot2(far, pose.parts.crank.angle).map((x, i) => x + pose.parts.crank.position[i]), pose.parts.crank.position[2]];
+      const k = pts.map((q) => dist(q, e)).reduce((best, d, i, ds) => (d < ds[best] ? i : best), 0);
+      assert.ok(k > 0 && k < pts.length - 1 && dist(pts[k], e) < 0.05, "繩繫在曲柄 E 的末端");
+      const taut = state === "C" ? pts.slice(0, k + 1) : pts.slice(k);
+      const slack = state === "C" ? pts.slice(k) : pts.slice(0, k + 1);
+      close(length(taut), dist(taut[0], taut.at(-1)), "被抬起那側的繩拉直", 1e-6);
+      assert.ok(length(slack) - dist(slack[0], slack.at(-1)) > 0.02, "作動那側的繩鬆垂");
+    }
+  }
 });
 
 test("第 416 種:螺旋彈簧 A 把曲柄 B 推向與死點成直角的位置", () => {
