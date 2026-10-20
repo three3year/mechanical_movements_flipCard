@@ -1,15 +1,19 @@
 // 第 493 種:「路易斯吊楔」,在建築中吊起石塊。它由中央一根錐形的銷(楔子)與兩側各一塊楔形的填塊組成。
-// 三塊一起插進石塊上鑽出的孔(孔底較寬),吊起中央的楔子時,它把填塊緊緊楔進孔壁,石塊就被吊起。
+// 三塊一起插進石塊上鑽出的孔,吊起中央的楔子時,它把填塊緊緊楔進孔壁,石塊就被吊起。
 // 主動件是虛擬的「吊起」。剖面圖。
 // 推斷:先把中央的楔子提起一點、把兩塊填塊往外擠緊,之後整組連同石塊一起上升;各階段所佔的進度。
 // 物理:填塊一開始離孔壁有一點空隙,楔子提起時斜面把填塊往外推,推到貼上孔壁為止(往外推的量 = 提起量 × 斜面斜率,
 // 不能再多,否則填塊會穿進石塊);填塊的內面與楔子的斜面平行、一直貼著。
+// 孔照原圖是直壁(孔底和孔口一樣寬),填塊外面直、裡面隨楔子斜:三塊合起來在每個高度都比孔窄 2 × SPREAD,插得進孔裡;
+// 吊起時靠楔子把填塊擠緊在孔壁上的摩擦吊起石塊。
+// 推斷:楔子頂端往上伸出一段頸,頸上橫穿一根螺栓,U 形吊環的兩腳夾在頸的兩側、螺栓穿過兩腳(原圖吊環下緣兩端的螺栓頭),
+// 吊繩繫在吊環頂上。
 import { clamp, smooth } from "./kit.js";
-import { shape, thickLine, circle } from "./shapes.js";
+import { shape, thickLine, arcPoints } from "./shapes.js";
 
-const HOLE = { top: 0.45, bottom: 0.68, depth: 1.3 }; // 孔口寬、孔底寬、孔深(孔頂在 y = 0)
-export const SPREAD = 0.04; // 填塊一開始離孔壁的空隙 = 擠緊時往外推的量
-const PIN = { halfTop: 0.06, halfBottom: 0.22, top: -0.05, bottom: -HOLE.depth + 0.05 }; // 楔子的斜面:上窄下寬
+const HOLE = { width: 0.5, depth: 1.3 }; // 孔寬、孔深(孔頂在 y = 0;直壁)
+export const SPREAD = 0.025; // 填塊一開始離孔壁的空隙 = 擠緊時往外推的量
+const PIN = { halfTop: 0.06, halfBottom: 0.16, top: -0.05, bottom: -HOLE.depth + 0.05 }; // 楔子的斜面:上窄下寬
 const SLOPE = (PIN.halfBottom - PIN.halfTop) / (PIN.top - PIN.bottom); // 斜面每提起 1 往外推多少
 export const WEDGE_UP = SPREAD / SLOPE; // 中央楔子相對填塊提起多少才擠緊
 export const LIFT = 1.0;
@@ -24,33 +28,42 @@ export function lewis(u0) {
   return { wedge, spread, lift, tight: wedge >= WEDGE_UP - 1e-9 };
 }
 
-// 孔的形狀(鳩尾:上窄下寬)與三塊楔子
-const holeShape = [[-HOLE.top / 2, 0], [-HOLE.bottom / 2, -HOLE.depth], [HOLE.bottom / 2, -HOLE.depth], [HOLE.top / 2, 0]];
-const wallX = (y) => HOLE.top / 2 + ((HOLE.bottom / 2 - HOLE.top / 2) * -y) / HOLE.depth; // 孔壁在高度 y 的 x
+// 孔的形狀(直壁)與三塊楔子
+const WALL = HOLE.width / 2; // 孔壁的 x
+const holeShape = [[-WALL, 0], [-WALL, -HOLE.depth], [WALL, -HOLE.depth], [WALL, 0]];
 const pinX = (y) => PIN.halfTop + SLOPE * (PIN.top - y); // 楔子斜面在高度 y 的 x
-// 石塊(剖面):外形上方開著鳩尾形的孔
+// 石塊(剖面):外形上方開著直壁的孔
 const stoneShape = shape([[-STONE.w / 2, -STONE.h], [STONE.w / 2, -STONE.h], [STONE.w / 2, 0], ...holeShape.slice().reverse(), [-STONE.w / 2, 0]]);
 // 填塊:外面與孔壁平行、一開始退 SPREAD;內面與楔子的斜面平行、貼著
 const PACKER_BOTTOM = -HOLE.depth + 0.02;
 const packer = (s) =>
   shape([
     [s * PIN.halfTop, 0.25],
-    [s * (wallX(0) - SPREAD), 0.25],
-    [s * (wallX(0) - SPREAD), 0],
-    [s * (wallX(PACKER_BOTTOM) - SPREAD), PACKER_BOTTOM],
+    [s * (WALL - SPREAD), 0.25],
+    [s * (WALL - SPREAD), PACKER_BOTTOM],
     [s * pinX(PACKER_BOTTOM), PACKER_BOTTOM],
     [s * PIN.halfTop, PIN.top],
   ]);
-const pin = shape([[-PIN.halfTop, 0.6], [PIN.halfTop, 0.6], [PIN.halfTop, PIN.top], [PIN.halfBottom, PIN.bottom], [-PIN.halfBottom, PIN.bottom], [-PIN.halfTop, PIN.top]]);
+// 楔子(含往上伸出的頸)、頸上的螺栓與吊環
+const NECK_TOP = 0.85;
+const BOLT_Y = 0.78;
+const pin = shape([[-PIN.halfTop, NECK_TOP], [PIN.halfTop, NECK_TOP], [PIN.halfTop, PIN.top], [PIN.halfBottom, PIN.bottom], [-PIN.halfBottom, PIN.bottom], [-PIN.halfTop, PIN.top]]);
+const SHACKLE = { half: 0.12, bar: 0.06, foot: BOLT_Y - 0.04, crown: 0.95 }; // 兩腳中心線離中線、圓桿粗、腳下緣、頂弧的圓心高
+const SHACKLE_TOP = SHACKLE.crown + SHACKLE.half + SHACKLE.bar / 2;
+const shackle = [
+  { kind: "plate", shape: shape(thickLine([[-SHACKLE.half, SHACKLE.foot], ...arcPoints(SHACKLE.half, Math.PI, 0, 0, SHACKLE.crown), [SHACKLE.half, SHACKLE.foot]], SHACKLE.bar)), thickness: 0.06 },
+  { kind: "cylinder", radius: 0.03, length: 0.36, axis: [1, 0, 0], at: [0, BOLT_Y, 0] },
+  ...[-1, 1].map((s) => ({ kind: "cylinder", radius: 0.05, length: 0.04, axis: [1, 0, 0], at: [s * 0.17, BOLT_Y, 0] })),
+];
 
 export default {
   figure: 493,
   parts: [
-    { id: "ground", kind: "box", center: [0, -STONE.h - 0.12, 0], size: [5, 0.2, 1.4] },
+    { id: "ground", kind: "box", center: [0, -STONE.h - 0.1, 0], size: [5, 0.2, 1.4] }, // 石塊放在地上(吊起前)
     { id: "stone", kind: "plate", shape: stoneShape, thickness: 1.0, arrow: false },
     { id: "packerL", kind: "plate", shape: packer(-1), thickness: 0.5, arrow: false },
     { id: "packerR", kind: "plate", shape: packer(1), thickness: 0.5, arrow: false },
-    { id: "pin", kind: "plate", shape: pin, thickness: 0.5, arrow: false, pieces: [{ kind: "plate", shape: shape(thickLine([[-0.25, 0.75], [-0.25, 1.05], [0.25, 1.05], [0.25, 0.75]], 0.07), [circle(0.03, 0, 0.9).reverse()]), thickness: 0.12 }] },
+    { id: "pin", kind: "plate", shape: pin, thickness: 0.5, arrow: false, pieces: shackle },
     { id: "rope", kind: "rope", radius: 0.04 },
   ],
   // 動力重演:只重演吊起之前(楔子把填塊擠到孔壁)。兩塊填塊沿水平滑動,只受楔子斜面與孔壁的推。
@@ -78,7 +91,7 @@ export default {
         packerR: { position: [l.spread, l.lift, 0.05] },
         pin: { position: [0, l.lift + l.wedge, 0.1] },
       },
-      paths: { rope: { points: [[0, l.lift + l.wedge + 1.05, 0.1], [0, 3.2, 0.1]], closed: false, phase: 0 } },
+      paths: { rope: { points: [[0, l.lift + l.wedge + SHACKLE_TOP, 0.1], [0, 3.2, 0.1]], closed: false, phase: 0 } },
       readouts: [{ label: "填塊", value: l.tight ? "被楔子擠緊在孔壁上" : "楔子提起中" }],
     };
   },
