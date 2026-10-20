@@ -1,9 +1,9 @@
 // 第十九章「水車與泵」:斷言對應原文;流體示意只驗它是主動量的函式、只在路徑上
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
+import { close, sweep, part, inSolid } from "./helpers.js";
 import { distanceToPath } from "../models/flow.js";
-import { placeOutline, polygonsOverlap } from "../models/contact.js";
+import { placeOutline, polygonsOverlap, penetrationDepth } from "../models/contact.js";
 import fig430, { INFLOW, SPILL } from "../models/fig430.js";
 import * as m431 from "../models/fig431.js";
 import * as m432 from "../models/fig432.js";
@@ -371,8 +371,8 @@ test("第 453 種:雙風箱泵:一個風箱撐開吸水時,另一個被壓縮排
     assert.ok(Math.sign(grow[0]) !== Math.sign(grow[1]), "兩個風箱一撐一壓");
     for (const k of [0, 1]) {
       const expanding = grow[k] > 0;
-      assert.equal(Math.abs(b[`suction${k}`].angle) > 0.3, expanding, "撐開的風箱吸水閥打開");
-      assert.equal(Math.abs(b[`delivery${k}`].angle - Math.PI / 2) > 0.3, !expanding, "壓縮的風箱出水閥打開");
+      assert.equal(Math.abs(b[`suction${k}`].angle - (k ? Math.PI : 0)) > 0.3, expanding, "撐開的風箱吸水閥打開"); // 右邊的吸水閥鉸在右側、閉著時指向 -x(π)
+      assert.equal(Math.abs(b[`delivery${k}`].angle + Math.PI / 2) > 0.3, !expanding, "壓縮的風箱出水閥打開"); // 出水閥鉸在排水管腳下、垂著是 -90°
     }
   }
 });
@@ -389,6 +389,218 @@ test("第 454 種:隔膜泵:隔膜拉起時吸水閥開,壓下時水經出水閥
     assert.equal(Math.abs(parts.suctionValve.angle) > 0.3, d1 > d0, "隔膜拉起時吸水閥開");
     assert.equal(Math.abs(parts.deliveryValve.angle) > 0.3, d1 < d0, "隔膜壓下時出水閥開");
   }
+});
+
+// ── 第 450–454 種:剖面上的壁、開口與閥室 ─────────────────────
+// 固定件在剖面上的實體:深度蓋到 z 的板件(含孔)與方塊(管子剖開後留在後面的背板不算)、旋轉體的壁
+// (剖開的後半只算 sweep 蓋到的那一側);回傳世界座標的 { outline, holes } 清單。旋轉體的壁在左右各是一塊(以軸線鏡射的剖面多邊形)
+function sectionSolids(def, ids, z = 0.1) {
+  const out = [];
+  const visit = (piece, [ox, oy, oz]) => {
+    const [ax, ay, az = 0] = piece.at ?? piece.center ?? [0, 0, 0];
+    const [x, y, zc] = [ox + ax, oy + ay, oz + az];
+    const covers = (t) => zc - t / 2 <= z + 1e-9 && zc + t / 2 >= z - 1e-9;
+    if (piece.kind === "plate" && covers(piece.thickness ?? 0.2)) {
+      const move = (loop) => loop.map(([px, py]) => [px + x, py + y]);
+      out.push({ outline: move(piece.shape.outline), holes: (piece.shape.holes ?? []).map(move) });
+    } else if (piece.kind === "box" && covers(piece.size[2])) {
+      const [w, h] = piece.size;
+      out.push({ outline: [[x - w / 2, y - h / 2], [x + w / 2, y - h / 2], [x + w / 2, y + h / 2], [x - w / 2, y + h / 2]], holes: [] });
+    } else if (piece.kind === "lathe") {
+      const cut = piece.cut ?? 0;
+      const sweep = piece.sweep ?? Math.PI * 2;
+      const covers = (a) => [a, a + Math.PI * 2, a - Math.PI * 2].some((b) => b >= cut - 1e-9 && b <= cut + sweep + 1e-9);
+      for (const side of [1, -1]) {
+        if (!covers(side > 0 ? 0 : Math.PI)) continue;
+        out.push({ outline: piece.profile.map(([r, h]) => [x + side * r, y + h]), holes: [] });
+      }
+    }
+    for (const c of piece.pieces ?? []) visit(c, [x, y, zc]);
+  };
+  for (const id of ids) {
+    const p = part(def, id);
+    assert.ok(p, `零件 ${id}`);
+    if (p.kind === "group") for (const c of p.pieces ?? []) visit(c, [0, 0, 0]);
+    else visit({ ...p, at: p.center ?? [0, 0, 0] }, [0, 0, 0]);
+  }
+  return out;
+}
+const inAny = (q, solids) => solids.some((s) => inSolid(q, s));
+// 零件 id 在姿勢下的外形(板件,繞 position 轉 angle)
+const placedFlap = (def, id, pose) => {
+  const p = part(def, id);
+  const { position, angle } = pose.parts[id];
+  return placeOutline(p.shape.outline, position, angle ?? 0);
+};
+const overlapsAny = (poly, solids) => solids.some((s) => polygonsOverlap(poly, s.outline));
+// 穿入超過貼合誤差(實體驗證的容許值 0.03:閥瓣繞鉸銷轉時,鉸端的角擦到閥座在這以內)
+const digsInto = (poly, solids) => solids.some((s) => penetrationDepth(poly, s) > 0.03);
+const SPAN = (sw) => Math.abs(sw[0] - sw[1]);
+
+test("第 450 種:往下壓把手,活塞往下把水送出;吊環兩端銷接、長度不變,活塞桿的銷一直在泵筒軸線上", () => {
+  const p0 = force.pump(0.01);
+  const p1 = force.pump(0.3);
+  assert.ok(p1.theta < p0.theta && p1.piston < p0.piston, "把手往下壓,活塞往下");
+  assert.equal(p1.up, false, "往下壓是送水的那一程");
+  for (const v of sweep(4 * SPAN(force.SWING), 60)) {
+    const p = force.pump(v);
+    close(Math.hypot(p.hang[0] - force.HANGER.ear[0], p.hang[1] - force.HANGER.ear[1]), force.HANGER.length, "吊環長不變", 1e-6);
+    close(p.top[0], force.X, "活塞桿的銷在泵筒軸線上", 1e-9);
+    assert.ok(p.hang[0] < force.X, "吊環(支點)在活塞桿左邊");
+    const pose = fig450.pose(v);
+    close(pose.parts.handle.position[0], p.hang[0], "手柄的左端掛在吊環上", 1e-9);
+    assert.ok(pose.parts.hanger, "吊環是零件");
+  }
+});
+
+test("第 451 種:支點在泵筒左上的彎柱頂、活塞桿接在支點右邊:往下壓把手,活塞往下;連桿長不變", () => {
+  assert.ok(force.LEVER.pivot[0] < force.X, "支點在活塞桿左邊");
+  const p0 = force.pump(0.01, { hanger: false });
+  const p1 = force.pump(0.3, { hanger: false });
+  assert.ok(p1.theta < p0.theta && p1.piston < p0.piston && !p1.up, "把手往下壓,活塞往下送水");
+  for (const v of sweep(4 * SPAN(force.SWING), 60)) {
+    const p = force.pump(v, { hanger: false });
+    close(Math.hypot(p.E[0] - p.top[0], p.E[1] - p.top[1]), force.LEVER.link, "連桿長不變", 1e-6);
+    close(p.top[0], force.X, "活塞桿頂在泵筒軸線上", 1e-9);
+    assert.ok(p.E[0] > force.LEVER.pivot[0], "活塞桿的銷在支點右邊");
+  }
+});
+
+test("第 450、451、454 種:出水閥鉸在閥室裡,閥瓣開到底也不穿過閥室或出水管的壁", () => {
+  for (const [def, span] of [[fig450, SPAN(force.SWING)], [fig451, SPAN(force.SWING)], [m454.default, SPAN(m454.SWING)]]) {
+    const solids = sectionSolids(def, ["works"]);
+    let opened = false;
+    for (const v of sweep(4 * span, 96)) {
+      const pose = def.pose(v);
+      const flap = placedFlap(def, "deliveryValve", pose);
+      assert.ok(!overlapsAny(flap, solids), `第 ${def.figure} 種:主動量 ${v.toFixed(3)} 出水閥的閥瓣穿過壁`);
+      if (Math.abs(pose.parts.deliveryValve.angle) > 0.7) opened = true;
+    }
+    assert.ok(opened, "出水閥真的張開過");
+  }
+});
+
+test("第 450–454 種:管子接進開著口的壁,流體示意的點全程不穿過任何壁(水的路通)", () => {
+  const cases = [
+    [fig450, ["works", "barrel", "suction"], SPAN(force.SWING)],
+    [fig451, ["works", "barrel", "suction"], SPAN(force.SWING)],
+    [m452.default, ["works", "cylinder"], SPAN(m452.STROKE)],
+    [m453.default, ["works", "post"], SPAN(m453.SWING)],
+    [m454.default, ["works"], SPAN(m454.SWING)],
+  ];
+  for (const [def, ids, span] of cases) {
+    const solids = sectionSolids(def, ids);
+    for (const v of sweep(4 * span, 40)) {
+      for (const flow of def.pose(v).flows) {
+        for (const q of flow.points) assert.ok(!inAny([q[0], q[1]], solids), `第 ${def.figure} 種:主動量 ${v.toFixed(3)} 的點 (${q[0].toFixed(2)}, ${q[1].toFixed(2)}) 在壁裡`);
+      }
+    }
+  }
+});
+
+test("第 451 種:空氣室有底、坐在出水閥的閥座上,出水管從空氣室裡接出", () => {
+  const solids = sectionSolids(fig451, ["works"]);
+  const floor = fig451.pose(0).parts.deliveryValve.position;
+  assert.ok(inAny([floor[0] + 0.35, floor[1] - 0.05], solids), "閥座旁邊是空氣室的底");
+  assert.ok(!inAny([force.VALVE_X, floor[1] + 0.3], solids), "閥座上方是空氣室的空間");
+  assert.ok(!inAny([force.VALVE_X, floor[1] - 0.2], solids), "閥座下方通進水管");
+});
+
+test("第 452 種:四個閥在開口裡張開,閥瓣全程不穿過水道的壁、也碰不到泵筒;A、B 兩道水道的盡頭封住", () => {
+  const def = m452.default;
+  const solids = sectionSolids(def, ["works", "cylinder"]);
+  for (const v of sweep(4 * SPAN(m452.STROKE), 96)) {
+    const pose = def.pose(v);
+    for (const k of [1, 2, 3, 4]) {
+      const flap = placedFlap(def, `valve${k}`, pose);
+      assert.ok(!digsInto(flap, solids), `主動量 ${v.toFixed(3)}:閥 ${k} 穿過壁`);
+    }
+  }
+  assert.ok(inAny([m452.A_X, m452.CYL.y1 + 0.07], solids), "A 的頂端封住(和頂蓋齊)");
+  assert.ok(inAny([m452.B_X, m452.CYL.y0 + 0.13], solids), "B 的底端封住");
+});
+
+test("第 453 種:吸水管經弧形吸水道、吸水閥進底座的外格再進風箱;排水從外格經出水閥進中央的排水管(閥門與壓力泵相同)", () => {
+  const def = m453.default;
+  const span = SPAN(m453.SWING);
+  for (const v of sweep(4 * span, 24).slice(1)) {
+    for (const flow of def.pose(v).flows) {
+      const pts = flow.points;
+      const lowest = Math.min(...pts.map((q) => q[1]));
+      const highest = Math.max(...pts.map((q) => q[1]));
+      if (lowest < -1.5) {
+        // 吸水:從吸水管底經吸水道的弧(離開 x=0 的軸線、在底座下面)、從外格的底進去,到風箱裡
+        assert.ok(pts.some((q) => q[1] < -0.7 && Math.abs(q[0]) > 0.6), "吸水道彎到外格底下");
+        assert.ok(pts.some((q) => Math.abs(q[0]) > 0.6 && q[1] > -0.62 && q[1] < -0.3), "水進到外格");
+        assert.ok(highest > 0, "水進到風箱");
+      } else {
+        // 排水:從風箱下到外格、經排水管腳旁的出水閥(y −0.62..−0.42、|x| < 0.2)進排水管、到頂上出口
+        assert.ok(pts.some((q) => Math.abs(q[0]) < 0.2 && q[1] > -0.62 && q[1] < -0.42), "經出水閥進排水管腳");
+        assert.ok(highest > 1.3, "從頂上的出口排出");
+      }
+    }
+  }
+  // 閥瓣:吸水閥躺在外格底的開口上(閥座上方沒有壁),出水閥鉸在排水管腳的壁下、往管腳裡開
+  const solids = sectionSolids(def, ["works"]);
+  const p = def.pose(0.001).parts;
+  for (const k of [0, 1]) {
+    const s = p[`suction${k}`].position;
+    assert.ok(!inAny([s[0] + (k ? -0.13 : 0.13), s[1] - 0.06], solids), "吸水閥底下是開口");
+    assert.ok(!inAny([s[0] + (k ? -0.13 : 0.13), s[1] + 0.5], solids), "吸水閥上方通風箱的格");
+  }
+});
+
+test("第 453 種:風箱的褶每一段長度不變(拉長時折角變開、縮短時折得更深)", () => {
+  const def = m453.default;
+  const lengths = {};
+  for (const v of sweep(2 * SPAN(m453.SWING), 24)) {
+    const paths = def.pose(v).paths;
+    for (const id of ["fold0L", "fold0R", "fold1L", "fold1R"]) {
+      const pts = paths[id].points;
+      const segs = pts.slice(1).map((q, i) => Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1], q[2] - pts[i][2]));
+      lengths[id] ??= segs;
+      segs.forEach((l, i) => close(l, lengths[id][i], `${id} 第 ${i} 段`, 1e-6));
+    }
+  }
+  const a = def.pose(0).paths.fold0L.points;
+  const b = def.pose(SPAN(m453.SWING)).paths.fold0L.points;
+  assert.notEqual(Math.abs(a[1][0] - a[0][0]).toFixed(3), Math.abs(b[1][0] - b[0][0]).toFixed(3), "褶的振幅隨高度改變");
+});
+
+test("第 453 種:槓桿的支柱從上方垂下(頂端畫成斷口),不立在排水管上", () => {
+  const def = m453.default;
+  const post = part(def, "post");
+  assert.ok(post, "支柱是獨立的固定件");
+  const pipe = sectionSolids(def, ["works"]);
+  const bottom = Math.min(...post.pieces.filter((p) => p.kind === "plate").flatMap((p) => p.shape.outline.map(([, y]) => y + (p.at?.[1] ?? 0))));
+  assert.ok(bottom > 1.6, "支柱的底在排水管的頂上出口之上");
+  assert.ok(!inAny([0, bottom - 0.05], pipe), "支柱底下是空的");
+});
+
+test("第 454 種:隔膜夾在夾環下、往下垂成碗形;隔膜與壓板全程在夾環的下面,不穿過水室的壁;隔膜每一段長度不變", () => {
+  const def = m454.default;
+  const solids = sectionSolids(def, ["works"]);
+  const lengths = [];
+  let lowest = 0;
+  let highest = -9;
+  for (const v of sweep(4 * SPAN(m454.SWING), 48)) {
+    const pose = def.pose(v);
+    const pts = pose.paths.membrane.points;
+    for (const q of pts) {
+      assert.ok(q[1] <= m454.CLAMP_Y + 1e-9, `主動量 ${v.toFixed(3)}:隔膜高過夾環`);
+      assert.ok(!inAny([q[0], q[1]], solids), `主動量 ${v.toFixed(3)}:隔膜穿過壁 (${q[0].toFixed(2)}, ${q[1].toFixed(2)})`);
+    }
+    const plateTop = pose.parts.rod.position[1] - m454.ROD / 2 + 0.06;
+    assert.ok(plateTop < m454.CLAMP_Y - 0.03, "壓板在夾環下面");
+    const centre = pts[Math.floor(pts.length / 2)][1];
+    lowest = Math.min(lowest, centre);
+    highest = Math.max(highest, centre);
+    const segs = pts.slice(1).map((q, i) => Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]));
+    if (!lengths.length) lengths.push(...segs);
+    segs.forEach((l, i) => close(l, lengths[i], `隔膜第 ${i} 段`, 1e-6));
+  }
+  assert.ok(highest - lowest > 0.35, "隔膜起落的幅度");
+  assert.ok(lowest < m454.CLAMP_Y - 0.5, "拉到最低時垂成碗形");
 });
 
 test("第 455 種:舊式旋轉泵:閥門貼著泵缸內面轉,到擋板處被闔上", () => {
