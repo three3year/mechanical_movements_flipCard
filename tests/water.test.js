@@ -1432,6 +1432,48 @@ test("第 462 種:鏈式泵:上輪轉動,碟片沿不漏水的泵缸往上走,�
   close(Math.hypot(p[0] - q[0], p[1] - q[1]), 0, "鏈條是無端的(繞一圈回到原處)");
 });
 
+test("第 462 種:碟片嵌在燈籠輪的橫檔之間:間距是橫檔間距的整數倍、落在兩根橫檔正中、全程不碰橫檔;鏈條繞在臂端上、碟片套在鏈上", () => {
+  const def = m462.default;
+  const pitch = (2 * Math.PI * m462.R) / m462.ARMS; // 橫檔在鏈條半徑上的間距
+  close(m462.SPACING / pitch, Math.round(m462.SPACING / pitch), "碟片間距是橫檔間距的整數倍", 1e-9);
+  close(m462.LOOP / m462.SPACING, Math.round(m462.LOOP / m462.SPACING), "鏈長是碟片間距的整數倍(最後一段間距和其餘一樣)", 1e-9);
+  // 接觸:臂端離鏈條的內側接近 0(臂端帶著鏈走);碟片的中孔只比鏈大一點(碟片套在鏈上)
+  const tipGap = m462.R - m462.CHAIN_W / 2 - m462.BAR_LEN / 2;
+  assert.ok(tipGap >= 0 && tipGap < 0.01, `臂端貼著鏈條的內側(間隙 ${tipGap.toFixed(3)})`);
+  const bore = def.parts.find((p) => p.id === "disc0").inner - m462.CHAIN_W / 2;
+  assert.ok(bore >= 0 && bore < 0.02, `碟片的中孔套在鏈上(間隙 ${bore.toFixed(3)})`);
+  const halfBar = m462.BAR_LEN / 2;
+  const rectAlong = (x0, y0, x1, y1, w) => {
+    const l = Math.hypot(x1 - x0, y1 - y0);
+    const n = [(-(y1 - y0) / l) * w / 2, ((x1 - x0) / l) * w / 2];
+    return [[x0 + n[0], y0 + n[1]], [x1 + n[0], y1 + n[1]], [x1 - n[0], y1 - n[1]], [x0 - n[0], y0 - n[1]]];
+  };
+  const bar = (c, a) => rectAlong(c[0] + halfBar * Math.cos(a), c[1] + halfBar * Math.sin(a), c[0] - halfBar * Math.cos(a), c[1] - halfBar * Math.sin(a), m462.BAR_W);
+  const wheels = [{ id: "upper", c: m462.TOP }, { id: "lower", c: m462.BOTTOM }];
+  let onWheel = 0;
+  for (const theta of sweep(2 * Math.PI, 36)) {
+    const pose = def.pose(theta).parts;
+    const bars = wheels.flatMap((w) => Array.from({ length: m462.ARMS / 2 }, (_, i) => bar(w.c, pose[w.id].angle + (i * 2 * Math.PI) / m462.ARMS)));
+    for (let i = 0; i < m462.DISCS; i++) {
+      const { position: p, rotation } = pose[`disc${i}`];
+      // 碟片的平面垂直於鏈條的切線;切線 = 四元數把 z 軸轉過去的方向
+      const [qx, qy, qz, qw] = rotation;
+      const t = [2 * (qx * qz + qw * qy), 2 * (qy * qz - qw * qx), 1 - 2 * (qx * qx + qy * qy)];
+      const n = [-t[1], t[0]];
+      const disc = rectAlong(p[0] - n[0] * m462.DISC_R, p[1] - n[1] * m462.DISC_R, p[0] + n[0] * m462.DISC_R, p[1] + n[1] * m462.DISC_R, m462.DISC_T);
+      for (const b of bars) assert.ok(!polygonsOverlap(disc, b), `主動量 ${theta.toFixed(2)}:disc${i} 切過橫檔`);
+      for (const w of wheels) {
+        if (Math.abs(Math.hypot(p[0] - w.c[0], p[1] - w.c[1]) - m462.R) > 1e-6) continue;
+        // 在輪上:碟片的平面是徑向的,離最近一根臂正好半個間距
+        const rel = (((Math.atan2(p[1] - w.c[1], p[0] - w.c[0]) - pose[w.id].angle) % m462.SLOT) + m462.SLOT) % m462.SLOT;
+        close(Math.min(rel, m462.SLOT - rel), m462.SLOT / 2, `${w.id} 上的 disc${i} 落在兩根橫檔正中`, 1e-6);
+        onWheel++;
+      }
+    }
+  }
+  assert.ok(onWheel > 36 * 4, "每個姿勢兩個輪上都有碟片");
+});
+
 test("第 457 種:桔槔:配重約為所抬重量的一半,空桶要往下拉,滿桶時配重幫忙抬起", () => {
   assert.ok(m457.pull(false) > 0, "空桶:要往下拉");
   assert.ok(m457.pull(true) < 0, "滿桶:配重幫忙,只需往上提一部分");
@@ -1603,18 +1645,62 @@ test("第 460 種:舀水斗:槓桿經連桿把舀斗抬起,水流到鉸點倒上
   const lowEnd = (n) => m460.PIVOT[1] + m460.SCOOP * Math.sin(m460.scoop(m460.SWING[0], n).beta);
   const highEnd = (n) => m460.PIVOT[1] + m460.SCOOP * Math.sin(m460.scoop(m460.SWING[1], n).beta);
   for (const n of ["near", "middle", "far"]) {
-    assert.ok(lowEnd(n) < m460.WATER, "放下時斗浸在水裡");
-    assert.ok(highEnd(n) > m460.WATER, "抬起時斗離開水面");
+    assert.ok(lowEnd(n) < m460.WATER - 0.1, `${n}:放下時斗浸在水裡`);
+    // 原文「將水抬升短距離」:抬到最高時舀斗的末端高過鉸點,水才流得到鉸點、倒上岸
+    assert.ok(highEnd(n) > m460.PIVOT[1], `${n}:抬到最高時舀斗的末端高過鉸點(末端 ${highEnd(n).toFixed(2)},鉸點 ${m460.PIVOT[1]})`);
   }
+  // 連桿的上端掛在槓桿下緣的開口缺口裡(原圖槓桿左端下緣是一排缺口):缺口底就是銷的位置,缺口是外形的凹陷、不是封閉的孔
+  const def = m460.default;
+  const lever = def.parts.find((p) => p.id === "lever");
+  assert.equal(lever.shape.holes.length, 1, "槓桿只有樞軸一個孔,凹槽不是孔");
+  for (const [n, b] of Object.entries(m460.NOTCHES)) {
+    const v = n === "middle" ? 0.1 : 0.3; // 任一姿勢
+    const pose = def.pose(v, n);
+    const { position, angle } = pose.parts.lever;
+    const local = (p) => [position[0] + p[0] * Math.cos(angle) - p[1] * Math.sin(angle), position[1] + p[0] * Math.sin(angle) + p[1] * Math.cos(angle)];
+    const pin = local([-b, -m460.ARM_W / 2]);
+    close(Math.hypot(pose.parts.pitman.from[0] - pin[0], pose.parts.pitman.from[1] - pin[1]), 0, `${n}:連桿上端在缺口底(槓桿下緣)`, 1e-9);
+    assert.ok(!pointInPolygon([-b, -m460.ARM_W / 2 + 0.03], lever.shape.outline), `${n}:缺口是從下緣切進去的開口`);
+    assert.ok(pointInPolygon([-b, m460.ARM_W / 2 - 0.03], lever.shape.outline), `${n}:缺口上方仍是槓桿本體`);
+  }
+  // 槓桿的樞軸孔整個在外形裡
+  for (const q of lever.shape.holes[0]) assert.ok(pointInPolygon(q, lever.shape.outline), "樞軸孔在外形裡");
 });
 
-test("第 461 種:擺動式水槽:擺往兩邊擺時,交替的兩組管子輪流把水送上一層", () => {
+test("第 461 種:擺動式水槽:繞中間的支點擺,往一邊擺到底時水平管把水從右箱送到左箱,往另一邊時斜管把水送上一層", () => {
+  const world = (p, a) => [m461.PIVOT[0] + p[0] * Math.cos(a) - p[1] * Math.sin(a), m461.PIVOT[1] + p[0] * Math.sin(a) + p[1] * Math.cos(a)];
   const left = m461.active(m461.SWING[0]);
   const right = m461.active(m461.SWING[1]);
-  for (let k = 0; k < left.length; k++) assert.ok(left[k] !== right[k], `第 ${k + 1} 段管子只在一邊送水`);
+  m461.SEGMENTS.forEach((seg, k) => {
+    assert.ok(left[k] !== right[k], `${seg.id} 只在一邊送水`);
+    // 對到方向:送水的那一邊,這段管子的終點在世界裡比起點低(水往低處流);不送的那一邊終點比起點高
+    const a = left[k] ? m461.SWING[0] : m461.SWING[1];
+    const b = left[k] ? m461.SWING[1] : m461.SWING[0];
+    assert.ok(world(seg.to, a)[1] < world(seg.from, a)[1], `${seg.id} 送水時往終點下斜`);
+    assert.ok(world(seg.to, b)[1] > world(seg.from, b)[1], `${seg.id} 不送水時往終點上斜`);
+  });
   assert.ok(left.some(Boolean) && right.some(Boolean), "兩邊各有管子送水");
-  assert.ok(m461.active(0).every((on) => !on), "擺在中間時管子都往上斜,水不流");
-  assert.ok(Math.abs(m461.SWING[0]) > m461.SLOPE, "擺幅大於管子的斜度");
+  assert.ok(m461.active(0).every((on) => !on), "擺在中間時每段管子都往終點上斜,水不流");
+  // 原文「中間的轉角處設有箱體,各自與兩段管子相連」「底部的末端為舀斗,頂部則為開口的管子」:
+  // 每條鏈從進水口一段接一段(前一段的終點就是下一段的起點)、一段比一段高,接到開口的頂端;舀斗那條鏈水平管與斜管交替
+  for (const chain of m461.CHAINS) {
+    const segs = chain.map((id) => m461.SEGMENTS.find((s) => s.id === id));
+    for (let i = 1; i < segs.length; i++) {
+      assert.deepEqual(segs[i].from, segs[i - 1].to, `${segs[i].id} 接在 ${segs[i - 1].id} 的箱子上`);
+      assert.ok(segs[i].to[1] > segs[i].from[1], `${segs[i].id} 把水送上一層`);
+      assert.notEqual(segs[i].kind, segs[i - 1].kind, "水平管與斜管交替");
+    }
+  }
+  // 舀斗:往一邊擺到底時浸在水裡舀水,另一邊離開水面;兩個進水口各在一邊舀水
+  const scoopIn = (a) => world(m461.SCOOP, a)[1] < m461.WATER;
+  assert.ok(scoopIn(m461.SWING[1]) && !scoopIn(m461.SWING[0]), "舀斗只在往左擺到底時浸在水裡");
+  const boxIn = (a) => world(m461.BOXES.R6, a)[1] - m461.BOX / 2 < m461.WATER;
+  assert.ok(boxIn(m461.SWING[0]) && !boxIn(m461.SWING[1]), "右下的底箱只在往右擺到底時浸在水裡");
+  // 流體示意只在有管段送水時出現
+  const def = m461.default;
+  close(def.pose(Math.abs(m461.SWING[0])).parts.pendulum.angle, 0, "第一程走到一半時擺在中間");
+  assert.ok(def.pose(Math.abs(m461.SWING[0])).flows.every((f) => f.points.length === 0), "擺在中間時沒有水在流");
+  assert.ok(def.pose(0).flows.some((f) => f.points.length > 0), "擺到底時有水在流");
 });
 
 test("第 465 種:平衡泵:樑兩端交替往下,兩個泵的活塞一上一下輪流出水", () => {
@@ -1768,12 +1854,29 @@ test("第 463 種:自動堰:平常水位時直立關閉;水位升高時上閘葉
   assert.ok(flood.upper < 0, "上閘葉順時針(朝下游)翻");
   assert.ok(flood.lower > 0, "下閘葉逆時針(朝上游)被推回");
   assert.ok(flood.open, "河床處打開");
-  const pts = m463.default.pose(m463.NORMAL + 0.6).flows.flatMap((f) => f.points);
-  assert.ok(pts.some((p) => p[1] < 0.4 && Math.abs(p[0]) < 0.3), "水從河床的通道流過(沖走沉積物)");
+  const outline = m463.outline; // 閘葉的輪廓(下閘葉的下端是圓頭)
+  const lowerLeaf = (h) => placeOutline(outline(m463.LOWER), m463.LOWER.pivot, m463.gates(h).lower);
+  // 原文「在河床處打開一條通道,讓沉積物排出」:上閘葉翻到底時,下閘葉的下端離河床有明顯的開口;河床的流體示意從這個開口底下流過,不穿過閘葉
+  const lowest = (poly) => Math.min(...poly.map((p) => p[1]));
+  assert.ok(lowest(lowerLeaf(m463.FLOOD)) - m463.BED > 0.15, `翻到底時下閘葉的下端離河床 ${(lowest(lowerLeaf(m463.FLOOD)) - m463.BED).toFixed(3)},要開出明顯的通道`);
+  close(lowest(lowerLeaf(m463.NORMAL)), m463.BED, "平常水位時下閘葉的下端貼著河床,通道關著", 1e-6);
+  for (const h of sweep(m463.FLOOD, 12, m463.NORMAL)) {
+    const g = m463.gates(h);
+    const lower = lowerLeaf(h);
+    const upper = placeOutline(outline(m463.UPPER), m463.UPPER.pivot, g.upper);
+    const pts = m463.default.pose(h).flows.flatMap((f) => f.points);
+    for (const p of pts) {
+      assert.ok(!pointInPolygon(p, lower), `水位 ${h.toFixed(2)}:流體示意穿過下閘葉(${p.map((c) => c.toFixed(2))})`);
+      assert.ok(!pointInPolygon(p, upper), `水位 ${h.toFixed(2)}:流體示意穿過上閘葉(${p.map((c) => c.toFixed(2))})`);
+    }
+    if (g.open) {
+      const xs = lower.map((p) => p[0]);
+      assert.ok(pts.some((p) => p[0] > Math.min(...xs) && p[0] < Math.max(...xs) && p[1] < lowest(lower)), `水位 ${h.toFixed(2)}:水從下閘葉下端與河床之間的通道流過`);
+    }
+  }
   // 由接觸算:下閘葉被水壓推抵在上閘葉上——不穿入上閘葉,再往下游擺 1° 就碰到;上閘葉翻得越多,下閘葉被推回越多
-  const outline = (g) => [[-0.07, -g.below], [0.07, -g.below], [0.07, g.above], [-0.07, g.above]];
   let prev = -1;
-  for (const h of sweep(3.0, 12, m463.NORMAL)) {
+  for (const h of sweep(m463.FLOOD, 12, m463.NORMAL)) {
     const g = m463.gates(h);
     const upper = placeOutline(outline(m463.UPPER), m463.UPPER.pivot, g.upper);
     assert.ok(!polygonsOverlap(placeOutline(outline(m463.LOWER), m463.LOWER.pivot, g.lower), upper), "下閘葉不穿入上閘葉");
@@ -1781,6 +1884,8 @@ test("第 463 種:自動堰:平常水位時直立關閉;水位升高時上閘葉
     assert.ok(g.lower >= prev - (2 * Math.PI) / 180, "上閘葉翻得越多,下閘葉被推回越多(推到底時接觸點移到上閘葉的下角,略回 1°)");
     prev = g.lower;
   }
+  // 原文「上方閘葉比下方閘葉大得多」
+  assert.ok(m463.UPPER.above + m463.UPPER.below > 1.4 * (m463.LOWER.above + m463.LOWER.below), "上閘葉比下閘葉大得多");
 });
 
 test("第 464 種:希羅噴泉:水從上方降到下方容器,壓縮的空氣把中間容器的水從中央管噴出", () => {
@@ -1790,6 +1895,22 @@ test("第 464 種:希羅噴泉:水從上方降到下方容器,壓縮的空氣把
   assert.ok(b.mid < a.mid, "中間容器的水被推出去");
   assert.ok(a.jet > 0 && b.jet > 0, "中央管一直噴水");
   assert.ok(b.jet < a.jet, "水位差變小,水柱稍降");
+  // 原圖的配置:上方容器是頂上的橫箱,中間容器是吊在橫箱下面的碗(碗與橫箱底之間留一層空氣),下方容器是底箱
+  assert.ok(m464.BOWL.top <= m464.TOP.y0 && m464.BOWL.rim < m464.BOWL.top, "碗吊在橫箱下面,碗的水面上方留一層空氣");
+  assert.ok(m464.LOW.y1 < m464.BOWL.rim - m464.BOWL.r, "底箱在碗下面");
+  // 原文「經由右側的管子下降至下方容器」:右管從橫箱底通到底箱,管口在底箱的水面下(空氣才封得住)
+  assert.ok(m464.DOWN_PIPE.y1 >= m464.TOP.y0 && m464.DOWN_PIPE.y0 < m464.LOW.y0 + (m464.LOW.y1 - m464.LOW.y0) * m464.fountain(0).low, "右管從橫箱通到底箱、管口在水面下");
+  // 原文「被封閉於下方與中間容器水面上方空腔及左側連通管中的空氣」:左管接在底箱的空腔與碗上方的空腔之間
+  const lowSurface = (v) => m464.LOW.y0 + (m464.LOW.y1 - m464.LOW.y0) * m464.fountain(v).low;
+  assert.ok(m464.AIR_PIPE.y0 > lowSurface(1) && m464.AIR_PIPE.y0 < m464.LOW.y1, "左管下口在底箱水面上方的空腔");
+  assert.ok(m464.AIR_PIPE.y1 > m464.BOWL.rim && m464.AIR_PIPE.y1 <= m464.BOWL.top, "左管上口在碗上方的空腔");
+  // 原文「水柱從中央管噴出」:中央管從碗底往上穿過橫箱,噴口在橫箱上方
+  assert.ok(m464.NOZZLE.y0 < m464.BOWL.rim - m464.BOWL.r + 0.1 && m464.NOZZLE.y1 > m464.TOP.y1, "中央管從碗底通到橫箱上方");
+  // 水頭(右管水柱扣掉碗的水面到噴口的高度)到最後仍是正的:中間容器的水噴得完
+  assert.ok(m464.fountain(0.99).jet > 0, "進程到底時仍在噴");
+  // 噴出的水落回上方的橫箱裡
+  const jets = m464.default.pose(0.3).flows.find((fl) => fl.fluid === "water").points.filter((p) => p[1] > m464.TOP.y1);
+  assert.ok(jets.length > 0 && jets.every((p) => Math.abs(p[0]) < (m464.W - 0.12) / 2), "水柱在橫箱上方、落回橫箱裡");
 });
 
 test("第 466 種:液壓機:力的倍數等於兩柱塞的直徑平方比;1 吋與 30 吋是 900 倍", () => {
