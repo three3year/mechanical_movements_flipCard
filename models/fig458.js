@@ -44,7 +44,7 @@ export default {
         { kind: "box", size: [0.14, 3.0, 0.14], at: [-1.0, GROUND + 1.5, 0] },
         { kind: "box", size: [0.14, 3.0, 0.14], at: [1.0, GROUND + 1.5, 0] },
         { kind: "plate", shape: shape(thickLine([[-1.35, 2.55], [0, 3.25], [1.35, 2.55]], 0.1)), thickness: 1.2 },
-        { kind: "box", size: [2.2, 0.1, 0.1], at: [0, 2.85, 0] },
+        { kind: "box", size: [2.2, 0.1, 0.22], at: [0, 2.85, 0] }, // 橫樑的深度蓋住兩片夾板,吊架才接在樑上
         // 吊架:滑輪兩側各一片夾板,軸銷穿過滑輪(不擋住輪輻)
         { kind: "box", size: [0.06, 2.9 - PULLEY.center[1], 0.03], at: [0, (2.8 + PULLEY.center[1]) / 2, 0.09] },
         { kind: "box", size: [0.06, 2.9 - PULLEY.center[1], 0.03], at: [0, (2.8 + PULLEY.center[1]) / 2, -0.09] },
@@ -74,7 +74,8 @@ export default {
     });
     return {
       parts: {
-        pulley: { angle: (b.left - TOP) / r },
+        // 左桶往下走多少,滑輪左側(x = −r)的輪緣就往下走多少:逆時針轉時左側輪緣往下,所以左桶下降時轉角增加
+        pulley: { angle: (TOP - b.left) / r },
         bucketL: { position: [-r, b.left, 0] },
         bucketR: { position: [r, b.right, 0] },
         waterL: { position: [-r, b.left, 0], level: b.leftFull ? 0.9 : 0 },

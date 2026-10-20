@@ -2,6 +2,7 @@
 // 盛滿水時則由配重幫忙抬起。
 // 主動件是長竿(繞叉形柱頂擺動)。
 // 推斷:竿的長端掛水桶、短端綁配重;水桶放到井裡就裝滿;拉力以「水桶重 − 配重在竿端的等效重」的正負表示。
+// 地面在井口開孔(四塊地面圍著方孔,孔下是圓筒形的井壁,井欄坐在井口上;井壁、井欄是推斷),水桶與繩從井口垂到井水裡。
 import { deg } from "./kit.js";
 import { stroke } from "./pump.js";
 import { shape, thickLine, circle } from "./shapes.js";
@@ -11,8 +12,12 @@ export const LONG = 3.9; // 支點到掛桶端
 export const SHORT = 1.0; // 支點到配重端
 const ROPE = 2.0;
 export const SWING = [deg(32), deg(-12)]; // 長端仰角:高 → 低(把空桶放進井裡)
-const GROUND = -1.5;
+export const GROUND = -1.5;
 export const WELL_WATER = -2.3;
+export const WELL_X = PIVOT[0] - LONG * Math.cos((SWING[0] + SWING[1]) / 2); // 井的中心(水桶在行程中點的 x)
+export const WELL_INNER = 0.55; // 井壁與井欄的內半徑
+const WELL_WALL = 0.8; // 井壁的外半徑:蓋住地面方孔的四個角(半對角線 0.78)
+const [X0, X1] = [-2.95, 3.55]; // 地面的範圍
 /** 水重 1、桶重 0.2、配重的等效重(換算到桶端)約為水重的一半 */
 export const LOADS = { water: 1, bucket: 0.2, counter: 0.6 };
 
@@ -34,16 +39,20 @@ export default {
       id: "ground",
       kind: "group",
       pieces: [
-        { kind: "box", size: [6.5, 0.2, 2.0], at: [0.3, GROUND - 0.1, 0] },
+        // 地面:四塊圍著井口的方孔(邊長 2 × WELL_INNER)
+        { kind: "box", size: [WELL_X - WELL_INNER - X0, 0.2, 2.0], at: [(X0 + WELL_X - WELL_INNER) / 2, GROUND - 0.1, 0] },
+        { kind: "box", size: [X1 - (WELL_X + WELL_INNER), 0.2, 2.0], at: [(WELL_X + WELL_INNER + X1) / 2, GROUND - 0.1, 0] },
+        ...[-1, 1].map((s) => ({ kind: "box", size: [2 * WELL_INNER, 0.2, 1.0 - WELL_INNER], at: [WELL_X, GROUND - 0.1, (s * (1.0 + WELL_INNER)) / 2] })),
         // 叉形柱
         { kind: "plate", shape: shape(thickLine([[PIVOT[0] + 0.05, GROUND], [PIVOT[0], PIVOT[1] - 0.1], [PIVOT[0] - 0.12, PIVOT[1] + 0.25]], 0.16)), thickness: 0.18, at: [0, 0, -0.16] }, // 支架在桿的後面
         { kind: "plate", shape: shape(thickLine([[PIVOT[0], PIVOT[1] - 0.1], [PIVOT[0] + 0.15, PIVOT[1] + 0.25]], 0.12)), thickness: 0.18, at: [0, 0, -0.16] },
         { kind: "cylinder", radius: 0.035, length: 0.4, at: [PIVOT[0], PIVOT[1], -0.1] }, // 竿的樞軸銷:從叉形柱穿過竿(推斷)
-        // 井口(井欄)與井壁
-        { kind: "cylinder", radius: 0.65, inner: 0.55, length: 0.2, axis: [0, 1, 0], at: [PIVOT[0] - LONG * Math.cos((SWING[0] + SWING[1]) / 2), GROUND + 0.05, 0] },
+        // 井欄(坐在井口上)與井壁(從地面往下到井底,外緣蓋住方孔的四個角)
+        { kind: "cylinder", radius: 0.65, inner: WELL_INNER, length: 0.2, axis: [0, 1, 0], at: [WELL_X, GROUND + 0.05, 0] },
+        { kind: "cylinder", radius: WELL_WALL, inner: WELL_INNER, length: 1.4, axis: [0, 1, 0], at: [WELL_X, GROUND - 0.7, 0] },
       ],
     },
-    { id: "well", kind: "fill", fluid: "water", shape: "cylinder", center: [PIVOT[0] - LONG * Math.cos((SWING[0] + SWING[1]) / 2), WELL_WATER - 0.2, 0], size: [1.1, 0.4, 0], level: 1 },
+    { id: "well", kind: "fill", fluid: "water", shape: "cylinder", center: [WELL_X, WELL_WATER - 0.2, 0], size: [2 * WELL_INNER, 0.4, 0], level: 1 },
     {
       id: "pole",
       kind: "plate",
@@ -77,8 +86,5 @@ export default {
       ],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["ground", "rope"], reason: "繩垂進井裡:井口沒有畫出來,繩穿過地面 0.37(96 個取樣中 5 個)" },
-    { check: "interference", parts: ["ground", "bucket"], reason: "水桶放到井裡:井在地面以下,井口沒有畫出來,桶與地面重疊 0.35(96 個取樣中 20 個)" },
-  ],
+  waivers: [],
 };

@@ -7,6 +7,8 @@
 // 轉到 E 時凸輪最低,活塞被泵缸推回座裡。凸輪是活塞圓頭圓心的軌跡往內偏一個圓頭半徑(與活塞同一層)。
 // 鼓 B 是一片背板(裝在軸 A 上)加一圈開了兩道槽的鼓緣,中間空出放凸輪的空腔;凸輪套在軸上,由前面一根橫條固定在外殼上
 // (推斷;原圖是剖面,前蓋沒畫)。
+// 泵缸壁在 L、M 處開孔(壁分成 E 那一小段與其餘一大段);吸水管 F 從 L 往下,出水管 H 從 M 往右、往上,
+// 照原圖在頂上往右彎、出口朝下。兩道管壁都從泵缸外壁起畫,不伸進腔室。
 import { TAU, deg, polar } from "./kit.js";
 import { stream } from "./flow.js";
 import { shape, circle, thickLine, arcPoints, offsetLoop } from "./shapes.js";
@@ -18,8 +20,11 @@ const CAVITY = 0.9; // 鼓中間放凸輪的空腔
 export const PISTON = 0.75; // 活塞長(外端到內端圓頭的尖)
 const WIDTH = 0.2;
 export const NOSE = WIDTH / 2; // 內端圓頭的半徑
-const L_AT = deg(-112);
-const M_AT = deg(-68);
+export const L_AT = deg(-112);
+export const M_AT = deg(-68);
+const PORT_HALF = deg(7); // 孔口兩側的管壁離孔口中心的角度(從軸心看)
+const WALL = 0.07; // 管壁厚
+const SHELL = 0.15; // 泵缸壁厚
 
 /** 從軸心沿角度 phi 到泵缸內壁的距離 */
 export const reach = (phi) => ECC * Math.sin(phi) + Math.sqrt(BORE * BORE - (ECC * Math.cos(phi)) ** 2);
@@ -29,8 +34,29 @@ export const pitch = (phi) => reach(phi) - PISTON + NOSE;
 // 心形凸輪 a:圓頭圓心的軌跡往內偏一個圓頭半徑
 const PITCH_CURVE = Array.from({ length: 144 }, (_, i) => polar(pitch((TAU * i) / 144), (TAU * i) / 144).slice(0, 2));
 export const CAM = offsetLoop(PITCH_CURVE, -NOSE);
-const port = (a, s) => [polar(reach(a), a + s * deg(7)).slice(0, 2), [polar(reach(a), a + s * deg(7))[0], -1.75]];
-const H = [[polar(reach(M_AT), M_AT)[0] + 0.1, -0.95], [1.65, -0.95], [1.65, 1.45], [1.3, 1.75], [0.95, 1.45]];
+
+// 孔口:管壁的中心線落在泵缸內壁上角度 a ± PORT_HALF 處(從軸心看);泵缸壁上的孔照從泵缸圓心看的角度開,
+// 兩邊各再讓出半個管壁厚,管壁的內面才和孔的邊對齊
+const PORT_R = BORE + SHELL / 2; // 泵缸壁厚的中央
+const portEdge = (a, s) => polar(reach(a), a + s * PORT_HALF).slice(0, 2);
+const openAngle = (a, s) => Math.atan2(portEdge(a, s)[1] - ECC, portEdge(a, s)[0]) + (s * (WALL / 2)) / PORT_R;
+const onShell = (theta, r = PORT_R) => [r * Math.cos(theta), ECC + r * Math.sin(theta)];
+// 泵缸壁:兩段——L 與 M 之間的 E 段,與繞過其餘一圈的大段
+const shellSegment = (a0, a1) => shape([...arcPoints(BORE + SHELL, a0, a1, 0, ECC), ...arcPoints(BORE, a1, a0, 0, ECC)]);
+const E_SEGMENT = shellSegment(openAngle(L_AT, 1), openAngle(M_AT, -1));
+const MAIN_SEGMENT = shellSegment(openAngle(M_AT, 1), openAngle(L_AT, -1) + TAU);
+// 吸水管 F:兩道直壁從孔口 L 的兩邊往下,上端埋在泵缸壁裡(不伸進腔室)
+const portF = (s) => {
+  const x = onShell(openAngle(L_AT, s))[0] + (s * WALL) / 2;
+  return [[x, onShell(openAngle(L_AT, s))[1]], [x, -1.75]];
+};
+// 出水管 H:從孔口 M 往右、往上,頂上照原圖往右彎、出口朝下。外壁沿著泵缸的底往右(上端埋在泵缸壁最底處),
+// 內壁從孔口 M 上邊的泵缸壁裡往右;兩道壁都不伸進腔室
+const H_OUTER = [[0, -1.165], [1.91, -1.165], [1.91, 1.77], [2.31, 1.77], [2.31, 1.0]];
+const H_INNER_Y = onShell(openAngle(M_AT, 1))[1] + WALL / 2;
+const H_INNER = [[0.58, H_INNER_Y], [1.69, H_INNER_Y], [1.69, 1.55], [2.09, 1.55], [2.09, 1.0]];
+// 出水的流體示意:孔口 M 的中央 → 兩道壁的中線
+const H_MID = [onShell(Math.atan2(polar(reach(M_AT), M_AT)[1] - ECC, polar(reach(M_AT), M_AT)[0])), ...H_OUTER.slice(1).map(([x, y], i) => [(x + H_INNER[i + 1][0]) / 2, (y + H_INNER[i + 1][1]) / 2])];
 
 // 活塞:外端在局部原點,往 −x 伸到內端的圓頭
 const pistonShape = shape([[0, -NOSE], [0, NOSE], ...arcPoints(NOSE, Math.PI / 2, (3 * Math.PI) / 2, -(PISTON - NOSE), 0)]);
@@ -50,12 +76,13 @@ export default {
       id: "casing",
       kind: "group",
       pieces: [
-        { kind: "plate", shape: shape(circle(BORE + 0.15, 0, ECC), [circle(BORE, 0, ECC).reverse()]), thickness: 0.6 },
-        { kind: "plate", shape: shape(circle(BORE + 0.15, 0, ECC)), thickness: 0.04, at: [0, 0, -0.32] },
-        // 進水孔 L(接吸水管 F)與出水孔 M(接出水管 H)
-        ...[-1, 1].map((s) => ({ kind: "plate", shape: shape(thickLine(port(L_AT, s), 0.06)), thickness: 0.5 })),
-        { kind: "plate", shape: shape(thickLine(H, 0.07)), thickness: 0.5 },
-        { kind: "plate", shape: shape(thickLine(H.map(([x, y]) => [x - 0.22, y + 0.22]).slice(0, 3), 0.07)), thickness: 0.5 },
+        { kind: "plate", shape: MAIN_SEGMENT, thickness: 0.6, role: "shell" },
+        { kind: "plate", shape: E_SEGMENT, thickness: 0.6, role: "shell" },
+        { kind: "plate", shape: shape(circle(BORE + SHELL, 0, ECC)), thickness: 0.04, at: [0, 0, -0.32] },
+        // 吸水管 F(接孔口 L)與出水管 H(接孔口 M)
+        ...[-1, 1].map((s) => ({ kind: "plate", shape: shape(thickLine(portF(s), WALL)), thickness: 0.5, role: "pipe" })),
+        { kind: "plate", shape: shape(thickLine(H_OUTER, WALL)), thickness: 0.5, role: "pipe" },
+        { kind: "plate", shape: shape(thickLine(H_INNER, WALL)), thickness: 0.5, role: "pipe" },
         // 固定的心形凸輪 a(套在軸上,與活塞同一層)、凸輪的轂與把它固定在外殼上的前橫條
         { kind: "plate", shape: shape(CAM, [circle(0.12).reverse()]), thickness: 0.22 },
         { kind: "cylinder", radius: 0.16, inner: 0.12, length: 0.26, at: [0, 0, 0.24] },
@@ -72,7 +99,7 @@ export default {
       pieces: [
         { kind: "plate", shape: rimSegment(0), thickness: 0.4, mark: [0.95, 0] },
         { kind: "plate", shape: rimSegment(1), thickness: 0.4 },
-        { kind: "plate", shape: shape(circle(DRUM)), thickness: 0.06, at: [0, 0, -0.25] },
+        { kind: "plate", shape: shape(circle(DRUM)), thickness: 0.06, at: [0, 0, -0.22] }, // 背板貼著鼓緣的背面(重疊 0.01,連成一件)
         { kind: "cylinder", radius: 0.1, length: 1.2, at: [0, 0, -0.5] }, // 軸 A:從背板往後伸出,前端伸進凸輪的孔
         { kind: "cylinder", radius: 0.1, length: 0.12, at: [0, 0, -0.11] },
       ],
@@ -83,7 +110,7 @@ export default {
     { id: "labelL", kind: "group", pieces: [], label: "L", labelOffset: [polar(1.0, L_AT)[0] - 0.15, -1.15, 0.5] },
     { id: "labelM", kind: "group", pieces: [], label: "M", labelOffset: [polar(1.0, M_AT)[0] + 0.25, -1.1, 0.5] },
     { id: "labelF", kind: "group", pieces: [], label: "F", labelOffset: [polar(1.0, L_AT)[0] - 0.25, -1.7, 0.5] },
-    { id: "labelH", kind: "group", pieces: [], label: "H", labelOffset: [1.85, 0.2, 0.5] },
+    { id: "labelH", kind: "group", pieces: [], label: "H", labelOffset: [1.8, 0.2, 0.5] },
     ...[0, 1].map((k) => ({ id: `piston${k}`, kind: "plate", shape: pistonShape, thickness: 0.22, label: "c", labelOffset: [-0.2, 0, 0.4], arrow: false })),
   ],
   // 動力重演:兩根活塞在鼓的槽裡沿半徑滑動(起始時 piston0 在 30°、piston1 在 210°),被固定的凸輪往外推、被泵缸往內推,不靠彈簧
@@ -109,16 +136,12 @@ export default {
     const mid = (a) => polar((reach(a) + DRUM) / 2, a, 0.2);
     // 吸水:F → L 進到活塞後面;出水:活塞前面的水 → M → H
     const suction = [[polar(reach(L_AT), L_AT)[0], -1.7, 0.2], mid(L_AT), ...arcPoints(1.0, L_AT, deg(-200)).map(([x, y]) => [x, y + 0.1, 0.2])];
-    const delivery = [...arcPoints(1.05, deg(10), M_AT).map(([x, y]) => [x, y + 0.08, 0.2]), mid(M_AT), ...H.map(([x, y]) => [x - 0.11, y + 0.11, 0.2]), [0.95, 1.0, 0.2]];
+    const delivery = [...arcPoints(1.05, deg(10), M_AT).map(([x, y]) => [x, y + 0.08, 0.2]), mid(M_AT), ...H_MID.map(([x, y]) => [x, y, 0.2]), [H_MID.at(-1)[0], 0.75, 0.2]];
     return {
       parts,
       flows: [{ fluid: "water", points: [...stream(suction, travel, { spacing: 0.2 }), ...stream(delivery, travel, { spacing: 0.2 })] }],
       readouts: [{ label: "活塞伸出", value: `${(reach(theta + Math.PI / 2) - DRUM).toFixed(2)} / ${(reach(theta + 1.5 * Math.PI) - DRUM).toFixed(2)}` }],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["casing", "piston1"], reason: "簡化畫法:滑動活塞的外端貼著外殼內壁,重疊 0.15(96 個取樣中 51 個)" },
-    { check: "interference", parts: ["casing", "piston0"], reason: "簡化畫法:滑動活塞的外端貼著外殼內壁,重疊 0.15(96 個取樣中 54 個)" },
-    { check: "interference", parts: ["casing", "drum"], reason: "簡化畫法:鼓貼著外殼內壁的密封處,重疊 0.12" },
-  ],
+  waivers: [],
 };
