@@ -1,7 +1,10 @@
 // 第十八章「雜項與旋轉引擎」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, turned, assertMeshFree } from "./helpers.js";
+import { close, sweep, turned, assertMeshFree, part, plateLayers, polyGap } from "./helpers.js";
+import { placeOutline, penetrationDepth, pointInPolygon, edgeDistance, circlePolygon } from "../models/contact.js";
+import { rot2, deg } from "../models/kit.js";
+import { rect } from "../models/shapes.js";
 
 import * as m412 from "../models/fig412.js";
 import * as m413 from "../models/fig413.js";
@@ -226,6 +229,29 @@ test("第 425 種:旋轉引擎:偏心活塞 C 在一點碰汽缸;擋板 D 退出
   assert.ok(m425.abutment(-Math.PI / 2) < m425.BORE - 0.5, "活塞在對面時,擋板伸進汽缸隔開進汽與排汽");
 });
 
+// 2026-10-20 複查 #425-1:汽道的端頭伸進缸膛頂到偏心輪、擋板插在沒畫出來的槽裡
+test("第 425 種:汽道的端頭停在缸膛表面、擋板的槽開在汽缸壁上:偏心輪與擋板全程不穿進汽缸的任何板件", () => {
+  const def = m425.default;
+  const layers = plateLayers(part(def, "cylinder"));
+  const overlapZ = (l, z0, z1) => l.z0 < z1 - 1e-9 && z0 < l.z1 - 1e-9;
+  assert.ok(Math.hypot(...m425.inlet.at(-1).slice(0, 2)) >= m425.BORE - 1e-9, "進汽道的端點在缸膛表面上或之外");
+  assert.ok(Math.hypot(...m425.exhaust[0].slice(0, 2)) >= m425.BORE - 1e-9, "排汽道的端點在缸膛表面上或之外");
+  const abut = part(def, "abutment");
+  const eccentric = plateLayers(part(def, "pistonC"))[0];
+  for (const t of sweep(2 * Math.PI, 48, -Math.PI / 2)) {
+    const pose = def.pose(t).parts;
+    const disc = circlePolygon(m425.piston(t).c, m425.PISTON, 90);
+    const slab = rect(abut.size[0], abut.size[1], 0, pose.abutment.position[1]);
+    for (const l of layers) {
+      if (overlapZ(l, eccentric.z0, eccentric.z1)) assert.ok(penetrationDepth(disc, l.solid) < 2e-3, `主動量 ${t.toFixed(2)}:偏心輪不穿進汽缸的板件(汽道端頭、導槽)`);
+      if (overlapZ(l, -abut.size[2] / 2, abut.size[2] / 2)) assert.ok(penetrationDepth(slab, l.solid) < 1e-6, `主動量 ${t.toFixed(2)}:擋板在汽缸壁的槽裡,不穿進汽缸`);
+    }
+    // 擋板兩側貼著槽壁(由槽導引,不是浮著)
+    const guided = layers.filter((l) => overlapZ(l, -abut.size[2] / 2, abut.size[2] / 2));
+    for (const q of [[-abut.size[0] / 2, m425.BORE + 0.3], [abut.size[0] / 2, m425.BORE + 0.3]]) assert.ok(Math.min(...guided.map((l) => edgeDistance(q, l.solid.outline))) <= 0.011, `主動量 ${t.toFixed(2)}:擋板兩側貼著槽壁`);
+  }
+});
+
 test("第 426 種:兩個活塞 A 在輪轂 C 的溝槽裡徑向滑動,經過擋板 D 時縮進輪轂,其餘時候貼著汽缸壁", () => {
   for (const a of m426.ABUTMENTS) close(m426.wall(a), m426.HUB, "擋板處的內壁就是輪轂的半徑(活塞完全縮進)");
   close(m426.wall(Math.PI / 2), m426.BORE, "離擋板遠處活塞伸到汽缸壁");
@@ -233,10 +259,66 @@ test("第 426 種:兩個活塞 A 在輪轂 C 的溝槽裡徑向滑動,經過擋�
     const pose = m426.default.pose(t).parts;
     for (const id of ["piston1", "piston2"]) {
       const p = pose[id];
-      close(Math.hypot(p.position[0], p.position[1]), m426.wall(p.angle), "活塞外端貼著內壁");
+      const r = Math.hypot(p.position[0], p.position[1]) + m426.HEAD; // 圓頭的頂
+      assert.ok(r <= m426.wall(p.angle) + 1e-9, "活塞外端不超出內壁");
+      const d = Math.min(...m426.ABUTMENTS.map((a) => Math.abs(Math.atan2(Math.sin(p.angle - a), Math.cos(p.angle - a)))));
+      if (d < deg(6) || d > deg(47)) close(r, m426.wall(p.angle), "擋板頂與圓弧段上,活塞外端貼著內壁(斜坡上碰的是圓頭的側面)", 1e-4);
     }
     close(pose.piston2.angle - pose.piston1.angle, Math.PI, "兩個活塞相對");
   }
+});
+
+// 2026-10-20 複查 #426-2:平頭活塞的角切進擋板旁的斜坡、汽道板伸進缸膛
+test("第 426 種:活塞的圓頭全程貼著內壁滑、不穿入(斜坡上也是);汽道的端頭停在內壁表面", () => {
+  const def = m426.default;
+  const cyl = plateLayers(part(def, "cylinder"));
+  const bore = cyl.find((l) => l.solid.holes.length).solid.holes[0];
+  const half = part(def, "piston1").thickness / 2;
+  const headIdx = m426.PISTON_OUTLINE.map((q, i) => (q[0] > -1e-9 ? i : -1)).filter((i) => i >= 0);
+  assert.ok(headIdx.length >= 5, "活塞的外端是圓頭");
+  for (const path of [...m426.inlets, ...m426.exhausts]) {
+    const p = path.reduce((a, b) => (Math.hypot(a[0], a[1]) <= Math.hypot(b[0], b[1]) ? a : b)); // 離軸心最近的端點
+    assert.ok(Math.hypot(p[0], p[1]) >= m426.wall(Math.atan2(p[1], p[0])) - 1e-9, "汽道的端點在內壁表面上或之外");
+  }
+  for (const t of sweep(2 * Math.PI, 72)) {
+    const pose = def.pose(t).parts;
+    for (const id of ["piston1", "piston2"]) {
+      const p = pose[id];
+      const placed = placeOutline(m426.PISTON_OUTLINE, p.position, p.angle);
+      const z0 = p.position[2] - half;
+      const z1 = p.position[2] + half;
+      for (const l of cyl) if (l.z0 < z1 - 1e-9 && z0 < l.z1 - 1e-9) assert.ok(penetrationDepth(placed, l.solid) < 1e-3, `主動量 ${t.toFixed(2)}:${id} 不穿進汽缸的板件(內壁、汽道)`);
+      close(Math.min(...headIdx.map((i) => edgeDistance(placed[i], bore))), 0, `主動量 ${t.toFixed(2)}:${id} 的圓頭貼著內壁`, 3e-3);
+    }
+  }
+});
+
+// 2026-10-20 複查 #426-1:溝槽的洞比輪轂大、被三角化丟掉,輪轂是實心的;#424-3:底座離汽缸外緣 0.025
+test("第 426 種:輪轂的溝槽真的開出來:活塞在溝槽裡、兩側貼著槽壁、後面有輪轂的背板;底座接到汽缸", () => {
+  const def = m426.default;
+  const hub = plateLayers(part(def, "hub"));
+  for (const l of hub) for (const h of l.solid.holes) for (const q of h) assert.ok(pointInPolygon(q, l.solid.outline), "輪轂的洞在外形之內");
+  const half = part(def, "piston1").thickness / 2;
+  const innerIdx = m426.PISTON_OUTLINE.map((q, i) => (q[0] < -m426.PISTON + 1e-9 ? i : -1)).filter((i) => i >= 0);
+  assert.equal(innerIdx.length, 2, "活塞的內端是平的(兩個角)");
+  for (const t of sweep(2 * Math.PI, 36)) {
+    const pose = def.pose(t).parts;
+    for (const id of ["piston1", "piston2"]) {
+      const p = pose[id];
+      const z0 = p.position[2] - half;
+      const z1 = p.position[2] + half;
+      const local = placeOutline(m426.PISTON_OUTLINE, rot2(p.position, -pose.hub.angle), p.angle - pose.hub.angle);
+      const beside = hub.filter((l) => l.z0 < z1 - 1e-9 && z0 < l.z1 - 1e-9);
+      assert.ok(beside.length, "活塞的深度範圍裡有輪轂的板件(溝槽的兩壁)");
+      for (const l of beside) assert.ok(penetrationDepth(local, l.solid) < 1e-6, `主動量 ${t.toFixed(2)}:${id} 不穿進輪轂`);
+      for (const i of innerIdx) assert.ok(Math.min(...beside.map((l) => Math.min(edgeDistance(local[i], l.solid.outline), ...l.solid.holes.map((h) => edgeDistance(local[i], h))))) <= 0.011, `主動量 ${t.toFixed(2)}:${id} 兩側貼著槽壁`);
+      const behind = hub.filter((l) => l.z1 <= z0 + 1e-9);
+      assert.ok(behind.some((l) => innerIdx.every((i) => pointInPolygon(local[i], l.solid.outline))), `主動量 ${t.toFixed(2)}:${id} 的內端後面是輪轂的背板`);
+    }
+  }
+  const base = part(def, "cylinder").pieces.find((q) => q.kind === "box");
+  const bottom = Math.min(...plateLayers(part(def, "cylinder")).flatMap((l) => l.solid.outline.map((q) => q[1])));
+  assert.ok(base.at[1] + base.size[1] / 2 >= bottom - 1e-9, "底座的頂面接到汽缸的外緣");
 });
 
 test("第 427 種:軸 B 偏心;活塞 A 穿過輪轂上的填料 a 滑進滑出,但始終對汽缸保持徑向", () => {
@@ -248,8 +330,8 @@ test("第 427 種:軸 B 偏心;活塞 A 穿過輪轂上的填料 a 滑進滑出,
       // 活塞沿汽缸半徑:外端在內壁上,方向通過汽缸中心
       close(Math.hypot(p.position[0], p.position[1]), m427.BORE, "活塞外端貼著汽缸");
       close(Math.atan2(p.position[1], p.position[0]), p.angle, "活塞沿汽缸半徑");
-      // 填料 a 在輪轂上、在活塞上
-      close(Math.hypot(a[0] - m427.SHAFT[0], a[1] - m427.SHAFT[1]), m427.HUB, "填料在輪轂邊上");
+      // 填料 a 嵌在輪轂邊上的座裡(外緣和輪轂齊平,不露在輪轂外:2026-10-20 複查 #427-2)、在活塞上
+      close(Math.hypot(a[0] - m427.SHAFT[0], a[1] - m427.SHAFT[1]) + m427.PACK_R, m427.HUB, "填料的外緣和輪轂的外圓齊平", 0.011);
       const r = Math.hypot(a[0], a[1]);
       assert.ok(r >= m427.RING - 1e-9 && r <= m427.BORE + 1e-9, "填料落在活塞的長度範圍內");
       close(Math.atan2(a[1], a[0]), p.angle, "活塞穿過填料");
@@ -258,6 +340,78 @@ test("第 427 種:軸 B 偏心;活塞 A 穿過輪轂上的填料 a 滑進滑出,
   // 活塞穿過填料的位置一直在變:滑進滑出
   const rs = sweep(2 * Math.PI, 36).map((t) => Math.hypot(...m427.pistons(t)[0].packing.slice(0, 2)));
   assert.ok(Math.max(...rs) - Math.min(...rs) > 0.6, "活塞在輪轂裡滑進滑出");
+});
+
+// 2026-10-20 複查 #427-1、#427-2:輪轂的溝槽被丟掉、直溝槽容不下會歪的活塞;填料一半露在輪轂外、頂端伸進汽缸壁
+test("第 427 種:活塞穿過填料的槽、填料跟著活塞歪(滾動填料);輪轂的窗容得下歪的活塞,填料整個在輪轂裡、不伸進汽缸壁", () => {
+  const def = m427.default;
+  const hub = plateLayers(part(def, "hub"));
+  const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  let maxTilt = 0;
+  for (const t of sweep(2 * Math.PI, 72)) {
+    const pose = def.pose(t).parts;
+    for (const k of [1, 2]) {
+      const p = pose[`piston${k}`];
+      const a = pose[`packing${k}`];
+      const packing = plateLayers(part(def, `packing${k}`));
+      const packR = Math.max(...packing.flatMap((l) => l.solid.outline.map((q) => Math.hypot(q[0], q[1]))));
+      assert.ok(Math.hypot(a.position[0] - m427.SHAFT[0], a.position[1] - m427.SHAFT[1]) + packR <= m427.HUB + 1e-9, `主動量 ${t.toFixed(2)}:填料 ${k} 整個在輪轂裡`);
+      assert.ok(Math.hypot(a.position[0], a.position[1]) + packR <= m427.BORE + 1e-9, `主動量 ${t.toFixed(2)}:填料 ${k} 不伸進汽缸壁`);
+      close(wrap((a.angle ?? 0) - p.angle), 0, `主動量 ${t.toFixed(2)}:填料 ${k} 的槽對準活塞(跟著活塞歪)`);
+      const tilt = Math.abs(wrap(p.angle - Math.atan2(a.position[1] - m427.SHAFT[1], a.position[0] - m427.SHAFT[0])));
+      maxTilt = Math.max(maxTilt, tilt);
+      for (const layer of plateLayers(part(def, `piston${k}`))) {
+        const placed = placeOutline(layer.solid.outline, p.position, p.angle);
+        // 活塞穿過填料的槽:不穿進填料,槽的兩壁貼著活塞
+        for (const l of packing) {
+          if (!(l.z0 < layer.z1 - 1e-9 && layer.z0 < l.z1 - 1e-9)) continue;
+          const half = placeOutline(l.solid.outline, a.position, a.angle ?? 0);
+          assert.ok(penetrationDepth(placed, half) < 1e-6, `主動量 ${t.toFixed(2)}:活塞 ${k} 不穿進填料`);
+          assert.ok(polyGap(placed, half) <= 0.011, `主動量 ${t.toFixed(2)}:填料 ${k} 的槽壁貼著活塞`);
+        }
+        // 輪轂的窗容得下活塞的歪斜
+        const local = placeOutline(layer.solid.outline, rot2([p.position[0] - m427.SHAFT[0], p.position[1] - m427.SHAFT[1]], -pose.hub.angle), p.angle - pose.hub.angle);
+        for (const l of hub) if (l.z0 < layer.z1 - 1e-9 && layer.z0 < l.z1 - 1e-9) assert.ok(penetrationDepth(local, l.solid) < 1e-6, `主動量 ${t.toFixed(2)}:活塞 ${k} 不穿進輪轂`);
+      }
+    }
+  }
+  assert.ok(maxTilt >= deg(17), `活塞對輪轂的半徑最多歪 17° 以上(${((maxTilt * 180) / Math.PI).toFixed(1)}°),所以溝槽不能是直的`);
+});
+
+// 2026-10-20 複查 #427-4:環離後蓋 0.015 浮著、和活塞在深度上只重疊 0.005;#427-3:汽道端點伸進缸膛頂到輪轂與活塞
+test("第 427 種:活塞內端的腳貼著嵌在汽缸蓋輪轂上的環(深度上重疊);汽道的端頭停在缸膛表面", () => {
+  const def = m427.default;
+  const cyl = plateLayers(part(def, "cylinder"));
+  const maxR = (l) => Math.max(...l.solid.outline.map((q) => Math.hypot(q[0], q[1])));
+  const small = cyl.filter((l) => maxR(l) < m427.HUB);
+  const ring = small.reduce((a, b) => (maxR(a) >= maxR(b) ? a : b));
+  assert.ok(ring.solid.holes.length === 1, "環是環形");
+  const cover = cyl.find((l) => l !== ring && maxR(l) > m427.BORE && l.z1 <= ring.z0 + 1e-9 && l.z1 >= ring.z0 - 1e-9);
+  assert.ok(cover, "環立在汽缸蓋上(深度上相接)");
+  assert.ok(Math.hypot(...m427.inlet.at(-1).slice(0, 2)) >= m427.BORE - 1e-9 && Math.hypot(...m427.exhaust[0].slice(0, 2)) >= m427.BORE - 1e-9, "汽道的端點在缸膛表面上或之外");
+  const hub = plateLayers(part(def, "hub"));
+  for (const t of sweep(2 * Math.PI, 72)) {
+    const pose = def.pose(t).parts;
+    for (const k of [1, 2]) {
+      const p = pose[`piston${k}`];
+      const layers = plateLayers(part(def, `piston${k}`));
+      const foot = layers.reduce((a, b) => (a.z0 <= b.z0 ? a : b));
+      assert.ok(Math.min(foot.z1, ring.z1) - Math.max(foot.z0, ring.z0) >= 0.05, "腳和環在深度上重疊 0.05 以上");
+      const placed = placeOutline(foot.solid.outline, p.position, p.angle);
+      const rs = placed.map((q) => Math.hypot(q[0], q[1]));
+      assert.ok(Math.min(...rs) >= maxR(ring) - 1e-3, `主動量 ${t.toFixed(2)}:腳不穿進環`);
+      close(Math.min(...rs), maxR(ring), `主動量 ${t.toFixed(2)}:腳貼著環的外面`, 2e-3);
+      // 汽道、環、汽缸蓋:活塞與輪轂全程不穿進汽缸的任何板件
+      for (const layer of layers) {
+        const world = placeOutline(layer.solid.outline, p.position, p.angle);
+        for (const l of cyl) if (l.z0 < layer.z1 - 1e-9 && layer.z0 < l.z1 - 1e-9) assert.ok(penetrationDepth(world, l.solid) < 1e-3, `主動量 ${t.toFixed(2)}:活塞 ${k} 不穿進汽缸的板件`);
+      }
+    }
+    for (const layer of hub) {
+      const world = placeOutline(layer.solid.outline, m427.SHAFT, pose.hub.angle);
+      for (const l of cyl) if (l.z0 < layer.z1 - 1e-9 && layer.z0 < l.z1 - 1e-9) assert.ok(penetrationDepth(world, l.solid) < 1e-3, `主動量 ${t.toFixed(2)}:輪轂不穿進汽缸的板件(汽道端頭)`);
+    }
+  }
 });
 
 test("第 428 種:蒸汽把橡膠內襯 E 壓向滾子,滾子繞汽缸轉、帶動主軸", () => {
