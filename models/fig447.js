@@ -1,8 +1,10 @@
 // 第 447 種:在萊茵河等地常見的渡河法:靠水流作用在船舵上,水流以圓弧帶著船橫渡河流,圓心就是繫住船、
 // 使它不被沖往下游的錨。
 // 主動件是虛擬的「進程」:每單位是一個來回(過河再回來)。原圖是俯視圖,水流由左往右(箭頭)。
-// 推斷:船頭朝錨、船身斜對水流,舵把船推向對岸;到岸後舵扳向另一邊,船再沿同一圓弧回來;各階段所佔的進程。
+// 推斷:船頭朝上游、船身對水流斜向要去的那一岸(斜角相對水流固定,不隨繩子的角度變),水流推在船側把船送過去;
+// 舵尾扳向要去的那一岸,頂住船身的斜角;到岸後舵扳向另一邊,船再沿同一圓弧回來;各階段所佔的進程。
 // 靠岸的那一段裡,舵先扳過去、水流再把船身推轉到另一邊的斜角(都是連續的過程,不是一步到位)。
+// 舵鉸在船尾的支座上(推斷:支座貼著船尾、樞銷穿過舵的孔)。
 import { deg, smooth } from "./kit.js";
 import { stream } from "./flow.js";
 import { shape, rect, circle } from "./shapes.js";
@@ -10,8 +12,10 @@ import { shape, rect, circle } from "./shapes.js";
 export const ANCHOR = [-3.2, 0, 0];
 export const ROPE = 4.0;
 export const SWING = deg(32); // 船繩偏離下游方向的最大角度(到岸)
-const BANK = ROPE * Math.sin(SWING) + 0.55;
-const YAW = deg(18); // 船身斜對水流的角度
+const BANK = ROPE * Math.sin(SWING) + 0.65; // 岸線(船靠岸時船身、舵都在岸線之內)
+const YAW = deg(20); // 船身對水流的斜角(船頭偏向要去的那一岸)
+const RUDDER = deg(35); // 舵對船身的偏角(舵尾偏向要去的那一岸)
+const STERN = 0.78; // 舵的樞點(船尾支座)在船的局部 x
 const MOOR = 0.1; // 靠岸(扳舵、船身轉向)佔的進程
 
 /**
@@ -51,9 +55,10 @@ export default {
       shape: hull,
       thickness: 0.2,
       arrow: false,
-      pieces: [{ kind: "box", size: [0.06, 0.06, 0.1], at: [0.8, 0, 0] }],
+      // 船尾的舵支座(貼著船尾)與往上穿過舵的樞銷
+      pieces: [{ kind: "box", size: [0.07, 0.1, 0.05], at: [STERN - 0.005, 0, 0] }, { kind: "cylinder", radius: 0.025, length: 0.35, at: [STERN, 0, 0.15] }],
     },
-    { id: "rudder", kind: "plate", shape: shape(rect(0.5, 0.06, 0.25, 0)), thickness: 0.15, arrow: false },
+    { id: "rudder", kind: "plate", shape: shape(rect(0.58, 0.1, 0.23, 0), [circle(0.03).reverse()]), thickness: 0.15, arrow: false },
   ],
   powered: ["boat"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "來回", speed: 0.08, initial: 0.3 },
@@ -62,22 +67,18 @@ export default {
   pose(v) {
     const f = ferry(v);
     const B = boatAt(f.psi);
-    // 船頭(局部 −x)朝錨,船身依過河方向斜對水流
-    const toAnchor = Math.atan2(ANCHOR[1] - B[1], ANCHOR[0] - B[0]);
-    const heading = toAnchor + Math.PI - f.dir * YAW;
-    const stern = [B[0] + 0.75 * Math.cos(heading), B[1] + 0.75 * Math.sin(heading), 0.1];
+    // 船頭(局部 −x)朝上游,船身對水流斜向要去的那一岸(靠岸時連續地轉到另一邊);舵尾扳向要去的那一岸
+    const heading = -f.dir * YAW;
+    const stern = [B[0] + STERN * Math.cos(heading), B[1] + STERN * Math.sin(heading), 0.2]; // 舵在船板上面一層,套在樞銷上
     const bow = [B[0] - 0.55 * Math.cos(heading), B[1] - 0.55 * Math.sin(heading), 0.1];
     return {
       parts: {
         boat: { position: B, angle: heading },
-        rudder: { position: stern, angle: heading - f.rudder * deg(35) },
+        rudder: { position: stern, angle: heading + f.rudder * RUDDER },
       },
       paths: { rope: { points: [[ANCHOR[0], ANCHOR[1], 0.1], bow], closed: false, phase: 0 } },
       flows: [{ fluid: "water", points: [-0.6, 0.6, -1.7, 1.7].flatMap((y) => stream([[-3.6, y, 0.05], [4.6, y, 0.05]], v * 14, { spacing: 0.6 })) }],
       readouts: [{ label: "船", value: f.moored ? "靠岸,扳舵" : f.dir > 0 ? "往上方的岸" : "往下方的岸" }],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["river", "boat"], reason: "簡化畫法:船浮在水面上,船底浸入水面 0.06" },
-  ],
 };

@@ -1,7 +1,7 @@
 // 第十九章「水車與泵」:斷言對應原文;流體示意只驗它是主動量的函式、只在路徑上
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, inSolid, turned, pieceBox, assertShaftInBearings, assertOnePiece } from "./helpers.js";
+import { close, sweep, part, inSolid, turned, pieceBox, assertShaftInBearings, assertOnePiece, polyGap } from "./helpers.js";
 import { X, Y, Z, deg, norm, cross, dot, sub, scale, quatRotate } from "../models/kit.js";
 import { distanceToPath } from "../models/flow.js";
 import { placeOutline, polygonsOverlap, penetrationDepth, segmentsCross, pointInPolygon } from "../models/contact.js";
@@ -791,6 +791,183 @@ test("第 449 種:現代提升泵:出水口的瓣閥向上開,上行時被水頂
     assert.equal(OPENED(parts.outValve), up, "出水瓣閥與下閥同時(上行時)打開");
     assert.equal(OPENED(parts.pistonValve), !up, "活塞閥門在下行時打開");
   }
+});
+
+// 板件(世界座標)在姿勢下的外形:零件 position 平移、不轉(活塞上的架、閥瓣以外的板)
+const placedPlate = (piece, position) => piece.shape.outline.map(([x, y]) => [x + (piece.at?.[0] ?? 0) + position[0], y + (piece.at?.[1] ?? 0) + position[1]]);
+// 方塊 / 短圓柱(軸沿 y)在剖面上的矩形
+const sectionRect = (cx, cy, w, h) => [[cx - w / 2, cy - h / 2], [cx + w / 2, cy - h / 2], [cx + w / 2, cy + h / 2], [cx - w / 2, cy + h / 2]];
+
+test("第 444 種:廢水閥由重物保持打開:重球坐在閥桿頂上、閥桿在管頂的導架裡滑;兩個閥都有閥座,關上時貼著閥座、打開時離開", () => {
+  const def = m444.default;
+  assert.ok(!part(def, "lever"), "原圖沒有槓桿:重球直接裝在閥桿頂上");
+  const waste = part(def, "waste");
+  const stem = waste.pieces.find((p) => p.kind === "cylinder");
+  const ball = waste.pieces.find((p) => p.kind === "sphere");
+  const plate = waste.pieces.find((p) => p.kind === "box");
+  const stemTop = stem.at[1] + stem.length / 2;
+  assert.ok(ball.at[1] - ball.radius <= stemTop + 1e-9 && ball.at[1] > stemTop, "重球坐在閥桿的頂端");
+  const delivery = part(def, "delivery");
+  const disc = delivery.pieces.find((p) => p.kind === "cylinder" && p.radius > 0.1);
+  const solids = sectionSolids(def, ["works"], 0);
+  const [g0, g1] = m444.GUIDE;
+  let wasteOpen = false;
+  let wasteShut = false;
+  for (const v of sweep(1, 80)) {
+    const r = m444.ram(v);
+    const pose = def.pose(v);
+    const W = pose.parts.waste.position;
+    // 閥桿全程穿在導架的孔裡:孔的高度在桿的範圍內,桿的兩側都是導架,桿不穿進導架
+    const yg = (g0 + g1) / 2;
+    assert.ok(W[1] + stem.at[1] - stem.length / 2 < g0 && W[1] + stemTop > g1, `主動量 ${v.toFixed(3)}:閥桿穿過導架`);
+    assert.ok(inAny([W[0] + stem.radius + 0.03, yg], solids) && inAny([W[0] - stem.radius - 0.03, yg], solids), `主動量 ${v.toFixed(3)}:桿的兩側都是導架`);
+    assert.ok(!inAny([W[0] + stem.radius - 0.002, yg], solids) && !inAny([W[0] - stem.radius + 0.002, yg], solids), `主動量 ${v.toFixed(3)}:桿不穿進導架`);
+    // 廢水閥瓣:關上時頂面貼著管頂開口的邊(閥座),打開時落下離開;全程不穿進管壁
+    const wp = sectionRect(W[0], W[1] + (plate.at?.[1] ?? 0), plate.size[0], plate.size[1]);
+    const wTop = wp[2][1];
+    const seatX = W[0] + plate.size[0] / 2 - 0.01;
+    assert.ok(!overlapsAny(wp, solids), `主動量 ${v.toFixed(3)}:廢水閥瓣穿進管壁`);
+    if (r.waste === 0) {
+      assert.ok(inAny([seatX, wTop + 0.002], solids) && !inAny([seatX, wTop - 0.002], solids), `主動量 ${v.toFixed(3)}:關上的廢水閥貼著閥座`);
+      wasteShut = true;
+    }
+    if (r.waste === 1) {
+      assert.ok(!inAny([seatX, wTop + 0.1], solids), `主動量 ${v.toFixed(3)}:打開的廢水閥離開閥座`);
+      wasteOpen = true;
+    }
+    // 送水閥瓣:關上時底面貼著頸底的閥座,被水推開時往上抬;全程不穿進頸壁
+    const D = pose.parts.delivery.position;
+    const dp = sectionRect(D[0], D[1] + (disc.at?.[1] ?? 0), 2 * disc.radius, disc.length);
+    const dBottom = dp[0][1];
+    const dSeatX = D[0] + disc.radius - 0.01;
+    assert.ok(!overlapsAny(dp, solids), `主動量 ${v.toFixed(3)}:送水閥瓣穿進頸壁`);
+    if (r.delivery === 0) assert.ok(inAny([dSeatX, dBottom - 0.002], solids) && !inAny([dSeatX, dBottom + 0.002], solids), `主動量 ${v.toFixed(3)}:關上的送水閥貼著閥座`);
+    if (r.delivery === 1) assert.ok(!inAny([dSeatX, dBottom - 0.1], solids), `主動量 ${v.toFixed(3)}:打開的送水閥離開閥座`);
+  }
+  assert.ok(wasteOpen && wasteShut, "廢水閥開過也關過");
+});
+
+test("第 444 種:空氣室的頸坐在驅動管頂上、噴水管封進空氣室頂並伸到水面下;水的路通:流體示意的點全程不在管壁、殼、箱壁裡", () => {
+  const def = m444.default;
+  const solids = sectionSolids(def, ["works"], 0);
+  const { x: dx } = m444.DELIVERY;
+  const neck = m444.NECK_BOTTOM;
+  assert.ok(inAny([dx + 0.25, neck + 0.01], solids) && inAny([dx + 0.25, neck - 0.01], solids), "頸壁的底面和管頂壁相接,中間沒有縫");
+  assert.ok(!inAny([dx, neck - 0.01], solids) && !inAny([dx, neck + 0.01], solids), "頸底下的管頂開著口");
+  const nozzle = part(def, "works").pieces.find((p) => p.kind === "cylinder" && p.axis?.[1] === 1);
+  const [nx, ny] = nozzle.at;
+  const shellTop = m444.CHAMBER.center[1] + m444.CHAMBER.radius + 0.03;
+  assert.ok(inAny([nx + nozzle.radius + 0.004, shellTop], solids) && inAny([nx - nozzle.radius - 0.004, shellTop], solids), "噴水管的兩旁就是殼頂(封死,空氣漏不掉)");
+  const chamberWater = part(def, "chamberWater");
+  const surface = chamberWater.center[1] - chamberWater.size[1] / 2 + chamberWater.size[1] * Math.min(...sweep(1, 20).map((v) => m444.ram(v).level));
+  assert.ok(ny - nozzle.length / 2 < surface - 0.1, "噴水管下端伸到空氣室的水面下");
+  const front = sectionSolids(def, ["works"], 0.2);
+  for (const v of sweep(1, 40)) {
+    for (const flow of def.pose(v).flows) {
+      for (const q of flow.points) assert.ok(!inAny([q[0], q[1]], front), `主動量 ${v.toFixed(3)} 的點 (${q[0].toFixed(2)}, ${q[1].toFixed(2)}) 在壁裡`);
+    }
+  }
+});
+
+test("第 447 種:過河途中船頭一直斜向要去的那一岸、舵尾也扳向那一岸;靠岸時船舷與舵都不擦進岸,兩岸都靠得到", () => {
+  const def = m447.default;
+  const banks = sectionSolids(def, ["river"], -0.1).filter((s) => s.outline.length === 4 && Math.abs(s.outline[1][0] - s.outline[0][0]) > 5);
+  assert.equal(banks.length, 2, "兩岸");
+  const hullShape = part(def, "boat").shape.outline;
+  const near = { 1: false, "-1": false };
+  for (const v of sweep(1, 240)) {
+    const f = m447.ferry(v);
+    const pose = def.pose(v);
+    const { position: B, angle } = pose.parts.boat;
+    const bow = [-Math.cos(angle), -Math.sin(angle)]; // 船頭是局部 −x
+    if (!f.moored) {
+      assert.ok(bow[0] < 0, `主動量 ${v.toFixed(3)}:船頭朝上游`);
+      assert.ok(bow[1] * f.dir > 0.25, `主動量 ${v.toFixed(3)}:船頭斜向要去的那一岸(dir ${f.dir})`);
+      assert.ok(Math.sin(pose.parts.rudder.angle - angle) * f.dir > 0.3, `主動量 ${v.toFixed(3)}:舵尾扳向要去的那一岸`);
+    }
+    const hull = placeOutline(hullShape, B, angle);
+    const rudder = placedFlap(def, "rudder", pose);
+    for (const bank of banks) {
+      assert.ok(!polygonsOverlap(hull, bank.outline), `主動量 ${v.toFixed(3)}:船舷擦進岸`);
+      assert.ok(!polygonsOverlap(rudder, bank.outline), `主動量 ${v.toFixed(3)}:舵掃過岸`);
+    }
+    if (f.moored) {
+      const side = f.psi > 0 ? 1 : -1;
+      const bank = banks.find((b) => Math.sign(b.outline[0][1]) === side);
+      if (polyGap(hull, bank.outline) < 0.3) near[side] = true;
+    }
+  }
+  assert.ok(near[1] && near["-1"], "兩岸都靠得到(船離岸不到 0.3)");
+});
+
+test("第 448、449 種:活塞桿接在弓形架頂、架的兩腳站在活塞上,桿不伸進活塞的孔;活塞閥在架底下翻開,全程碰不到架", () => {
+  for (const [def, span] of [[m448.default, SPAN(m448.SWING)], [m449.default, SPAN(m449.STROKE)]]) {
+    const piston = part(def, "piston");
+    assert.equal(piston.kind, "group", `第 ${def.figure} 種:活塞是環、架、桿的組合`);
+    const ring = piston.pieces.find((p) => p.kind === "lathe");
+    const bow = piston.pieces.find((p) => p.kind === "plate");
+    const rod = piston.pieces.find((p) => p.kind === "cylinder" && p.axis?.[1] === 1);
+    assert.ok(ring && bow && rod, `第 ${def.figure} 種:有環、弓形架與桿`);
+    const ringTop = (ring.at?.[1] ?? 0) + Math.max(...ring.profile.map(([, h]) => h));
+    const ys = bow.shape.outline.map(([, y]) => y + (bow.at?.[1] ?? 0));
+    const bowTop = Math.max(...ys);
+    const bowBottom = Math.min(...ys);
+    const rodBottom = rod.at[1] - rod.length / 2;
+    assert.ok(bowBottom <= ringTop + 1e-9 && bowBottom > ringTop - 0.05, `第 ${def.figure} 種:架腳站在活塞環的頂面上`);
+    assert.ok(rodBottom <= bowTop + 1e-9 && rodBottom > bowTop - 0.05, `第 ${def.figure} 種:桿接在架頂`);
+    assert.ok(rodBottom > ringTop + 0.3, `第 ${def.figure} 種:桿停在架頂,不伸進活塞的孔`);
+    let opened = false;
+    for (const v of sweep(4 * span, 96)) {
+      const pose = def.pose(v);
+      const P = pose.parts.piston.position;
+      const flap = placedFlap(def, "pistonValve", pose);
+      assert.ok(!polygonsOverlap(flap, placedPlate(bow, P)), `第 ${def.figure} 種:主動量 ${v.toFixed(3)} 活塞閥碰到弓形架`);
+      assert.ok(Math.max(...flap.map(([, y]) => y)) < P[1] + rodBottom, `第 ${def.figure} 種:主動量 ${v.toFixed(3)} 活塞閥碰到桿`);
+      if (Math.abs(pose.parts.pistonValve.angle) > 0.7) opened = true;
+    }
+    assert.ok(opened, `第 ${def.figure} 種:活塞閥真的張開過`);
+  }
+});
+
+test("第 448、449 種:管子接進開著口的泵筒,流體示意的點全程不穿過任何壁(水的路通);閥瓣坐在閥座上、張開時不穿過壁", () => {
+  for (const [def, ids, span, valves] of [
+    [m448.default, ["barrel", "suction", "works"], SPAN(m448.SWING), ["footValve"]],
+    [m449.default, ["barrel", "suction"], SPAN(m449.STROKE), ["footValve", "outValve"]],
+  ]) {
+    const solids = sectionSolids(def, ids);
+    for (const v of sweep(4 * span, 48)) {
+      const pose = def.pose(v);
+      for (const flow of pose.flows) {
+        for (const q of flow.points) assert.ok(!inAny([q[0], q[1]], solids), `第 ${def.figure} 種:主動量 ${v.toFixed(3)} 的點 (${q[0].toFixed(2)}, ${q[1].toFixed(2)}) 在壁裡`);
+      }
+      for (const id of valves) {
+        const flap = placedFlap(def, id, pose);
+        assert.ok(!digsInto(flap, solids), `第 ${def.figure} 種:主動量 ${v.toFixed(3)} ${id} 穿過壁`);
+        if (Math.abs(pose.parts[id].angle) < 1e-9) {
+          const [hx, hy] = pose.parts[id].position;
+          const bottom = Math.min(...flap.map(([, y]) => y));
+          const under = (x) => inAny([x, bottom - 0.004], solids);
+          const over = (x) => inAny([x, hy + 0.001], solids);
+          assert.ok((under(hx + 0.02) || under(hx - 0.02)) && !over(hx + 0.02) && !over(hx - 0.02), `第 ${def.figure} 種:主動量 ${v.toFixed(3)} 關上的 ${id} 貼著閥座`);
+        }
+      }
+    }
+  }
+});
+
+test("第 449 種:出水管頂端照原圖是斷管(管子往上接):上行時水在閥室與管裡往上走到斷口,不從口緣溢出落下", () => {
+  const def = m449.default;
+  const { x: ox, inner } = m449.OUT;
+  let climbed = false;
+  for (const v of sweep(4, 40)) {
+    const pose = def.pose(v);
+    for (const flow of pose.flows) {
+      const high = flow.points.filter((q) => q[1] > m449.BARREL.y1 + 0.2);
+      for (const q of high) assert.ok(Math.abs(q[0] - ox) <= inner + 1e-9, `主動量 ${v.toFixed(3)}:點 (${q[0].toFixed(2)}, ${q[1].toFixed(2)}) 在出水管外`);
+      if (high.some((q) => q[1] > m449.OUT.top - 0.3)) climbed = true;
+    }
+  }
+  assert.ok(climbed, "水走到了斷口");
 });
 
 test("第 450 種:壓力泵:上升時吸水閥開、出水閥關;下降時吸水閥關,水經出水閥往上送", () => {
