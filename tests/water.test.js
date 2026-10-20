@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { close, sweep, part, inSolid, turned, pieceBox, assertShaftInBearings, assertOnePiece, polyGap } from "./helpers.js";
-import { X, Y, Z, deg, norm, cross, dot, sub, scale, quatRotate } from "../models/kit.js";
+import { X, Y, Z, deg, norm, cross, dot, sub, scale, add, rot2, quatRotate } from "../models/kit.js";
 import { distanceToPath } from "../models/flow.js";
 import { placeOutline, polygonsOverlap, penetrationDepth, segmentsCross, pointInPolygon } from "../models/contact.js";
 import { bladeLine } from "../models/turbine.js";
@@ -49,8 +49,6 @@ import * as m466 from "../models/fig466.js";
 import * as m467 from "../models/fig467.js";
 import * as m468 from "../models/fig468.js";
 import * as m469 from "../models/fig469.js";
-import { assertOnePiece, assertShaftInBearings, pieceBox, part } from "./helpers.js";
-import { quatRotate, add, sub, scale, dot, norm, rot2 } from "../models/kit.js";
 
 test("第 430 種:上射式水車,進程增加時水車依原圖箭頭順時針轉", () => {
   const a = fig430.pose(0.1).parts.wheel.angle;
