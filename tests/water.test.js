@@ -49,6 +49,8 @@ import * as m466 from "../models/fig466.js";
 import * as m467 from "../models/fig467.js";
 import * as m468 from "../models/fig468.js";
 import * as m469 from "../models/fig469.js";
+import { assertOnePiece, assertShaftInBearings, pieceBox, part } from "./helpers.js";
+import { quatRotate, add, sub, scale, dot, norm, rot2 } from "../models/kit.js";
 
 test("第 430 種:上射式水車,進程增加時水車依原圖箭頭順時針轉", () => {
   const a = fig430.pose(0.1).parts.wheel.angle;
@@ -574,13 +576,41 @@ test("第 436 種:輪 c 在筒身裡,軸的下端立在底橋的軸承上,底橋
   close(Math.hypot(beam.size[0] / 2, beam.size[1] / 2), m436.R.case, "底橋的兩端頂著筒身的內壁", 0.01);
 });
 
-test("第 442 種:戽水車:罐子依序在水裡裝滿,升到上方倒進水槽", () => {
+test("第 442 種:戽水車:罐子依序浸入水中裝滿,升到上方倒進水流上方的水槽", () => {
   const deg = Math.PI / 180;
+  const def = m442.default;
   assert.equal(m442.potLevel(-60 * deg), 1, "過了底部的罐子已裝滿");
-  assert.equal(m442.potLevel(60 * deg), 1, "上升途中滿著");
+  assert.equal(m442.potLevel(30 * deg), 1, "上升途中滿著");
   assert.equal(m442.potLevel(150 * deg), 0, "過了頂端已倒空");
   assert.equal(m442.potLevel(-150 * deg), 0, "下降時空著");
-  assert.ok(-m442.RIM < m442.RIVER, "輪的下端浸在水裡");
+  // 「依序浸入水中、被注滿」:裝水時罐口在水面下
+  for (const a of sweep(-50 * deg, 16, -130 * deg)) {
+    const level = m442.potLevel(a);
+    if (level > 0 && level < 1) assert.ok(m442.mouth(a)[1] < m442.RIVER, `角度 ${Math.round(a / deg)}°:裝水時罐口浸在水裡`);
+  }
+  // 「倒入水流上方的水槽」:水槽高過水面;倒水時罐口比槽底高、罐口比罐底低(罐子向水槽那一側傾),水落在槽內
+  assert.ok(m442.TROUGH.floor > m442.RIVER, "水槽在水流上方");
+  let pouring = 0;
+  for (const a of sweep(180 * deg, 180, 0)) {
+    const level = m442.potLevel(a);
+    if (!(level > 0 && level < 1)) continue;
+    pouring++;
+    const mouth = m442.mouth(a);
+    const butt = m442.butt(a);
+    const land = m442.landing(a);
+    assert.ok(mouth[1] > m442.TROUGH.floor, `角度 ${Math.round(a / deg)}°:倒水時罐口(${mouth[1].toFixed(2)})高過槽底(${m442.TROUGH.floor})`);
+    assert.ok(mouth[1] < butt[1], `角度 ${Math.round(a / deg)}°:倒水時罐口比罐底低`);
+    assert.ok(land[0] > m442.TROUGH.x[0] && land[0] < m442.TROUGH.x[1], `角度 ${Math.round(a / deg)}°:水落在水槽的 x 範圍內(${land[0].toFixed(2)})`);
+    assert.ok(land[2] > m442.TROUGH.z[0] && land[2] < m442.TROUGH.z[1], `角度 ${Math.round(a / deg)}°:水落在水槽的 z 範圍內(${land[2].toFixed(2)})`);
+  }
+  assert.ok(pouring > 0, "有倒水的角度");
+  // 「水流使輪保持運轉」:河水往右流,輪逆時針轉(最低處隨水流往右)
+  assert.ok(m442.RIVER_PATH[1][0] > m442.RIVER_PATH[0][0], "河水往 +x 流");
+  assert.ok(def.pose(0.1).parts.wheel.angle > def.pose(0).parts.wheel.angle, "輪逆時針轉,最低處往 +x 走");
+  // 水槽、支柱、軸承架與河岸連成一件、落到地上(支柱不懸空)
+  const works = part(def, "works");
+  assertOnePiece(works, "第 442 種:固定件連成一件");
+  close(Math.min(...works.pieces.map((q) => pieceBox(q).lo[1])), m442.BED - 0.3, "固定件落到河底", 1e-9);
 });
 
 test("第 443 種:阿基米德螺旋:水流轉動下端的輪,水沿螺旋通道連續往上送,從頂端排出", () => {
@@ -591,7 +621,58 @@ test("第 443 種:阿基米德螺旋:水流轉動下端的輪,水沿螺旋通道
   close(z1[0] - z0[0], m443.PITCH * 0.1, "螺旋轉一圈,水上移一個螺距", 1e-9);
   assert.ok(z0.length >= 4, "通道裡一路都有水(連續輸送)");
   assert.ok(def.pose(0.3).flows[0].points.length > 0);
-  assert.ok(m443.BASE[1] - 1.25 < m443.RIVER, "下端的輪浸在水裡");
+  assert.ok(m443.BASE[1] - m443.PADDLE.r1 < m443.RIVER, "下端的輪浸在水裡");
+  // 「水流作用於下端的輪上,使其旋轉」:輪最低處的浮板和河水同向(切線速度與水流方向的夾角小於 10°)
+  const conj = (q) => [-q[0], -q[1], -q[2], q[3]];
+  const lowest = scale(m443.DOWN, m443.PADDLE.r1);
+  const rot = (v) => def.pose(v).parts.screw.rotation;
+  const local = quatRotate(conj(rot(0.3)), lowest);
+  const velocity = sub(quatRotate(rot(0.3 + 1e-3), local), lowest);
+  assert.ok(dot(norm(velocity), m443.FLOW) > Math.cos(10 * (Math.PI / 180)), `最低處的浮板順著河水走(夾角 cos=${dot(norm(velocity), m443.FLOW).toFixed(3)})`);
+  // 浮板全程不穿進河底
+  const screw = part(def, "screw");
+  const paddles = screw.pieces.filter((q) => q.role === "paddle");
+  assert.ok(paddles.length >= 6, "下端的輪有一圈浮板");
+  for (const v of sweep(1, 48)) {
+    const q = rot(v);
+    for (const p of paddles) {
+      for (const sy of [-1, 1]) for (const z of [-1, 1]) {
+        const [lx, ly] = rot2([p.size[0] / 2, (sy * p.size[1]) / 2], p.angle ?? 0);
+        const corner = add(m443.BASE, quatRotate(q, add(p.at, [lx, ly, (z * p.size[2]) / 2])));
+        assert.ok(corner[1] > m443.BED + 0.02, `進程 ${v.toFixed(3)}:浮板的外緣(y=${corner[1].toFixed(3)})不穿進河底(${m443.BED})`);
+      }
+    }
+  }
+  // 「斜軸內有一條貫穿的螺旋通道」:每團水坐在螺旋葉片上——槽底最低線上、水團正下方(沿軸)就有一片葉片,水在它上面、下一圈之下
+  const slats = screw.pieces.filter((q) => q.role === "blade");
+  assert.ok(slats.length > 100, "螺旋葉片由一片片短板拼成一圈圈");
+  for (const v of sweep(1, 12)) {
+    const q = rot(v);
+    const a = -2 * Math.PI * v;
+    const atBottom = slats.filter((s) => {
+      const w = quatRotate(q, [s.at[0], s.at[1], 0]);
+      return dot(norm(w), m443.DOWN) > Math.cos(Math.PI / 30);
+    });
+    for (const zb of m443.pockets(a)) {
+      const under = atBottom.filter((s) => Math.abs(s.at[2] - zb) < 0.03);
+      assert.equal(under.length, 1, `進程 ${v.toFixed(3)}:水團 z=${zb.toFixed(2)} 正下方有一片葉片`);
+      for (const pt of m443.pocketPoints(zb)) {
+        const z = dot(sub(pt, m443.BASE), m443.AXIS);
+        assert.ok(z > under[0].at[2] + 0.015 && z < under[0].at[2] + m443.PITCH - 0.015, `水團的點在葉片上面、下一圈之下(z=${z.toFixed(2)})`);
+        const radial = sub(sub(pt, m443.BASE), scale(m443.AXIS, z));
+        assert.ok(Math.hypot(...radial) < m443.R - 0.04, "水團在筒壁之內");
+      }
+    }
+  }
+  // 斜軸上下兩端各有軸承(推斷:下端立在河底的軸承座,上端岸上的托架)
+  const shaft = screw.pieces.find((q) => q.role === "shaft");
+  const z = (shaft.at[2]);
+  assertShaftInBearings({ at: add(m443.BASE, scale(m443.AXIS, z)), axis: m443.AXIS, radius: shaft.radius, length: shaft.length }, part(def, "works").pieces, "第 443 種的斜軸");
+  const rings = part(def, "works").pieces.filter((p) => p.kind === "cylinder" && p.inner);
+  assert.equal(rings.length, 2, "上下兩端各一個軸承環");
+  const alongAxis = (p) => dot(sub(p.at, m443.BASE), m443.AXIS);
+  assert.ok(Math.min(...rings.map(alongAxis)) < m443.PADDLE.z0, "一個軸承在輪的下面");
+  assert.ok(Math.max(...rings.map(alongAxis)) > m443.LENGTH, "一個軸承在筒的上面");
 });
 
 test("第 439 種:水桶裝滿就下降,觸地時底部的閥門打開排空,再被配重拉上去", () => {
