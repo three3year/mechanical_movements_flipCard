@@ -321,11 +321,12 @@ function gear(part, material, mark) {
   const root = part.radius - dedendum;
   const hub = Math.max((part.bore ?? 0) * 1.6, root * 0.28);
   if (part.span) {
-    // 扇形齒輪:只有一段齒,第一個齒塗記號色
-    g.add(mesh(extrude(sectorShape(part), w), material));
+    // 扇形齒輪:只有一段齒,第一個齒塗記號色;有 cone 的是傘齒扇形(齒面往錐頂收)
+    const tapered = (geometry, width) => (part.cone ? taper(geometry, part, width) : geometry);
+    g.add(mesh(tapered(extrude(sectorShape(part), w), w), material));
     g.add(mesh(cylinder(Math.max(part.bore ?? 0, part.radius * 0.12), w * 1.4), material));
     const first = Math.ceil(part.span[0] / ((2 * Math.PI) / part.teeth) + 0.5 - 1e-9);
-    g.add(mesh(extrude({ outline: toothOutline(part, first) }, w * 1.08), mark));
+    g.add(mesh(tapered(extrude({ outline: toothOutline(part, first) }, w * 1.08), w * 1.08), mark));
     return g;
   }
   const twisted = part.slices && part.twistMode !== "stagger";
@@ -502,8 +503,18 @@ function worm(part, material, mark) {
   return g;
 }
 
-// 容器內的存量:半透明填色,level(0–1)決定由底部起算的高度(局部 Y)
+// 容器內的存量:半透明填色,level(0–1)決定由底部起算的高度(局部 Y)。
+// outline(局部 xy 的封閉折線,厚 size[2]):照外形填色、不隨 level 升降(level 只決定看不看得到),
+// 給一直裝滿、外形不是方塊的地方用(U 形管的彎頭)
 function fill(part, material) {
+  if (part.outline) {
+    const g = new THREE.Group();
+    const m = mesh(extrude({ outline: part.outline }, part.size?.[2] ?? 0.1), material);
+    g.add(m);
+    g.userData.level = (level) => (m.visible = level > 1e-4);
+    g.userData.level(part.level ?? 1);
+    return g;
+  }
   const [w, h, d] = part.size;
   const geometry =
     part.shape === "cylinder"
