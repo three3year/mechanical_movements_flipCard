@@ -1,9 +1,12 @@
 // 第二十一章「風力、船舶與起重」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
+import { close, sweep, part, polyGap, assertShaftInBearings } from "./helpers.js";
+import { X, Y, Z, add, sub, dot, norm, cross, rot2, partPoint, quatRotate, quatMul, quatFromZ, quatAxisAngle } from "../models/kit.js";
+import { polygonsOverlap } from "../models/contact.js";
+import { rect } from "../models/shapes.js";
 
-import fig484 from "../models/fig484.js";
+import fig484, * as m484 from "../models/fig484.js";
 import * as m485 from "../models/fig485.js";
 import * as m486 from "../models/fig486.js";
 import * as m487 from "../models/fig487.js";
@@ -23,11 +26,61 @@ test("第 484 種:圓筒上的螺旋葉片:風沿軸吹過,圓筒旋轉", () => 
   assert.notEqual(fig484.pose(0.1).parts.drum.angle, fig484.pose(0.2).parts.drum.angle, "圓筒隨進程轉(依自己的軸轉,看得到轉向箭頭)");
 });
 
+// 零件(姿勢 center、axis、angle)上一塊附件(at、rotation)的局部點 → 世界座標;附件板面的法向(附件局部 z)在世界中的方向
+const piecePoint = (center, axis, angle, piece, local) => partPoint(center, axis, angle, add(piece.at ?? [0, 0, 0], quatRotate(piece.rotation ?? [0, 0, 0, 1], local)));
+const pieceNormal = (axis, angle, piece) => quatRotate(quatMul(quatMul(quatFromZ(axis), quatAxisAngle(Z, angle)), piece.rotation ?? [0, 0, 0, 1]), Z);
+
+test("第 484 種:葉片是繞在圓筒上的連續螺旋面:沿軸吹的風推在葉片面上,推力順著圓筒的轉向", () => {
+  const vanes = part(fig484, "drum").pieces.filter((q) => q.role === "vane");
+  assert.ok(vanes.length >= 24, "葉片繞圓筒一圈");
+  const flowX = (p) => fig484.pose(p).flows[0].points[0][0];
+  assert.ok(flowX(0.101) > flowX(0.1), "風沿軸從左吹到右(+X)");
+  const angle = (p) => fig484.pose(p).parts.drum.angle;
+  const mid = (m484.DRUM + m484.VANE) / 2;
+  const [p, e] = [0.1, 1e-6];
+  for (const q of vanes) {
+    const n = pieceNormal(X, angle(p), q);
+    const v = sub(piecePoint([0, 0, 0], X, angle(p + e), q, [mid, 0, 0]), piecePoint([0, 0, 0], X, angle(p), q, [mid, 0, 0]));
+    const wn = dot(X, n);
+    assert.ok(Math.abs(wn) > 0.3, `葉片面不和風平行(風·法向 ${wn.toFixed(3)})`);
+    assert.ok(wn * dot(n, v) > 0, "風推葉片的力(沿法向、順著風)和葉片的運動同向:風帶著圓筒轉");
+  }
+  // 相鄰兩塊在接縫處相接:螺旋面是連續的,不是一片片分開的薄板
+  const edge = (q, side) => {
+    const o = q.shape.outline;
+    const [a, b] = side > 0 ? [o[2], o[3]] : [o[0], o[1]];
+    return piecePoint([0, 0, 0], X, 0, q, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0]);
+  };
+  for (let i = 1; i < vanes.length; i++) {
+    const gap = Math.hypot(...sub(edge(vanes[i - 1], 1), edge(vanes[i], -1)));
+    assert.ok(gap < 0.02, `第 ${i} 塊和前一塊在接縫處相接(差 ${gap.toFixed(4)})`);
+  }
+});
+
 test("第 485 種:風車:風吹在斜的帆面上產生圓周運動", () => {
   assert.ok(m485.PITCH > 0 && m485.PITCH < Math.PI / 4, "帆面相對旋轉平面斜一個角度");
   const def = m485.default;
   assert.notEqual(def.pose(0.1).parts.sails.angle, def.pose(0.3).parts.sails.angle, "帆隨進程轉(依自己的軸轉,看得到轉向箭頭)");
   assert.ok(def.pose(0.2).flows[0].points.length > 0, "有風");
+});
+
+test("第 485 種:頂蓋後面的閉合曲線是尾舵:固定在頂蓋上、沿風車軸往後伸,板面直立、順著風(讓頂蓋對著風)", () => {
+  const tower = part(m485.default, "tower");
+  const tail = tower.pieces.find((q) => q.role === "tail");
+  assert.ok(tail, "頂蓋後面有尾舵");
+  const n = quatRotate(tail.rotation, Z);
+  const u = quatRotate(tail.rotation, X);
+  close(n[1], 0, "板面直立", 1e-9);
+  close(dot(n, m485.AXIS), 0, "板面含風車軸的方向:風沿軸吹過尾舵兩面,頂蓋對著風時尾舵不受側力", 1e-9);
+  assert.ok(dot(u, m485.AXIS) < -0.9, "尾舵往帆的反方向(往後)伸");
+  // 根部插在頂蓋裡
+  const cap = tower.pieces.find((q) => q.role === "cap");
+  const h = tail.at[1] - cap.at[1];
+  const prof = cap.profile;
+  const k = prof.findIndex(([, y]) => y > h);
+  const [[r0, y0], [r1, y1]] = [prof[k - 1], prof[k]];
+  const capR = r0 + ((r1 - r0) * (h - y0)) / (y1 - y0);
+  assert.ok(Math.hypot(tail.at[0] - cap.at[0], tail.at[2] - cap.at[2]) < capR, "尾舵的根部在頂蓋裡");
 });
 
 test("第 486 種:垂直式風車:受風的一側帆面正對著風,轉回迎風時以邊緣對著風", () => {
@@ -37,6 +90,44 @@ test("第 486 種:垂直式風車:受風的一側帆面正對著風,轉回迎風
   close(edge.angle, Math.PI / 2, "回程時邊緣對著風");
   assert.equal(face.face, 1);
   assert.equal(edge.face, 0);
+});
+
+// 附件的深度範圍(方塊、板件、沿 z 的圓柱;base 是零件的深度)
+const depth = (q, base = 0) => {
+  const h = q.kind === "box" ? q.size[2] / 2 : q.kind === "plate" ? (q.thickness ?? 0.2) / 2 : q.length / 2;
+  const z = base + (q.at?.[2] ?? 0);
+  return [z - h, z + h];
+};
+
+test("第 486 種:細圓是接在六根臂端的輪圈;帆以樞軸銷鉸在臂端、在臂的上方一層,鉸點偏向帆的一端", () => {
+  const def = m486.default;
+  const wheel = part(def, "wheel");
+  const rim = wheel.pieces.find((q) => q.role === "rim");
+  assert.ok(rim, "有輪圈");
+  const outer = Math.max(...rim.shape.outline.map(([x, y]) => Math.hypot(x, y)));
+  const inner = Math.min(...rim.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  close((outer + inner) / 2, m486.ARM, "輪圈穿過六個帆的樞軸點(原圖:細圓半徑 = 臂長)", 0.005);
+  const arms = wheel.pieces.filter((q) => q.role === "arm");
+  assert.equal(arms.length, 6);
+  const [rz, az] = [depth(rim), depth(arms[0])];
+  assert.ok(rz[0] < az[1] && az[0] < rz[1], "輪圈和臂在同一層,接在臂端");
+  const pins = wheel.pieces.filter((q) => q.role === "pin");
+  assert.equal(pins.length, 6, "每根臂端一根樞軸銷");
+  const top = Math.max(...wheel.pieces.filter((q) => q.role !== "pin" && q.role !== "shaft").map((q) => depth(q)[1]));
+  for (const t of sweep(1, 24)) {
+    const pose = def.pose(t).parts;
+    pins.forEach((pin, i) => {
+      const sail = part(def, `sail${i}`);
+      const sp = pose[`sail${i}`];
+      const knuckle = sail.pieces.find((q) => q.role === "knuckle");
+      const blade = sail.pieces.find((q) => q.role === "blade");
+      const [px, py] = rot2(pin.at, pose.wheel.angle);
+      const [kx, ky] = rot2(knuckle.at, sp.angle);
+      assertShaftInBearings({ at: [px, py, pin.at[2]], radius: pin.radius, length: pin.length }, [{ ...knuckle, at: [sp.position[0] + kx, sp.position[1] + ky, sp.position[2] + knuckle.at[2]] }], `第 ${i} 片帆鉸在臂端的樞軸銷上`);
+      assert.ok(depth(blade, sp.position[2])[0] > top, `第 ${i} 片帆在臂與輪圈的上方一層,翻轉時不碰臂與輪圈`);
+      assert.ok(Math.abs(blade.at[0]) > 0.05, "鉸點偏向帆的一端(原圖)");
+    });
+  }
 });
 
 test("第 487 種:明輪:輪轉時下方的槳板把水往後推,船往前", () => {
@@ -49,11 +140,62 @@ test("第 487 種:明輪:輪轉時下方的槳板把水往後推,船往前", () 
   assert.match(def.pose(0).readouts[0].value, /往左/);
 });
 
+// 繞 z 轉 angle 的方塊在平面上的外形
+const boxPoly = (q) => rect(q.size[0], q.size[1]).map((p) => {
+  const [x, y] = rot2(p, q.angle ?? 0);
+  return [x + (q.at?.[0] ?? 0), y + (q.at?.[1] ?? 0)];
+});
+
+test("第 487 種:只有一圈輪緣(原圖沒有內圈),輻條伸出輪緣;槳板釘在輪緣背面、靠在輻條旁,不穿過輪緣與輻條", () => {
+  const def = m487.default;
+  const wheel = part(def, "wheel");
+  const outer = (q) => Math.max(...q.shape.outline.map(([x, y]) => Math.hypot(x, y)));
+  const rings = wheel.pieces.filter((q) => q.kind === "plate" && q.shape.holes.length && outer(q) > 0.5);
+  assert.equal(rings.length, 1, "輪轂外只有一圈輪緣");
+  const rim = rings[0];
+  const rimIn = Math.min(...rim.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  const spokes = wheel.pieces.filter((q) => q.role === "spoke");
+  assert.equal(spokes.length, 8);
+  for (const s of spokes) assert.ok(Math.hypot(s.at[0], s.at[1]) + s.size[0] / 2 > outer(rim) + 0.2, "輻條伸出輪緣(原圖)");
+  // 槳板跟著輪轉(轉角相同),在輪上的位置固定:量一次就是全程
+  for (const t of sweep(2 * Math.PI, 8)) assert.equal(def.pose(t).parts.floats.angle, def.pose(t).parts.wheel.angle);
+  const solid = [rim, ...spokes];
+  for (const f of part(def, "floats").pieces) {
+    const fz = depth(f);
+    close(fz[1], depth(rim)[0], "槳板貼著輪緣的背面", 1e-9);
+    const rs = boxPoly(f).map(([x, y]) => Math.hypot(x, y));
+    assert.ok(Math.min(...rs) < rimIn && Math.max(...rs) > outer(rim), "槳板從輪緣內側伸到輪緣外(原圖)");
+    const gaps = spokes.map((s) => polyGap(boxPoly(f), boxPoly(s)));
+    assert.ok(Math.min(...gaps) < 0.001 && !spokes.some((s) => polygonsOverlap(boxPoly(f), boxPoly(s))), "槳板靠在輻條旁(正面看)");
+    for (const q of solid) assert.ok(depth(q)[0] >= fz[1] - 1e-9, "槳板在輪緣與輻條的後面一層,全程不互穿");
+  }
+});
+
 test("第 488 種:螺旋槳:槳葉是螺紋的片段,旋轉時沿軸推進", () => {
   assert.ok(m488.PITCH_ANGLE > 0 && m488.PITCH_ANGLE < Math.PI / 2, "槳葉斜一個螺距角");
   const def = m488.default;
   const xs = def.pose(1).flows[0].points.map((p) => p[0]);
   assert.ok(Math.max(...xs) - Math.min(...xs) > 3, "水沿軸被推動");
+});
+
+test("第 488 種:槳葉轉動時把水推往船尾(離開船身的右邊),推力朝船身(左)推進船隻;和流體示意、讀數一致", () => {
+  const def = m488.default;
+  const flowX = (t) => def.pose(t).flows[0].points[0][0];
+  assert.ok(flowX(0.1) > flowX(0), "流體示意:水往右流");
+  const bearing = part(def, "hull").pieces.find((q) => q.inner);
+  assert.ok(bearing.at[0] < 0, "船身(軸承)在左邊,右邊是船尾外的水");
+  const e = 1e-6;
+  for (const theta of sweep(2 * Math.PI, 8)) {
+    for (const q of part(def, "blades").pieces) {
+      const n = pieceNormal(X, theta, q);
+      for (const local of [[0.5, 0, 0], [1.0, 0.1, 0], [1.6, 0, 0]]) {
+        const v = sub(piecePoint([0, 0, 0], X, theta + e, q, local), piecePoint([0, 0, 0], X, theta, q, local));
+        const push = Math.sign(dot(n, v)) * n[0]; // 槳葉面迎著運動方向的那一面把水沿法向推開:沿軸的分量
+        assert.ok(push > 0.3, `槳葉把水往右(船尾)推(沿軸分量 ${push.toFixed(3)})`);
+      }
+    }
+  }
+  assert.match(def.pose(0).readouts[0].value, /向左/);
 });
 
 test("第 489 種:垂直槳板明輪:臂轉動時,環 d 繞偏心輪 e 轉,經曲柄使槳板始終直立", () => {
@@ -65,6 +207,60 @@ test("第 489 種:垂直槳板明輪:臂轉動時,環 d 繞偏心輪 e 轉,經�
       // 曲柄端在環 d 上:離偏心輪中心也是 ARM
       close(Math.hypot(j.crank[0] - m489.ECC[0], j.crank[1] - m489.ECC[1]), m489.ARM, "曲柄端在繞偏心輪轉的環上");
       assert.equal(parts[`paddle${i}`].angle, undefined, "槳板不轉,始終直立");
+    });
+  }
+});
+
+test("第 489 種:環 d 和偏心輪 e 同一層、鬆鬆地套在 e 外面;臂 b 在環的後面(原圖虛線);曲柄與偏心距水平往右(原圖)", () => {
+  const def = m489.default;
+  close(m489.ECC[1], 0, "偏心距水平", 1e-12);
+  assert.ok(m489.ECC[0] > 0, "偏心輪往右偏");
+  const e = part(def, "eccentric").pieces.find((q) => q.role === "eccentric");
+  const eR = Math.max(...e.shape.outline.map(([x, y]) => Math.hypot(x - m489.ECC[0], y - m489.ECC[1])));
+  const ring = part(def, "ring");
+  const ringIn = Math.min(...ring.shape.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  const fit = ringIn - eR;
+  assert.ok(fit >= 0 && fit <= 0.01, `環 d 的孔套著偏心輪 e(間隙 ${fit.toFixed(4)})`);
+  for (const t of sweep(2 * Math.PI, 12)) {
+    const pose = def.pose(t).parts;
+    close(Math.hypot(pose.ring.position[0] - m489.ECC[0], pose.ring.position[1] - m489.ECC[1]), 0, "環 d 繞偏心輪的中心轉", 1e-12);
+    const rz = depth(ring, pose.ring.position[2]);
+    const ez = depth(e);
+    assert.ok(rz[0] < ez[1] && ez[0] < rz[1], "環 d 和偏心輪 e 在同一層");
+    const arms = part(def, "arms").pieces.filter((q) => q.role === "arm");
+    for (const a of arms) assert.ok(depth(a)[1] < rz[0], "臂 b 在環 d 的後面");
+  }
+});
+
+test("第 489 種:槳板的樞軸穿過臂端的軸承,樞軸前端固定曲柄 c,曲柄末端的銷插在環 d 臂端的孔裡;槳板夾在臂與環之間一層,全程不碰環臂與輪臂", () => {
+  const def = m489.default;
+  const arms = part(def, "arms");
+  const ring = part(def, "ring");
+  const bearings = arms.pieces.filter((q) => q.role === "bearing");
+  const eyes = ring.pieces.filter((q) => q.role === "eye");
+  assert.equal(bearings.length, 4);
+  assert.equal(eyes.length, 4);
+  const layer = (p, base) => [depth(p, base), ...(p.pieces ?? []).filter((q) => q.kind !== "cylinder").map((q) => depth(q, base))];
+  for (const t of sweep(2 * Math.PI, 24)) {
+    const pose = def.pose(t).parts;
+    const js = m489.joints(t);
+    const at = (q, center, angle, z) => {
+      const [x, y] = rot2(q.at, angle);
+      return { ...q, at: [center[0] + x, center[1] + y, z + q.at[2]] };
+    };
+    js.forEach((j, i) => {
+      const paddle = part(def, `paddle${i}`);
+      const pp = pose[`paddle${i}`].position;
+      const pivot = at(paddle.pieces.find((q) => q.role === "pivot"), pp, 0, pp[2]);
+      const pin = at(paddle.pieces.find((q) => q.role === "crankPin"), pp, 0, pp[2]);
+      close(Math.hypot(pivot.at[0] - j.pivot[0], pivot.at[1] - j.pivot[1]), 0, "樞軸在臂端", 1e-9);
+      close(Math.hypot(pin.at[0] - j.crank[0], pin.at[1] - j.crank[1]), 0, "曲柄末端的銷在環 d 上", 1e-9);
+      assertShaftInBearings(pivot, [at(bearings[i], [0, 0], pose.arms.angle, 0)], `第 ${i} 片槳板的樞軸穿過臂端的軸承`);
+      assertShaftInBearings(pin, [at(eyes[i], pose.ring.position, pose.ring.angle, pose.ring.position[2])], `第 ${i} 支曲柄末端的銷插在環 d 臂端的孔裡`);
+      const board = depth(paddle, pp[2]);
+      for (const z of [...layer(ring, pose.ring.position[2]), ...arms.pieces.filter((q) => q.role === "arm").map((q) => depth(q))]) {
+        assert.ok(board[1] < z[0] || z[1] < board[0], `第 ${i} 片槳板和環 d、臂 b 不在同一層`);
+      }
     });
   }
 });
