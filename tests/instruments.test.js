@@ -1,8 +1,8 @@
 // 第十七章「繪圖儀器」與第二十二章「儀錶與周轉輪系」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, plateLayers } from "./helpers.js";
-import { quatRotate } from "../models/kit.js";
+import { close, sweep, part, plateLayers, assertOnePiece, assertShaftInBearings } from "./helpers.js";
+import { quatRotate, partPoint, add, sub, scale, norm, dot, dist } from "../models/kit.js";
 import { pointInPolygon, placeOutline } from "../models/contact.js";
 import * as pt from "../models/pencil-thread.js";
 import { pathLength } from "../models/flow.js";
@@ -559,11 +559,150 @@ test("第 496 種:牽伸與加撚:前羅拉 B 比後羅拉 A 轉得快,把粗紗
   assert.ok(r("roving") > r("drafted") && r("drafted") > r("yarn"), "通過羅拉後越來越細");
 });
 
+// 第 496 種:羅拉的半徑、軸頸(群組零件的 pulley 附件與軸頸圓柱)
+const roller496 = (def, id) => {
+  const p = part(def, id);
+  const disc = p.pieces?.find((q) => q.kind === "pulley") ?? p;
+  return { center: p.center, radius: disc.radius, width: disc.width, journal: p.pieces?.find((q) => q.kind === "cylinder") };
+};
+// 旋轉體在局部高度 h 處的外半徑(剖面各段在 h 的內插取最大)
+const latheRadius = (profile, h) =>
+  Math.max(
+    0,
+    ...profile.slice(1).flatMap((b, i) => {
+      const a = profile[i];
+      if (a[1] === b[1]) return a[1] === h ? [a[0], b[0]] : [];
+      if ((h - a[1]) * (h - b[1]) > 0) return [];
+      return [a[0] + ((b[0] - a[0]) * (h - a[1])) / (b[1] - a[1])];
+    }),
+  );
+// 折線每段切成細點
+const densify = (pts, step) =>
+  pts.slice(1).flatMap((b, i) => {
+    const a = pts[i];
+    const n = Math.max(1, Math.ceil(dist(a, b) / step));
+    return Array.from({ length: n + 1 }, (_, k) => a.map((c, j) => c + ((b[j] - c) * k) / n));
+  });
+
+test("第 496 種:夾口處羅拉表面和粗紗、紗同向同速——A 夾著粗紗、B 夾著牽伸後的紗往紗錠(右)送", () => {
+  const def = m496.default;
+  const dv = 1e-4;
+  for (const v of sweep(0.9, 9)) {
+    const [p, q] = [def.pose(v), def.pose(v + dv)];
+    // 材料沿路徑從起點往終點走,速度是 phase 的變化;方向取夾口處路徑的切線
+    const roving = p.paths.roving.points;
+    const drafted = p.paths.drafted.points;
+    const yarn = p.paths.yarn.points;
+    const feed = scale(norm(sub(roving.at(-1), roving.at(-2))), (q.paths.roving.phase - p.paths.roving.phase) / dv);
+    const out = scale(norm(sub(drafted.at(-1), drafted.at(-2))), (q.paths.drafted.phase - p.paths.drafted.phase) / dv);
+    close(q.paths.yarn.phase - p.paths.yarn.phase, q.paths.drafted.phase - p.paths.drafted.phase, "出了 B 的紗和夾在 B 裡的同速", 1e-12);
+    assert.ok(feed[0] > 0 && out[0] > 0 && yarn[1][0] > yarn[0][0], `進程 ${v.toFixed(2)}:粗紗與紗往右(往紗錠)走`);
+    for (const [id, nip, material] of [["aTop", roving.at(-1), feed], ["aBottom", roving.at(-1), feed], ["bTop", drafted.at(-1), out], ["bBottom", drafted.at(-1), out]]) {
+      const { center, radius } = roller496(def, id);
+      close(dist(nip, center), radius, `${id} 的表面經過夾口`, 1e-9);
+      // 剛體繞 z 轉 dθ(逆時針為正):點 (x, y) 的速度是 dθ·(−y, x)
+      const w = (q.parts[id].angle - p.parts[id].angle) / dv;
+      const surface = [-w * (nip[1] - center[1]), w * (nip[0] - center[0]), 0];
+      close(dist(surface, material), 0, `進程 ${v.toFixed(2)}:${id} 在夾口的表面速度 (${surface.map((c) => c.toFixed(3))}) 和材料 (${material.map((c) => c.toFixed(3))}) 同向同速`, 1e-6);
+    }
+  }
+});
+
+test("第 496 種:紗從夾口沿下前羅拉右側繞下、進錠翼頂、沿一臂下到導眼,再切線捲上紗管;全程不穿過羅拉、紗管與錠子", () => {
+  const def = m496.default;
+  const flyer = part(def, "flyer");
+  const bobbin = part(def, "bobbin");
+  const spindle = flyer.pieces.find((q) => q.kind === "cylinder" && !q.inner);
+  const eyes = flyer.pieces.filter((q) => q.role === "eye");
+  const axisX = flyer.center[0];
+  const radial = (pt) => Math.hypot(pt[0] - axisX, pt[2] - flyer.center[2]);
+  const spindleY = [spindle.at[2] - spindle.length / 2, spindle.at[2] + spindle.length / 2].map((h) => flyer.center[1] + h);
+  const bobbinH = bobbin.profile.map((q) => q[1]);
+  const [b0, b1] = [Math.min(...bobbinH), Math.max(...bobbinH)].map((h) => bobbin.center[1] + h);
+  for (const v of sweep(1, 97)) {
+    const pose = def.pose(v);
+    const pts = pose.paths.yarn.points;
+    for (const pt of densify(pts, 0.005)) {
+      for (const id of ["aTop", "aBottom", "bTop", "bBottom"]) {
+        const { center, radius, width } = roller496(def, id);
+        if (Math.abs(pt[2] - center[2]) > width / 2) continue;
+        const d = Math.hypot(pt[0] - center[0], pt[1] - center[1]);
+        assert.ok(d > radius - 0.005, `進程 ${v.toFixed(2)}:紗的中心線沒穿進 ${id}(離軸 ${d.toFixed(3)},半徑 ${radius})`);
+      }
+      if (pt[1] > b0 && pt[1] < b1) {
+        const r = latheRadius(bobbin.profile, pt[1] - bobbin.center[1]);
+        assert.ok(radial(pt) > r - 0.005, `進程 ${v.toFixed(2)}:紗的中心線沒穿進紗管(高 ${pt[1].toFixed(2)} 離軸 ${radial(pt).toFixed(3)},紗管半徑 ${r})`);
+      }
+      if (pt[1] > spindleY[0] && pt[1] < spindleY[1]) assert.ok(radial(pt) > spindle.radius, `進程 ${v.toFixed(2)}:紗沒穿過錠子`);
+    }
+    // 紗穿過一個導眼:有一個頂點落在導眼的孔裡
+    const eyeAt = eyes.map((e) => partPoint(flyer.center, flyer.axis, pose.parts.flyer.angle, e.at));
+    assert.ok(
+      pts.some((pt) => eyes.some((e, i) => Math.hypot(pt[0] - eyeAt[i][0], pt[2] - eyeAt[i][2]) < e.inner - 0.02 && Math.abs(pt[1] - eyeAt[i][1]) < 0.1)),
+      `進程 ${v.toFixed(2)}:紗穿過錠翼臂下端的導眼`,
+    );
+    // 捲上紗管:終點在筒身表面,最後一段和筒身相切(與紗管轉角無關)
+    const [prev, last] = pts.slice(-2);
+    close(radial(last), latheRadius(bobbin.profile, last[1] - bobbin.center[1]), `進程 ${v.toFixed(2)}:紗的終點在紗管筒身表面`, 1e-9);
+    const outward = [last[0] - axisX, 0, last[2] - flyer.center[2]];
+    close(dot(norm(sub(last, prev)), norm(outward)), 0, `進程 ${v.toFixed(2)}:最後一段紗和紗管筒身相切`, 1e-9);
+  }
+  assert.equal(eyes.length, 2, "錠翼兩臂下端各有一個導眼(原圖兩臂下端的圈)");
+});
+
+test("第 496 種:四根羅拉由機器帶動(列為外力來源,不靠紗拉著轉),軸頸裝在兩端羅拉座的軸承裡", () => {
+  const def = m496.default;
+  const frame = part(def, "frame");
+  const world = frame.pieces.map((q) => ({ ...q, at: add(frame.center ?? [0, 0, 0], q.at ?? [0, 0, 0]) }));
+  for (const id of ["aTop", "aBottom", "bTop", "bBottom"]) {
+    assert.ok(def.powered.includes(id), `${id} 列為外力來源`);
+    const { center, journal, width } = roller496(def, id);
+    assert.ok(journal, `${id} 有軸頸`);
+    const shaft = { at: add(center, journal.at ?? [0, 0, 0]), axis: [0, 0, 1], radius: journal.radius, length: journal.length };
+    assertShaftInBearings(shaft, world, `${id} 的軸頸`);
+    const rings = world.filter((q) => q.inner && Math.hypot(q.at[0] - center[0], q.at[1] - center[1]) < 1e-9);
+    assert.ok(rings.some((q) => q.at[2] < -width / 2) && rings.some((q) => q.at[2] > width / 2), `${id} 兩端各有一個軸承`);
+  }
+});
+
+test("第 496 種:錠子穿過機架上下兩個軸承座、錠盤夾在兩座之間,上座頂面托著紗管;機架(羅拉座與錠子軸承座)連成一件", () => {
+  const def = m496.default;
+  const frame = part(def, "frame");
+  const flyer = part(def, "flyer");
+  const bobbin = part(def, "bobbin");
+  const toWorld = (q) => partPoint(flyer.center, flyer.axis, 0, q.at);
+  const spindle = flyer.pieces.find((q) => q.kind === "cylinder" && !q.inner);
+  const shaft = { at: toWorld(spindle), axis: flyer.axis, radius: spindle.radius, length: spindle.length };
+  const world = frame.pieces.map((q) => ({ ...q, at: add(frame.center ?? [0, 0, 0], q.at ?? [0, 0, 0]) }));
+  assertShaftInBearings(shaft, world, "錠子");
+  const rings = world.filter((q) => q.inner && Math.hypot(q.at[0] - shaft.at[0], q.at[2] - shaft.at[2]) < 1e-9).sort((a, b) => a.at[1] - b.at[1]);
+  assert.equal(rings.length, 2, "錠子有上下兩個軸承座(原圖兩個剖開的座)");
+  const whorl = toWorld(flyer.pieces.find((q) => q.kind === "pulley"));
+  assert.ok(whorl[1] > rings[0].at[1] && whorl[1] < rings[1].at[1], "錠盤在兩個軸承座之間");
+  const bottom = bobbin.center[1] + Math.min(...bobbin.profile.map((q) => q[1]));
+  close(bottom, rings[1].at[1] + rings[1].length / 2, "紗管底坐在上座的頂面", 1e-9);
+  assertOnePiece(frame, "機架:羅拉座與錠子的軸承座連成一件");
+});
+
 test("第 497 種:風扇鼓風機:扇葉轉動,空氣從中心吸進,經噴口送出", () => {
   const pose = fig497.pose(1.0);
   const pts = pose.flows[0].points;
   assert.ok(pts.some((p) => Math.hypot(p[0], p[1]) < 0.5), "空氣從中心進來");
   assert.ok(pts.some((p) => p[0] > 1.9), "從噴口送出");
+});
+
+test("第 497 種:扇葉連同軸一起轉(the revolution of the shaft),軸穿過背板進風口裡的軸承架與後面的軸承座;外殼、底座連成一件", () => {
+  const def = fig497;
+  const fan = part(def, "fan");
+  const casing = part(def, "casing");
+  assert.ok(!def.parts.some((p) => p !== fan && p.kind === "cylinder" && !p.inner), "軸是轉的:沒有另一根固定的軸和扇葉的軸疊在一起");
+  const shaft = fan.pieces.find((q) => q.kind === "cylinder");
+  assertShaftInBearings({ at: shaft.at ?? [0, 0, 0], axis: [0, 0, 1], radius: shaft.radius, length: shaft.length }, casing.pieces, "扇葉的軸");
+  const rings = casing.pieces.filter((q) => q.inner && Math.hypot(q.at[0], q.at[1]) < 1e-9);
+  assert.ok(rings.length >= 2, "軸有兩個軸承");
+  const back = casing.pieces.find((q) => q.kind === "plate" && q.shape.holes?.length);
+  assert.ok(rings.some((q) => Math.abs(q.at[2] - back.at[2]) < 1e-9), "一個軸承在背板的進風口裡(原圖橫過進風口的軸承架)");
+  assertOnePiece(casing, "外殼:渦形壁、背板、進風口的軸承架、底座與軸承座連成一件");
 });
 
 test("第 498 種:虹吸式壓力計:受壓的一側水銀下降、另一側上升,高度差與壓力成正比", () => {
