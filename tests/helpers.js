@@ -68,7 +68,7 @@ export function plateLayers(p) {
     if (piece.kind === "plate") {
       const t = piece.thickness ?? 0.2;
       const move = (loop) => loop.map(([x, y]) => [x + ox, y + oy]);
-      layers.push({ z0: oz - t / 2, z1: oz + t / 2, solid: { outline: move(piece.shape.outline), holes: (piece.shape.holes ?? []).map(move) } });
+      layers.push({ z0: oz - t / 2, z1: oz + t / 2, role: piece.role, solid: { outline: move(piece.shape.outline), holes: (piece.shape.holes ?? []).map(move) } });
     }
     for (const c of piece.pieces ?? []) {
       if (c.kind === "plate") assert.ok(!c.angle && !c.axis && !c.rotation, "板件沿 z、不轉");

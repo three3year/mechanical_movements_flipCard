@@ -5,18 +5,21 @@
 // 主動件是虛擬的「管內溫度」(從水到蒸汽)。
 // 推斷:管子的伸長與溫度成正比(放大顯示);管端碰到柱塞時把它頂回、封住。
 // 槓桿 D 由接觸算:鉸在右上的支架上,重球在支點右邊,重量使下臂往左壓在柱塞的右端;柱塞往左最多推到
-// 下臂靠上擋止 c(擋止螺絲 b 穿過 c、調整這個位置)。管子膨脹把柱塞往右頂時,下臂被柱塞推回、重球抬起。
-// 管端另畫一個管口(實體),跟著管子伸縮。
+// 擋止螺絲 b(照原圖穿過下臂的下端、頭在右)的尖端頂上從底座立起的擋止 c(2026-10-20 改;原本把 b 鎖在 c 上)。
+// 管子膨脹把柱塞往右頂時,下臂被柱塞推回、重球抬起。管端另畫一個管口(實體),跟著管子伸縮。
+// 球 C 剖開:前面是剖面的環(在管子、柱塞與出口三處開孔),後面是半球殼;兩側照原圖各有填料函(凸台,推斷:
+// 管子那側的原圖畫得出凸台,柱塞那側原文說「在球上的填料函裡作動」),凸台在剖面上是管子上下的兩塊。底座延伸到支架下面。
 import { clamp } from "./kit.js";
 import { stream } from "./flow.js";
-import { shape, circle, thickLine } from "./shapes.js";
+import { shape, circle, thickLine, arcPoints, hubArms } from "./shapes.js";
 
 const FIXED = -2.4; // 管子固定在支座 B 處
 export const END0 = 0.75; // 冷(水)時的管端
 export const GROW = 0.35; // 冷到熱的伸長(放大)
 export const STOP = 0.95; // 擋止讓柱塞最多推到這裡
-const SPHERE = { center: [0.85, 0, 0], r: 0.75 };
+export const SHELL = { center: [0.85, 0, 0], r: 0.75, t: 0.07, depth: 0.3 }; // 空心球 C:內半徑、壁厚、剖面環的深度
 const PIPE_R = 0.12;
+const HOLE = { pipe: PIPE_R + 0.03, plunger: 0.12, outlet: 0.15 }; // 球殼上三個孔的半徑(管子、柱塞、出口)
 
 export const PLUNGER = 1.2; // 柱塞長
 export const PIVOT = [2.6, 0.55]; // 槓桿 D 的支點
@@ -37,10 +40,26 @@ export function trap(t0) {
   const plunger = Math.max(STOP, end);
   return { end, plunger, lever: leverAngle(plunger + PLUNGER), open: end < STOP - 1e-9, gap: Math.max(0, STOP - end) };
 }
-// 擋止 c 與螺絲 b:柱塞在 STOP 時,螺絲頭剛好頂著下臂靠近下端的地方(在柱塞下方)
+// 擋止螺絲 b(槓桿的附件,局部座標):穿過下臂下端、尖端在左、頭在右;擋止 c:柱塞在 STOP 時尖端剛好頂著 c 的右側面
+const SCREW = { at: [0.03, -ARM + 0.04], length: 0.3, r: 0.025 }; // 在柱塞下方,擋止 c 的頂也在柱塞下方
 const REST = leverAngle(STOP + PLUNGER);
-const STOP_Y = PIVOT[1] - ARM * Math.cos(REST) + 0.06;
-const STOP_X = PIVOT[0] + ((PIVOT[1] - STOP_Y) / Math.cos(REST)) * Math.sin(REST) - ARM_W / 2 / Math.cos(REST); // 下臂左側面在這個高度的 x
+const TIP = [SCREW.at[0] - SCREW.length / 2, SCREW.at[1]]; // 尖端(局部)
+const STOP_X = PIVOT[0] + TIP[0] * Math.cos(REST) - TIP[1] * Math.sin(REST); // 尖端在 REST 時的世界座標 = c 的右側面
+const STOP_Y = PIVOT[1] + TIP[0] * Math.sin(REST) + TIP[1] * Math.cos(REST);
+const BASE_TOP = -0.49;
+// 球殼剖面的環:在管子(左)、柱塞(右)、出口(下)三處斷開
+const shellArcs = () => {
+  const rm = SHELL.r + SHELL.t / 2;
+  const [aL, aR, aB] = [HOLE.pipe, HOLE.plunger, HOLE.outlet].map((h) => Math.asin(h / rm));
+  return [[aR, Math.PI - aL], [Math.PI + aL, 1.5 * Math.PI - aB], [1.5 * Math.PI + aB, 2 * Math.PI - aR]].map(([a0, a1]) => ({ kind: "plate", role: "shell", shape: shape(thickLine(arcPoints(rm, a0, a1, SHELL.center[0], 0), SHELL.t)), thickness: SHELL.depth }));
+};
+// 後半的球殼(繞 z 的旋轉體,只畫剖面環後面的那一段)
+const shellBack = () => {
+  const z0 = -SHELL.depth / 2;
+  const [ro, ri] = [SHELL.r + SHELL.t, SHELL.r];
+  const arc = (r, from, to, n = 16) => Array.from({ length: n + 1 }, (_, i) => from + ((to - from) * i) / n).map((z) => [Math.sqrt(Math.max(0, r * r - z * z)), z]);
+  return { kind: "lathe", axis: [0, 0, 1], profile: [...arc(ro, -ro, z0), ...arc(ri, z0, -ri)], at: [SHELL.center[0], 0, 0] };
+};
 
 export default {
   figure: 478,
@@ -49,40 +68,52 @@ export default {
       id: "base",
       kind: "group",
       pieces: [
-        { kind: "box", size: [4.6, 0.12, 0.8], at: [-0.1, -0.55, 0] },
+        { kind: "box", size: [5.4, 0.12, 0.8], at: [0.3, -0.55, 0] }, // 底座一直延伸到槓桿支架與擋止 c 的下面(原圖的底座延伸到 b 的右邊)
         { kind: "box", size: [0.5, 0.45, 0.6], at: [FIXED, -0.3, 0] },
-        // 空心球 C(剖開前半)、下面的出口、右邊的填料函與擋止 c、擋止螺絲 b
-        { kind: "plate", shape: shape(circle(SPHERE.r + 0.07, SPHERE.center[0], 0), [circle(SPHERE.r, SPHERE.center[0], 0).reverse()]), thickness: 0.3 },
-        { kind: "plate", shape: shape(thickLine([[SPHERE.center[0] - 0.15, -SPHERE.r], [SPHERE.center[0] - 0.15, -1.1]], 0.06)), thickness: 0.3 },
-        { kind: "plate", shape: shape(thickLine([[SPHERE.center[0] + 0.15, -SPHERE.r], [SPHERE.center[0] + 0.15, -1.1]], 0.06)), thickness: 0.3 },
-        { kind: "box", size: [0.35, 0.3, 0.3], at: [SPHERE.center[0] + SPHERE.r + 0.12, 0, 0] },
-        // 擋止 c(從底座立起)與穿過它的擋止螺絲 b(螺絲頭頂著下臂)
-        { kind: "box", size: [0.1, STOP_Y + 0.06 + 0.49, 0.2], at: [STOP_X - 0.23, (STOP_Y + 0.06 - 0.49) / 2, 0] },
-        { kind: "cylinder", radius: 0.025, length: 0.2, axis: [1, 0, 0], at: [STOP_X - 0.13, STOP_Y, 0] },
-        { kind: "cylinder", radius: 0.045, length: 0.03, axis: [1, 0, 0], at: [STOP_X - 0.015, STOP_Y, 0] },
+        // 空心球 C:剖面的環(三處開孔)、後半的球殼、下面的出口(兩道壁,夾著環上的出口孔)
+        ...shellArcs(),
+        shellBack(),
+        ...[-1, 1].map((s) => ({ kind: "plate", shape: shape(thickLine([[SHELL.center[0] + s * (HOLE.outlet + 0.03), -0.72], [SHELL.center[0] + s * (HOLE.outlet + 0.03), -1.1]], 0.06)), thickness: SHELL.depth })),
+        // 兩側的填料函(凸台;剖面上是管子 / 柱塞上下的兩塊)
+        ...[-1, 1].map((s) => ({ kind: "box", role: "gland", size: [0.3, 0.1, SHELL.depth], at: [SHELL.center[0] - SHELL.r - 0.1, s * (HOLE.pipe + 0.05), 0] })),
+        ...[-1, 1].map((s) => ({ kind: "box", role: "gland", size: [0.35, 0.1, SHELL.depth], at: [SHELL.center[0] + SHELL.r + 0.12, s * (HOLE.plunger + 0.05), 0] })),
+        // 擋止 c(從底座立起,在槓桿下端的左邊):右側面在螺絲尖端頂到的地方
+        { kind: "box", role: "stop", size: [0.1, STOP_Y + 0.06 - BASE_TOP, 0.2], at: [STOP_X - 0.05, (STOP_Y + 0.06 + BASE_TOP) / 2, 0] },
         // 槓桿 D 的支架與樞軸銷
-        { kind: "box", size: [0.12, PIVOT[1] + 0.49, 0.12], at: [PIVOT[0] + 0.12, (PIVOT[1] - 0.49) / 2, -0.12] },
+        { kind: "box", size: [0.12, PIVOT[1] - BASE_TOP, 0.12], at: [PIVOT[0] + 0.12, (PIVOT[1] + BASE_TOP) / 2, -0.12] },
         { kind: "box", size: [0.24, 0.1, 0.12], at: [PIVOT[0] + 0.06, PIVOT[1], -0.12] },
         { kind: "cylinder", radius: 0.03, length: 0.3, at: [PIVOT[0], PIVOT[1], -0.05] },
       ],
     },
     { id: "labelB", kind: "group", pieces: [], label: "B", labelOffset: [FIXED, 0.15, 0.5] },
-    { id: "labelC", kind: "group", pieces: [], label: "C", labelOffset: [SPHERE.center[0], SPHERE.r + 0.2, 0.4] },
-    { id: "labelb", kind: "group", pieces: [], label: "b", labelOffset: [2.7, -0.15, 0.4] },
-    { id: "labelc", kind: "group", pieces: [], label: "c", labelOffset: [2.3, 0.05, 0.4] },
+    { id: "labelC", kind: "group", pieces: [], label: "C", labelOffset: [SHELL.center[0], SHELL.r + 0.2, 0.4] },
+    { id: "labelb", kind: "group", pieces: [], label: "b", labelOffset: [STOP_X + 0.45, STOP_Y - 0.12, 0.4] },
+    { id: "labelc", kind: "group", pieces: [], label: "c", labelOffset: [STOP_X - 0.2, STOP_Y + 0.12, 0.4] },
     { id: "pipe", kind: "rod", radius: PIPE_R, label: "A", labelOffset: [-1.2, 0.3, 0.3] }, // 路徑零件的標籤從原點量起
     { id: "plunger", kind: "cylinder", axis: [1, 0, 0], radius: 0.1, length: 1.2, arrow: false, label: "a", labelOffset: [-0.35, 0.25, 0.3] },
-    // 槓桿 D:支點在局部原點,下臂往下 ARM,重球的臂往右上
-    { id: "lever", kind: "plate", shape: shape(thickLine([[0, -ARM], [0, 0], [0.35, 0.3]], ARM_W), [circle(0.035, 0, 0).reverse()]), thickness: 0.08, arrow: false, label: "D", labelOffset: [0.45, 0.55, 0.3], pieces: [{ kind: "sphere", radius: 0.18, at: [0.42, 0.36, 0] }] },
+    // 槓桿 D:支點在局部原點(有圓形輪轂,樞軸孔整個在外形裡),下臂往下 ARM,重球的臂往右上;擋止螺絲 b 穿過下臂的下端
+    {
+      id: "lever",
+      kind: "plate",
+      shape: shape(hubArms(0.09, ARM_W, [{ angle: -Math.PI / 2, length: ARM }, { angle: Math.atan2(0.3, 0.35), length: Math.hypot(0.35, 0.3) }]), [circle(0.035, 0, 0).reverse()]),
+      thickness: 0.08,
+      arrow: false,
+      label: "D",
+      labelOffset: [0.45, 0.55, 0.3],
+      pieces: [
+        { kind: "sphere", radius: 0.18, at: [0.42, 0.36, 0] },
+        { kind: "cylinder", role: "screw", radius: SCREW.r, length: SCREW.length, axis: [1, 0, 0], at: [SCREW.at[0], SCREW.at[1], 0] },
+        { kind: "cylinder", radius: 0.045, length: 0.03, axis: [1, 0, 0], at: [SCREW.at[0] + SCREW.length / 2 + 0.015, SCREW.at[1], 0] }, // 頭(在右)
+      ],
+    },
     { id: "nozzle", kind: "cylinder", axis: [1, 0, 0], radius: PIPE_R + 0.03, length: 0.08, arrow: false }, // 管口(跟著管子伸縮)
   ],
-  // 動力重演:柱塞在填料函裡沿 x 滑,只受管口與槓桿 D 的推;槓桿只受重力與柱塞、擋止的碰撞
+  // 動力重演:柱塞在填料函裡沿 x 滑,只受管口與槓桿 D 的推;槓桿只受重力與柱塞、擋止(經螺絲 b)的碰撞
   replay: {
     free: { plunger: { slide: [1, 0, 0], gravity: false }, lever: { pivot: [PIVOT[0], PIVOT[1], 0] } },
-    ignore: [["base", "plunger"]], // 柱塞穿過球殼與填料函(孔沒畫出來)
     expect: [
       { at: 0.4, part: "plunger", label: "管裡是水:槓桿把柱塞推到擋止為止,閥門開著", quote: "當管內充滿水時,其長度縮短到閥門保持開啟" },
-      { at: 0.4, part: "lever", label: "槓桿靠在擋止上" },
+      { at: 0.4, part: "lever", label: "槓桿的擋止螺絲 b 頂在擋止 c 上" },
       { part: "plunger", label: "管裡是蒸汽:管子膨脹把柱塞頂回、閥門關閉", quote: "當充滿蒸汽時,管子膨脹使閥門關閉" },
       { part: "lever", label: "槓桿被柱塞推回、重球抬起" },
     ],
@@ -93,7 +124,7 @@ export default {
   view: { direction: [0.08, 0.1, 1] },
   pose(t) {
     const s = trap(t);
-    const flows = s.open ? [{ fluid: "water", points: stream([[FIXED + 0.3, 0, 0.3], [s.end, 0, 0.3], [SPHERE.center[0], -0.3, 0.3], [SPHERE.center[0], -1.2, 0.3]], t * 30, { spacing: 0.18 }) }] : [];
+    const flows = s.open ? [{ fluid: "water", points: stream([[FIXED + 0.3, 0, 0.3], [s.end, 0, 0.3], [SHELL.center[0], -0.3, 0.3], [SHELL.center[0], -1.2, 0.3]], t * 30, { spacing: 0.18 }) }] : [];
     return {
       parts: {
         plunger: { position: [s.plunger + PLUNGER / 2, 0, 0] },

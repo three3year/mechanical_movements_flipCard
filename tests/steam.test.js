@@ -1,7 +1,9 @@
 // 第二十章「蒸汽與氣體裝置」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep } from "./helpers.js";
+import { close, sweep, part, assertShaftInBearings, assertBoxesOnePiece, polyGap, inSolid, plateLayers } from "./helpers.js";
+import { X } from "../models/kit.js";
+import { penetrationDepth, edgeDistance, pointInPolygon } from "../models/contact.js";
 
 import * as m470 from "../models/fig470.js";
 import * as m471 from "../models/fig471.js";
@@ -87,6 +89,44 @@ test("第 474 種:汽轉球:蒸汽從彎臂噴出,球朝反方向轉(反作用,�
   assert.ok(m474.default.pose(0.3).parts.sphere.angle > 0);
 });
 
+test("第 474 種:原圖四根彎臂間隔 90°、噴口同一個轉向;鍋爐有蓋、兩根管穿過蓋立在蓋上;樞軸短管套進球兩側的軸頸", () => {
+  const def = m474.default;
+  const c = m474.SPHERE.center;
+  const n = m474.nozzles(0);
+  assert.equal(n.length, 4, "a number of bent arms:原圖四根");
+  const angles = n.map(({ tip }) => Math.atan2(tip[2] - c[2], tip[1] - c[1])).sort((a, b) => a - b);
+  for (let k = 1; k < 4; k++) close(angles[k] - angles[k - 1], Math.PI / 2, "四根臂等距 90°", 1e-9);
+  for (const { tip, dir } of n) {
+    const t = [-(tip[2] - c[2]), tip[1] - c[1]]; // 轉動平面(y, z)上、球往 +a 轉時噴口前進的切線方向
+    assert.ok(dir[1] * t[0] + dir[2] * t[1] < -0.9 * Math.hypot(...t) * Math.hypot(dir[1], dir[2]), "每個噴口都沿切線、逆著同一個轉向噴(反作用)");
+  }
+  // 鍋爐有蓋:蓋(剖開後半的旋轉體)蓋住碗口,半徑不小於碗口的外半徑、蓋底貼著碗口頂;兩根管的下端在蓋底之下(穿過蓋伸進鍋爐)
+  const boiler = part(def, "boiler");
+  const bowl = boiler.pieces[0];
+  const lid = boiler.pieces.find((q) => q.role === "lid");
+  assert.ok(lid, "鍋爐有蓋");
+  const rimTop = bowl.at[1] + Math.max(...bowl.profile.map(([, y]) => y));
+  const rimR = Math.max(...bowl.profile.map(([r]) => r));
+  close(lid.at[1] + Math.min(...lid.profile.map(([, y]) => y)), rimTop, "蓋底貼著碗口頂", 1e-9);
+  assert.ok(Math.max(...lid.profile.map(([r]) => r)) >= rimR - 1e-9, "蓋蓋住整個碗口");
+  const pipes = boiler.pieces.filter((q) => q.role === "pipe");
+  assert.equal(pipes.length, 2, "兩根管子");
+  for (const q of pipes) {
+    assert.ok(q.at[1] - q.length / 2 < lid.at[1] + Math.min(...lid.profile.map(([, y]) => y)) - 1e-9, "管子的下端穿過蓋伸進鍋爐");
+    close(q.at[1] + q.length / 2, c[1], "管子的上端到球心的高度(兼樞軸)", 1e-9);
+  }
+  // 樞軸短管(鍋爐的一部分)套進球兩側的軸頸(球的附件;球的局部 z 是世界 x):軸頸的孔套著短管、短管穿過整個軸頸
+  const sphere = part(def, "sphere");
+  const necks = sphere.pieces.filter((q) => q.inner).map((q) => ({ ...q, axis: X, at: [q.at[2] + c[0], q.at[1] + c[1], -q.at[0] + c[2]] }));
+  const stubs = boiler.pieces.filter((q) => q.role === "stub");
+  assert.equal(stubs.length, 2, "兩根樞軸短管");
+  for (const stub of stubs) {
+    const side = Math.sign(stub.at[0]);
+    assertShaftInBearings({ ...stub, at: stub.at, axis: X }, necks.filter((q) => Math.sign(q.at[0]) === side), `樞軸短管(${side > 0 ? "右" : "左"})`);
+    assert.ok(side * (stub.at[0] - (side * stub.length) / 2) >= m474.SPHERE.r - 1e-9, "短管的內端到球面為止、不伸進球體");
+  }
+});
+
 test("第 475、476 種:噴射泵:蒸汽朝排水管噴出,水從吸水管被吸上來,連續往上流", () => {
   for (const def of [fig475, fig476]) {
     const [steam, water] = def.pose(0.37).flows;
@@ -98,6 +138,49 @@ test("第 475、476 種:噴射泵:蒸汽朝排水管噴出,水從吸水管被吸
   }
 });
 
+// 剖面圖裡的管是兩道壁(板件)夾著流體:點在兩道壁之間、不在壁裡,而且左右各有一道壁在管寬以內
+function assertSectionedPipe(def, id, role, points, halfWidth, what) {
+  const layers = plateLayers(part(def, id)).filter((l) => l.role === role);
+  assert.ok(layers.length >= 2, `${what}是兩道壁的剖面`);
+  let inside = 0;
+  for (const q of points) {
+    const walls = layers.filter((l) => edgeDistance(q, l.solid.outline) <= halfWidth + 1e-9 || inSolid(q, l.solid));
+    if (!walls.length) continue;
+    inside++;
+    assert.ok(walls.every((l) => !inSolid(q, l.solid)), `${what}:流體點〔${q[0].toFixed(2)}, ${q[1].toFixed(2)}〕不在管壁裡`);
+    assert.ok(walls.length >= 2, `${what}:流體點〔${q[0].toFixed(2)}, ${q[1].toFixed(2)}〕的兩側都有壁`);
+  }
+  assert.ok(inside > 3, `${what}:有流體點走在管裡`);
+}
+
+test("第 475 種:蒸汽管 A 照原圖是剖開的管(兩道壁),蒸汽從兩道壁之間噴向排水管", () => {
+  const [steam] = fig475.pose(0.37).flows;
+  assertSectionedPipe(fig475, "body", "steamPipe", steam.points.filter((q) => q[0] > 0.2), 0.2, "第 475 種蒸汽管 A");
+});
+
+test("第 476 種:叉形管的壁連成一件:兩腿的外壁接上 C 的壁(間隙 0)、兩片內壁在分叉處合成拱(間隙 0);噴射管是剖開的管、穿過拱上的孔", () => {
+  const body = part(fig476, "body");
+  const discharge = part(fig476, "discharge");
+  const wall = (p, role) => plateLayers(p).filter((l) => l.role === role).map((l) => l.solid.outline);
+  for (const side of ["L", "R"]) {
+    const [outer] = wall(body, `outer${side}`);
+    const [c] = wall(discharge, `wall${side}`);
+    assert.ok(outer && c, `${side} 側有外壁與 C 的壁`);
+    close(polyGap(outer, c), 0, `${side} 側外壁接上 C 的壁`, 1e-6);
+  }
+  const [innerL] = wall(body, "innerL");
+  const [innerR] = wall(body, "innerR");
+  const jet = wall(body, "jet");
+  assert.ok(innerL && innerR, "兩片內壁");
+  // 兩片內壁在分叉處合成拱:各自接著噴射管的壁(噴射管穿過拱上的孔),兩片之間只隔著噴射管
+  assert.ok(jet.some((w) => polyGap(innerL, w) < 1e-6) && jet.some((w) => polyGap(innerR, w) < 1e-6), "拱的兩半各接上噴射管的壁(孔的兩側)");
+  assert.ok(polyGap(innerL, innerR) < 2 * 0.12 + 0.06 + 1e-6, "拱的兩半之間只隔著噴射管");
+  const [steam, water] = fig476.pose(0.37).flows;
+  assertSectionedPipe(fig476, "body", "jet", steam.points.filter((q) => q[1] < 0.7 && q[0] < 0.6), 0.2, "第 476 種噴射管");
+  // 水點在兩腿與 C 的管裡,不在壁裡
+  for (const q of water.points) for (const l of [...plateLayers(body), ...plateLayers(discharge)]) if (q[2] >= l.z0 && q[2] <= l.z1) assert.ok(!inSolid(q, l.solid), `水點〔${q[0].toFixed(2)}, ${q[1].toFixed(2)}〕不在壁裡`);
+});
+
 import * as m477 from "../models/fig477.js";
 import * as m478 from "../models/fig478.js";
 import * as gas from "../models/gasometer.js";
@@ -107,14 +190,56 @@ import * as m481 from "../models/fig481.js";
 import * as m482 from "../models/fig482.js";
 import * as m483 from "../models/fig483.js";
 
-test("第 477 種:蒸汽疏水器:有蒸汽時閥門被頂上封住;冷凝水積多、閥冷卻後落下排水", () => {
+test("第 477 種:蒸汽疏水器(照原圖):蒸汽把閥裡的液體加熱、隔膜鼓起把閥身頂到閥座 a、a(閥肩與盒蓋開口下緣的錐面間隙 0,封住 A);冷卻時隔膜收縮、閥身落下、A 打開,水經盒子從橋架下方進 B", () => {
+  const def = m477.default;
+  const body = part(def, "body");
+  const shell = body.pieces.find((q) => q.role === "shell");
+  const bridge = body.pieces.find((q) => q.role === "bridge");
+  const valve = part(def, "valve");
+  const dia = part(def, "diaphragm");
+  assert.ok(shell && bridge && valve && dia, "盒(含蓋、A、B)、橋架、閥身 D、隔膜");
+  const bridgeTop = Math.max(...bridge.shape.outline.map((q) => q[1])) + (bridge.at?.[1] ?? 0);
+  const shellPoly = shell.profile.map(([r, y]) => [r, y + (shell.at?.[1] ?? 0)]);
+  const apexZ = Math.min(...dia.profile.map(([, z]) => z));
+  let closed = 0;
+  let opened = 0;
+  let drained = 0;
   for (const v of sweep(1, 100)) {
     const t = m477.trap(v);
-    if (t.temp > 0.9) close(t.valve, m477.CLOSED, "蒸汽:閥門頂到 a、a 封住");
-    if (t.temp < 0.3) close(t.valve, m477.OPEN, "冷卻:閥門落下");
-    if (t.draining) assert.ok(t.valve < m477.CLOSED, "排水時閥門是開的");
+    const pose = def.pose(v);
+    const vy = pose.parts.valve.position[1];
+    const valvePoly = valve.profile.map(([r, y]) => [r, y + vy]);
+    // 閥身的肩對閥座 a、a(都是旋轉體,拿 (r, y) 剖面比):全程不穿入;熱時間隙 0(封住 A)、冷時打開
+    assert.ok(penetrationDepth(shellPoly, valvePoly) < 1e-6, `閥身不穿進盒與閥座(v=${v.toFixed(2)})`);
+    const gap = polyGap(shellPoly, valvePoly);
+    if (t.temp > 0.9) (close(gap, 0, "蒸汽:隔膜膨脹把閥門抬升到閥座 a、a,封住 A", 1e-6), closed++);
+    if (t.temp < 0.3) (assert.ok(gap > 0.05, "冷卻:閥門下降,A 打開"), opened++);
+    // 隔膜的邊接在閥身的底緣,鼓起的頂點(最低點)一直坐在出口 B 上方的橋架頂上;閥身升起的量就是隔膜鼓起的量
+    const d = pose.parts.diaphragm;
+    close(d.position[1], vy, "隔膜的邊在閥身的底緣", 1e-9);
+    close(d.position[1] + apexZ * d.scale[2], bridgeTop, "隔膜支撐於出口管上方的橋架上", 1e-9);
+    if (t.draining) {
+      drained++;
+      assert.ok(gap > 0.05, "排水時閥門是開的");
+      const water = pose.flows.find((f) => f.fluid === "water");
+      assert.ok(water && water.points.length > 5, "有水在流");
+      const ys = water.points.map((q) => q[1]);
+      assert.ok(Math.max(...ys) > m477.BOX.y1 && Math.min(...ys) < m477.BOX.y0, "水從 A 經盒子流到 B");
+      // 水點不穿過閥身、隔膜(旋轉體:比 (r, y))與橋架(板:比 (x, y) 與深度)
+      for (const q of water.points) {
+        const rq = [Math.hypot(q[0], q[2]), q[1]];
+        assert.ok(!pointInPolygon(rq, valvePoly), `水點〔${q[0].toFixed(2)}, ${q[1].toFixed(2)}〕不穿過閥身`);
+        assert.ok(!pointInPolygon(rq, dia.profile.map(([r, z]) => [r, d.position[1] + z * d.scale[2]])), "水點不穿過隔膜");
+        const bz = bridge.at?.[2] ?? 0;
+        if (Math.abs(q[2] - bz) <= (bridge.thickness ?? 0.2) / 2) assert.ok(!inSolid([q[0] - (bridge.at?.[0] ?? 0), q[1] - (bridge.at?.[1] ?? 0)], bridge.shape), "水點不穿過橋架");
+      }
+    }
+    if (t.temp > 0.9) {
+      const steam = pose.flows.find((f) => f.fluid === "steam");
+      assert.ok(!steam || steam.points.every((q) => q[1] >= m477.SEAT[0][1] - 1e-9), "閥門封住時蒸汽留在 A 裡");
+    }
   }
-  assert.ok(sweep(1, 100).some((v) => m477.trap(v).draining), "會排水");
+  assert.ok(closed > 5 && opened > 5 && drained > 5, "有封住、打開與排水的時段");
 });
 
 test("第 478 種:Ray 疏水器:管裡是水時管子短、閥門開;是蒸汽時管子伸長頂住柱塞、閥門關", () => {
@@ -131,6 +256,39 @@ test("第 478 種:Ray 疏水器:管裡是水時管子短、閥門開;是蒸汽�
     close(-corner[0] * Math.cos(a) - corner[1] * Math.sin(a), m478.ARM_W / 2, "下臂的側面貼著柱塞端", 1e-6);
   }
   assert.ok(m478.trap(1).lever > m478.trap(0).lever, "管子膨脹時柱塞把槓桿推回(重球抬起)");
+});
+
+test("第 478 種:槓桿 D 的支架立在底座上;擋止螺絲 b 裝在槓桿下端(頭在右),柱塞推到擋止時尖端頂著擋止 c;管子與柱塞各穿過球殼上填料函的孔", () => {
+  const def = m478.default;
+  assertBoxesOnePiece(def, "base");
+  const base = part(def, "base");
+  const lever = part(def, "lever");
+  const screw = lever.pieces.find((q) => q.role === "screw");
+  const stop = base.pieces.find((q) => q.role === "stop");
+  assert.ok(screw && stop, "有擋止螺絲 b 與擋止 c");
+  assert.ok(screw.at[0] + screw.length / 2 > m478.ARM_W / 2 && screw.at[0] - screw.length / 2 < -m478.ARM_W / 2, "螺絲穿過下臂、頭在右邊");
+  const tipAt = (t) => {
+    const a = m478.trap(t).lever;
+    const [x, y] = [screw.at[0] - screw.length / 2, screw.at[1]];
+    return [m478.PIVOT[0] + x * Math.cos(a) - y * Math.sin(a), m478.PIVOT[1] + x * Math.sin(a) + y * Math.cos(a)];
+  };
+  const cRight = stop.at[0] + stop.size[0] / 2;
+  const tip0 = tipAt(0);
+  close(tip0[0] - cRight, 0, "管裡是水:柱塞推到擋止為止,螺絲尖端頂著擋止 c(間隙 0)", 1e-6);
+  assert.ok(Math.abs(tip0[1] - stop.at[1]) < stop.size[1] / 2, "尖端頂在 c 的高度範圍內");
+  assert.ok(tipAt(1)[0] - cRight > 0.05, "管子膨脹把槓桿推回時,螺絲離開擋止");
+  for (const t of sweep(1, 20)) assert.ok(tipAt(t)[0] - cRight > -1e-6, "螺絲尖端不穿進擋止");
+  // 球殼(剖面的環)在管子、柱塞與出口處都開著孔:環的各段在那裡斷開,管子與柱塞從孔中穿過、不碰環
+  const arcs = plateLayers(base).filter((l) => l.role === "shell");
+  assert.ok(arcs.length >= 3, "球殼的環在三個孔處斷成幾段");
+  const pipe = part(def, "pipe");
+  const plunger = part(def, "plunger");
+  const probe = (x, r) => arcs.every((l) => !inSolid([x, 0], l.solid) && Math.min(edgeDistance([x, r], l.solid.outline), edgeDistance([x, -r], l.solid.outline)) > 0.01);
+  const shell = m478.SHELL;
+  assert.ok(probe(shell.center[0] - shell.r, pipe.radius), "管子從左邊的孔穿過球殼");
+  assert.ok(probe(shell.center[0] + shell.r, plunger.radius), "柱塞從右邊的孔穿過球殼");
+  const glands = base.pieces.filter((q) => q.role === "gland");
+  assert.ok(glands.some((q) => q.at[0] < shell.center[0]) && glands.some((q) => q.at[0] > shell.center[0]), "兩側都有填料函");
 });
 
 test("第 479、480 種:儲氣槽:氣體進入時容器 A 上升,而且下緣一直浸在水裡", () => {
