@@ -125,7 +125,8 @@ export default {
     },
     { id: "cylWater", kind: "fill", fluid: "water", shape: "cylinder", size: [2 * CYL.r - 0.02, LIFT + 0.1, 0], level: 0 },
     // 手柄:下端的銷孔套在搖桿的上銷,離它 SHORT 的銷孔套著柱塞的銷;把手往右上伸出、彎向右邊
-    leverPart("handle", { short: SHORT, long: 3.4, side: 1, bend: [1.6, -0.02], grip: [3.4, -0.9] }),
+    // 開閥狀態手柄不動、閥的開度由狀態決定:標 posed,切換狀態時轉到新的姿勢、不接續轉角
+    { ...leverPart("handle", { short: SHORT, long: 3.4, side: 1, bend: [1.6, -0.02], grip: [3.4, -0.9] }), posed: true },
     { id: "rocker", kind: "link", width: 0.08, thickness: 0.05 },
     // 泵柱塞(沿泵筒的軸線);頂端的銷往後穿過手柄的銷孔
     {
@@ -151,8 +152,8 @@ export default {
         { kind: "plate", shape: shape(stadium(0.5, 0.12).outline.map(([x, y]) => [y, x - 0.25])), thickness: 0.05, at: [0, 0, -(PIPE_END + SCREW.plugL - SCREW.x) / 2 + 0.2], accent: true }, // 翼(直立,轉螺絲時看得到它轉)
       ],
     },
-    flap("suction", SUCTION.hi - SUCTION.lo - 0.02),
-    flap("delivery", BARREL.w - 0.06),
+    { ...flap("suction", SUCTION.hi - SUCTION.lo - 0.02), posed: true },
+    { ...flap("delivery", BARREL.w - 0.06), posed: true },
   ],
   states: {
     initial: "lift",
