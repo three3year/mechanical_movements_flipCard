@@ -16,15 +16,16 @@ export function crankSlider(crank, r, rod, theta) {
   return { pin, y };
 }
 
-const WALL = 0.12; // 汽缸壁與上下蓋的厚度
+export const WALL = 0.12; // 汽缸壁與上下蓋的厚度
 const ROD_HOLE = 0.12; // 上蓋讓活塞桿穿過的孔的半徑
 const FLANGE = 0.06; // 座底端的凸緣伸出汽缸外壁多少
 
 /**
  * 汽缸零件(縱向,上端 top、內長 length、內半徑 radius;剖開前半看得到裡面)、兩室的蒸汽填色、活塞。
- * seat 是底座頂面的高度:汽缸下蓋底下接一段同外徑、底端帶凸緣的座,落到底座上(推斷;原圖汽缸蓋下就是台座)
+ * seat 是底座頂面的高度:汽缸下蓋底下接一段同外徑、底端帶凸緣的座,落到底座上(推斷;原圖汽缸蓋下就是台座)。
+ * rodHole 是上蓋讓活塞桿(第 421 種是筒管)穿過的孔的半徑
  */
-export function cylinderParts({ x, top, length, radius, seat, prefix = "" }) {
+export function cylinderParts({ x, top, length, radius, seat, prefix = "", rodHole = ROD_HOLE }) {
   const bottom = top - length;
   const outer = radius + WALL;
   const drop = seat == null ? 0 : bottom - WALL - seat; // 座的高度
@@ -37,7 +38,7 @@ export function cylinderParts({ x, top, length, radius, seat, prefix = "" }) {
       kind: "lathe",
       axis: Y,
       center: [x, bottom, 0],
-      profile: [[ROD_HOLE, length + WALL], [outer, length + WALL], ...base, [0, 0], [radius, 0], [radius, length], [ROD_HOLE, length]],
+      profile: [[rodHole, length + WALL], [outer, length + WALL], ...base, [0, 0], [radius, 0], [radius, length], [rodHole, length]],
       ...backHalf(Y),
     },
     { id: `${prefix}steamUp`, kind: "fill", fluid: "steam", shape: "cylinder", size: [2 * radius - 0.04, length, 0], level: 0 },
