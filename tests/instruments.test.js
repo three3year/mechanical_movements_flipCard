@@ -1,9 +1,9 @@
 // 第十七章「繪圖儀器」與第二十二章「儀錶與周轉輪系」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, plateLayers } from "./helpers.js";
-import { quatRotate } from "../models/kit.js";
-import { pointInPolygon, placeOutline } from "../models/contact.js";
+import { close, sweep, part, plateLayers, inSolid, polyGap, assertOnePiece, assertShaftInBearings } from "./helpers.js";
+import { quatRotate, partPoint, add, dot } from "../models/kit.js";
+import { pointInPolygon, placeOutline, edgeDistance } from "../models/contact.js";
 import * as pt from "../models/pencil-thread.js";
 import { pathLength } from "../models/flow.js";
 import fig500, { gauge } from "../models/fig500.js";
@@ -53,6 +53,97 @@ test("第 500 種:主動件是虛擬的「壓力」,不指向零件", () => {
   assert.equal(fig500.driver.type, "virtual");
   assert.equal(fig500.driver.label, "壓力");
   assert.equal(fig500.driver.mode, "balance");
+});
+
+
+// 零件裡的旋轉體(沿 z 的軸):剖面的半徑與深度範圍(世界座標)
+const latheBands = (p) =>
+  [p, ...(p.pieces ?? [])]
+    .filter((q) => q.kind === "lathe" && !q.axis)
+    .map((q) => {
+      const oz = (p.center?.[2] ?? 0) + (q === p ? 0 : q.at?.[2] ?? 0);
+      const rs = q.profile.map(([r]) => r);
+      const zs = q.profile.map(([, z]) => oz + z);
+      return { r0: Math.min(...rs), r1: Math.max(...rs), z0: Math.min(...zs), z1: Math.max(...zs) };
+    });
+
+test("第 500 種(剖面圖):碟片 A 與錶面平行、幾乎和錶殼一樣大,裝在錶殼後半;邊緣夾在前後兩半錶殼之間", () => {
+  const discA = part(fig500, "discA");
+  const axis = discA.axis ?? [0, 0, 1];
+  assert.ok(Math.abs(axis[2]) > 1 - 1e-9, "碟片的軸沿錶的軸線:碟片與錶面平行");
+  const front = plateLayers(part(fig500, "caseFront"));
+  const dialBack = Math.max(...front.map((l) => l.z0));
+  assert.ok(discA.center[2] < dialBack - 0.5, "碟片在錶殼後半,離錶面很遠");
+  const rim = latheBands(part(fig500, "rim"))[0];
+  const flex = Math.max(...discA.profile.map(([r]) => r));
+  close(rim.r0, flex, "會變形的部分接在夾住的邊緣上", 1e-6);
+  assert.ok(flex > 0.75 * rim.r1, "碟片幾乎和錶殼一樣大");
+  const touches = (id, face) =>
+    latheBands(part(fig500, id)).some((b) => Math.abs((face === "front" ? b.z0 : b.z1) - (face === "front" ? rim.z1 : rim.z0)) < 1e-9 && b.r0 < rim.r1 && b.r1 > rim.r0);
+  assert.ok(touches("caseFront", "front"), "前殼的內凸緣貼著邊緣的正面");
+  assert.ok(touches("caseBack", "back"), "後殼的內凸緣貼著邊緣的背面");
+});
+
+test("第 500 種:碟片在壓力下往前拱,但全程在錶面後面(不穿過刻度環、不凸出錶面)", () => {
+  const discA = part(fig500, "discA");
+  assert.ok(Math.abs((discA.axis ?? [0, 0, 1])[2]) > 1 - 1e-9, "碟片與錶面平行");
+  const dialBack = Math.max(...plateLayers(part(fig500, "caseFront")).map((l) => l.z0));
+  const top = Math.max(...discA.profile.map(([, z]) => z));
+  let last = -Infinity;
+  for (const p of sweep(10, 20)) {
+    const s = fig500.pose(p).parts.discA.scale?.[2] ?? 1;
+    const front = discA.center[2] + s * top;
+    assert.ok(front >= last, `壓力 ${p}:壓力越大碟片拱得越前`);
+    last = front;
+    assert.ok(front < dialBack - 0.3, `壓力 ${p}:碟片最前面 ${front.toFixed(3)} 在錶面(背面 ${dialBack})後面`);
+  }
+});
+
+test("第 500 種:碟片的變形把運動傳給扇形段 e——凸柱前端的眼勾住 e 的尾鉤:銷全程貼著長孔的兩壁、不穿入", () => {
+  const boss = part(fig500, "boss");
+  const eye = boss.pieces.find((q) => q.kind === "plate" && q.shape.holes.length);
+  const sector = part(fig500, "sector");
+  const pin = sector.pieces.find((q) => q.kind === "cylinder" && !q.inner);
+  const slot = eye.shape.holes[0];
+  for (const p of sweep(10, 20)) {
+    const pose = fig500.pose(p).parts;
+    assert.deepEqual(pose.boss.position.slice(0, 2), [0, 0], "凸柱沿錶的軸線前後動");
+    const c = partPoint(sector.center, sector.axis, pose.sector.angle, pin.at);
+    const eyeAt = add(eye.at, pose.boss.position);
+    // 眼的板平行扇形段(局部 X = 世界 −Z、局部 Y = 世界 Y)
+    const local = [-(c[2] - eyeAt[2]), c[1] - eyeAt[1]];
+    assert.ok(pointInPolygon(local, slot), `壓力 ${p}:銷在眼的長孔裡`);
+    const gap = edgeDistance(local, slot) - pin.radius;
+    assert.ok(Math.abs(gap) < 1e-6, `壓力 ${p}:銷貼著長孔的壁(間隙 ${gap.toFixed(4)})`);
+    const xs = [c[0] - pin.length / 2, c[0] + pin.length / 2];
+    assert.ok(xs[0] < eyeAt[0] - eye.thickness / 2 && xs[1] > eyeAt[0] + eye.thickness / 2, "銷穿過眼的板");
+  }
+});
+
+test("第 500 種:扇形段 e 與指針心軸上的小齒輪以傘齒相咬——兩軸垂直相交,節圓上的線速度相等", () => {
+  const sector = part(fig500, "sector");
+  const pinion = part(fig500, "pinion");
+  assert.ok(sector.cone && pinion.cone, "兩個都是傘齒輪");
+  assert.ok(Math.abs(dot(sector.axis, pinion.axis)) < 1e-9, "兩軸垂直:扇形段的軸平行錶面");
+  close(sector.center[1], 0, "扇形段的軸和心軸相交", 1e-9);
+  const a = gauge(2);
+  const b = gauge(6);
+  close(Math.abs(b.pinion - a.pinion) * pinion.radius, Math.abs(b.sector - a.sector) * sector.radius, "節圓上的線速度相等", 1e-9);
+});
+
+test("第 500 種:小齒輪的心軸與扇形段都有樞軸:心軸前端穿過錶面中央的圓板、後端轉在支架的軸承裡,扇形段套在樞銷上", () => {
+  const caseFront = part(fig500, "caseFront").pieces;
+  const pinion = part(fig500, "pinion");
+  const spindle = pinion.pieces.find((q) => q.kind === "cylinder");
+  const at = partPoint(pinion.center, pinion.axis, 0, spindle.at);
+  const bearings = caseFront.filter((q) => q.kind === "cylinder" && q.inner && q.inner < 0.1); // 錶殼的圓筒壁不算
+  assertShaftInBearings({ at, axis: [0, 0, 1], radius: spindle.radius, length: spindle.length }, bearings, "指針的心軸");
+  assert.ok(bearings.length >= 2, "心軸前後各一個軸承");
+  const sector = part(fig500, "sector");
+  const pin = caseFront.find((q) => q.kind === "cylinder" && !q.inner && q.axis && Math.abs(q.at[1] - sector.center[1]) < 1e-9 && Math.abs(q.at[2] - sector.center[2]) < 1e-9);
+  assert.ok(pin, "扇形段的軸上有固定在錶殼支架上的樞銷");
+  const hub = sector.pieces.find((q) => q.kind === "cylinder" && q.inner);
+  assertShaftInBearings(pin, [{ ...hub, axis: sector.axis, at: sector.center }], "扇形段的樞銷");
 });
 
 // ── 第十七章「繪圖儀器」(第 403–411 種) ──
@@ -577,6 +668,79 @@ test("第 498 種:虹吸式壓力計:受壓的一側水銀下降、另一側上�
   }
 });
 
+// 水銀填色(fill:方塊依 level 由底往上填,或 outline 的固定外形)在姿勢下的取樣點(xy)
+function mercuryPoints(def, id, value) {
+  const f = part(def, id);
+  const [cx, cy] = f.center ?? [0, 0, 0];
+  if (f.outline) {
+    const pts = f.outline.map(([x, y]) => [cx + x, cy + y]);
+    return [...pts, ...pts.map((p, i) => [(p[0] + pts[(i + 1) % pts.length][0]) / 2, (p[1] + pts[(i + 1) % pts.length][1]) / 2])];
+  }
+  const level = def.pose(value).parts[id]?.level ?? f.level ?? 0;
+  const [w, h] = f.size;
+  const pts = [];
+  for (let i = 0; i <= 4; i++) for (let j = 0; j <= 8; j++) pts.push([cx - w / 2 + (w * i) / 4, cy - h / 2 + (level * h * j) / 8]);
+  return pts;
+}
+
+// 零件裡沿 z 的板件外形(世界座標的 xy):和水銀同一層(z = 0)的玻璃管管壁,刻度板在後面一層、不算
+const wallSolids = (def, ids) => ids.flatMap((id) => plateLayers(part(def, id)).filter((l) => l.z0 < 0 && l.z1 > 0).map((l) => l.solid));
+
+// 從 q 沿 d 方向碰到的第一道管壁的距離(碰不到為 Infinity)
+function rayHit(q, d, solids) {
+  let best = Infinity;
+  for (const s of solids)
+    for (const loop of [s.outline, ...(s.holes ?? [])])
+      for (let i = 0; i < loop.length; i++) {
+        const a = loop[i];
+        const b = loop[(i + 1) % loop.length];
+        const ex = b[0] - a[0];
+        const ey = b[1] - a[1];
+        const den = d[0] * ey - d[1] * ex;
+        if (Math.abs(den) < 1e-12) continue;
+        const t = ((a[0] - q[0]) * ey - (a[1] - q[1]) * ex) / den;
+        const u = ((a[0] - q[0]) * d[1] - (a[1] - q[1]) * d[0]) / den;
+        if (t > 0 && u >= 0 && u <= 1) best = Math.min(best, t);
+      }
+  return best;
+}
+
+/** 點在管孔裡:不在管壁裡,而且沿某個方向往兩邊都碰到管壁、兩壁之間不超過管徑(在 U 形內側或管外都找不到這樣的方向) */
+function inBore(q, solids, bore) {
+  if (solids.some((s) => inSolid(q, s))) return false;
+  for (let k = 0; k < 32; k++) {
+    const a = (k / 32) * Math.PI;
+    const d = [Math.cos(a), Math.sin(a)];
+    if (rayHit(q, d, solids) + rayHit(q, [-d[0], -d[1]], solids) <= bore) return true;
+  }
+  return false;
+}
+
+function assertMercuryInTube(def, ids, walls, bore, values) {
+  const solids = wallSolids(def, walls);
+  for (const id of ids)
+    for (const v of values)
+      for (const q of mercuryPoints(def, id, v)) assert.ok(inBore(q, solids, bore), `主動量 ${v}:${id} 的點 (${q[0].toFixed(3)}, ${q[1].toFixed(3)}) 在管孔外`);
+}
+
+test("第 498 種:彎管的下部盛有水銀——水銀(含彎頭)畫在管孔裡;彎頭與兩管腳的管壁接成一根管", () => {
+  assertMercuryInTube(m498.default, ["leftMercury", "rightMercury", "bendMercury"], ["tube", "gaugeLeg"], 2 * m498.BORE, sweep(6, 6));
+  assertOnePiece(part(m498.default, "tube"), "接鍋爐那側的管腳、彎頭連成一件");
+});
+
+/** 刻度刻在刻度板上(刻度板與刻度線連成一件),刻度板貼在標刻度的管腳後面;管腳的管壁連成一件 */
+function assertScaleBehind(def, legId) {
+  assertOnePiece(part(def, "scale"), "刻度線刻在刻度板上");
+  assertOnePiece(part(def, legId), "標刻度的管腳連成一件");
+  const board = plateLayers(part(def, "scale"))[0];
+  const walls = plateLayers(part(def, legId));
+  assert.ok(walls.some((w) => Math.abs(w.z0 - board.z1) < 1e-9 && polyGap(w.solid.outline, board.solid.outline) === 0), "刻度板貼在管腳後面");
+}
+
+test("第 498 種:標有刻度的管腳——刻度刻在管腳後面的刻度板上", () => {
+  assertScaleBehind(m498.default, "gaugeLeg");
+});
+
 test("第 499 種:布爾登壓力計:壓力使彎管伸直,兩端經扇形段與小齒輪帶動指針", () => {
   const a = m499.bourdon(2);
   const b = m499.bourdon(8);
@@ -586,12 +750,83 @@ test("第 499 種:布爾登壓力計:壓力使彎管伸直,兩端經扇形段與
   assert.ok(b.pinion < a.pinion, "指針(小齒輪)隨之轉動");
 });
 
+const fig499 = m499.default;
+const path499 = (p, id) => fig499.pose(p).paths[id].points;
+const len2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const cross2 = (a, b) => a[0] * b[1] - a[1] * b[0];
+
+test("第 499 種:壓力使管子或多或少地伸直——伸直時整根彎管留在錶殼裡(不穿過殼壁)", () => {
+  const ring = plateLayers(part(fig499, "case")).find((l) => l.solid.holes.length);
+  const inner = Math.min(...ring.solid.holes[0].map(([x, y]) => Math.hypot(x, y)));
+  const r = part(fig499, "tubeL").radius;
+  for (const p of sweep(10, 20))
+    for (const id of ["tubeL", "tubeR"])
+      for (const q of path499(p, id)) assert.ok(Math.hypot(q[0], q[1]) + r <= inner + 1e-9, `壓力 ${p}:${id} 的點離中心 ${(Math.hypot(q[0], q[1]) + r).toFixed(3)},超過錶殼內壁 ${inner.toFixed(3)}`);
+});
+
+test("第 499 種:管子的兩端接到扇形段上——兩根拉桿長度不變;兩端往外拉,兩根拉桿給扇形段的扭矩同向、與扇形段轉向一致", () => {
+  const pivot = part(fig499, "sector").center;
+  const values = sweep(10, 40);
+  for (const id of ["rodL", "rodR"]) {
+    const ls = values.map((p) => len2(...path499(p, id)));
+    assert.ok(Math.max(...ls) - Math.min(...ls) < 0.001, `${id} 長度不變(變化 ${(Math.max(...ls) - Math.min(...ls)).toFixed(4)})`);
+  }
+  for (let i = 1; i < values.length; i++) {
+    const [p0, p1] = [values[i - 1], values[i]];
+    const turn = fig499.pose(p1).parts.sector.angle - fig499.pose(p0).parts.sector.angle;
+    assert.ok(turn > 0, `壓力 ${p1}:扇形段逆時針轉`);
+    for (const [rod, tube] of [["rodL", "tubeL"], ["rodR", "tubeR"]]) {
+      const [end, pin] = path499(p1, rod);
+      close(len2(end, path499(p1, tube).at(-1)), 0, `${rod} 接在 ${tube} 的端點`, 1e-9);
+      assert.ok(Math.abs(end[0]) > Math.abs(path499(p0, rod)[0][0]), `壓力 ${p1}:${tube} 的端點往外移`);
+      // 拉桿受拉:作用在銷上的力由銷指向管端
+      const torque = cross2([pin[0] - pivot[0], pin[1] - pivot[1]], [end[0] - pin[0], end[1] - pin[1]]);
+      assert.ok(torque > 0, `壓力 ${p1}:${rod} 拉扇形段的方向和扇形段的轉向一致(扭矩 ${torque.toFixed(3)})`);
+    }
+  }
+});
+
+test("第 499 種:彎管在長度中點 C 固定——C 夾在錶殼頂的夾塊裡;扇形段與小齒輪各套在背板的樞銷 / 軸承上", () => {
+  const ends = sweep(10, 10).map((p) => [path499(p, "tubeL")[0], path499(p, "tubeR")[0]]);
+  for (const [l, r] of ends) {
+    close(len2(l, ends[0][0]), 0, "左半從 C 起、C 不動", 1e-9);
+    close(len2(r, ends[0][0]), 0, "右半也從 C 起", 1e-9);
+  }
+  const caseParts = part(fig499, "case").pieces;
+  const c = ends[0][0];
+  assertShaftInBearings({ at: [c[0], c[1], c[2]], axis: [1, 0, 0], radius: part(fig499, "tubeL").radius, length: 0.3 }, caseParts, "C 處的彎管");
+  const sector = part(fig499, "sector");
+  const pin = caseParts.find((q) => q.kind === "cylinder" && !q.inner && !q.axis && len2(q.at, sector.center) < 1e-9);
+  assert.ok(pin, "扇形段的樞軸上有插在錶殼上的樞銷");
+  const world = (p, q) => ({ ...q, at: (q.at ?? [0, 0, 0]).map((v, k) => v + p.center[k]) });
+  assertShaftInBearings(pin, sector.pieces.map((q) => world(sector, q)), "扇形段的樞銷");
+  const pointer = part(fig499, "pointer");
+  const arbor = world(pointer, pointer.pieces.find((q) => q.kind === "cylinder"));
+  assertShaftInBearings(arbor, caseParts, "指針的心軸");
+});
+
+test("第 499 種:在錶盤上指示壓力——刻度刻在錶盤上(貼著錶盤正面、在錶盤的外形裡)", () => {
+  const plates = plateLayers(part(fig499, "case"));
+  const ticks = part(fig499, "case").pieces.filter((q) => q.kind === "box" && q.angle);
+  assert.ok(ticks.length >= 11, "刻度 0–10");
+  for (const t of ticks) {
+    const back = t.at[2] - t.size[2] / 2;
+    assert.ok(plates.some((l) => Math.abs(l.z1 - back) < 1e-9 && inSolid([t.at[0], t.at[1]], l.solid)), `刻度 (${t.at[0].toFixed(2)}, ${t.at[1].toFixed(2)}) 貼在錶盤上`);
+  }
+});
+
 test("第 501 種:水銀氣壓計:長管腳的水銀柱由大氣壓力支撐,隨氣壓升降", () => {
   const lo = m501.columns(28.5);
   const hi = m501.columns(30.5);
   assert.ok(hi.long > lo.long, "氣壓高,長管腳的水銀柱升高");
   assert.ok(hi.short < lo.short, "短管腳的水銀面下降");
   close(hi.height - lo.height, 2 * m501.SCALE, "水銀柱高度差隨氣壓(英吋)成正比");
+});
+
+test("第 501 種:水銀(含彎頭)畫在管孔裡;長管腳的英吋刻度刻在刻度板上,各自連成一件", () => {
+  assertMercuryInTube(m501.default, ["longMercury", "shortMercury", "bendMercury"], ["tube", "longLeg"], 2 * m501.BORE, sweep(31, 6, 28));
+  assertOnePiece(part(m501.default, "tube"), "短管腳(頂上蓋多孔材料)與彎頭連成一件");
+  assertScaleBehind(m501.default, "longLeg");
 });
 
 test("周轉輪系的 Willis 公式:臂不轉時就是定軸輪系;末輪與臂的關係可以互推", () => {
