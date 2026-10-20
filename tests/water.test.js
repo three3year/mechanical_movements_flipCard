@@ -1433,9 +1433,7 @@ test("第 462 種:鏈式泵:上輪轉動,碟片沿不漏水的泵缸往上走,�
 
 test("第 462 種:碟片嵌在燈籠輪的橫檔之間:間距是橫檔間距的整數倍、落在兩根橫檔正中、全程不碰橫檔;鏈條繞在臂端上、碟片套在鏈上", () => {
   const def = m462.default;
-  const pitch = (2 * Math.PI * m462.R) / m462.ARMS; // 橫檔在鏈條半徑上的間距
-  close(m462.SPACING / pitch, Math.round(m462.SPACING / pitch), "碟片間距是橫檔間距的整數倍", 1e-9);
-  close(m462.LOOP / m462.SPACING, Math.round(m462.LOOP / m462.SPACING), "鏈長是碟片間距的整數倍(最後一段間距和其餘一樣)", 1e-9);
+  // 間距是臂距的整數倍、鏈長是間距的整數倍都是定義(SPACING、LOOP 由它們算出),不另斷言;下面掃碟片在輪上是否真的落在兩臂之間
   // 接觸:臂端離鏈條的內側接近 0(臂端帶著鏈走);碟片的中孔只比鏈大一點(碟片套在鏈上)
   const tipGap = m462.R - m462.CHAIN_W / 2 - m462.BAR_LEN / 2;
   assert.ok(tipGap >= 0 && tipGap < 0.01, `臂端貼著鏈條的內側(間隙 ${tipGap.toFixed(3)})`);
