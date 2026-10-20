@@ -17,6 +17,7 @@
 //   飛輪的軸往後伸進軸承座、踏板樞軸的托架與地板(推斷)。
 import { TAU, deg, smooth, clamp, signedAngle, wrap, rot2 } from "./kit.js";
 import { falling } from "./jumps.js";
+import { pathLength } from "./flow.js";
 import { circleCircle } from "./linkage.js";
 import { shape, circle, rect, stadium, arcPoints, zCylinder, spanBox } from "./shapes.js";
 import { pedestal } from "./supports.js";
@@ -85,7 +86,6 @@ export function springEnd(theta) {
   const [x, y] = rot2([w.local[0] + SPRING_ATTACH[0], w.local[1] + SPRING_ATTACH[1]], theta);
   return [x, y, SLIDE_Z];
 }
-const polyLength = (pts) => pts.reduce((sum, p, i) => (i ? sum + Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0), 0);
 // 以極座標畫的螺線(飛輪局部):半徑從 r0 線性增到外端,bulge 讓中段鼓出或收進,改變弧長而不動兩端
 function spiral(s, bulge) {
   const end = [SPRING_ATTACH[0] - s, R + SPRING_ATTACH[1]];
@@ -98,14 +98,14 @@ function spiral(s, bulge) {
     return [r * Math.cos(a), r * Math.sin(a)];
   });
 }
-const SPRING_LENGTH = polyLength(spiral(0, 0)); // 彈簧的弧長(滑塊在擋止處時的形狀)
+const SPRING_LENGTH = pathLength(spiral(0, 0)); // 彈簧的弧長(滑塊在擋止處時的形狀)
 /** 彈簧的折線(世界座標):弧長守恆,等弧長取點 */
 export function spring(theta) {
   const { s } = wrist(theta);
   let [lo, hi] = [-0.5, 0.5];
   for (let i = 0; i < 40; i++) {
     const mid = (lo + hi) / 2;
-    if (polyLength(spiral(s, mid)) < SPRING_LENGTH) lo = mid;
+    if (pathLength(spiral(s, mid)) < SPRING_LENGTH) lo = mid;
     else hi = mid;
   }
   const dense = spiral(s, (lo + hi) / 2);

@@ -20,11 +20,33 @@ export function lever({ pivot, short, link, x, side = -1 }) {
 }
 
 /**
+ * 吊環(或吊桿、搖桿)接手柄:手柄一端的銷 F 掛在繞固定銷 anchor 擺的吊環(長 length)的另一端,離 F short 的銷 P
+ * (活塞桿頂)走在直線 line(origin + s·dir,dir 是單位向量)上。手柄角 theta → 吊環銷 F、直線上的銷 P 與它的里程 s;
+ * 兩個解取 P 在直線上較遠(s 較大、活塞在上面)的那一個。第 450 種的吊環、第 466 種的吊桿、第 467 種的搖桿都是這一組。
+ */
+export const hangerLever = ({ anchor, length, short, line }) => (theta) => {
+  const u = [Math.cos(theta), Math.sin(theta)];
+  const { origin, dir } = line;
+  // P = origin + s·dir,F = P − short·u,|F − anchor| = length:解 s
+  const C = [origin[0] - short * u[0] - anchor[0], origin[1] - short * u[1] - anchor[1]];
+  const b = C[0] * dir[0] + C[1] * dir[1];
+  const c = C[0] ** 2 + C[1] ** 2 - length ** 2;
+  const s = -b + Math.sqrt(Math.max(0, b * b - c));
+  const P = [origin[0] + s * dir[0], origin[1] + s * dir[1]];
+  return { s, P, F: [P[0] - short * u[0], P[1] - short * u[1]] };
+};
+
+// 手柄的彎折處與握端(局部座標;把手長 long):支點在左(side = +1)的手柄直段長一點、彎得緩一點,
+// 壓到底時才不碰到泵筒的頂角與活塞桿頂的銷
+const handleBend = (long, side) => (side < 0 ? [long * 0.45, -0.3] : [long * 0.6, -0.1]);
+const handleGrip = (long, side) => (side < 0 ? [long, -1.0] : [long, -0.9]);
+
+/**
  * 手柄槓桿的零件(局部:支點在原點,把手往右下彎)。side = -1:短臂往左、銷孔在 (-short, 0);
  * side = +1:銷孔在支點右邊 (short, 0),把手從那裡再往右伸。兩端都比銷孔多留 0.1,孔才整個在外形裡。
- * bend、grip:把手彎折處與握端(局部座標);支點在左的手柄直段長一點、彎得緩一點,壓到底時才不碰到泵筒的頂角與活塞桿頂的銷。
+ * bend、grip:把手彎折處與握端(局部座標),預設見 handleBend、handleGrip。
  */
-export const leverPart = (id, { short, long, side = -1, bend = side < 0 ? [long * 0.45, -0.3] : [long * 0.6, -0.1], grip = side < 0 ? [long, -1.0] : [long, -0.9] }) => ({
+export const leverPart = (id, { short, long, side = -1, bend = handleBend(long, side), grip = handleGrip(long, side) }) => ({
   id,
   kind: "plate",
   shape: shape(
@@ -41,6 +63,12 @@ export const stroke = (v, from, to) => {
   const { at, forward, f } = swingPhase(v, from, to);
   return { at, forward, f, n: Math.floor(v / (Math.abs(to - from) || 1)) };
 };
+
+/** 到目前為止壓了幾程(往 to 走的第一程、第三程…是壓;正在壓的這一程算走了多少):液壓機、千斤頂每壓一程送一次水 */
+export const strokeCount = ({ n, forward, f }) => Math.floor((n + 1) / 2) + (forward ? f : 0);
+
+/** 活塞桿頂的銷(活塞零件的附件;活塞沿 y,局部 z 是世界的 y):在局部高度 z,往後伸 0.22、穿過手柄的銷孔 */
+export const rodPin = (z) => ({ kind: "cylinder", radius: 0.03, length: 0.22, axis: [0, 1, 0], at: [0, 0.11, z] });
 
 const VALVE_RISE = 0.2; // 一程的前 20%:閥瓣被水頂到開足
 const VALVE_FALL = 0.2; // 回程的前 20%:閥瓣落回閥座
@@ -89,9 +117,9 @@ export function clipBand(profile, h0, h1) {
  * 開了口的旋轉體(繞 y、剖開前半):軸線在 x、底在 y0,剖面 profile([[r, h], …],h 從 0 起算)。
  * openings:[{ y0, y1, side, depth }]——世界高度 y0..y1 之間、side 那一側(-1 左、+1 右)的壁拿掉,
  * 口的寬度(往後的深度)是接進來的管的深度 depth(預設 0.4),再留一點餘裕;開口以外的弧照畫。
- * 回傳一組 lathe 附件(沒開口的高度段是整個後半),可以展進 group 的 pieces;extra 併進每一塊。
+ * 回傳一組 lathe 附件(沒開口的高度段是整個後半),可以展進 group 的 pieces。
  */
-export function openedLathe({ x, y0, profile, openings = [], extra = {} }) {
+export function openedLathe({ x, y0, profile, openings = [] }) {
   const hs = profile.map(([, h]) => h);
   const bottom = Math.min(...hs);
   const top = Math.max(...hs);
@@ -114,7 +142,7 @@ export function openedLathe({ x, y0, profile, openings = [], extra = {} }) {
       else end = Math.min(end, Math.PI - half);
     }
     if (end - start < 1e-6) continue;
-    pieces.push({ kind: "lathe", axis: Y, profile: band, at: [x, y0, 0], cut: start, sweep: end - start, ...extra });
+    pieces.push({ kind: "lathe", axis: Y, profile: band, at: [x, y0, 0], cut: start, sweep: end - start });
   }
   return pieces;
 }
@@ -133,12 +161,11 @@ export const barrel = (id, { x = 0, r, y0, y1, wall = 0.07, extra = {}, openings
  * 圓頂的閥室(第 450、454 種出水閥的閥室;繞 y、剖開前半):座在 (x, y) 的閥座環(孔半徑 seat、厚 wall)上,
  * 內半徑 r 的直壁到 shoulder 高,再收到半徑 neck 的頸、頸口在 h 高(出水管從頸口接出)。閥瓣鉸在閥座環上、在閥室裡張開。
  */
-export const valveDome = (x, y, { seat, r = 0.32, wall = 0.06, shoulder = 0.3, neck = 0.07, h = 0.55, openings } = {}) =>
+export const valveDome = (x, y, { seat, r = 0.32, wall = 0.06, shoulder = 0.3, neck = 0.07, h = 0.55 } = {}) =>
   openedLathe({
     x,
     y0: y,
     profile: [[seat, 0], [r + wall, 0], [r + wall, shoulder], [neck + wall, h], [neck + wall, h + 0.05], [neck, h + 0.05], [neck, h - 0.04], [r, shoulder - 0.02], [r, wall], [seat, wall]],
-    openings,
   });
 
 /**
@@ -184,6 +211,7 @@ export const pipeWalls = (pts, w, t = 0.06, depth = 0.4, { breaks = [], caps = {
 };
 
 // 折線上離 at 最近的點的里程,前後各 width/2 的區間
+// (和 flow.js 的 distanceToPath、pointAlong 不能互換:這裡要的是最近點的「里程」,splitPolyline 還要知道它落在第幾段才能切折線)
 function gapOn(line, at, width) {
   let best = { d: Infinity, s: 0 };
   let s = 0;

@@ -9,8 +9,8 @@
 // 讀數另外列出原文 30 : 1 的例子。剖面圖。
 import { Y, deg } from "./kit.js";
 import { stream } from "./flow.js";
-import { leverPart, stroke, valveOpening, flap, barrel, pipeWalls } from "./pump.js";
-import { shape, thickLine, circle } from "./shapes.js";
+import { leverPart, hangerLever, rodPin, stroke, strokeCount, valveOpening, flap, barrel, pipeWalls } from "./pump.js";
+import { shape, thickLine, circle, spanBox } from "./shapes.js";
 
 export const RAM_D = 1.3; // 柱塞直徑
 export const PLUNGER_D = 0.18; // 泵柱塞直徑
@@ -36,14 +36,11 @@ const INLET_Y = RAM.y0 + 0.2; // 小管接進柱塞缸的高度
 const inlet = [[PUMP_X - PUMP.r, FEED_Y], [CHAMBER.x1 - CHAMBER.t, FEED_Y]];
 const down = [[DOWN_X, CHAMBER.y0], [DOWN_X, INLET_Y], [RAM.x + RAM_D / 2, INLET_Y]];
 
+const hangerArm = hangerLever({ anchor: HANGER.ear, length: HANGER.length, short: HANGER.short, line: { origin: [PUMP_X, 0], dir: [0, 1] } });
 /** 手柄角 theta → 吊桿上銷 hang(手柄左端)、柱塞銷 E(在泵筒軸線上) */
 function place(theta) {
-  const { ear, length, short } = HANGER;
-  const c = Math.max(-1, Math.min(1, (PUMP_X - short * Math.cos(theta) - ear[0]) / length));
-  const phi = Math.acos(c);
-  const hang = [ear[0] + length * Math.cos(phi), ear[1] + length * Math.sin(phi), 0];
-  const E = [hang[0] + short * Math.cos(theta), hang[1] + short * Math.sin(theta), 0];
-  return { hang, E };
+  const { P, F } = hangerArm(theta);
+  return { hang: [F[0], F[1], 0], E: [P[0], P[1], 0] };
 }
 const LO = place(SWING[1]).E[1] - ROD;
 const HI = place(SWING[0]).E[1] - ROD;
@@ -52,17 +49,18 @@ export const PUMP_STROKE = HI - LO;
 /** 累計主動量 v → 手柄角、吊桿上銷、柱塞銷(top)、泵柱塞底的高度、是否在壓、柱塞(大)已升起多少 */
 export function press(v) {
   const phase = stroke(v, ...SWING);
-  const { at, forward, f, n } = phase;
+  const { at, forward } = phase;
   const { hang, E } = place(at);
   const y = E[1] - ROD;
   // 每一次下壓(第一程、第三程…)把泵行程的水送進柱塞缸:柱塞上升 = 泵行程 × 面積比(畫面上再放大 8 倍才看得出來,見檔頭)
-  const strokes = Math.floor((n + 1) / 2) + (forward ? f : 0);
+  const strokes = strokeCount(phase);
   const ratio = (PLUNGER_D / RAM_D) ** 2;
   const rise = Math.min(RAM_TRAVEL, strokes * PUMP_STROKE * ratio * 8);
   return { theta: at, hang, E, top: E, plunger: y, down: forward, rise, phase };
 }
 
-const wallBox = (x0, x1, y0, y1, depth = 0.8) => ({ kind: "box", size: [x1 - x0, y1 - y0, depth], at: [(x0 + x1) / 2, (y0 + y1) / 2, 0] });
+/** 水箱、閥室的壁:座標範圍定的方塊,深度 depth 以 z = 0 為中心 */
+const wallBox = (x0, x1, y0, y1, depth = 0.8) => spanBox(x0, x1, y0, y1, -depth / 2, depth / 2);
 
 export default {
   figure: 466,
@@ -125,7 +123,7 @@ export default {
       arrow: false,
       pieces: [
         { kind: "cylinder", radius: 0.03, length: 0.14, at: [0, 0, (ROD - 0.12) / 2 + 0.07] },
-        { kind: "cylinder", radius: 0.03, length: 0.22, axis: [0, 1, 0], at: [0, 0.11, (ROD - 0.12) / 2 + 0.12] },
+        rodPin((ROD - 0.12) / 2 + 0.12),
       ],
     },
     leverPart("handle", { short: HANGER.short, long: 2.2, side: 1, bend: [1.3, -0.05], grip: [2.2, -0.35] }),

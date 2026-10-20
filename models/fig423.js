@@ -7,7 +7,7 @@
 // 活塞與端壁的密封照實物:活塞板偏在轉軸的一側,朝汽室的那一面與端壁朝汽室的那一面都和軸轂相切,擺到最外時活塞貼著端壁,
 // 汽室的根部由軸轂封住(原圖的樞軸圓就畫在活塞板的角上);軸轂穿過背板、由背板後面的軸承環托住。
 // 排汽口(推斷,原圖沒畫)在兩活塞之間的空間的左下角,從背板出去、經管子落到底座;曲柄 D 的軸前端由底座立起的軸承座托住(推斷)。
-import { Z, deg, routeBelt, beltTravel, signedAngle } from "./kit.js";
+import { Z, deg, routeBelt, beltTravel, signedAngle, around } from "./kit.js";
 import { circleCircle } from "./linkage.js";
 import { stream } from "./flow.js";
 import { shape, thickLine, arcPoints, circle, rect } from "./shapes.js";
@@ -45,7 +45,6 @@ const HI = RANGE.hi + deg(6); // 外側端壁的方向:活塞擺到最外時離�
 const LO = RANGE.lo - Math.atan2(SEAT + T, VANE) - deg(3); // 弧壁的內側端:蓋過活塞擺到最內時的板角
 export const OUTER = [HI, HI + Math.PI]; // 外側端壁的方向(蒸汽從這邊進來)
 
-const polar = (P, r, a) => [P[0] + r * Math.cos(a), P[1] + r * Math.sin(a)];
 const rot = ([x, y], a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
 /** 外側端壁:朝汽室的那一面和軸轂的座孔相切(離轉軸 SEAT),內端貼著座孔的弧,外端伸到弧壁 */
 function endWall(k) {
@@ -75,7 +74,7 @@ const BELT_Z = 0.56;
 const BELT_R = 0.16;
 const valveBelt = routeBelt([{ center: [0, 0, BELT_Z], axis: Z, radius: BELT_R, sense: 1 }, { center: [...VALVE, BELT_Z], axis: Z, radius: BELT_R, sense: 1 }]);
 // 進汽通道穿過弧壁、開口在汽室的外側角落(活塞擺到最外時的板面與端壁之間)
-const entry = (k, r) => polar(PIVOTS[k], r, OUTER[k] - deg(9.5));
+const entry = (k, r) => around(PIVOTS[k], r, OUTER[k] - deg(9.5));
 const passages = [
   [fromValve([0.2, 2.0]), [0.2, 2.0], entry(0, ARC + 0.3), entry(0, VANE - 0.05)],
   [fromValve([2.1, 0.9]), [2.1, 0.9], [2.1, -1.2], [1.25, -2.15], entry(1, ARC + 0.3), entry(1, VANE - 0.05)],
@@ -98,7 +97,7 @@ export function chamber(theta, k, travel) {
     if (n < 1) continue;
     for (let i = 0; i < n; i++) {
       const a = a0 + ((a1 - a0) * (i + 0.5 + 0.35 * Math.sin(travel * 3 + r * 4))) / n;
-      dots.push([...polar(P, r, a), 0.05]);
+      dots.push(around(P, r, a, 0.05));
     }
   }
   return dots;

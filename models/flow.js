@@ -1,10 +1,13 @@
 // 流體示意(ADR-0002):沿固定路徑移動的點、容器的存量,全是主動量的純函式,不模擬流體。
 import { add, sub, scale, len, dot, clamp } from "./kit.js";
 
-/** 折線長度 */
+/** 折線長度(點可以是 2D 或 3D;繩、皮帶、彈簧的路徑,或板件輪廓上的一段) */
 export function pathLength(points) {
   let total = 0;
-  for (let i = 1; i < points.length; i++) total += len(sub(points[i], points[i - 1]));
+  for (let i = 1; i < points.length; i++) {
+    const [p, q] = [points[i], points[i - 1]];
+    total += Math.hypot(p[0] - q[0], p[1] - q[1], (p[2] ?? 0) - (q[2] ?? 0));
+  }
   return total;
 }
 

@@ -8,7 +8,8 @@
 // 導槽座是 U 形、頂端封住),進、排汽道的端頭停在汽缸外緣、中層的環在汽道處開口,不再伸進缸膛頂到偏心輪。
 import { TAU } from "./kit.js";
 import { stream } from "./flow.js";
-import { shape, circle, thickLine, arcPoints } from "./shapes.js";
+import { shape, circle, arcPoints } from "./shapes.js";
+import { cylinderWall } from "./rotary-cylinder.js";
 
 export const BORE = 1.6; // 汽缸內半徑
 export const ECC = 0.42; // 偏心距
@@ -55,12 +56,11 @@ function crescent(theta, a0, a1, travel) {
   return dots;
 }
 
-// ── 汽缸壁:環在頂端缺一道擋板的槽(前、中、後三層都缺),中層另在兩條汽道處開口 ──
-const yOn = (r, x) => Math.sqrt(r * r - x * x);
-/** 環在 x0 < x < x1 之間(上半)的一段:兩側是垂直的切口 */
-const band = (x0, x1) => [...arcPoints(OUTER, Math.acos(x1 / OUTER), Math.acos(x0 / OUTER)), ...arcPoints(BORE, Math.acos(x0 / BORE), Math.acos(x1 / BORE))];
-/** 環缺掉頂端 |x| < g 那一段(垂直的切口),其餘整圈 */
-const cRing = (g) => [...arcPoints(OUTER, Math.PI - Math.acos(g / OUTER), TAU + Math.acos(g / OUTER)), ...arcPoints(BORE, TAU + Math.acos(g / BORE), Math.PI - Math.acos(g / BORE))];
+// ── 汽缸壁(rotary-cylinder.js):環在頂端缺一道擋板的槽(前、中、後三層都缺),中層另在兩條汽道處開口 ──
+const CH = (GUIDE + CHANNEL) / 2; // 汽道中線
+const { band, cRing, portWall, inlet, exhaust } = cylinderWall({ bore: BORE, outer: OUTER, top: BORE + 1.0, channel: CH });
+/** 蒸汽的路徑(進汽道:由上往下進缸膛;排汽道反向);端點停在缸膛表面 */
+export { inlet, exhaust };
 // 導槽座:U 形,兩腳立在汽缸外緣上、頂端封住;擋板在 |x| < GAP 的槽裡滑
 const housing = [
   ...arcPoints(OUTER, Math.acos(-GUIDE / OUTER), Math.acos(-GAP / OUTER)),
@@ -72,11 +72,6 @@ const housing = [
 ];
 // 汽道壁:從頂端的汽口直下到汽缸外緣;汽道在它和導槽座外壁之間,經中層環的開口進缸膛
 const WALL_X = CHANNEL + 0.03;
-const portWall = (s) => thickLine([[s * WALL_X, BORE + 1.0], [s * WALL_X, yOn(OUTER, WALL_X) - 0.01]], 0.06);
-const CH = (GUIDE + CHANNEL) / 2; // 汽道中線
-/** 蒸汽的路徑(進汽道:由上往下進缸膛;排汽道反向);端點停在缸膛表面 */
-export const inlet = [[CH, BORE + 1.0, 0.2], [CH, BORE + 0.3, 0.2], [CH, yOn(BORE, CH), 0.2]];
-export const exhaust = [[-CH, yOn(BORE, CH), 0.2], [-CH, BORE + 0.3, 0.2], [-CH, BORE + 1.0, 0.2]];
 
 export default {
   figure: 425,
@@ -95,8 +90,8 @@ export default {
         { kind: "plate", shape: shape(band(-GUIDE, -GAP)), thickness: 2 * Z.port },
         { kind: "plate", shape: shape(circle(OUTER)), thickness: 0.04, at: [0, 0, -0.32] },
         { kind: "plate", shape: shape(housing), thickness: 2 * Z.ring },
-        { kind: "plate", shape: shape(portWall(1)), thickness: 2 * Z.port },
-        { kind: "plate", shape: shape(portWall(-1)), thickness: 2 * Z.port },
+        { kind: "plate", shape: shape(portWall(WALL_X)), thickness: 2 * Z.port },
+        { kind: "plate", shape: shape(portWall(-WALL_X)), thickness: 2 * Z.port },
         { kind: "box", size: [2.4, 0.25, 0.9], at: [0, -BORE - 0.3, 0] },
       ],
     },

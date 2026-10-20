@@ -5,7 +5,7 @@ import { close, sweep, part, plateLayers } from "./helpers.js";
 import { quatRotate } from "../models/kit.js";
 import { pointInPolygon, placeOutline } from "../models/contact.js";
 import * as pt from "../models/pencil-thread.js";
-import { polylineLength } from "../models/pencil-thread.js";
+import { pathLength } from "../models/flow.js";
 import fig500, { gauge } from "../models/fig500.js";
 import * as m403 from "../models/fig403.js";
 import * as m404 from "../models/fig404.js";
@@ -160,7 +160,7 @@ test("第 404 種:桿長不變、始終彎成真的圓弧;旋緊螺絲中間被�
     const pose = def.pose(a);
     const pts = pose.paths.bar.points;
     for (const p of pts) near(dist2(p, s.center), s.r, 1e-9, "桿上各點在同一圓上");
-    near(polylineLength(pts), m404.LENGTH, 0.01, "路徑的長 = 桿長");
+    near(pathLength(pts), m404.LENGTH, 0.01, "路徑的長 = 桿長");
     near(pose.parts.pad.position[1] + part(def, "pad").size[1] / 2, s.center[1] + s.r - m404.BAR_R, 1e-9, "壓塊頂著拱形桿正中的下面(間隙 0)");
   }
   // 滾子跟著轉:接觸點上滾子表面的速度和桿身滑過的速度同向同大
@@ -212,7 +212,7 @@ test("第 405 種:繩長不變(= 尺長 − 2a);前半條尺身在左,後半條�
       const end = [m405.F1[0] + m405.L * u[0], m405.F1[1] + m405.L * u[1]];
       near(dist2(P, m405.F2) + dist2(end, P), m405.L - 2 * m405.A, 1e-9, "繩長 = 尺長 − 2a");
       const pose = def.pose(v, state);
-      lens.push(polylineLength(pose.paths.string.points));
+      lens.push(pathLength(pose.paths.string.points));
       const q = pose.parts.ruler.rotation;
       const ex = quatRotate(q, [1, 0, 0]);
       near(ex[0] * u[0] + ex[1] * u[1], 1, 1e-9, "尺邊沿尺的方向(翻面以尺邊為軸)");
@@ -315,7 +315,7 @@ test("第 406 種:角尺平放在紙上;鉛筆尖在紙上、繩貼著尺葉的�
       near(pts[0][1], m406.DIRECTRIX - m406.BLADE, 1e-9, "繩繫在尺葉的末端");
       near(dist2(pts[1], pencil), pt.WRAP_R, 1e-9, "繩繞過鉛筆");
       near(dist2(pts[pts.length - 1], m406.FOCUS), pt.PIN_R + pt.EDGE_GAP, 1e-9, "繩套在焦點的銷上");
-      lens.push(polylineLength(pts));
+      lens.push(pathLength(pts));
     }
     assert.ok(Math.max(...lens) - Math.min(...lens) < Math.PI * pt.WRAP_R + 0.02, `繩的折線長度不變(${Math.min(...lens)}–${Math.max(...lens)};繞鉛筆的角度隨位置變)`);
   }

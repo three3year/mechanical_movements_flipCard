@@ -1,12 +1,12 @@
 // 第十九章「水車與泵」:斷言對應原文;流體示意只驗它是主動量的函式、只在路徑上
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, inSolid, turned, pieceBox, assertShaftInBearings, assertOnePiece, polyGap, plateLayers } from "./helpers.js";
-import { X, Y, Z, deg, norm, cross, dot, sub, scale, add, rot2, polar, quatFromZ, quatRotate } from "../models/kit.js";
+import { close, sweep, part, inSolid, turned, pieceBox, assertShaftInBearings, assertOnePiece, assertBoxesOnePiece, polyGap, plateLayers } from "./helpers.js";
+import { X, Y, Z, deg, norm, cross, dot, sub, scale, add, rot2, polar, quatRotate } from "../models/kit.js";
 import { distanceToPath } from "../models/flow.js";
 import { placeOutline, polygonsOverlap, penetrationDepth, segmentsCross, pointInPolygon } from "../models/contact.js";
 import { bladeLine } from "../models/turbine.js";
-import { toothOutline, gearSize } from "../models/shapes.js";
+import { toothOutline, gearSize, rect } from "../models/shapes.js";
 import fig430, { INFLOW, SPILL, PIER } from "../models/fig430.js";
 import * as m431 from "../models/fig431.js";
 import * as m432 from "../models/fig432.js";
@@ -876,8 +876,7 @@ test("第 449 種:現代提升泵:出水口的瓣閥向上開,上行時被水頂
 
 // 板件(世界座標)在姿勢下的外形:零件 position 平移、不轉(活塞上的架、閥瓣以外的板)
 const placedPlate = (piece, position) => piece.shape.outline.map(([x, y]) => [x + (piece.at?.[0] ?? 0) + position[0], y + (piece.at?.[1] ?? 0) + position[1]]);
-// 方塊 / 短圓柱(軸沿 y)在剖面上的矩形
-const sectionRect = (cx, cy, w, h) => [[cx - w / 2, cy - h / 2], [cx + w / 2, cy - h / 2], [cx + w / 2, cy + h / 2], [cx - w / 2, cy + h / 2]];
+// 方塊 / 短圓柱(軸沿 y)在剖面上的矩形:shapes 的 rect(w, h, cx, cy),點的順序左下、右下、右上、左上
 
 test("第 444 種:廢水閥由重物保持打開:重球坐在閥桿頂上、閥桿在管頂的導架裡滑;兩個閥都有閥座,關上時貼著閥座、打開時離開", () => {
   const def = m444.default;
@@ -904,7 +903,7 @@ test("第 444 種:廢水閥由重物保持打開:重球坐在閥桿頂上、閥�
     assert.ok(inAny([W[0] + stem.radius + 0.03, yg], solids) && inAny([W[0] - stem.radius - 0.03, yg], solids), `主動量 ${v.toFixed(3)}:桿的兩側都是導架`);
     assert.ok(!inAny([W[0] + stem.radius - 0.002, yg], solids) && !inAny([W[0] - stem.radius + 0.002, yg], solids), `主動量 ${v.toFixed(3)}:桿不穿進導架`);
     // 廢水閥瓣:關上時頂面貼著管頂開口的邊(閥座),打開時落下離開;全程不穿進管壁
-    const wp = sectionRect(W[0], W[1] + (plate.at?.[1] ?? 0), plate.size[0], plate.size[1]);
+    const wp = rect(plate.size[0], plate.size[1], W[0], W[1] + (plate.at?.[1] ?? 0));
     const wTop = wp[2][1];
     const seatX = W[0] + plate.size[0] / 2 - 0.01;
     assert.ok(!overlapsAny(wp, solids), `主動量 ${v.toFixed(3)}:廢水閥瓣穿進管壁`);
@@ -918,7 +917,7 @@ test("第 444 種:廢水閥由重物保持打開:重球坐在閥桿頂上、閥�
     }
     // 送水閥瓣:關上時底面貼著頸底的閥座,被水推開時往上抬;全程不穿進頸壁
     const D = pose.parts.delivery.position;
-    const dp = sectionRect(D[0], D[1] + (disc.at?.[1] ?? 0), 2 * disc.radius, disc.length);
+    const dp = rect(2 * disc.radius, disc.length, D[0], D[1] + (disc.at?.[1] ?? 0));
     const dBottom = dp[0][1];
     const dSeatX = D[0] + disc.radius - 0.01;
     assert.ok(!overlapsAny(dp, solids), `主動量 ${v.toFixed(3)}:送水閥瓣穿進頸壁`);
@@ -1715,70 +1714,7 @@ test("第 465 種:平衡泵:樑兩端交替往下,兩個泵的活塞一上一下
 });
 
 // ── 第 465–467 種:泵的去處、支點與連桿、閥與管子 ─────────────────────
-// 零件的本體與每個附件(含附件的附件)的外接範圍,都換到零件的局部座標;附件的 at、axis / rotation 都算進去
-function pieceBoxes(p) {
-  const boxes = [];
-  const corners = ({ min, max }) => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => [i & 1 ? max[0] : min[0], i & 2 ? max[1] : min[1], i & 4 ? max[2] : min[2]]);
-  const bound = (pts) => ({ min: [0, 1, 2].map((i) => Math.min(...pts.map((q) => q[i]))), max: [0, 1, 2].map((i) => Math.max(...pts.map((q) => q[i]))) });
-  // 零件 / 附件在自己的局部座標(局部 z 是軸)裡的外接範圍
-  const own = (piece) => {
-    switch (piece.kind) {
-      case "box":
-        return { min: piece.size.map((s) => -s / 2), max: piece.size.map((s) => s / 2) };
-      case "plate": {
-        const pts = piece.shape.outline;
-        const t = (piece.thickness ?? 0.2) / 2;
-        return { min: [Math.min(...pts.map((q) => q[0])), Math.min(...pts.map((q) => q[1])), -t], max: [Math.max(...pts.map((q) => q[0])), Math.max(...pts.map((q) => q[1])), t] };
-      }
-      case "cylinder":
-        return { min: [-piece.radius, -piece.radius, -piece.length / 2], max: [piece.radius, piece.radius, piece.length / 2] };
-      case "lathe": {
-        const r = Math.max(...piece.profile.map((q) => q[0]));
-        const hs = piece.profile.map((q) => q[1]);
-        return { min: [-r, -r, Math.min(...hs)], max: [r, r, Math.max(...hs)] };
-      }
-      case "sphere":
-        return { min: [-piece.radius, -piece.radius, -piece.radius], max: [piece.radius, piece.radius, piece.radius] };
-      case "tube": {
-        const r = piece.radius ?? 0.05;
-        const b = bound(piece.points);
-        return { min: b.min.map((x) => x - r), max: b.max.map((x) => x + r) };
-      }
-      default:
-        return null;
-    }
-  };
-  // 附件的局部座標 → 上一層的座標(先轉 axis / rotation,再平移 at)
-  const lift = (piece, box) => {
-    const q = piece.rotation ?? quatFromZ(piece.axis ?? [0, 0, 1]);
-    const at = piece.at ?? [0, 0, 0];
-    return bound(corners(box).map((c) => add(quatRotate(q, c), at)));
-  };
-  const visit = (piece, toParent, label) => {
-    const b = own(piece);
-    if (b) boxes.push({ label, ...toParent(b) });
-    (piece.pieces ?? []).forEach((c, i) => visit(c, (box) => toParent(lift(c, box)), `${label}.pieces[${i}]`));
-  };
-  const body = own(p);
-  if (body) boxes.push({ label: "本體", ...body });
-  (p.pieces ?? []).forEach((c, i) => visit(c, (box) => lift(c, box), `pieces[${i}]`));
-  return boxes;
-}
-// 零件是一件:本體與所有附件的外接範圍互相接觸(間隙 1e-6 以內),連成一個群(外接範圍版;helpers 的 assertOnePiece 是用實體量)
-function assertBoxesOnePiece(def, id) {
-  const boxes = pieceBoxes(part(def, id));
-  const touch = (a, b) => [0, 1, 2].every((i) => a.min[i] <= b.max[i] + 1e-6 && b.min[i] <= a.max[i] + 1e-6);
-  const seen = new Set([0]);
-  const queue = [0];
-  while (queue.length) {
-    const i = queue.pop();
-    boxes.forEach((b, j) => {
-      if (!seen.has(j) && touch(boxes[i], b)) (seen.add(j), queue.push(j));
-    });
-  }
-  const loose = boxes.filter((_, j) => !seen.has(j)).map((b) => b.label);
-  assert.deepEqual(loose, [], `第 ${def.figure} 種 ${id} 不相連的塊`);
-}
+// 一件的檢查用 helpers 的 assertBoxesOnePiece(外接範圍版:附件會轉、有 lathe)
 
 test("第 465 種:照原圖泵立在兩岸之間的坑底水裡,岸高於水面;閥瓣在水裡張開,全程碰不到岸與坑底", () => {
   const def = m465.default;

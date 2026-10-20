@@ -6,7 +6,7 @@
 // 2026-10-20 複查 #426-1、#426-2、#424-3:輪轂的溝槽真的開出來——輪轂是一塊背板加前面兩個 D 形半塊,兩個半塊之間就是
 // 貫穿直徑的溝槽(原圖畫出溝槽與裡面的活塞),活塞在溝槽裡、看得到;活塞外端改成圓頭,伸出的距離由接觸算(圓頭推到剛好碰到內壁,
 // 斜坡上也貼著滑);汽道改成從外面經汽缸壁中層的開口進缸膛、端頭停在內壁外;底座接到汽缸的外緣。
-import { TAU, deg, clamp, smooth } from "./kit.js";
+import { TAU, deg, clamp, smooth, polar } from "./kit.js";
 import { stream } from "./flow.js";
 import { shape, circle, thickLine, arcPoints } from "./shapes.js";
 
@@ -29,7 +29,6 @@ export function wall(phi) {
   for (const a of ABUTMENTS) d = Math.min(d, Math.abs(Math.atan2(Math.sin(phi - a), Math.cos(phi - a))));
   return HUB + (BORE - HUB) * smooth(clamp((d - FLAT) / (RAMP - FLAT), 0, 1));
 }
-const polar = (r, a, z = 0) => [r * Math.cos(a), r * Math.sin(a), z];
 const wallPoint = (a) => [wall(a) * Math.cos(a), wall(a) * Math.sin(a)];
 const bore = Array.from({ length: 360 }, (_, i) => wallPoint((TAU * i) / 360));
 

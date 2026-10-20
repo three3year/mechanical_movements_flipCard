@@ -9,9 +9,9 @@
 // 每壓一下液壓缸升起的量照面積比放大約 6 倍才看得出來。
 import { Y, X, deg, clamp } from "./kit.js";
 import { stream } from "./flow.js";
-import { stroke, valveOpening, flap, pipeWalls, leverPart } from "./pump.js";
+import { stroke, strokeCount, valveOpening, flap, pipeWalls, leverPart, hangerLever } from "./pump.js";
 import { backHalf } from "./section.js";
-import { shape, stadium } from "./shapes.js";
+import { shape, stadium, spanBox } from "./shapes.js";
 
 export const BASE = { x0: -1.1, x1: 1.1, y0: -1.8, y1: -1.0, wall: 0.1, slab: 0.08, depth: 1.0 }; // 中空的底座(外側)
 const RAM = { r: 0.32, bore: 0.09, top: 1.6 }; // 固定的柱塞,中心的孔就是通到液壓缸的管子
@@ -48,34 +48,24 @@ const K = LINE.origin;
 const T = along(BARREL.hi);
 const J = [-(PIPE_W - 0.06) / 2, JUNCTION_Y]; // 泵道接到管子左壁的內面
 
-/** 手柄角 theta → 搖桿上銷 F(手柄下端)、柱塞銷 P(在泵筒軸線上,離 K 的里程 s) */
-export function place(theta) {
-  const u = [Math.cos(theta), Math.sin(theta)];
-  const { anchor, length } = ROCKER;
-  // P = K + s·dir,F = P − SHORT·u,|F − anchor| = length:解 s(取柱塞在上面的那個解)
-  const C = [K[0] - SHORT * u[0] - anchor[0], K[1] - SHORT * u[1] - anchor[1]];
-  const b = C[0] * LINE.dir[0] + C[1] * LINE.dir[1];
-  const c = C[0] ** 2 + C[1] ** 2 - length ** 2;
-  const s = -b + Math.sqrt(Math.max(0, b * b - c));
-  const P = along(s);
-  return { s, P, F: [P[0] - SHORT * u[0], P[1] - SHORT * u[1]] };
-}
+/** 手柄角 theta → 搖桿上銷 F(手柄下端)、柱塞銷 P(在泵筒軸線上,離 K 的里程 s);pump.js 的 hangerLever */
+export const place = hangerLever({ anchor: ROCKER.anchor, length: ROCKER.length, short: SHORT, line: LINE });
 
 /** 累計主動量 v、狀態 → 液壓缸升起多少、手柄角、是否在壓、手柄下端 F、柱塞銷 P 與里程 s、閥開多少(0–1)、螺絲退出多少 */
 export function jack(v, state = "lift") {
   const phase = stroke(v, ...SWING);
-  const { at, forward, f, n } = phase;
+  const { at, forward } = phase;
   if (state === "release") {
     // 轉翼形螺絲:閥由關到全開,流回的量是開度對主動量的積分,液壓缸隨著慢慢降下
     const open = clamp(v / OPEN_V, 0, 1);
     const flowed = v < OPEN_V ? (v * v) / (2 * OPEN_V) : OPEN_V / 2 + (v - OPEN_V);
     return { rise: clamp(LIFT - flowed * 0.3, 0, LIFT), handle: SWING[0], pressing: false, ...place(SWING[0]), open, screwOut: SCREW.open * open, phase };
   }
-  const strokes = Math.floor((n + 1) / 2) + (forward ? f : 0);
-  return { rise: clamp(strokes * PER, 0, LIFT), handle: at, pressing: forward, ...place(at), open: 0, screwOut: 0, phase };
+  return { rise: clamp(strokeCount(phase) * PER, 0, LIFT), handle: at, pressing: forward, ...place(at), open: 0, screwOut: 0, phase };
 }
 
-const slab = (x0, x1, y0, y1) => ({ kind: "box", size: [x1 - x0, y1 - y0, BASE.depth], at: [(x0 + x1) / 2, (y0 + y1) / 2, 0] });
+/** 底座的一塊板:座標範圍定的方塊,深度是整個底座、以 z = 0 為中心 */
+const slab = (x0, x1, y0, y1) => spanBox(x0, x1, y0, y1, -BASE.depth / 2, BASE.depth / 2);
 // 泵筒穿過底座頂板的地方開口(斜的管,開口的寬度照斜度算)
 const crossTop = (y) => along((y - K[1]) / LINE.dir[1])[0];
 const GAP = (BARREL.w / 2 + 0.03) / Math.sin(ALPHA);

@@ -22,6 +22,21 @@ export const TRACE_Z = PAPER_TOP + 0.01; // 畫出的線:貼在紙面上
 /** 插在紙上的銷:釘尖穿過紙面 0.04(豁免「圖釘釘在紙上」),露出 0.16 */
 export const paperPin = ([x, y]) => ({ kind: "cylinder", radius: PIN_R, length: 0.2, at: [x, y, PAPER_TOP + 0.06] });
 
+/** 插在紙上的銷當成一個零件(每個焦點的銷各自一個零件) */
+export const pinPart = (id, p) => {
+  const { at, ...pin } = paperPin(p);
+  return { id, ...pin, center: at };
+};
+
+/** 兩個狀態的正負號:前半條 +1、後半條(尺翻面)−1;正負對應畫面上的哪一邊由各圖決定 */
+export const SIDE = (state) => (state === "second" ? -1 : 1);
+
+/** 鉛筆尖從主動量 v0 到 v1 畫過的線:每隔 step 取一點(至少 3 點);tipAt(w) 是主動量 w 時鉛筆尖在紙上的點 */
+export function traced(v0, v1, step, tipAt) {
+  const n = Math.max(2, Math.round((v1 - v0) / step));
+  return Array.from({ length: n + 1 }, (_, i) => tipAt(v0 + ((v1 - v0) * i) / n));
+}
+
 /** 鉛筆:旋轉體,尖端在紙面 */
 export const pencilPart = (id = "pencil") => ({ id, kind: "lathe", profile: PENCIL_PROFILE });
 
@@ -61,6 +76,3 @@ export function pencilAndThread({ bight, e, end, pin }) {
   const thread = [z([end[0] + EDGE_GAP * n[0], end[1] + EDGE_GAP * n[1]]), ...wrap.map(z), ...loop.map(z)];
   return { pencil: [axis[0], axis[1], PENCIL_Z], tip: [axis[0], axis[1], TRACE_Z], thread, n };
 }
-
-/** 折線的長度 */
-export const polylineLength = (pts) => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1], (p[2] ?? 0) - (pts[i][2] ?? 0)), 0);

@@ -12,9 +12,10 @@
 // - 環立在汽缸後蓋上(環就是蓋上的軸轂,推斷),活塞內端在後面伸出一隻楔形的腳,腳貼著環的外面、在深度上和環重疊;
 //   活塞本體的內端也貼著環。
 // - 汽道改成兩壁的管子,從頂端直下到汽缸外緣,經汽缸壁中層的開口進缸膛,端頭不再伸進缸膛。
-import { TAU, deg, rot2 } from "./kit.js";
+import { TAU, deg, rot2, polar } from "./kit.js";
 import { stream } from "./flow.js";
-import { shape, circle, thickLine, arcPoints } from "./shapes.js";
+import { shape, circle, arcPoints } from "./shapes.js";
+import { cylinderWall } from "./rotary-cylinder.js";
 
 export const BORE = 1.6; // 汽缸內半徑(圓心在原點)
 export const ECC = 0.35; // 軸 B 偏離汽缸中心
@@ -34,7 +35,6 @@ const OUTER = BORE + 0.18;
 const Z = { cover: [-0.34, -0.3], ring: [-0.3, -0.12], foot: [-0.29, -0.14], body: [-0.14, 0.31], hub: [-0.1, 0.34], cap: [0.34, 0.4], port: 0.15, wall: 0.3 };
 const plate = (outline, [z0, z1], extra = {}) => ({ kind: "plate", shape: Array.isArray(outline) ? shape(outline) : outline, thickness: z1 - z0, at: [0, 0, (z0 + z1) / 2], ...extra });
 
-const polar = (r, a, z = 0) => [r * Math.cos(a), r * Math.sin(a), z];
 /** 軸轉 theta → 兩個填料 a 的位置與兩個活塞(沿汽缸半徑、穿過填料中心)的方向 */
 export function pistons(theta) {
   return [0, 1].map((k) => {
@@ -124,18 +124,12 @@ function hubOutline() {
 export const HUB_OUTLINE = hubOutline();
 
 const TOP = Math.PI / 2;
-// 汽道:兩壁的管子從頂端直下到汽缸外緣,汽道在兩壁之間、經汽缸壁中層的開口進缸膛
+// 汽道(rotary-cylinder.js):兩壁的管子從頂端直下到汽缸外緣,汽道在兩壁之間、經汽缸壁中層的開口進缸膛
 const PIPE = [0.32, 0.47]; // 汽道的內、外側 x
 const CH = (PIPE[0] + PIPE[1]) / 2;
-const yOn = (r, x) => Math.sqrt(r * r - x * x);
-const pipeWall = (x) => thickLine([[x, BORE + 0.9], [x, yOn(OUTER, Math.abs(x)) - 0.01]], 0.06);
-const pipeWalls = (s) => [PIPE[0] - 0.03, PIPE[1] + 0.03].map((x) => plate(pipeWall(s * x), [-Z.port, Z.port]));
-export const inlet = [[CH, BORE + 0.9, 0.2], [CH, BORE + 0.3, 0.2], [CH, yOn(BORE, CH), 0.2]];
-export const exhaust = [[-CH, yOn(BORE, CH), 0.2], [-CH, BORE + 0.3, 0.2], [-CH, BORE + 0.9, 0.2]];
-/** 環在 x0 < x < x1 之間(上半)的一段:兩側是垂直的切口 */
-const band = (x0, x1) => [...arcPoints(OUTER, Math.acos(x1 / OUTER), Math.acos(x0 / OUTER)), ...arcPoints(BORE, Math.acos(x0 / BORE), Math.acos(x1 / BORE))];
-/** 環缺掉頂端 |x| < g 那一段(垂直的切口),其餘整圈 */
-const cRing = (g) => [...arcPoints(OUTER, Math.PI - Math.acos(g / OUTER), TAU + Math.acos(g / OUTER)), ...arcPoints(BORE, TAU + Math.acos(g / BORE), Math.PI - Math.acos(g / BORE))];
+const { band, cRing, portWall, inlet, exhaust } = cylinderWall({ bore: BORE, outer: OUTER, top: BORE + 0.9, channel: CH });
+const pipeWalls = (s) => [PIPE[0] - 0.03, PIPE[1] + 0.03].map((x) => plate(portWall(s * x), [-Z.port, Z.port]));
+export { inlet, exhaust };
 
 /** 輪轂與汽缸之間、從 a0 順時針到 a1 的蒸汽 */
 function crescent(a0, a1, travel) {

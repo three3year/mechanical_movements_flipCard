@@ -6,7 +6,7 @@
 // 第 451 種就是空氣室的底),管子的壁都畫到被接的壁的內面。
 import { Y, deg } from "./kit.js";
 import { stream } from "./flow.js";
-import { lever, leverPart, stroke, valveOpening, flap, barrel, water, pipeWalls, valveDome, openedLathe } from "./pump.js";
+import { lever, leverPart, hangerLever, rodPin, stroke, valveOpening, flap, barrel, water, pipeWalls, valveDome, openedLathe } from "./pump.js";
 import { backHalf } from "./section.js";
 import { shape, thickLine, circle } from "./shapes.js";
 
@@ -30,6 +30,7 @@ const FEED_IN = FEED_W / 2 - 0.03; // 進水管的內半寬
 const OUT_IN = 0.1 - 0.03; // 出水管(寬 0.2)的內半寬
 const HANDLE_Z = -0.09; // 手柄在活塞桿後面一層;吊環 / 連桿再後一層,耳 / 支柱再後一層
 const arm = lever(LEVER);
+const hangerArm = hangerLever({ anchor: HANGER.ear, length: HANGER.length, short: HANGER.short, line: { origin: [X, 0], dir: [0, 1] } });
 
 /**
  * 主動量 v → 手柄角、活塞高度、是否上行、活塞在行程中的位置(0 低、1 高)。
@@ -42,12 +43,9 @@ export function pump(v, { hanger = true } = {}) {
   const place = (theta) => {
     if (!hanger) return { ...arm(theta), hang: null };
     // 吊環繞耳上的銷擺,擺到手柄上的活塞桿銷正好在泵筒軸線上(吊環在上、手柄左端在吊環的下銷)
-    const { ear, length, short } = HANGER;
-    const c = Math.max(-1, Math.min(1, (X - short * Math.cos(theta) - ear[0]) / length));
-    const phi = Math.acos(c);
-    const hang = [ear[0] + length * Math.cos(phi), ear[1] + length * Math.sin(phi), 0];
-    const E = [hang[0] + short * Math.cos(theta), hang[1] + short * Math.sin(theta), 0];
-    return { E, top: E, hang };
+    const { P, F } = hangerArm(theta);
+    const E = [P[0], P[1], 0];
+    return { E, top: E, hang: [F[0], F[1], 0] };
   };
   const { E, top, hang } = place(at);
   const hi = place(SWING[0]).top[1] - ROD;
@@ -123,7 +121,7 @@ export function makeForcePump(figure, { air = false } = {}) {
         pieces: [
           { kind: "cylinder", radius: 0.04, length: ROD, at: [0, 0, ROD / 2] },
           // 第 450 種:活塞桿頂的銷(往後穿過手柄的銷孔);第 451 種:連桿下銷的座(往後,連桿的銷頭插在上面)
-          { kind: "cylinder", radius: 0.03, length: 0.22, axis: [0, 1, 0], at: [0, 0.11, ROD] },
+          rodPin(ROD),
         ],
       },
       leverPart("handle", { short: hanger ? HANGER.short : LEVER.short, long: LONG, side: 1 }),

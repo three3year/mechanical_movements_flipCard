@@ -1,7 +1,7 @@
 // 測試共用:數值比較、零件查找、齒輪齒形不重疊的檢查
 import assert from "node:assert/strict";
 import { gearProfile, circle, rect } from "../models/shapes.js";
-import { planeBasis, add, sub, scale, dot, norm, dist, rot2 } from "../models/kit.js";
+import { planeBasis, add, sub, scale, dot, norm, dist, rot2, quatFromZ, quatRotate } from "../models/kit.js";
 import { pointInPolygon, penetrationDepth, circlePolygon, polygonsOverlap, edgeDistance } from "../models/contact.js";
 
 export const close = (actual, expected, msg, eps = 1e-9) =>
@@ -214,6 +214,80 @@ export function assertOnePiece(p, what) {
     });
   }
   assert.deepEqual(items.map((_, i) => i).filter((i) => !seen.has(i)), [], what);
+}
+
+/**
+ * 零件的本體與每個附件(含附件的附件)的外接範圍,都換到零件的局部座標;附件的 at、axis / rotation 都算進去。
+ * 認得 box、plate、cylinder、lathe、sphere、tube;其他種類略過。
+ */
+export function pieceBoxes(p) {
+  const boxes = [];
+  const corners = ({ min, max }) => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => [i & 1 ? max[0] : min[0], i & 2 ? max[1] : min[1], i & 4 ? max[2] : min[2]]);
+  const bound = (pts) => ({ min: [0, 1, 2].map((i) => Math.min(...pts.map((q) => q[i]))), max: [0, 1, 2].map((i) => Math.max(...pts.map((q) => q[i]))) });
+  // 零件 / 附件在自己的局部座標(局部 z 是軸)裡的外接範圍
+  const own = (piece) => {
+    switch (piece.kind) {
+      case "box":
+        return { min: piece.size.map((s) => -s / 2), max: piece.size.map((s) => s / 2) };
+      case "plate": {
+        const pts = piece.shape.outline;
+        const t = (piece.thickness ?? 0.2) / 2;
+        return { min: [Math.min(...pts.map((q) => q[0])), Math.min(...pts.map((q) => q[1])), -t], max: [Math.max(...pts.map((q) => q[0])), Math.max(...pts.map((q) => q[1])), t] };
+      }
+      case "cylinder":
+        return { min: [-piece.radius, -piece.radius, -piece.length / 2], max: [piece.radius, piece.radius, piece.length / 2] };
+      case "lathe": {
+        const r = Math.max(...piece.profile.map((q) => q[0]));
+        const hs = piece.profile.map((q) => q[1]);
+        return { min: [-r, -r, Math.min(...hs)], max: [r, r, Math.max(...hs)] };
+      }
+      case "sphere":
+        return { min: [-piece.radius, -piece.radius, -piece.radius], max: [piece.radius, piece.radius, piece.radius] };
+      case "tube": {
+        const r = piece.radius ?? 0.05;
+        const b = bound(piece.points);
+        return { min: b.min.map((x) => x - r), max: b.max.map((x) => x + r) };
+      }
+      default:
+        return null;
+    }
+  };
+  // 附件的局部座標 → 上一層的座標(先轉 axis / rotation,再平移 at)
+  const lift = (piece, box) => {
+    const q = piece.rotation ?? quatFromZ(piece.axis ?? [0, 0, 1]);
+    const at = piece.at ?? [0, 0, 0];
+    return bound(corners(box).map((c) => add(quatRotate(q, c), at)));
+  };
+  const visit = (piece, toParent, label) => {
+    const b = own(piece);
+    if (b) boxes.push({ label, ...toParent(b) });
+    (piece.pieces ?? []).forEach((c, i) => visit(c, (box) => toParent(lift(c, box)), `${label}.pieces[${i}]`));
+  };
+  const body = own(p);
+  if (body) boxes.push({ label: "本體", ...body });
+  (p.pieces ?? []).forEach((c, i) => visit(c, (box) => lift(c, box), `pieces[${i}]`));
+  return boxes;
+}
+
+/**
+ * 零件是一件(外接範圍版):本體與所有附件的外接範圍互相接觸(間隙 1e-6 以內),連成一個群。
+ * 和 assertOnePiece 的差別:assertOnePiece 用實體的外形量(板件的輪廓、沿 z 的圓柱的圓),較嚴,但只認不轉的板件、方塊
+ * 與沿座標軸的圓柱、只看一層附件;這裡用外接範圍量,較鬆(對角相鄰的兩塊也算碰到),但附件可以轉(axis / rotation)、
+ * 可以是 lathe、球、管,附件的附件也算進去。零件有轉的附件或 lathe 時用這個,否則用 assertOnePiece。
+ */
+export function assertBoxesOnePiece(def, id) {
+  const boxes = pieceBoxes(part(def, id));
+  const touch = (a, b) => [0, 1, 2].every((i) => a.min[i] <= b.max[i] + 1e-6 && b.min[i] <= a.max[i] + 1e-6);
+  const seen = new Set([0]);
+  const queue = [0];
+  while (queue.length) {
+    const i = queue.pop();
+    boxes.forEach((b, j) => {
+      if (!seen.has(j) && touch(boxes[i], b)) (seen.add(j), queue.push(j));
+    });
+  }
+  const loose = boxes.filter((_, j) => !seen.has(j)).map((b) => b.label);
+  assert.deepEqual(loose, [], `第 ${def.figure} 種 ${id} 不相連的塊`);
 }
 
 // 調速器的被調節對象(throttle.js,第 274、287、357 種,推斷):量叉臂的銷、套筒的環槽、閥桿與曲柄、閥板的實際外形。

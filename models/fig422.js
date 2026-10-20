@@ -7,7 +7,7 @@
 // 閥動(推斷,原圖沒有畫;2026-10-04 定案補撥桿式閥動):搖臂軸前端一根朝上的撥臂,臂端的銷在一支反向槓桿下端的長槽裡,
 // 槓桿的支點在閥箱垂下的托架上(推斷),槓桿上端的銷在滑閥垂下的叉架兩指之間;活塞擺到行程的末端時,銷碰到叉指、
 // 把滑閥推到另一邊,其餘時間滑閥停在原位。反向槓桿讓滑閥往撥臂銷的反方向走,汽道才不用交叉。
-import { deg } from "./kit.js";
+import { deg, polar } from "./kit.js";
 import { circleCircle } from "./linkage.js";
 import { stream } from "./flow.js";
 import { shape, thickLine, arcPoints, circle, rect } from "./shapes.js";
@@ -88,7 +88,6 @@ const sector = (r, half, hub) => [
   ...arcPoints(hub, Math.PI / 2 - half - 0.3, -Math.PI * 1.5 + half + 0.3),
 ];
 const wall = shape(sector(RADIUS + 0.16, HALF + deg(5), 0.62), [sector(RADIUS, HALF, 0.38).reverse()]);
-const polar = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
 export const PASSAGE_W = 0.12;
 const PASSAGE_R = RADIUS + 0.21; // 汽道沿弧壁外面走的半徑(貼著外壁)
 /** 第 s 側的汽道(+1 左、−1 右):從汽缸裡那一端的角落穿出弧壁,沿外壁上到閥座的口 */
@@ -110,7 +109,7 @@ function chamberDots(from, to, travel) {
   for (let r = 0.55; r < RADIUS - 0.1; r += 0.3) {
     for (let i = 0; i <= n; i++) {
       const a = from + ((to - from) * (i + 0.5 + 0.3 * Math.sin(travel * 3 + r * 5))) / (n + 1);
-      dots.push([...polar(r, a), 0.05]);
+      dots.push(polar(r, a, 0.05));
     }
   }
   return dots;

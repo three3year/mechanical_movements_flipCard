@@ -7,18 +7,18 @@
 // 主動量是曲尺離軸的距離,從尺葉的邊剛碰到焦點的銷起算(由接觸算)。鉛筆、繩的深度安排見 pencil-thread.js。
 import { clamp, quatAxisAngle, Y } from "./kit.js";
 import { shape, rect, arcPoints } from "./shapes.js";
-import { PAPER_TOP, RULER_T, RULER_Z, PIN_R, paperPin, pencilAndThread, pencilPart } from "./pencil-thread.js";
+import { PAPER_TOP, RULER_T, RULER_Z, PIN_R, paperPin, pencilAndThread, pencilPart, SIDE, traced } from "./pencil-thread.js";
 
 export const DIRECTRIX = 2.0; // 準線(直尺下緣)的高度
 export const FOCUS = [0, 0.6, 0];
 export const BLADE = 4.2; // 尺葉長(從準線往下到繫繩的末端)
 const V0 = PIN_R + 0.002; // 尺葉的邊剛碰到焦點的銷
 export const RANGE = [V0, 2.4]; // 曲尺離軸的距離
-const SIDE = (state) => (state === "second" ? 1 : -1); // 前半條在軸的左邊、後半條在右邊
+// 前半條(SIDE = +1)在軸的左邊(x < 0)、後半條在右邊
 
 /** 曲尺離軸 v(狀態 state)→ 繩的彎曲處(鉛筆貼尺葉邊的點):到焦點的距離 = 到準線的距離 */
 export function bight(v0, state = "first") {
-  const x = SIDE(state) * clamp(v0, 0, RANGE[1]);
+  const x = -SIDE(state) * clamp(v0, 0, RANGE[1]);
   const y = (DIRECTRIX * DIRECTRIX - FOCUS[1] * FOCUS[1] - (x - FOCUS[0]) ** 2) / (2 * (DIRECTRIX - FOCUS[1]));
   return [x, y];
 }
@@ -28,15 +28,12 @@ const STOCK_H = 0.3;
 const GAP = 0.003; // 尺座與直尺的貼合誤差
 const stockShape = () => shape([[0, DIRECTRIX - GAP], [0, DIRECTRIX - STOCK_H], [-0.75, DIRECTRIX - STOCK_H], ...arcPoints(STOCK_H / 2 - GAP / 2, -Math.PI / 2, -3 * Math.PI / 2, -0.75, DIRECTRIX - STOCK_H / 2 - GAP / 2).slice(1)].reverse());
 
-/** 鉛筆尖從離軸 v0 到 v1 畫過的線(狀態 state) */
-function traced(v0, v1, state) {
-  const n = Math.max(2, Math.round((v1 - v0) / 0.05));
-  return Array.from({ length: n + 1 }, (_, i) => {
-    const w = v0 + ((v1 - v0) * i) / n;
-    const P = bight(w, state);
-    return pencilAndThread({ bight: P, e: [0, -1], end: [P[0], DIRECTRIX - BLADE], pin: FOCUS }).tip;
-  });
-}
+/** 曲尺離軸 w(狀態 state)時鉛筆尖在紙上的點;畫過的線每 0.05 取一點(pencil-thread 的 traced) */
+const tipAt = (state) => (w) => {
+  const P = bight(w, state);
+  return pencilAndThread({ bight: P, e: [0, -1], end: [P[0], DIRECTRIX - BLADE], pin: FOCUS }).tip;
+};
+const STEP = 0.05;
 
 export default {
   figure: 406,
@@ -81,8 +78,8 @@ export default {
       parts: { square: { position: [P[0], 0, RULER_Z], rotation }, pencil: { position: pencil } },
       paths: {
         string: { points: thread, closed: false, phase: 0 }, // 從尺葉末端沿尺葉的邊到鉛筆、繞過鉛筆、套在焦點的銷上
-        trace: { points: traced(V0, v, state), closed: false },
-        done: { points: traced(V0, RANGE[1], "first"), closed: false, visible: state === "second" }, // 後半條時,前半條已經畫好
+        trace: { points: traced(V0, v, STEP, tipAt(state)), closed: false },
+        done: { points: traced(V0, RANGE[1], STEP, tipAt("first")), closed: false, visible: state === "second" }, // 後半條時,前半條已經畫好
       },
       readouts: [],
     };

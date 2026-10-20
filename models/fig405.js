@@ -9,7 +9,7 @@
 // 鉛筆、繩的深度安排見 pencil-thread.js。
 import { clamp, deg, quatMul, quatAxisAngle, Z, X } from "./kit.js";
 import { shape, rect, circle, arcPoints } from "./shapes.js";
-import { PAPER_TOP, RULER_T, RULER_Z, PIN_R, paperPin, pencilAndThread, pencilPart } from "./pencil-thread.js";
+import { PAPER_TOP, RULER_T, RULER_Z, PIN_R, pinPart, pencilAndThread, pencilPart, SIDE, traced } from "./pencil-thread.js";
 
 export const A = 0.7; // 頂點到中心的距離(半實軸)
 export const C = 1.4; // 焦點到中心的距離
@@ -21,7 +21,7 @@ const HOLE_R = PIN_R + 0.01; // 尺端的樞軸孔
 // 尺邊通過 F1、往下;尺轉開 v 時尺邊離 F2 的距離是 2C·sin v,尺邊剛碰到銷的角度(主動量的起點)
 const V0 = Math.asin((PIN_R + 0.002) / (2 * C));
 export const RANGE = [V0, SWING];
-const SIDE = (state) => (state === "second" ? -1 : 1); // 前半條往左轉開(尺身在左)、後半條往右(尺身在右)
+// SIDE(state):前半條 +1 往左轉開(尺身在左)、後半條 −1 往右(尺身在右)
 
 /** 尺轉開 v(狀態 state)時尺邊的方向(從 F1 往尺的另一端) */
 export function direction(v0, state = "first") {
@@ -53,24 +53,18 @@ const branch = (s) => Array.from({ length: 41 }, (_, i) => {
 const outAndBack = (pts) => [...pts, ...pts.map(([x, y]) => [x + 0.001, y]).reverse()];
 const line = (x0, y0, x1, y1) => [[x0, y0], [x1, y1], [x1 + 0.001, y1 + 0.001], [x0 + 0.001, y0 + 0.001]];
 
-/** 鉛筆尖從尺轉開 v0 到 v1 畫過的線(狀態 state) */
-function traced(v0, v1, state) {
-  const n = Math.max(2, Math.round((v1 - v0) / deg(1)));
-  return Array.from({ length: n + 1 }, (_, i) => {
-    const w = v0 + ((v1 - v0) * i) / n;
-    const u = direction(w, state);
-    return pencilAndThread({ bight: bight(w, state), e: u, end: [F1[0] + L * u[0], F1[1] + L * u[1]], pin: F2 }).tip;
-  });
-}
-
-// 插在紙上的銷當成一個零件(兩個焦點的銷各自插在紙上,分成兩個零件)
-const pinPart = (id, p) => { const { at, ...pin } = paperPin(p); return { id, ...pin, center: at }; };
+/** 尺轉開 w(狀態 state)時鉛筆尖在紙上的點;畫過的線每 1° 取一點(pencil-thread 的 traced) */
+const tipAt = (state) => (w) => {
+  const u = direction(w, state);
+  return pencilAndThread({ bight: bight(w, state), e: u, end: [F1[0] + L * u[0], F1[1] + L * u[1]], pin: F2 }).tip;
+};
+const STEP = deg(1);
 
 export default {
   figure: 405,
   parts: [
     { id: "paper", kind: "plate", shape: shape(rect(5.2, 6.4)), thickness: 0.04, center: [0, 0, PAPER_TOP - 0.02], engrave: [line(0, -3.1, 0, 3.1), line(-2.5, 0, 2.5, 0), outAndBack(branch(1)), outAndBack(branch(-1))] },
-    // 兩個焦點上的銷:上焦點是尺的樞軸(穿過尺端的孔)、下焦點套著繩
+    // 兩個焦點上的銷(各自插在紙上,分成兩個零件):上焦點是尺的樞軸(穿過尺端的孔)、下焦點套著繩
     pinPart("pivot", F1),
     pinPart("pin", F2),
     { id: "ruler", kind: "plate", center: [F1[0], F1[1], RULER_Z], shape: rulerShape(), thickness: RULER_T, arrow: false, posed: true },
@@ -98,13 +92,13 @@ export default {
     const { pencil, tip, thread } = pencilAndThread({ bight: P, e: u, end, pin: F2 });
     // 尺:局部 x 沿尺邊;後半條以尺邊(局部 x 軸)為軸翻 180°,尺身換到另一側
     const rotation = state === "second" ? quatMul(quatAxisAngle(Z, theta), quatAxisAngle(X, Math.PI)) : quatAxisAngle(Z, theta);
-    const points = traced(V0, v, state);
+    const points = traced(V0, v, STEP, tipAt(state));
     return {
       parts: { ruler: { position: [F1[0], F1[1], RULER_Z], rotation }, pencil: { position: pencil } },
       paths: {
         string: { points: thread, closed: false, phase: 0 }, // 從尺端沿尺邊到鉛筆、繞過鉛筆、套在下焦點的銷上
         trace: { points, closed: false },
-        done: { points: traced(V0, SWING, "first"), closed: false, visible: state === "second" }, // 後半條時,前半條已經畫好
+        done: { points: traced(V0, SWING, STEP, tipAt("first")), closed: false, visible: state === "second" }, // 後半條時,前半條已經畫好
       },
       readouts: [],
     };
