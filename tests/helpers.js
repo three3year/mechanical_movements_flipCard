@@ -59,25 +59,60 @@ export function assertMeshFree(def, idA, idB, values, state) {
 export const sweep = (to, n = 24, from = 0) => Array.from({ length: n + 1 }, (_, i) => from + ((to - from) * i) / n);
 
 /**
- * 零件(含 pieces 與附件的附件)裡的板件,各自的 z 範圍與外形,都換到零件的局部座標。
- * 只處理附件 at 的平移:板件要沿 z、不轉(不是的會讓斷言失敗)。
+ * 零件(含 pieces 與附件的附件)裡沿 z 擠出的實體:板件(外形與孔)、方塊、繞 y 的旋轉體(剖面多邊形在軸線左右各一塊,
+ * 剖開的只算 cut..sweep 蓋到的那一側;z 範圍是旋轉體的外接範圍)。附件只算 at 的平移;轉過的板件(angle、axis、rotation)
+ * 不是沿 z 擠出的:strict 時斷言失敗,否則略過。每塊是 { kind, role, outline, holes, z0, z1 },座標從 origin 起算。
  */
-export function plateLayers(p) {
-  const layers = [];
-  const visit = (piece, [ox, oy, oz]) => {
+function solidsOf(p, origin = [0, 0, 0], strict = true) {
+  const out = [];
+  const visit = (piece, [x, y, z]) => {
+    const move = (loop) => loop.map(([u, v]) => [u + x, v + y]);
+    const base = { kind: piece.kind, role: piece.role };
     if (piece.kind === "plate") {
       const t = piece.thickness ?? 0.2;
-      const move = (loop) => loop.map(([x, y]) => [x + ox, y + oy]);
-      layers.push({ z0: oz - t / 2, z1: oz + t / 2, role: piece.role, solid: { outline: move(piece.shape.outline), holes: (piece.shape.holes ?? []).map(move) } });
+      out.push({ ...base, outline: move(piece.shape.outline), holes: (piece.shape.holes ?? []).map(move), z0: z - t / 2, z1: z + t / 2 });
+    } else if (piece.kind === "box") {
+      const [w, h, d] = piece.size;
+      out.push({ ...base, outline: rect(w, h, x, y), holes: [], z0: z - d / 2, z1: z + d / 2 });
+    } else if (piece.kind === "lathe") {
+      const r = Math.max(...piece.profile.map(([u]) => u));
+      const cut = piece.cut ?? 0;
+      const sweep = piece.sweep ?? Math.PI * 2;
+      const covers = (a) => [a, a + Math.PI * 2, a - Math.PI * 2].some((b) => b >= cut - 1e-9 && b <= cut + sweep + 1e-9);
+      for (const side of [1, -1]) {
+        if (covers(side > 0 ? 0 : Math.PI)) out.push({ ...base, outline: piece.profile.map(([u, h]) => [x + side * u, y + h]), holes: [], z0: z - r, z1: z + r });
+      }
     }
     for (const c of piece.pieces ?? []) {
-      if (c.kind === "plate") assert.ok(!c.angle && !c.axis && !c.rotation, "板件沿 z、不轉");
-      const [x, y, z] = c.at ?? [0, 0, 0];
-      visit(c, [ox + x, oy + y, oz + z]);
+      const turned = c.kind === "plate" && (c.angle || c.axis || c.rotation);
+      if (strict) assert.ok(!turned, "板件沿 z、不轉");
+      else if (turned) continue;
+      const [cx, cy, cz] = c.at ?? [0, 0, 0];
+      visit(c, [x + cx, y + cy, z + cz]);
     }
   };
-  visit(p, [0, 0, 0]);
-  return layers;
+  visit(p, origin);
+  return out;
+}
+
+/** 零件裡的板件,各自的 z 範圍、role 與外形 solid({ outline, holes }),都在零件的局部座標 */
+export const plateLayers = (p) => solidsOf(p).filter((s) => s.kind === "plate").map(({ z0, z1, role, outline, holes }) => ({ z0, z1, role, solid: { outline, holes } }));
+
+/**
+ * 剖面模型裡零件的實體(見 solidsOf;零件只平移、不轉;轉過的板件略過),換到世界座標:{ id, kind, role, outline, holes, z0, z1 }。
+ * pose 給了就照姿勢擺(position),否則擺在 center;z 給了就只留深度蓋到 z 的。
+ * 流體示意的點要走在這些實體之外(不穿過壁)。
+ */
+export function sectionSolids(def, ids, { pose, z } = {}) {
+  const out = [];
+  for (const id of ids) {
+    const p = part(def, id);
+    assert.ok(p, `零件 ${id}`);
+    const at = pose?.parts[id] ?? {};
+    assert.ok(!at.angle, `${id} 不轉`);
+    for (const s of solidsOf(p, at.position ?? p.center ?? [0, 0, 0], false)) out.push({ id, ...s });
+  }
+  return z === undefined ? out : out.filter((s) => s.z0 <= z + 1e-9 && s.z1 >= z - 1e-9);
 }
 
 /** 點在板件的實體裡(外形之內、孔之外) */

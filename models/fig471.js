@@ -7,10 +7,11 @@
 // 藏在錘身後面的虛線);桿 D 從曲柄銷往上接到汽缸頂的銷。原圖的曲柄與桿 D 藏在錘身後面(虛線),模型把曲柄臂、曲柄銷與
 // 桿 D 放在錘身前面那一層:主動件要看得到、抓得到。汽缸兩端的凸緣與錘身都貼著窗口的兩側滑(導引)。
 // 推斷:錘的運動落後汽缸,當作汽缸運動延遲一段相位再放大(空氣墊的彈性),碰到砧時停住。
-// 進氣孔只有 e 一個,照原圖開在汽缸壁的中段(汽缸壁上的小圓記號):活塞在孔的上方時空氣從它進到活塞下方,在孔的下方時進到上方。
-import { Y, X, deg, clamp } from "./kit.js";
-import { backHalf } from "./section.js";
+// 進氣孔只有 e 一個,照原圖開在汽缸壁的中段(汽缸壁上的小圓):活塞在孔的上方時空氣從它進到活塞下方,在孔的下方時進到上方。
+// 孔真的穿過剖開後半的壁(偏左、朝前看得到),四周是壁。
+import { Y, deg, clamp } from "./kit.js";
 import { shape, rect, circle, arcPoints } from "./shapes.js";
+import { openedLathe } from "./pump.js";
 
 const CRANK = [0, -0.2, 0]; // 曲柄軸(窗口底、砧的上方)
 const R = 0.28;
@@ -30,6 +31,10 @@ const LAG = deg(55);
 const PLATE_Z = [-0.45, 0.3]; // 機架板(窗口是穿透的)
 const CRANK_Z = 0.34; // 曲柄臂那一層(錘身前面)
 const ROD_Z = 0.45; // 桿 D 那一層
+const CYL_WALL = 0.07;
+const HOLE = { angle: deg(135), size: 0.1 }; // 孔 e:後半上的角(0 是 +x、π 是 −x)與孔的寬高
+/** 孔 e 的孔心(汽缸局部:原點在汽缸外底的中心;壁厚的中間、汽缸壁的中段) */
+export const HOLE_E = [(CYL_R + CYL_WALL / 2) * Math.cos(HOLE.angle), CYL_LEN / 2, -(CYL_R + CYL_WALL / 2) * Math.sin(HOLE.angle)];
 
 const TOP_PIN = 0.04; // 汽缸頂的銷在外頂下多少
 /** 曲柄轉 theta → 曲柄銷、汽缸外頂的高度(桿 D 上端的銷在外頂下 TOP_PIN) */
@@ -97,13 +102,17 @@ export default {
       labelOffset: [-0.05, 0.85, 0.5],
       arrow: false,
       pieces: [
-        // 汽缸(剖開前半):兩端有貼著窗口的凸緣,底蓋留活塞桿的孔
-        { kind: "lathe", axis: Y, profile: [[0.08, 0], [FLANGE, 0], [FLANGE, 0.1], [CYL_R + 0.07, 0.1], [CYL_R + 0.07, CYL_LEN - 0.1], [FLANGE, CYL_LEN - 0.1], [FLANGE, CYL_LEN], [0, CYL_LEN], [0, CYL_LEN - CAP], [CYL_R, CYL_LEN - CAP], [CYL_R, CAP], [0.08, CAP]], ...backHalf(Y) },
+        // 汽缸(剖開前半):兩端有貼著窗口的凸緣,底蓋留活塞桿的孔;壁的中段開進氣孔 e
+        ...openedLathe({
+          x: 0,
+          y0: 0,
+          profile: [[0.08, 0], [FLANGE, 0], [FLANGE, 0.1], [CYL_R + CYL_WALL, 0.1], [CYL_R + CYL_WALL, CYL_LEN - 0.1], [FLANGE, CYL_LEN - 0.1], [FLANGE, CYL_LEN], [0, CYL_LEN], [0, CYL_LEN - CAP], [CYL_R, CYL_LEN - CAP], [CYL_R, CAP], [0.08, CAP]],
+          openings: [{ y0: HOLE_E[1] - HOLE.size / 2, y1: HOLE_E[1] + HOLE.size / 2, angle: HOLE.angle, width: HOLE.size }],
+        }),
         { kind: "cylinder", radius: 0.05, length: 0.6, at: [0, CYL_LEN - TOP_PIN, 0.2], role: "pin" }, // 頂蓋上接桿 D 的銷(往前伸到桿 D 那一層)
-        { kind: "cylinder", axis: X, radius: 0.045, length: 0.1, at: [-(CYL_R + 0.07) + 0.02, CYL_LEN / 2, -0.12], accent: true }, // 進氣孔 e(原圖壁上的小圓)
       ],
     },
-    { id: "holeE", kind: "group", pieces: [], label: "e", labelOffset: [-0.55, 0, 0.4] },
+    { id: "holeE", kind: "group", pieces: [], label: "e", labelOffset: [-0.55 - HOLE_E[0], 0, 0.4 - HOLE_E[2]] }, // 標籤 e 在孔上
     {
       id: "hammer",
       kind: "group",
@@ -131,7 +140,7 @@ export default {
         crank: { angle: theta },
         rodD: { from: [h.pin[0], h.pin[1], ROD_Z], to: [0, h.cyl - TOP_PIN, ROD_Z] },
         cylinder: { position: [0, h.cyl - CYL_LEN, 0] },
-        holeE: { position: [0, h.cyl - CYL_LEN / 2, 0] },
+        holeE: { position: [HOLE_E[0], h.cyl - CYL_LEN + HOLE_E[1], HOLE_E[2]] },
         hammer: { position: [0, h.piston, 0] },
       },
       readouts: [
