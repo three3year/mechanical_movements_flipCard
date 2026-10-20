@@ -1,11 +1,12 @@
 // 第十九章「水車與泵」:斷言對應原文;流體示意只驗它是主動量的函式、只在路徑上
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part, inSolid, turned, pieceBox, assertShaftInBearings, assertOnePiece, polyGap } from "./helpers.js";
-import { X, Y, Z, deg, norm, cross, dot, sub, scale, add, rot2, quatFromZ, quatRotate } from "../models/kit.js";
+import { close, sweep, part, inSolid, turned, pieceBox, assertShaftInBearings, assertOnePiece, polyGap, plateLayers } from "./helpers.js";
+import { X, Y, Z, deg, norm, cross, dot, sub, scale, add, rot2, polar, quatFromZ, quatRotate } from "../models/kit.js";
 import { distanceToPath } from "../models/flow.js";
 import { placeOutline, polygonsOverlap, penetrationDepth, segmentsCross, pointInPolygon } from "../models/contact.js";
 import { bladeLine } from "../models/turbine.js";
+import { toothOutline, gearSize } from "../models/shapes.js";
 import fig430, { INFLOW, SPILL, PIER } from "../models/fig430.js";
 import * as m431 from "../models/fig431.js";
 import * as m432 from "../models/fig432.js";
@@ -49,9 +50,7 @@ import * as m466 from "../models/fig466.js";
 import * as m467 from "../models/fig467.js";
 import * as m468 from "../models/fig468.js";
 import * as m469 from "../models/fig469.js";
-import { part, assertOnePiece, plateLayers, inSolid, pieceBox } from "./helpers.js";
-import { toothOutline, gearSize } from "../models/shapes.js";
-import { deg as degrees, polar } from "../models/kit.js";
+const degrees = deg;
 
 test("第 430 種:上射式水車,進程增加時水車依原圖箭頭順時針轉", () => {
   const a = fig430.pose(0.1).parts.wheel.angle;
