@@ -2,22 +2,33 @@
 // 把連桿的上端放進圖中不同的凹槽,可以調整抬起的距離。
 // 主動件是右上的槓桿(上下擺動);狀態按鈕選連桿上端放在哪一個凹槽。
 // 推斷:舀斗的一端鉸在左岸上,另一端是封閉的斗,放下時浸進渠裡舀水,抬起時水沿舀斗流向鉸點、倒到左岸上。
+// 凹槽照 525 px 原圖是槓桿左端下緣的一排開口缺口:連桿上端的銷掛在缺口底,靠舀斗的重量留在缺口裡。
+// 偏離插圖:槓桿擺 50°(原圖只畫放下的姿勢):要讓舀斗抬到最高時末端高過鉸點、水流得到鉸點,
+// 以原圖的比例(連桿接在舀斗八成處、凹槽離支點 1.2–1.8)槓桿得擺這麼多。
 import { deg } from "./kit.js";
 import { circleCircle } from "./linkage.js";
 import { stroke } from "./pump.js";
 import { stream } from "./flow.js";
-import { shape, thickLine, circle } from "./shapes.js";
+import { shape, arcPoints, circle } from "./shapes.js";
 
 export const PIVOT = [-1.35, 0.45, 0]; // 舀斗的鉸點(左岸)
 export const SCOOP = 2.9;
 const ATTACH = 2.3; // 連桿接在舀斗上的位置
 export const LEVER_PIVOT = [2.1, 1.35, 0];
-export const NOTCHES = { near: 0.95, middle: 1.15, far: 1.35 }; // 凹槽離槓桿支點的距離
-const PITMAN = 1.62;
-export const SWING = [deg(202), deg(178)]; // 槓桿:低 → 高
+export const NOTCHES = { near: 1.2, middle: 1.5, far: 1.8 }; // 凹槽離槓桿支點的距離
+export const ARM_W = 0.28; // 槓桿的寬
+const NOTCH_R = 0.06; // 缺口的半徑(連桿上端的銷掛在裡面)
+const ARM_END = NOTCHES.far + 0.22; // 槓桿左端
+const PITMAN = 1.5;
+export const SWING = [deg(190), deg(140)]; // 槓桿:低 → 高(連桿那一端的方向角)
 export const WATER = -0.5;
 
-const leverEnd = (psi, b) => [LEVER_PIVOT[0] + b * Math.cos(psi), LEVER_PIVOT[1] + b * Math.sin(psi), 0];
+/** 槓桿轉 psi 時,放在凹槽 b 的連桿上端:缺口底在槓桿的下緣 */
+export const leverEnd = (psi, b) => {
+  const a = psi - Math.PI;
+  const [lx, ly] = [-b, -ARM_W / 2];
+  return [LEVER_PIVOT[0] + lx * Math.cos(a) - ly * Math.sin(a), LEVER_PIVOT[1] + lx * Math.sin(a) + ly * Math.cos(a), 0];
+};
 /** 槓桿轉 psi、連桿放在凹槽 b → 舀斗的角度(負的是往下傾) */
 export function scoop(psi, notch = "middle") {
   const L = leverEnd(psi, NOTCHES[notch]);
@@ -25,10 +36,13 @@ export function scoop(psi, notch = "middle") {
   return { L, S, beta: Math.atan2(S[1] - PIVOT[1], S[0] - PIVOT[0]) };
 }
 
-const notchShape = shape(
-  thickLine([[0, 0], [-1.55, 0]], 0.28),
-  [circle(0.06).reverse(), ...Object.values(NOTCHES).map((b) => circle(0.06, -b, 0.05).reverse())],
-);
+// 槓桿的外形(局部:支點在原點,臂往 −x):下緣從左到右,每個凹槽處往上切一個半圓缺口;右端伸過支點
+const notchShape = (() => {
+  const h = ARM_W / 2;
+  const bottom = [[-ARM_END, -h]];
+  for (const b of Object.values(NOTCHES).sort((p, q) => q - p)) bottom.push(...arcPoints(NOTCH_R, Math.PI, 0, -b, -h));
+  return shape([...bottom, [0.25, -h], [0.25, h], [-ARM_END, h]], [circle(0.05).reverse()]);
+})();
 
 export default {
   figure: 460,
@@ -53,7 +67,7 @@ export default {
       id: "scoop",
       posed: true, // 姿勢由狀態決定:切換狀態時轉到新的姿勢,不接續轉角
       kind: "plate",
-      shape: shape(thickLine([[0, 0], [SCOOP, 0]], 0.08)),
+      shape: shape([[0, -0.04], [SCOOP, -0.04], [SCOOP, 0.04], [0, 0.04]]),
       thickness: 0.6,
       arrow: false,
       pieces: [
@@ -63,7 +77,7 @@ export default {
       ],
     },
     { id: "scoopWater", posed: true, kind: "fill", fluid: "water", size: [0.8, 0.28, 0.55], level: 0 },
-    { id: "lever", kind: "plate", shape: notchShape, thickness: 0.1, arrow: false, pieces: [{ kind: "box", size: [0.5, 0.18, 0.12], at: [0.3, 0, 0] }] },
+    { id: "lever", kind: "plate", shape: notchShape, thickness: 0.1, arrow: false, pieces: [{ kind: "box", size: [0.5, 0.18, 0.12], at: [0.45, 0, 0] }] },
     { id: "pitman", kind: "link", width: 0.1, thickness: 0.06 },
   ],
   states: {
@@ -84,7 +98,9 @@ export default {
     const end = [PIVOT[0] + SCOOP * Math.cos(s.beta), PIVOT[1] + SCOOP * Math.sin(s.beta), 0];
     const inWater = end[1] < WATER + 0.1;
     const along = (d) => [PIVOT[0] + d * Math.cos(s.beta), PIVOT[1] + d * Math.sin(s.beta), 0.05];
-    const flows = rising && !inWater ? [{ fluid: "water", points: stream([along(SCOOP - 0.3), along(0.1), [PIVOT[0] - 0.4, PIVOT[1] - 0.1, 0.05], [PIVOT[0] - 1.4, 0.35, 0.05]], v * 6, { spacing: 0.16 }) }] : [];
+    // 抬起後舀斗往鉸點下斜,水才沿斗流向鉸點、倒到岸上
+    const pouring = rising && !inWater && s.beta > 0;
+    const flows = pouring ? [{ fluid: "water", points: stream([along(SCOOP - 0.3), along(0.1), [PIVOT[0] - 0.4, PIVOT[1] - 0.1, 0.05], [PIVOT[0] - 1.4, 0.35, 0.05]], v * 6, { spacing: 0.16 }) }] : [];
     return {
       parts: {
         scoop: { position: PIVOT, angle: s.beta },
@@ -93,8 +109,7 @@ export default {
         pitman: { from: [s.L[0], s.L[1], 0.35], to: [s.S[0], s.S[1], 0.35] },
       },
       flows,
-      readouts: [{ label: "舀斗", value: rising ? "抬起:水流向鉸點倒到岸上" : "放下:浸進渠裡舀水" }],
+      readouts: [{ label: "舀斗", value: pouring ? "抬起:水流向鉸點倒到岸上" : rising ? "抬起中" : "放下:浸進渠裡舀水" }],
     };
   },
 };
-
