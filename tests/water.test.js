@@ -1344,6 +1344,66 @@ test("第 455 種:舊式旋轉泵:閥門貼著泵缸內面轉,到擋板處被闔
   }
 });
 
+test("第 455 種:閥門壓平時收進轉鼓外緣的凹槽:整圈不穿進轉鼓;凹槽照閥門掃過的外形開、只挖環的外側,環不切斷", () => {
+  const def = m455.default;
+  const drum = part(def, "drum");
+  const valve = part(def, "valve0");
+  const pin = valve.pieces[0].radius;
+  // 轉鼓在閥門那一層的實體(轉鼓的局部座標)
+  const layers = plateLayers(drum).filter((l) => l.z0 < valve.thickness / 2 && l.z1 > -valve.thickness / 2);
+  const ring = layers.find((l) => l.solid.holes.length);
+  // 閥門板上的取樣點(閥門的局部座標);鉸銷那一圈是鉸接處的軸眼(銷座開在轉鼓上,實體驗證認得),不算
+  const [xs, ys] = [valve.shape.outline.map((q) => q[0]), valve.shape.outline.map((q) => q[1])];
+  const pts = [];
+  for (const x of sweep(Math.max(...xs), 85, Math.min(...xs))) for (const y of sweep(Math.max(...ys), 4, Math.min(...ys))) if (Math.hypot(x, y) > pin) pts.push([x, y]);
+  // 射線與轉鼓外緣的交點離軸心多遠
+  const rimAt = (a) => {
+    const [dx, dy] = [Math.cos(a), Math.sin(a)];
+    let best = Infinity;
+    ring.solid.outline.forEach(([px, py], i) => {
+      const [qx, qy] = ring.solid.outline[(i + 1) % ring.solid.outline.length];
+      const [ex, ey] = [qx - px, qy - py];
+      const den = dx * ey - dy * ex;
+      if (Math.abs(den) < 1e-12) return;
+      const t = (px * ey - py * ex) / den;
+      const u = (px * dy - py * dx) / den;
+      if (t > 0 && u >= -1e-9 && u <= 1 + 1e-9) best = Math.min(best, t);
+    });
+    return best;
+  };
+  const hits = [];
+  let deepest = { r: Infinity };
+  for (const theta of sweep(-2 * Math.PI, 720)) {
+    const pose = def.pose(theta).parts;
+    for (const k of [0, 1]) {
+      const v = pose[`valve${k}`];
+      for (const q of pts) {
+        const [wx, wy] = rot2(q, v.angle);
+        const local = rot2([wx + v.position[0], wy + v.position[1]], -theta);
+        if (layers.some((l) => inSolid(local, l.solid))) hits.push(`主動量 ${theta.toFixed(3)} valve${k} (${local[0].toFixed(3)}, ${local[1].toFixed(3)})`);
+        const r = Math.hypot(...local);
+        if (r < deepest.r) deepest = { r, a: Math.atan2(local[1], local[0]) };
+      }
+    }
+  }
+  assert.deepEqual(hits.slice(0, 5), [], `閥門穿進轉鼓(共 ${hits.length} 點)`);
+  // 凹槽照閥門掃過的外形算:閥門收得最深的那一點,離凹槽底只留一點間隙(不是挖一個看起來夠大的洞)
+  assert.ok(deepest.r < m455.DRUM - 0.08, `閥門壓平時收進轉鼓的外緣(最內點 r ${deepest.r.toFixed(3)})`);
+  const clearance = deepest.r - rimAt(deepest.a); // 凹槽底在閥門最內點的內側
+  assert.ok(clearance > 0 && clearance < 0.03, `閥門最內點離凹槽底 ${clearance.toFixed(3)}`);
+  // 凹槽只在兩個鉸點後方(轉鼓局部 0°、180° 往後約 60° 以內);其他地方仍是原本的八角形外緣
+  const deg = Math.PI / 180;
+  for (const [x, y] of ring.solid.outline) {
+    const a = ((Math.atan2(y, x) % Math.PI) + Math.PI) % Math.PI;
+    if (a > 60 * deg && a < Math.PI - 3 * deg) assert.ok(Math.hypot(x, y) >= m455.DRUM - 1e-6, `鉸點後方以外的外緣沒有挖(${(a / deg).toFixed(1)}°)`);
+  }
+  // 凹槽只挖環的外側:凹槽底下仍留一圈完整的環(不切斷),轉鼓的環、輻條、軸連成一件
+  const hole = Math.max(...ring.solid.holes[0].map((q) => Math.hypot(...q)));
+  const floor = Math.min(...ring.solid.outline.map((q) => Math.hypot(...q)));
+  assert.ok(floor - hole > 0.08, `凹槽底下的環厚 ${(floor - hole).toFixed(3)}`);
+  assertOnePiece(drum, "轉鼓的環、輻條、軸連成一件");
+});
+
 test("第 456 種:出水管 H 與吸水管 F 的管壁都在泵缸外,水經泵缸壁上的孔口 L、M 進出;鼓緣、背板與軸連成一件", () => {
   const def = m456.default;
   const casing = part(def, "casing");

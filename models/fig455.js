@@ -10,7 +10,7 @@
 // 斜面短的話閥根一碰到就整片瞬間被壓下,實物做不出來。
 import { TAU, deg, clamp, polar } from "./kit.js";
 import { stream } from "./flow.js";
-import { shape, circle, rect, thickLine, arcPoints, polygon } from "./shapes.js";
+import { shape, circle, rect, thickLine, arcPoints } from "./shapes.js";
 
 export const BORE = 1.6;
 export const DRUM = 0.95;
@@ -106,6 +106,48 @@ function contactRel(phi) {
 /** 閥門的世界角 */
 export const valveAngle = (phi) => phi + valveRelActual(phi);
 
+// 轉鼓外緣收閥門的凹槽:閥門繞鉸點從張開擺到最平(整圈實際到得了的最大相對角)掃過的範圍,
+// 在轉鼓的局部座標(鉸點在 0°)每 0.5° 取閥門離軸心最近的一點,凹槽底再往內留 GAP。
+// 凹槽橫跨閥門的整個寬度(閥門要貼滿泵缸才推得動水),只挖環的外側:環從內孔 RING_IN 到凹槽底仍是完整的一圈。
+// 鉸銷那一圈不算:那是鉸接處的軸眼,銷座開在轉鼓上。
+const GAP = 0.02;
+const PIN = 0.05; // 鉸銷半徑
+const RING_IN = DRUM - 0.25; // 轉鼓環的內孔(加厚到凹槽底下還留一圈完整的環)
+const STEP = deg(0.5);
+const rim = (a) => DRUM / Math.cos(((((a + Math.PI / 8) % (Math.PI / 4)) + Math.PI / 4) % (Math.PI / 4)) - Math.PI / 8); // 八角形外緣(邊的中點在 0°、45°…)
+const groove = (() => {
+  const most = Math.max(...Array.from({ length: 720 }, (_, i) => valveRelActual((i * TAU) / 720)));
+  const floor = new Map(); // 角度格 → 閥門離軸心最近的距離
+  for (let i = 0; i <= 240; i++) {
+    const rel = OPEN_REL + ((most - OPEN_REL) * i) / 240;
+    const [c, s] = [Math.cos(rel), Math.sin(rel)];
+    for (let j = 0; j <= 170; j++) {
+      const u = (VALVE * j) / 170;
+      for (const w of [-HALF, 0, HALF]) {
+        if (Math.hypot(u, w) <= PIN) continue;
+        const [x, y] = [DRUM + u * c - w * s, u * s + w * c];
+        const k = Math.round(Math.atan2(y, x) / STEP);
+        floor.set(k, Math.min(floor.get(k) ?? Infinity, Math.hypot(x, y)));
+      }
+    }
+  }
+  // 比外緣還深的那些角度格才是凹槽;每格的凹槽底取那格和兩旁格的最小值(格與格之間的直邊不切到閥門)
+  const ks = [...floor.keys()].sort((a, b) => a - b);
+  const depth = (k) => Math.min(...[k - 1, k, k + 1].map((j) => floor.get(j) ?? Infinity)) - GAP;
+  return ks.filter((k) => depth(k) < rim(k * STEP)).map((k) => [k * STEP, depth(k)]);
+})();
+/** 轉鼓外緣:八角形,在兩個鉸點(局部 0°、180°)後方挖出收閥門的凹槽;凹槽兩端用外緣上的一點收口 */
+const drumOutline = [0, Math.PI].flatMap((base) => {
+  const [g0, g1] = [groove[0][0] - STEP / 2, groove[groove.length - 1][0] + STEP / 2];
+  const corners = Array.from({ length: 8 }, (_, v) => Math.PI / 8 + (v * Math.PI) / 4)
+    .flatMap((a) => [a, a + TAU])
+    .filter((a) => a > base + g1 && a < base + Math.PI + g0)
+    .sort((a, b) => a - b);
+  return [g0, ...groove, g1, ...corners.map((a) => a - base)].map((q) =>
+    Array.isArray(q) ? polar(q[1], q[0] + base).slice(0, 2) : polar(rim(q + base), q + base).slice(0, 2),
+  );
+});
+
 export default {
   figure: 455,
   parts: [
@@ -128,7 +170,7 @@ export default {
       kind: "group",
       spin: DRUM - 0.15,
       pieces: [
-        { kind: "plate", shape: shape(polygon(8, DRUM / Math.cos(Math.PI / 8), Math.PI / 8), [circle(DRUM - 0.12).reverse()]), thickness: 0.56, mark: [0, DRUM - 0.06], markSize: 0.05 },
+        { kind: "plate", shape: shape(drumOutline, [circle(RING_IN).reverse()]), thickness: 0.56, mark: [0, DRUM - 0.06], markSize: 0.05 },
         { kind: "plate", shape: shape(rect(2 * DRUM - 0.2, 0.08)), thickness: 0.3 },
         { kind: "cylinder", radius: 0.12, length: 0.9, at: [0, 0, -0.2] },
       ],
@@ -165,8 +207,4 @@ export default {
       readouts: [],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["drum", "valve1"], reason: "閥門壓平時橫著收進轉鼓上的凹槽,凹槽沒畫出來,重疊 0.18" },
-    { check: "interference", parts: ["drum", "valve0"], reason: "閥門壓平時橫著收進轉鼓上的凹槽,凹槽沒畫出來,重疊 0.18" },
-  ],
 };
