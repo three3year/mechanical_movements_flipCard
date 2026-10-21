@@ -1,13 +1,15 @@
 // 第 378 種:由擺的運動驅動、用來鋸倒下的樹木的鋸子。左邊三腳架上吊著一個擺(重錘),擺桿中段的孔經一根等長的連桿
-// 鉸著弓鋸左把手上的銷;弓鋸在一個倒 U 形托架的兩條橫導軌之間橫向滑,托架由兩條繩吊在門形架上角的滑輪下,
-// 只會往下降。主動件是虛擬的「進程」:擺已擺過的次數(鋸切的進度);擺來回擺,連桿推拉弓鋸在導軌上往復,
+// 鉸著弓鋸左把手上的銷;弓鋸在一個倒 U 形托架的兩條橫導軌之間橫向滑,兩條繩經門形架上角的滑輪與底座上的導輪,
+// 一端拉著托架、一端吊著配重,托架只會往下降。主動件是虛擬的「進程」:擺已擺過的次數(鋸切的進度);擺來回擺,連桿推拉弓鋸在導軌上往復,
 // 托架與弓鋸一面逐漸往下,鋸條一點一點切進樹幹。進程繞回時重新從樹幹頂上鋸起(托架與配重回到起點,刻意的循環)。
-// 吊法照原圖與 507movements 的動畫:繩從托架兩側立條上的掛眼垂直往上,繞過門形架上角的滑輪,從外側垂下吊著配重;
-// 托架往下時配重被拉上去(繩長不變,滑輪跟著轉);掛眼全程在滑輪下方。
+// 配重往下拉托架(偏離插圖,維護者 2026-10-21 決定):原圖與 507movements 的動畫裡繩從托架往上繞過門形架上角的滑輪、
+// 從外側垂下吊配重,那樣配重只是平衡錘、托架往下時配重會被拉上去;這裡改成繩從配重往上繞過滑輪,沿立柱內側往下
+// 繞過底座上的導輪(推斷),再往上拉著托架立條下端內側的掛眼——配重與托架、鋸一起往下,配重的重量把鋸齒壓進樹幹
+// (繩長不變,滑輪與導輪跟著轉)。
 // 弓鋸的橫向位置由「連桿長度不變」解出:擺桿上的孔與鋸把手上的銷距離固定(銷的高度取在孔上下行程的中間,
 // 托架往下時鋸幾乎不偏)。比例照原圖:三腳架高約門形架的 1.4 倍,鋸條長約樹幹直徑的兩倍、在門形架裡約佔一半寬。
 // 擺幅取 ±9°:鋸往復時兩根把手都留在樹幹外側(不會掉進鋸縫),也碰不到托架的立條。
-// 推斷:每一次往復切進的深度(示意)、滑輪的軸(穿過門形架前後兩片的立柱)、托架立條背後靠著門形架後片立柱內側的
+// 推斷:每一次往復切進的深度(示意)、滑輪的軸(穿過門形架前後兩片的立柱)、導輪與它的支架、托架立條背後靠著門形架後片立柱內側的
 // 導靴(讓托架只能上下)、三腳架往後斜到地上的第三腳、擺桿與鋸把手上的銷。原圖擺桿上有三個孔(可以換接點),
 // 連桿接在中間那個。原圖托架立條下端的階梯形鉤沒有畫。
 import { TAU, deg, clamp, rot2 } from "./kit.js";
@@ -30,6 +32,9 @@ const PLATE_Z = 0.7;
 const ROPE_R = 0.025;
 export const SHEAVE = { r: 0.19, y: 0.95, xs: POSTS }; // 滑輪在立柱的中心線上、上樑下方,繩走在 z = 0 那一層
 const PITCH_R = SHEAVE.r + ROPE_R; // 繩中心線繞滑輪的半徑
+// 底座上的導輪(推斷):外側的切線和滑輪內側的切線對齊(繩從滑輪垂直往下),內側的切線往上接到托架的掛眼
+export const GUIDE = { r: 0.13, y: GROUND + 0.41 };
+const GUIDE_PR = GUIDE.r + ROPE_R;
 
 // 托架(倒 U 形,局部座標的原點在鋸齒尖那一層、x 在門形架中間)
 const CX = (POSTS[0] + POSTS[1]) / 2; // 1.0
@@ -37,7 +42,6 @@ export const CARRIAGE = {
   upright: [1.52, 1.64], // 立條內外兩面離中線的距離
   bottom: 0.8,
   top: 1.55, // 上橫樑頂
-  eye: 0.9, // 掛眼的高度(繩的下端)
   rails: { lower: [0.97, 1.05], upper: [1.15, 1.23], z: [0.06, 0.16] }, // 兩條橫導軌(在立條前面;鋸到底時仍在樹幹頂上方)
 };
 // 弓鋸(局部座標同托架:原點在鋸齒尖、x 在鋸的中線)
@@ -68,22 +72,24 @@ export function sawing(p0) {
   return { angle, hole, y, x, bob: [PIVOT[0] + L * Math.sin(angle), PIVOT[1] - L * Math.cos(angle)] };
 }
 
-const WEIGHT_TOP0 = -0.3; // 配重頂端在進程 0 時的高度(切到底時升到滑輪下方)
-/** 托架高度 → 往下降的量、兩邊配重頂端的高度(繩垂直、長度不變:托架降多少,配重升多少) */
+const WEIGHT_TOP0 = 0.5; // 配重頂端在進程 0 時的高度(滑輪下方;切到底時降到門形架中段)
+/** 托架高度 → 往下降的量、兩邊配重頂端的高度(繩長不變:托架降多少,配重跟著降多少) */
 export function hang(y) {
   const drop = Y0 - y;
-  return { drop, weightTop: WEIGHT_TOP0 + drop };
+  return { drop, weightTop: WEIGHT_TOP0 - drop };
 }
-const inner = (side) => SHEAVE.xs[side] + (side === 0 ? PITCH_R : -PITCH_R); // 繩從滑輪內側垂直往下到托架
-const outer = (side) => SHEAVE.xs[side] + (side === 0 ? -PITCH_R : PITCH_R); // 外側垂下到配重
-const arcOver = (side) =>
-  Array.from({ length: 13 }, (_, k) => {
-    const a = side === 0 ? (k / 12) * Math.PI : Math.PI - (k / 12) * Math.PI;
-    return [SHEAVE.xs[side] + PITCH_R * Math.cos(a), SHEAVE.y + PITCH_R * Math.sin(a), 0];
-  });
+const sign = (side) => (side === 0 ? 1 : -1); // 往門形架中間的方向
+const inner = (side) => SHEAVE.xs[side] + sign(side) * PITCH_R; // 繩從滑輪內側垂直往下到導輪
+const outer = (side) => SHEAVE.xs[side] - sign(side) * PITCH_R; // 外側垂下到配重
+const guideX = (side) => inner(side) + sign(side) * GUIDE_PR; // 導輪的中心
+const up = (side) => inner(side) + sign(side) * 2 * GUIDE_PR; // 繩從導輪內側垂直往上到托架的掛眼
+const arc = (cx, cy, r, a0, a1) => Array.from({ length: 13 }, (_, k) => [cx + r * Math.cos(a0 + ((a1 - a0) * k) / 12), cy + r * Math.sin(a0 + ((a1 - a0) * k) / 12), 0]);
+// 繩從掛眼往下:繞過導輪底下(內側切點 → 外側切點),往上繞過滑輪頂上(內側 → 外側)
+const arcUnder = (side) => (side === 0 ? arc(guideX(0), GUIDE.y, GUIDE_PR, 0, -Math.PI) : arc(guideX(1), GUIDE.y, GUIDE_PR, Math.PI, 2 * Math.PI));
+const arcOver = (side) => (side === 0 ? arc(SHEAVE.xs[0], SHEAVE.y, PITCH_R, 0, Math.PI) : arc(SHEAVE.xs[1], SHEAVE.y, PITCH_R, Math.PI, 0));
 
 const [U0, U1] = CARRIAGE.upright;
-const EYE_X = CX - inner(0); // 掛眼在繩的正下方(滑輪內側的切線上),套在立條外面
+const EYE = { from: U0 + 0.005, to: CX - up(0) - 0.05, h: 0.08 }; // 掛眼從立條下端內側往中間伸出,繩在它的底面往下
 const gantry = (z) => ({ kind: "plate", shape: shape(thickLine([[POSTS[0], GROUND], [POSTS[0], BEAM], [POSTS[1], BEAM], [POSTS[1], GROUND]], POST_W)), thickness: 0.2, at: [0, 0, z] });
 const legFoot = [PIVOT[0], GROUND, -0.95]; // 第三腳落地處(推斷)
 const apex = [PIVOT[0], PIVOT[1] + 0.1, 0.1];
@@ -107,9 +113,15 @@ export default {
         { kind: "box", size: [7.7, 0.12, 2.0], at: [-0.55, GROUND - 0.06, 0] },
         // 滑輪的軸:穿過前後兩片立柱的上角(推斷)
         ...POSTS.map((x) => ({ kind: "cylinder", radius: 0.04, length: 2 * PLATE_Z, at: [x, SHEAVE.y, 0] })),
+        // 導輪的支架(立在底座上、在導輪後面)與軸(推斷)
+        ...[0, 1].flatMap((side) => [
+          { kind: "box", size: [0.12, GUIDE.y - GROUND, 0.04], at: [guideX(side), (GUIDE.y + GROUND) / 2, -0.1] },
+          { kind: "cylinder", radius: 0.03, length: 0.16, at: [guideX(side), GUIDE.y, -0.04] },
+        ]),
       ],
     },
     ...SHEAVE.xs.map((x, i) => ({ id: i === 0 ? "sheaveL" : "sheaveR", kind: "pulley", style: "disc", center: [x, SHEAVE.y, 0], radius: SHEAVE.r, width: 0.1 })),
+    ...[0, 1].map((side) => ({ id: side === 0 ? "guideL" : "guideR", kind: "pulley", style: "disc", center: [guideX(side), GUIDE.y, 0], radius: GUIDE.r, width: 0.1 })),
     ...["weightL", "weightR"].map((id) => ({ id, kind: "box", size: [0.22, 0.4, 0.22] })),
     { id: "cordL", kind: "rope", radius: ROPE_R },
     { id: "cordR", kind: "rope", radius: ROPE_R },
@@ -138,8 +150,8 @@ export default {
         // 倒 U 形:上橫樑與兩根立條
         { kind: "box", size: [U0 + U1, 0.1, 0.12], at: [0, CARRIAGE.top - 0.05, 0] },
         ...[-1, 1].map((s) => ({ kind: "box", role: "upright", size: [U1 - U0, CARRIAGE.top - CARRIAGE.bottom, 0.12], at: [(s * (U0 + U1)) / 2, (CARRIAGE.top + CARRIAGE.bottom) / 2, 0] })),
-        // 立條外側的掛眼:繩的下端
-        ...[-1, 1].map((s) => ({ kind: "box", role: "eye", size: [0.12, 0.06, 0.08], at: [s * EYE_X, CARRIAGE.eye - 0.03, 0] })),
+        // 立條下端內側的掛眼:繩從這裡往下拉著托架
+        ...[-1, 1].map((s) => ({ kind: "box", role: "eye", size: [EYE.from - EYE.to, EYE.h, 0.08], at: [(s * (EYE.from + EYE.to)) / 2, CARRIAGE.bottom + EYE.h / 2, 0] })),
         // 兩條橫導軌,釘在立條前面
         ...[CARRIAGE.rails.lower, CARRIAGE.rails.upper].map(([a, b]) => ({ kind: "box", role: "rail", size: [2 * U1, b - a, CARRIAGE.rails.z[1] - CARRIAGE.rails.z[0]], at: [0, (a + b) / 2, (CARRIAGE.rails.z[0] + CARRIAGE.rails.z[1]) / 2] })),
         // 導靴:立條背後伸到門形架後片立柱的內側,托架只能沿立柱上下(推斷)
@@ -169,7 +181,7 @@ export default {
   pose(p) {
     const s = sawing(((p % 1) + 1) % 1);
     const h = hang(s.y);
-    const cord = (side) => [[inner(side), s.y + CARRIAGE.eye, 0], ...arcOver(side), [outer(side), h.weightTop, 0]];
+    const cord = (side) => [[up(side), s.y + CARRIAGE.bottom, 0], ...arcUnder(side), ...arcOver(side), [outer(side), h.weightTop, 0]];
     const sawZ = (SAW.z[0] + SAW.z[1]) / 2;
     return {
       paths: {
@@ -177,8 +189,10 @@ export default {
         cordR: { points: cord(1), closed: false },
       },
       parts: {
-        sheaveL: { angle: -h.drop / PITCH_R },
-        sheaveR: { angle: h.drop / PITCH_R },
+        sheaveL: { angle: h.drop / PITCH_R },
+        sheaveR: { angle: -h.drop / PITCH_R },
+        guideL: { angle: -h.drop / GUIDE_PR },
+        guideR: { angle: h.drop / GUIDE_PR },
         weightL: { position: [outer(0), h.weightTop - 0.2, 0] },
         weightR: { position: [outer(1), h.weightTop - 0.2, 0] },
         pendulum: { angle: s.angle },

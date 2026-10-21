@@ -2710,7 +2710,7 @@ test("第 378 種:連桿長度不變,兩端的眼套在擺桿中間那個孔的�
   for (const l of lengths) close(l, lengths[0], "連桿長度不變", 1e-9);
 });
 
-test("第 378 種:繩吊著倒 U 形托架,托架只往下降;弓鋸夾在托架的兩條橫導軌之間橫向滑", () => {
+test("第 378 種:繩拉著倒 U 形托架,托架只往下降;弓鋸夾在托架的兩條橫導軌之間橫向滑", () => {
   const d = m378.default;
   const carriage = part(d, "carriage");
   assertOnePiece(carriage, "托架是一件");
@@ -2741,38 +2741,59 @@ test("第 378 種:繩吊著倒 U 形托架,托架只往下降;弓鋸夾在托架
   assert.ok(ys.every((y, i) => i === 0 || y <= ys[i - 1] + 1e-12), "托架只往下降");
 });
 
-test("第 378 種:繩長不變,繩的下端掛在托架的掛眼上、全程在滑輪下方、垂直往上接到滑輪;托架降多少配重升多少", () => {
+test("第 378 種:配重往下拉托架:繩從配重往上繞過門形架上角的滑輪,往下繞過底座上的導輪,再往上拉著托架的掛眼;繩長不變,托架降多少配重降多少", () => {
   const d = m378.default;
   const carriage = part(d, "carriage");
   const eyes = carriage.pieces.filter((q) => q.role === "eye").map((q) => pieceBox(q)).sort((a, b) => a.lo[0] - b.lo[0]);
+  assert.equal(eyes.length, 2, "兩側各一個掛眼");
   const weight = part(d, "weightL");
   const L0 = {};
   for (const p of sweep(1, 300)) {
     const s = d.pose(p);
+    const c = s.parts.carriage.position;
     ["L", "R"].forEach((side, i) => {
       const pts = s.paths[`cord${side}`].points;
       const sheave = part(d, `sheave${side}`);
+      const guide = part(d, `guide${side}`);
       const rope = part(d, `cord${side}`);
+      const tangent = (q, o, msg) => close(Math.hypot(q[0] - o.center[0], q[1] - o.center[1]), o.radius + rope.radius, msg, 1e-9);
       L0[side] ??= pathLength(pts);
       close(pathLength(pts), L0[side], `進程 ${p.toFixed(3)}:繩長不變`, 1e-9);
+      // 托架那一端:從掛眼的底面垂直往下到導輪的切點
       const [x0, y0] = pts[0];
-      const c = s.parts.carriage.position;
-      close(x0, (eyes[i].lo[0] + eyes[i].hi[0]) / 2 + c[0], "繩的下端在掛眼上(x)", 1e-9);
-      close(y0, eyes[i].hi[1] + c[1], "繩的下端在掛眼上(y)", 1e-9);
-      assert.ok(y0 < sheave.center[1] - sheave.radius - 2 * sheave.radius, `進程 ${p.toFixed(3)}:掛眼在滑輪下方(${y0.toFixed(3)})`);
-      close(pts[1][0], x0, "繩從掛眼垂直往上", 1e-9);
-      close(Math.hypot(pts[1][0] - sheave.center[0], pts[1][1] - sheave.center[1]), sheave.radius + rope.radius, "繩接到滑輪的切點", 1e-9);
+      assert.ok(x0 > eyes[i].lo[0] + c[0] && x0 < eyes[i].hi[0] + c[0], "繩的一端在掛眼上(x)");
+      close(y0, eyes[i].lo[1] + c[1], "繩從掛眼的底面往下(y)", 1e-9);
+      close(pts[1][0], x0, "繩從掛眼垂直往下", 1e-9);
+      tangent(pts[1], guide, "繩接到導輪的切點");
+      assert.ok(y0 > guide.center[1] + guide.radius, `進程 ${p.toFixed(3)}:掛眼在導輪上方(${y0.toFixed(3)})`);
+      // 繞過導輪底下,垂直往上接到滑輪內側,繞過滑輪頂上,從外側垂下吊配重
+      const low = pts.reduce((m, q) => (q[1] < m[1] ? q : m));
+      close(low[1], guide.center[1] - guide.radius - rope.radius, "繩繞過導輪底下", 1e-9);
+      const k = pts.findIndex((q) => Math.abs(q[1] - sheave.center[1]) < 1e-9);
+      tangent(pts[k], sheave, "繩接到滑輪的切點");
+      tangent(pts[k - 1], guide, "從導輪的另一側切點往上");
+      close(pts[k - 1][0], pts[k][0], "導輪到滑輪那一段垂直", 1e-9);
+      const top = pts.reduce((m, q) => (q[1] > m[1] ? q : m));
+      close(top[1], sheave.center[1] + sheave.radius + rope.radius, "繩繞過滑輪頂上", 1e-9);
       const w = s.parts[`weight${side}`].position;
       close(pts.at(-1)[1], w[1] + weight.size[1] / 2, "繩的另一端吊著配重", 1e-9);
       close(pts.at(-1)[0], w[0], "配重吊在繩的正下方", 1e-9);
+      close(pts.at(-2)[0], w[0], "配重的繩垂直", 1e-9);
+      assert.ok(w[1] + weight.size[1] / 2 < sheave.center[1] - sheave.radius, "配重在滑輪下方");
     });
   }
   const a = d.pose(0.1).parts;
   const b = d.pose(0.6).parts;
   const drop = a.carriage.position[1] - b.carriage.position[1];
-  close(b.weightL.position[1] - a.weightL.position[1], drop, "配重與托架反向等量移動", 1e-9);
-  const sheave = part(d, "sheaveL");
-  close(Math.abs(b.sheaveL.angle - a.sheaveL.angle) * (sheave.radius + part(d, "cordL").radius), drop, "滑輪跟著繩轉、不打滑", 1e-9);
+  assert.ok(drop > 0.3, "托架往下");
+  close(a.weightL.position[1] - b.weightL.position[1], drop, "配重與托架同向等量往下", 1e-9);
+  close(a.weightR.position[1] - b.weightR.position[1], drop, "兩邊配重一起往下", 1e-9);
+  const pr = (id) => part(d, id).radius + part(d, "cordL").radius;
+  // 配重往下:左滑輪外側往下、內側往上,逆時針;左導輪底下的繩往左走,順時針。右邊相反
+  close((b.sheaveL.angle - a.sheaveL.angle) * pr("sheaveL"), drop, "左滑輪跟著繩逆時針轉、不打滑", 1e-9);
+  close((b.sheaveR.angle - a.sheaveR.angle) * pr("sheaveR"), -drop, "右滑輪跟著繩順時針轉、不打滑", 1e-9);
+  close((b.guideL.angle - a.guideL.angle) * pr("guideL"), -drop, "左導輪跟著繩順時針轉、不打滑", 1e-9);
+  close((b.guideR.angle - a.guideR.angle) * pr("guideR"), drop, "右導輪跟著繩逆時針轉、不打滑", 1e-9);
 });
 
 // 第 379、380 種:drill、screw、feedScrew 的軸是 Y(局部 z 是世界的上下、局部 y 是深度)。零件 q 的一塊在世界裡的上下範圍
