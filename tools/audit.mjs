@@ -13,8 +13,8 @@ const figures = args.flatMap((a) => {
   return r ? Array.from({ length: r[2] - r[1] + 1 }, (_, i) => Number(r[1]) + i) : [];
 });
 const data = readFileSync(new URL("../data.js", import.meta.url), "utf8");
-const chapters = JSON.parse(data.slice(data.indexOf("["), data.lastIndexOf("]") + 1));
-const entryOf = (figure) => chapters.flatMap((c) => c.entries).find((e) => e.images.includes(`images/${figure}.png`));
+const entries = JSON.parse(data.slice(data.indexOf("["), data.lastIndexOf("]") + 1));
+const entryOf = (figure) => entries.find((e) => e.images.includes(`images/${figure}.png`));
 const f = (x) => (Math.abs(x) < 5e-3 ? "0" : x.toFixed(2));
 let lastEntry = null;
 

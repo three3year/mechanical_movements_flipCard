@@ -2,8 +2,8 @@
 
 用法:python tools/gen_data.py
 
-oriText/ 下所有 txt 依檔名排序讀入、串成一份條目清單,再依編號範圍分章
-(章節邊界與檔案邊界無關)。條目標頭支援三種格式:
+oriText/ 下所有 txt 依檔名排序讀入、串成一份依原書編號排列的條目清單
+(用途另由手寫維護的 uses.js 掛上,不在這裡產生)。條目標頭支援三種格式:
   「5. 」               單一編號
   「16 與 17. 」        兩個編號共用一段文字
   「19、20、21 與 22. 」多個編號共用一段文字
@@ -15,32 +15,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DST = ROOT / "data.js"
-
-# 章節依編號範圍劃分;新章節在這裡加一筆 (標題, 起始編號, 結束編號)
-RANGES = [
-    ("皮帶與滑輪", 1, 23),
-    ("齒輪傳動", 24, 49),
-    ("離合與變速", 50, 62),
-    ("間歇與棘輪運動", 63, 85),
-    ("曲柄與凸輪", 86, 101),
-    ("螺旋機構", 102, 112),
-    ("齒條與小齒輪", 113, 127),
-    ("運動轉換與應用", 128, 154),
-    ("引擎與調速機構", 155, 190),
-    ("變速與曼格機構", 191, 224),
-    ("棘輪與擒縱", 225, 242),
-    ("接頭與器具", 243, 287),
-    ("擒縱機構", 288, 314),
-    ("擺與鐘錶調節", 315, 321),
-    ("平行運動與引擎", 322, 349),
-    ("雜項裝置", 350, 402),
-    ("繪圖儀器", 403, 411),
-    ("雜項與旋轉引擎", 412, 429),
-    ("水車與泵", 430, 469),
-    ("蒸汽與氣體裝置", 470, 483),
-    ("風力、船舶與起重", 484, 494),
-    ("儀錶與周轉輪系", 495, 9999),
-]
 
 HEADER_RE = re.compile(r"^((?:\d+[、.]?\s*(?:與\s*)?)+)\.\s*(.+)$")
 
@@ -75,27 +49,18 @@ all_entries = []
 for path in sorted((ROOT / "oriText").glob("*.txt")):
     all_entries.extend(parse_file(path))
 
-chapters = []
-for title, lo, hi in RANGES:
-    entries = sorted((e for e in all_entries if lo <= e["nos"][0] <= hi), key=lambda e: e["nos"][0])
-    if entries:
-        chapters.append({
-            "title": title,
-            "entries": [{k: e[k] for k in ("no", "images", "text")} for e in entries],
-        })
+all_entries.sort(key=lambda e: e["nos"][0])
+entries = [{k: e[k] for k in ("no", "images", "text")} for e in all_entries]
 
 header = (
     "// 機構圖鑑資料(由 tools/gen_data.py 從 oriText/*.txt 生成,勿手動編輯)。\n"
-    "// 新增內容:txt 放進 oriText/、圖放進 images/;章節範圍在 gen_data.py 的 RANGES 調整後重跑。\n"
+    "// 依原書編號排列的條目清單;新增內容:txt 放進 oriText/、圖放進 images/ 後重跑。\n"
 )
-body = json.dumps(chapters, ensure_ascii=False, indent=2)
-DST.write_text(header + "const chapters = " + body + ";\n", encoding="utf-8", newline="\n")
+body = json.dumps(entries, ensure_ascii=False, indent=2)
+DST.write_text(header + "const entries = " + body + ";\n", encoding="utf-8", newline="\n")
 
 covered = {n for e in all_entries for n in e["nos"]}
-for ch in chapters:
-    cards = len(ch["entries"])
-    figs = sum(len(e["images"]) for e in ch["entries"])
-    print(f"{ch['title']}: {cards} cards, {figs} figures")
+print(f"{len(entries)} cards, {sum(len(e['images']) for e in entries)} figures")
 missing_img = [f"images/{n}.png" for n in sorted(covered) if not (ROOT / "images" / f"{n}.png").exists()]
 orphan_img = sorted(
     int(p.stem) for p in (ROOT / "images").glob("*.png")

@@ -43,25 +43,23 @@
   </div>
 
   <script src="data.js"></script>
+  <script src="browse.js"></script>
   <script>
-    const tabsEl = document.getElementById("tabs");
     const cardEl = document.getElementById("card");
     const posEl = document.getElementById("pos");
     const prevBtn = document.getElementById("prev");
     const nextBtn = document.getElementById("next");
     const footerEl = document.getElementById("footer");
 
-    let chapterIndex = 0;
-    let entryIndex = 0;
     let renderSeq = 0;
     const backEl = document.getElementById("back");
-    const backStack = []; // 交互參照的跳轉來源,可多層依序退回
+    // 導覽(目前所在、翻頁、交互參照、返回堆疊)都由瀏覽模組回答,頁面只負責畫
+    const browser = Browse.createBrowser(entries);
 
     // ── 模型 ──
-    // 圖片區模式(插圖 / 模型)是頁面層級的狀態,翻頁、切章、交互參照都保留;
+    // 圖片區模式(插圖 / 模型)是頁面層級的狀態,翻頁、交互參照都保留;
     // 卡片沒有模型時只是暫時顯示插圖,不清除這個狀態。
     let figMode = "illustration";
-    let selectedFig = null; // 多插圖條目在模型模式下選中的圖號
     // 模型登記表:只有「圖號 → 定義所在」的清單,定義本身切到模型時才載入。
     // ES module 載入失敗(如 file:// 開啟)時維持 null,不出現切換
     let registry = null;
@@ -103,34 +101,14 @@
     }
 
     function selectFigure(no) {
-      if (selectedFig === no) return;
-      selectedFig = no;
+      if (browser.where().figure === no) return;
+      browser.selectFigure(no);
       render();
     }
 
-    // 「第 N 種」交互參照:依圖號找到所在卡片
-    function findEntry(no) {
-      const target = "images/" + no + ".png";
-      for (let c = 0; c < chapters.length; c++) {
-        const i = chapters[c].entries.findIndex((e) => e.images.includes(target));
-        if (i !== -1) return { c, i };
-      }
-      return null;
-    }
-
+    // 「第 N 種」交互參照:跳到該圖所在卡片(多插圖條目則選中被引用的那一張)
     function jumpTo(no) {
-      const found = findEntry(no);
-      if (!found || (found.c === chapterIndex && found.i === entryIndex)) return;
-      backStack.push({
-        c: chapterIndex,
-        i: entryIndex,
-        no: chapters[chapterIndex].entries[entryIndex].no,
-        fig: selectedFig,
-      });
-      chapterIndex = found.c;
-      entryIndex = found.i;
-      selectedFig = no; // 跳到多插圖條目時,選中被引用的那一張
-      render();
+      if (browser.follow(no)) render();
     }
 
     // 頁碼搜尋:輸入圖號直接跳到那一張卡片(多插圖條目則選中該圖);找不到時輸入框短暫標紅
@@ -138,30 +116,19 @@
     const gotoInput = document.getElementById("goto-no");
     gotoForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      const no = parseInt(gotoInput.value, 10);
-      const found = findEntry(no);
-      if (!found) {
+      if (!browser.goto(parseInt(gotoInput.value, 10))) {
         gotoInput.classList.remove("miss");
         void gotoInput.offsetWidth; // 重新觸發動畫
         gotoInput.classList.add("miss");
         return;
       }
-      backStack.length = 0; // 直接跳頁視為新的閱讀起點
-      chapterIndex = found.c;
-      entryIndex = found.i;
-      selectedFig = no;
       gotoInput.value = "";
       gotoInput.blur();
       render();
     });
 
     function goBack() {
-      const from = backStack.pop();
-      if (!from) return;
-      chapterIndex = from.c;
-      entryIndex = from.i;
-      selectedFig = from.fig;
-      render();
+      if (browser.back()) render();
     }
 
     // 把段落文字中的「第 N 種」轉成可點的連結
@@ -218,7 +185,7 @@
     }
 
     // 圖片區下方的列:插圖 / 模型切換、模型模式下多插圖條目的圖號小頁籤,以及載入失敗提示
-    function buildFigBar(modelFigs, showingModel, notice) {
+    function buildFigBar(modelFigs, selectedFig, showingModel, notice) {
       const bar = document.createElement("div");
       bar.className = "figbar";
       const toggle = document.createElement("div");
@@ -261,11 +228,15 @@
 
     async function render() {
       const seq = ++renderSeq;
-      const chapter = chapters[chapterIndex];
-      const entry = chapter.entries[entryIndex];
+      const at = browser.where();
+      const entry = at.entry;
 
       const modelFigs = modelFiguresOf(entry);
-      if (!modelFigs.includes(selectedFig)) selectedFig = modelFigs[0] ?? null;
+      let selectedFig = at.figure;
+      if (!modelFigs.includes(selectedFig)) {
+        selectedFig = modelFigs[0] ?? null;
+        browser.selectFigure(selectedFig);
+      }
 
       // 模型模式:先把場景組好(第一次會等 3D 函式庫下載),再和卡片一起換上,避免閃白
       let session = null;
@@ -305,10 +276,7 @@
       // 先在畫面外組好整張卡
       const fragment = document.createDocumentFragment();
 
-      const atStart = chapterIndex === 0 && entryIndex === 0;
-      const atEnd =
-        chapterIndex === chapters.length - 1 &&
-        entryIndex === chapter.entries.length - 1;
+      const { atStart, atEnd } = at;
       const imgs = [];
       if (session) {
         // 左右留白的翻頁提示,和插圖模式一致
@@ -329,7 +297,7 @@
         if (!atEnd) fig.appendChild(makeHint("next", "›"));
         fragment.appendChild(fig);
       }
-      if (modelFigs.length) fragment.appendChild(buildFigBar(modelFigs, !!session, notice));
+      if (modelFigs.length) fragment.appendChild(buildFigBar(modelFigs, selectedFig, !!session, notice));
 
       const no = document.createElement("div");
       no.className = "no";
@@ -359,18 +327,13 @@
       if (session) session.activate();
       else viewerModule?.deactivate();
 
-      tabsEl.querySelectorAll("button").forEach((btn, i) => {
-        btn.classList.toggle("active", i === chapterIndex);
-      });
-      posEl.textContent = (entryIndex + 1) + " / " + chapter.entries.length;
+      posEl.textContent = (at.index + 1) + " / " + at.count;
       prevBtn.disabled = atStart;
       nextBtn.disabled = atEnd;
-      const figCount = chapter.entries.reduce((sum, e) => sum + e.images.length, 0);
-      footerEl.textContent = chapter.title + " · 共 " + figCount + " 圖";
+      footerEl.textContent = "原書順序 · 共 " + at.figureCount + " 圖";
 
-      const from = backStack[backStack.length - 1];
-      backEl.hidden = !from;
-      if (from) backEl.textContent = "‹ 返回 圖 " + from.no;
+      backEl.hidden = !at.backNo;
+      if (at.backNo) backEl.textContent = "‹ 返回 圖 " + at.backNo;
 
       preloadAround();
     }
@@ -378,10 +341,7 @@
     // 預載當前卡片前後各 2 張的圖,圖庫再大開啟也不變慢
     const preloaded = new Set();
     function preloadAround() {
-      const entries = chapters[chapterIndex].entries;
-      for (let d = -2; d <= 2; d++) {
-        const entry = entries[entryIndex + d];
-        if (!entry) continue;
+      for (const entry of browser.around(2)) {
         for (const src of entry.images) {
           if (preloaded.has(src)) continue;
           preloaded.add(src);
@@ -390,24 +350,9 @@
       }
     }
 
-    // 翻越章節邊界時自動切到前一章末張/下一章首張
+    // 手動翻頁即離開參照脈絡,返回鍵消失
     function step(delta) {
-      let c = chapterIndex;
-      let i = entryIndex + delta;
-      if (i < 0) {
-        if (c === 0) return;
-        c -= 1;
-        i = chapters[c].entries.length - 1;
-      } else if (i >= chapters[c].entries.length) {
-        if (c === chapters.length - 1) return;
-        c += 1;
-        i = 0;
-      }
-      backStack.length = 0; // 手動翻頁即離開參照脈絡,返回鍵消失
-      chapterIndex = c;
-      entryIndex = i;
-      selectedFig = null;
-      render();
+      if (browser.step(delta)) render();
     }
 
     prevBtn.addEventListener("click", () => step(-1));
@@ -448,19 +393,6 @@
       if (Math.abs(dx) < 50) return;
       step(dx < 0 ? 1 : -1);
     }, { passive: true });
-
-    chapters.forEach((chapter, i) => {
-      const btn = document.createElement("button");
-      btn.textContent = chapter.title;
-      btn.addEventListener("click", () => {
-        backStack.length = 0; // 手動切章視為新的閱讀起點
-        chapterIndex = i;
-        entryIndex = 0;
-        selectedFig = null;
-        render();
-      });
-      tabsEl.appendChild(btn);
-    });
 
     render();
   </script>

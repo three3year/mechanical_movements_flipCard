@@ -61,7 +61,7 @@ header .subtitle a:hover {
   text-decoration: underline solid;
 }
 
-/* ── 章節頁籤 ─────────────────────── */
+/* ── 頁籤 ─────────────────────────── */
 
 nav.tabs {
   display: flex;
