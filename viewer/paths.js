@@ -5,6 +5,7 @@
 // 作圖軌跡(trace)是繪圖儀器畫出的線,以單一鉛筆色呈現。
 import * as THREE from "three";
 import { MOVING_KINDS } from "../models/kinds.js";
+import { chainLinks, polyline, RING_LINK, LINKS_PER_SEGMENT } from "../models/chain-links.js";
 import { FLUID_LAYER } from "./lineart.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
@@ -42,7 +43,7 @@ const unit = (v) => {
   return v.map((x) => x / l);
 };
 const TRACE_COLOR = "#b3261e";
-const SEGMENT_COLORS = ["#f0b429", "#d6559b", "#7b4bb7"]; // 不用綠色:會和目標件的青綠撞色
+const SEGMENT_COLORS = ["#f0b429", "#d6559b", "#7b4bb7"]; // 不用綠色:會和目標件的青綠撞色。改了顏色數要同步 models/chain-links.js 的 SEGMENT_COUNT(封閉鍊條一圈的節數)
 const MARK_COLOR = "#2a2a2a";
 
 // 一張紋理含 SEGMENT_COLORS.length 個色段,每段開頭一道黑色記號
@@ -209,12 +210,11 @@ function samePoints(a, b) {
 }
 
 // ── 鍊條:沿路徑一節一節排列的鏈節 ─────────
-// 鏈節的兩個銷落在路徑上相距一個節距的兩點,鏈節就是兩銷之間的弦,繞過鏈輪時自然成多邊形。
-// 第 m 節(材料座標)的位置 = m·節距 + 行進相位;顏色依 m 決定:每 LINKS_PER_SEGMENT 節中
-// 第一節是黑色記號,其餘塗同一色,色段跟著鍊條走(與皮帶、繩的規則相同)。
-const LINKS_PER_SEGMENT = 3;
+// 每一節的位置與朝向照 models/chain-links.js 的 chainLinks(實體驗證與模型測試共用同一份擺法)。
+// 顏色依節號 k 決定:每 LINKS_PER_SEGMENT 節中第一節是黑色記號,其餘塗同一色,色段跟著鍊條走(與皮帶、繩的規則相同)。
 
-function linkGeometry(style, width, span) {
+/** 一節鏈節的幾何(局部 X 由銷 a 的 0 到銷 b 的 1,實例矩陣再沿 X 乘上兩銷距離)。繪圖與實體驗證共用 */
+export function linkGeometry(style, width, span) {
   const geometries = [];
   if (style === "ladder") {
     // 梯形鍊:兩股環節(沿法線相隔 span)之間以橫檔相連,橫檔卡進輪緣的凸塊之間
@@ -228,8 +228,8 @@ function linkGeometry(style, width, span) {
     const rung = new THREE.CylinderGeometry(width * 0.14, width * 0.14, span, 8).rotateX(Math.PI / 2);
     geometries.push(rung.toNonIndexed());
   } else if (style === "ring") {
-    const ring = new THREE.TorusGeometry(0.5, width * 0.18, 8, 24);
-    ring.scale(1.15, 0.62, 1);
+    const ring = new THREE.TorusGeometry(0.5, width * RING_LINK.tube, 8, 24);
+    ring.scale(RING_LINK.stretch, RING_LINK.squash, 1);
     ring.translate(0.5, 0, 0);
     geometries.push(ring);
   } else {
@@ -259,12 +259,9 @@ function linkGeometry(style, width, span) {
 export class ChainPart {
   constructor(part, material) {
     this.kind = "chain";
-    this.pitch = part.pitch ?? 0.4;
-    this.style = part.style ?? "plate";
-    this.normal = new THREE.Vector3(...(part.normal ?? [0, 0, 1])).normalize();
-    this.offset = part.offset ?? 0.12; // 板式鏈節分兩層(內節、外節),彼此錯開
+    this.part = part;
     this.material = material.clone();
-    this.geometry = linkGeometry(this.style, part.width ?? 0.2, part.span ?? 0.8);
+    this.geometry = linkGeometry(part.style ?? "plate", part.width ?? 0.2, part.span ?? 0.8);
     this.mesh = new THREE.Group();
     this.instances = null;
     this.capacity = 0;
@@ -288,50 +285,20 @@ export class ChainPart {
   update({ points, closed, phase = 0 }) {
     if (!samePoints(points, this.points)) {
       this.points = points;
-      this.curve = new PolylineCurve(points, closed);
+      this.curve = polyline(points, closed);
     }
-    const curve = this.curve;
-    const length = curve.total;
-    // 封閉鍊條一圈要是整數個色段,接頭處才不會有色差
-    let pitch = this.pitch;
-    if (closed) {
-      const unit = LINKS_PER_SEGMENT * SEGMENT_COLORS.length;
-      pitch = length / Math.max(unit, unit * Math.round(length / (pitch * unit)));
-    }
-    const first = closed ? 0 : Math.ceil(-phase / pitch);
-    const last = closed ? Math.round(length / pitch) - 1 : Math.floor((length - pitch - phase) / pitch);
-    const count = Math.max(0, last - first + 1);
-    this.ensure(count);
-    const a = new THREE.Vector3();
-    const b = new THREE.Vector3();
+    const { links } = chainLinks(this.part, this.curve, phase);
+    this.ensure(links.length);
     const x = new THREE.Vector3();
     const y = new THREE.Vector3();
     const z = new THREE.Vector3();
     const m = new THREE.Matrix4();
-    const at = (s, target) => {
-      const u = closed ? (((s % length) + length) % length) / length : s / length;
-      return curve.getPoint(u, target);
-    };
+    const scale = new THREE.Vector3();
     let i = 0;
-    for (let k = first; k <= last; k++) {
-      const s = k * pitch + (closed ? ((phase % length) + length) % length : phase);
-      at(s, a);
-      at(s + pitch, b);
-      x.subVectors(b, a);
-      const l = x.length() || 1e-6;
-      x.divideScalar(l);
-      z.copy(this.normal).addScaledVector(x, -this.normal.dot(x)).normalize();
-      y.crossVectors(z, x);
-      // 鏈節分兩層:板式的內外節錯開;環式的相鄰節互相垂直
-      const odd = ((k % 2) + 2) % 2 === 1;
-      if (this.style === "ring" && odd) {
-        m.makeBasis(x, z, y.negate());
-      } else {
-        m.makeBasis(x, y, z);
-      }
-      m.scale(new THREE.Vector3(l, 1, 1));
-      const lift = this.style === "ring" || this.style === "ladder" ? 0 : odd ? this.offset : -this.offset * 0.2;
-      m.setPosition(a.x + this.normal.x * lift, a.y + this.normal.y * lift, a.z + this.normal.z * lift);
+    for (const { k, length, axes, origin } of links) {
+      m.makeBasis(x.set(...axes[0]), y.set(...axes[1]), z.set(...axes[2]));
+      m.scale(scale.set(length, 1, 1));
+      m.setPosition(...origin);
       this.instances.setMatrixAt(i, m);
       const index = ((k % LINKS_PER_SEGMENT) + LINKS_PER_SEGMENT) % LINKS_PER_SEGMENT;
       const segment = (((Math.floor(k / LINKS_PER_SEGMENT)) % SEGMENT_COLORS.length) + SEGMENT_COLORS.length) % SEGMENT_COLORS.length;

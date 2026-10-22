@@ -57,7 +57,7 @@
 | `tube` | `points`、`radius`、`closed`:固定在零件上的凸條(螺紋) | `fig029`、`fig050` |
 | `fill` | 存量:`size: [w, h, d]`(或 `shape: "cylinder"`、或 `outline` 固定外形),姿勢的 `level` 0–1 由底往上填 | `fig162`、`fig316` |
 | `group` | 只由 `pieces` 組成 | 機架、軸承 |
-| 路徑零件 `belt` / `rope` / `rod` / `chain` / `trace` | 姿勢回傳折線;`rod` 任一段變長會被 `rigid-links.mjs` 報出(零件上 `stretch: "原因"` 的除外) | |
+| 路徑零件 `belt` / `rope` / `rod` / `chain` / `trace` | 姿勢回傳折線;`rod` 任一段變長會被 `rigid-links.mjs` 報出(零件上 `stretch: "原因"` 的除外)。`chain`:`pitch`、`style`(`plate`/`toothed`/`ladder`/`ring`)、`width`、`normal`;環式可設 `uprightLift`(繞在輪上時直立鏈節比平躺鏈節高多少),擺法見 `chain-links.js` | `fig254` |
 
 ## 共用模組:什麼情境用哪個
 
@@ -79,6 +79,7 @@
 | `pump.js` | 泵的剖面:可開口的泵筒(`barrel`)、可斷開的管壁(`pipeWalls`)、閥室、瓣閥、隨活塞升降的水 |
 | `epicyclic.js` / `bevel-train.js` | 周轉輪系:Willis 公式、行星傘齒輪的姿勢 |
 | `kinds.js` | 種類清單(`PART_KINDS`)、目標件的判定 |
+| `chain-links.js` | 鍊條每一節的位置與朝向(`chainLinks`):繪圖層、實體驗證的鍊條碰撞體與模型測試共用同一份擺法;環式鏈節的尺寸(`ringSize`) |
 
 其餘五十多個是 2–4 張圖共用的機構模組(`cone-pair.js`、`cornish-gear.js`…),**檔頭第一行寫了共用哪幾張與原理**。找有沒有現成的:`sed -n 1,2p models/*.js | grep 關鍵詞`。改共用模組會影響所有 import 它的圖:`grep -ln "from \"./模組.js\"" models/`。
 

@@ -279,7 +279,7 @@ function measure(scene, a, b, prediction, tolerance) {
   }
   if (a.path || b.path) {
     const [path, part] = a.path ? [a, b] : [b, a];
-    // 線狀零件以中心線穿進實體多深算干涉:貼著輪面(中心線在輪面上)不算。
+    // 線狀零件以中心線穿進實體多深算干涉:貼著輪面(中心線在輪面上)不算(環式鍊條例外,見下)。
     // 開放路徑的頭尾兩段若端點就繫在這個零件上,那一段不算
     let anchored = null;
     scene.contacts(path, part, prediction, (pa, pb, d, n) => {
@@ -290,7 +290,8 @@ function measure(scene, a, b, prediction, tolerance) {
       solid = d;
       where = `${describe(path, pa)}穿過${describe(part, pb)}${along(n)}`;
     });
-    return gap == null ? null : { gap, depth: Math.max(0, -solid - path.radius), where };
+    // 環式鍊條的碰撞體是鏈環本身的外形:穿進多深就是多深
+    return gap == null ? null : { gap, depth: Math.max(0, -solid - (path.linkHull ? 0 : path.radius)), where };
   }
   // 圓柱、球與對方的重疊另外記下,等整個狀態走完再判斷它是不是裝在孔裡。判斷只看「沒裝在孔裡的最深一處」,
   // 所以同一組 fits 只留最深的那一處(一根軸穿過旋轉體、齒輪時,一個姿勢就有上百對凸塊相碰,全留下會佔掉幾百 MB)

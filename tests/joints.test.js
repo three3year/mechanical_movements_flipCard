@@ -2,7 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { penetrationDepth, circlePolygon, pointInPolygon, polygonsOverlap, placeOutline, edgeDistance } from "../models/contact.js";
-import { close, turned, part, sweep, plateLayers, assertThrottle } from "./helpers.js";
+import { close, turned, part, sweep, plateLayers, assertThrottle, inSolid } from "./helpers.js";
+import { chainLinks, polyline, ringSize } from "../models/chain-links.js";
 
 import fig243, { turns as turns243 } from "../models/fig243.js";
 import * as m254 from "../models/fig254.js";
@@ -158,41 +159,74 @@ test("第 257、258 種是圓形皮帶:不設寬度,畫成圓管", () => {
   for (const m of [m257, m258]) assert.equal(part(m.default, "strand").width, undefined);
 });
 
-test("第 254 種:直立鏈節卡在叉口裡、平躺的鏈節落在兩齒之間:鏈條節距配上 12 個叉齒,繞在輪上的每一節直立鏈節都對著一個叉齒", () => {
+// 第 254 種:繞在輪上的鏈節(兩銷都在鏈條中心線的半徑上),和畫面、實體驗證同一套擺法(models/chain-links.js);
+// 叉齒各自在世界中的原點與三個軸(u 沿輪軸、v 沿徑向往外、w 沿切線),都照輪的轉角擺
+function links254(angle) {
   const def = m254.default;
   const wheel = part(def, "wheel");
   const chain = part(def, "strand");
-  const forks = wheel.pieces.filter((p) => p.kind === "plate");
-  assert.equal(forks.length, m254.TEETH);
-  const polar = ([, y, z]) => Math.atan2(z, y);
+  const { points, closed, phase } = def.pose(angle).paths.strand;
+  const seat = Math.hypot(...points[Math.floor(points.length / 2)].slice(1));
+  const onWheel = chainLinks(chain, polyline(points, closed), phase).links.filter(({ a, b }) => [a, b].every((p) => Math.abs(Math.hypot(p[1], p[2]) - seat) < 0.01)); // 路徑在輪上是折線,弦的中段略低於圓
+  const world = (local) => partPoint([0, 0, 0], wheel.axis, angle, local);
+  const forks = wheel.pieces
+    .filter((p) => p.kind === "plate")
+    .map((f) => {
+      const origin = world(f.at);
+      const axis = (v) => sub(world(add(f.at, quatRotate(f.rotation, v))), origin);
+      return { origin, u: axis([1, 0, 0]), v: axis([0, 1, 0]), w: axis([0, 0, 1]), outline: f.shape.outline, thickness: f.thickness };
+    });
+  const center = (link) => add(link.origin, scale(link.axes[0], link.length / 2));
+  return { wheel, chain, onWheel, forks, center };
+}
+const WHEEL_ANGLES_254 = [0, 0.2, 1, 2.5, -0.7];
+
+test("第 254 種:直立鏈節卡在叉口裡、平躺的鏈節落在兩齒之間:鏈條節距配上 12 個叉齒,繞在輪上的每一節直立鏈節都對著一個叉齒", () => {
+  const polarOf = ([, y, z]) => Math.atan2(z, y);
   const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-  for (const angle of [0, 0.2, 1, 2.5, -0.7]) {
-    const { points, phase } = def.pose(angle).paths.strand;
-    // 和畫面(viewer/paths.js 的鍊條)同一套擺法:第 k 節的兩銷在路徑弧長 k·節距 + 相位 與下一個節距處;k 為偶數的是直立鏈節
-    const cum = [0];
-    for (let i = 1; i < points.length; i++) cum.push(cum[i - 1] + dist(points[i], points[i - 1]));
-    const at = (s) => {
-      let i = 1;
-      while (i < cum.length - 1 && cum[i] < s) i++;
-      const t = (s - cum[i - 1]) / (cum[i] - cum[i - 1]);
-      return points[i - 1].map((v, j) => v + (points[i][j] - v) * t);
-    };
-    const forkAngles = forks.map((f) => polar(partPoint([0, 0, 0], wheel.axis, angle, f.at)));
-    const seat = Math.hypot(...points[Math.floor(points.length / 2)].slice(1));
+  for (const angle of WHEEL_ANGLES_254) {
+    const { onWheel, forks } = links254(angle);
+    assert.equal(forks.length, m254.TEETH);
+    const forkAngles = forks.map((f) => polarOf(f.origin));
     let upright = 0;
-    for (let k = Math.ceil(-phase / chain.pitch); k * chain.pitch + phase + chain.pitch <= cum.at(-1); k++) {
-      const a = at(k * chain.pitch + phase);
-      const b = at((k + 1) * chain.pitch + phase);
-      const onWheel = [a, b].every((p) => Math.abs(Math.hypot(p[1], p[2]) - seat) < 0.01); // 路徑在輪上是折線,弦的中段略低於圓
-      if (!onWheel) continue;
-      const mid = polar(a.map((v, j) => (v + b[j]) / 2));
+    for (const { k, a, b, upright: isUpright } of onWheel) {
+      const mid = polarOf(a.map((v, j) => (v + b[j]) / 2));
       const off = Math.min(...forkAngles.map((f) => Math.abs(wrap(mid - f))));
-      if (((k % 2) + 2) % 2 === 0) {
+      if (isUpright) {
         upright++;
         assert.ok(off < 0.02, `輪轉 ${angle}:第 ${k} 節直立鏈節離最近的叉齒 ${((off * 180) / Math.PI).toFixed(1)}°`);
       } else assert.ok(Math.abs(off - Math.PI / m254.TEETH) < 0.02, `輪轉 ${angle}:第 ${k} 節平躺鏈節落在兩齒正中`);
     }
     assert.ok(upright >= 3, "繞在輪上的一段有好幾節直立鏈節");
+  }
+});
+
+test("第 254 種:Y 形叉齒立在輪緣上,直立鏈節從兩叉之間落進叉口、下緣靠在分岔處,兩叉夾在它兩側;平躺鏈節貼著輪緣、不穿進輪緣殼", () => {
+  const { tube, half, tubeHalf } = ringSize(part(m254.default, "strand").width);
+  const rim = part(m254.default, "wheel").pieces.find((p) => p.kind === "cylinder" && p.inner);
+  for (const angle of WHEEL_ANGLES_254) {
+    const { onWheel, forks, center } = links254(angle);
+    for (const link of onWheel) {
+      const c = center(link);
+      if (!link.upright) {
+        // 平躺鏈節:管的厚度沿徑向,最低處在弦的正中
+        const low = Math.hypot(c[1], c[2]) - tube;
+        assert.ok(low >= rim.radius - 1e-3, `輪轉 ${angle}:第 ${link.k} 節平躺鏈節最低處 ${low.toFixed(3)} 不穿進輪緣殼(外徑 ${rim.radius})`);
+        assert.ok(low <= rim.radius + 0.02, `輪轉 ${angle}:第 ${link.k} 節平躺鏈節貼著輪緣(最低處 ${low.toFixed(3)})`);
+        continue;
+      }
+      // 直立鏈節下緣那一段管的斷面(在叉齒的平面上是橢圓:沿輪軸半徑 tube、沿徑向半徑 tubeHalf)
+      const bottom = sub(c, scale(link.axes[1], half - tubeHalf));
+      const fork = forks.reduce((best, f) => (len(sub(f.origin, bottom)) < len(sub(best.origin, bottom)) ? f : best));
+      const d = sub(bottom, fork.origin);
+      assert.ok(Math.abs(dot(d, fork.w)) < fork.thickness / 2, `輪轉 ${angle}:第 ${link.k} 節直立鏈節落在叉齒的厚度裡`);
+      const [cu, cv] = [dot(d, fork.u), dot(d, fork.v)];
+      const section = Array.from({ length: 32 }, (_, i) => [cu + tube * Math.cos((i / 32) * 2 * Math.PI), cv + tubeHalf * Math.sin((i / 32) * 2 * Math.PI)]);
+      const solid = { outline: fork.outline };
+      assert.ok(penetrationDepth(section, solid) < 0.003, `輪轉 ${angle}:第 ${link.k} 節直立鏈節不穿進叉齒(${penetrationDepth(section, solid).toFixed(3)})`);
+      assert.ok(inSolid([cu, cv - tubeHalf - 0.01], solid), `輪轉 ${angle}:第 ${link.k} 節直立鏈節的下緣靠在分岔處(下緣下方 0.01 就是叉齒)`);
+      for (const side of [-1, 1]) assert.ok(inSolid([cu + side * (tube + 0.02), cv], solid), `輪轉 ${angle}:第 ${link.k} 節直立鏈節的${side < 0 ? "一" : "另一"}側緊挨著一支叉`);
+    }
   }
 });
 

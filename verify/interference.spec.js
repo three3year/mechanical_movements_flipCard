@@ -191,6 +191,21 @@ test("設了寬度的扁帶:碰撞體是扁盒,寬度方向沿路徑所在平面
   assert.deepEqual(interference(straight([0, 1, 0], [0, 0, 0.42])), [], "厚度沿 Z,很薄");
 });
 
+test("環式鍊條:碰撞體是每一節鏈環的外形,擺法和畫面相同(繞在輪上時平躺鏈節比直立鏈節低 uprightLift,降下來的鏈環碰到東西才算干涉)", () => {
+  // 鍊條順時針繞過半徑 1.5 的半圓(XY 平面,normal 沿 Z):正上方是一節直立鏈節(在 XY 平面上,高 ±0.34),
+  // 它右邊那節平躺鏈節(中心在 67.5°、徑向只厚 ±0.05)沒降時在半徑 1.47,降 0.5 後在半徑 0.97
+  const arc = Array.from({ length: 65 }, (_, i) => [1.5 * Math.cos(Math.PI - (Math.PI * i) / 64), 1.5 * Math.sin(Math.PI - (Math.PI * i) / 64), 0]);
+  const pitch = (1.5 * Math.PI) / 12;
+  const chained = (uprightLift, block, points = arc) =>
+    model([{ id: "block", kind: "box", size: [0.3, 0.3, 0.3], center: block }, { id: "chain", kind: "chain", style: "ring", pitch, width: 0.3, normal: [0, 0, 1], uprightLift }], () => ({}), {
+      paths: () => ({ chain: { points, closed: false, phase: -pitch / 2 } }),
+    });
+  const lowered = [0.971 * Math.cos(Math.PI * 0.375), 0.971 * Math.sin(Math.PI * 0.375), 0];
+  assert.equal(interference(chained(0.5, lowered)).length, 1, "降 0.5 的平躺鏈節碰到半徑 0.97 處的方塊");
+  assert.deepEqual(interference(chained(0, lowered)), [], "沒降的平躺鏈節在半徑 1.47,直立鏈節的下緣在半徑 1.13 以外:碰不到");
+  assert.deepEqual(interference(chained(0.5, [-2 + pitch, -0.5, 0], [[-2, 0, 0], [2, 0, 0]])), [], "拉直的一段不降:平躺鏈節留在中心線上");
+});
+
 test("繩的端點繫在零件上不算干涉", () => {
   const def = model([{ id: "weight", kind: "box", size: [0.6, 0.6, 0.6], center: [0, -1, 0] }, { id: "rope", kind: "rope" }], () => ({}), {
     paths: () => ({ rope: { points: [[0, 1, 0], [0, -1, 0]] } }),

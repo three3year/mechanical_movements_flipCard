@@ -1,11 +1,14 @@
 // 把一個模型的零件擺進物理引擎做碰撞查詢(不模擬力):每個姿勢算出任兩個零件實體之間的距離。
 // 姿勢的擺放沿用繪圖層的規則(viewer/placement.js);線狀零件沿路徑每一段是一個膠囊,
 // 扁帶(設了 width 的皮帶)每一段是一個扁盒(寬 width、厚 thickness,寬度方向見 flatAcross)。
+// 環式鍊條每一節是一個鏈環的凸包:外形取繪圖層的鏈節幾何(linkGeometry),擺法照 models/chain-links.js(和畫面同一份),
+// 所以直立、平躺的鏈環與直立鏈節的抬高都量得到;其他鍊條照舊以中心線加寬度的膠囊檢查。
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { PATH_KINDS } from "../models/kinds.js";
 import { placement } from "../viewer/placement.js";
-import { pathRadius, isFlat, flatAcross } from "../viewer/paths.js";
+import { pathRadius, isFlat, flatAcross, linkGeometry } from "../viewer/paths.js";
+import { chainLinks, polyline } from "../models/chain-links.js";
 import { buildSolid, unique } from "./solids.js";
 
 await RAPIER.init();
@@ -65,6 +68,7 @@ export class Scene {
       if (!isSolidPart(part)) continue;
       if (PATH_KINDS.has(part.kind)) {
         const entry = { id: part.id, part, path: true, radius: pathRadius(part), flat: isFlat(part), pieces: [], visible: true, changed: true, points: null, box: new Float64Array(6) };
+        if (part.kind === "chain" && part.style === "ring") entry.linkHull = Float32Array.from(linkGeometry(part.style, part.width ?? 0.2, part.span ?? 0.8).attributes.position.array);
         this.paths.push(entry);
         this.byId.set(part.id, entry);
         continue;
@@ -142,10 +146,15 @@ export class Scene {
       entry.visible = !!p && p.visible !== false;
       if (!p) continue;
       const points = p.closed ? [...p.points, p.points[0]] : p.points;
-      entry.changed = !samePoints(points, entry.points);
+      entry.changed = !samePoints(points, entry.points) || (entry.linkHull != null && (p.phase ?? 0) !== entry.phase);
       entry.closed = !!p.closed;
       if (!entry.changed) continue;
       entry.points = points;
+      entry.phase = p.phase ?? 0;
+      if (entry.linkHull) {
+        this.placeLinks(entry, p);
+        continue;
+      }
       const pieces = [];
       const across = entry.flat ? flatAcross(entry.part, p.points) : null;
       const half = entry.flat ? entry.part.width / 2 : 0;
@@ -189,6 +198,29 @@ export class Scene {
       entry.pieces = pieces;
       bound(entry);
     }
+  }
+
+  /** 環式鍊條:每一節一個鏈環的凸包,照 chainLinks 擺(兩銷距離不同時凸包的伸長也不同,每次重建) */
+  placeLinks(entry, p) {
+    for (const old of entry.pieces) this.world.removeCollider(old.collider, false);
+    const { links } = chainLinks(entry.part, polyline(p.points, p.closed), p.phase ?? 0);
+    const last = entry.points.length - 2;
+    entry.pieces = [];
+    links.forEach(({ k, length, axes, origin }, i) => {
+      tmpM.makeBasis(tmpA2.set(...axes[0]), tmpN.set(...axes[1]), tmpD.set(...axes[2])).scale(tmpS.set(length, 1, 1)).setPosition(...origin);
+      const matrix = tmpM.clone();
+      matrix.decompose(tmpP, tmpQ, tmpS);
+      const piece = makePiece(this.world, entry.linkHull, tmpS);
+      if (!piece) return;
+      piece.collider.setTranslation(tmpP);
+      piece.collider.setRotation(tmpQ);
+      boxOf(piece, matrix);
+      piece.link = k;
+      // 開放鍊條頭尾那一節對應路徑的頭尾一段(端點繫在零件上時不算干涉)
+      piece.segment = entry.closed ? -1 : i === 0 ? 0 : i === links.length - 1 ? last : -1;
+      entry.pieces.push(piece);
+    });
+    bound(entry);
   }
 
   /**
@@ -392,7 +424,7 @@ function bound(entry) {
 /** 一塊凸塊的說明:屬於哪種幾何、多大、在哪裡(報告裡指出是零件的哪一塊) */
 export function describe(entry, piece) {
   const c = [0, 1, 2].map((k) => ((piece.box[k] + piece.box[k + 3]) / 2).toFixed(2)).join(", ");
-  if (entry.path) return `${entry.id} 的第 ${piece.segment + 1} 段〔${c}〕`;
+  if (entry.path) return piece.link != null ? `${entry.id} 的第 ${piece.link} 節〔${c}〕` : `${entry.id} 的第 ${piece.segment + 1} 段〔${c}〕`;
   const { geometry } = entry.meshes.find((m) => m.pieces.includes(piece)).mesh;
   const p = geometry.parameters ?? {};
   const n = (x) => Number(x.toFixed(3));
