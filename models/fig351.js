@@ -113,7 +113,7 @@ export default {
   replay: { from: 0, to: -2 * Math.PI, free: { stamp: { slide: [0, 1, 0], limits: [-1, 3.6] } }, expect: [{ at: -5.4, part: "stamp", label: "有齒段把桿抬高" }, { at: -2 * Math.PI, part: "stamp", label: "齒脫離齒條後桿落下、撞在臼底停住" }] },
   driver: { part: "pinion", type: "rotation", speed: -0.8 }, // 自動播放時順時針轉,把桿抬起
   target: "stamp",
-  view: { direction: [0.03, 0.05, 1], fitSamples: 24 }, // 抬到最高(落下前一刻)在兩個預設取樣點之間:取景均勻取樣,整個行程都在畫面裡
+  view: { direction: [0.03, 0.05, 1] },
   pose(theta) {
     const { lift } = stamp(theta);
     // 齒條的齒朝 +x(朝小齒輪),節線在 x = −R

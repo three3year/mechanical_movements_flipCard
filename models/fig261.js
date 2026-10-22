@@ -219,7 +219,7 @@ export default {
   ],
   driver: { part: "discB", type: "rotation", range: RANGE, initial: 0 },
   target: "weightW", // 被吊起又放下的重物
-  view: { direction: [0.05, 0.05, 1], fitSamples: 16 }, // 重物在第一圈中途最低:取景在範圍內均勻取樣,W 全程留在畫面內
+  view: { direction: [0.05, 0.05, 1] },
   pose(theta0) {
     const theta = clamp(theta0, ...RANGE);
     const { pin, joint, e } = arm(theta);

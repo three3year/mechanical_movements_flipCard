@@ -21,7 +21,7 @@
 | `driver` | `{ part, type: "rotation" \| "translation", range?, cycle?, direction?, grips? }`;虛擬主動件 `{ type: "virtual", label, range, mode: "balance" \| "progress" }`,不指向零件 |
 | `target` / `targets` | 目標件 1–3 個;只有主動件自己在動的圖列在 `tests/registry.test.js` 的 `ONLY_DRIVER_MOVES` |
 | `states` | `{ initial, options: [{ id, label }] }`;姿勢由狀態決定的零件標 `posed`(否則切換狀態時轉角以偏移量接續) |
-| `view` | `{ direction }` 初始視角 |
+| `view` | `{ direction }` 初始視角;`fit`(只以這些零件取景)、`fov`。取景在主動量的範圍(或一個週期、一個進程)內均勻取樣,規則在 `viewer/framing.js` |
 | `pose(v, state)` | 回傳 `{ parts: { id: { angle, position, rotation(四元數), visible, ghost, level } }, readouts: [{ label, value }] }`;路徑零件回傳折線 |
 | `waivers[]` | `{ check: "interference" \| "unsupported" \| "replay", parts, reason, at? }`,原因必填;未修的以「未修:」開頭 |
 | `powered[]` | 直接受力的零件(虛擬主動件、流體、重力) |
@@ -105,6 +105,7 @@
 | `model-strip.html?fig=N&vs=…` + `shot.mjs` | 多相位並排截圖;`state=`、`dir=`、`fit=`;一律經截圖服務 |
 | `model-preview.html?fig=N` | 插圖與模型初始視角並排 |
 | `list-targets.mjs`、`scan-models.mjs` | 全書的目標件、定義掃描 |
+| `framing.mjs 圖號…` | 取景掃描:均勻取樣比舊取樣、段數加倍比預設段數的外框大多少,與走到最遠的零件和主動量 |
 
 ## 維護本檔
 

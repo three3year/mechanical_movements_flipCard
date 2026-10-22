@@ -13,6 +13,7 @@ import { buildPart, buildSpinArrow, spinPlacement, PATH_KINDS } from "./parts.js
 import { PathPart, ChainPart } from "./paths.js";
 import { FlowCues, FLUID_COLORS } from "./flows.js";
 import { placement } from "./placement.js";
+import { framingValues } from "./framing.js";
 import { clamp, lerp3 } from "../models/kit.js";
 
 const PAPER = "#ffffff";
@@ -577,19 +578,6 @@ class Session {
     camera.updateProjectionMatrix();
   }
 
-  // 外框要容納主動量各處的姿勢:有範圍時取兩端與中間,往復取兩端,一直轉的取一圈中的幾處。
-  // 零件在中途才走到最遠的模型(第 261 種的重物在第一圈中途最低),定義用 view.fitSamples: n 改成在範圍(或一圈)內均勻取 n + 1 處
-  fitSamples() {
-    const n = this.def.view?.fitSamples;
-    const even = n ? Array.from({ length: n + 1 }, (_, i) => i / n) : null;
-    if (this.bounds) {
-      const [min, max] = this.bounds;
-      return [...(even ?? [0, 0.5, 1]).map((f) => min + f * (max - min)), this.value];
-    }
-    const span = this.cycle ? Math.abs(this.cycle[1] - this.cycle[0]) : this.progress ? this.def.driver.range[1] - this.def.driver.range[0] : Math.PI * 2;
-    return (even ?? [0, 0.25, 0.5, 0.75, 1]).map((f) => this.value + f * span);
-  }
-
   fitCamera() {
     const { camera, controls } = getShared();
     // 原圖是正視的立面圖時,定義可用較窄的視角(view.fov)讓透視變形小一點
@@ -598,7 +586,8 @@ class Session {
     const box = new THREE.Box3();
     // view.fit:只以這些零件取景(原圖只畫出局部的大零件,例如第 76 種的大輪)
     const only = this.def.view?.fit ? new Set(this.def.view.fit) : null;
-    for (const v of this.fitSamples()) {
+    // 外框要容納主動量各處的姿勢:在範圍(或一個週期、一個進程)內均勻取樣(viewer/framing.js)
+    for (const v of framingValues(this.def.driver, this.value)) {
       this.apply(this.pose(v), 0);
       // 精確外框(逐頂點):旋轉中的零件不會因軸對齊外框而顯得過小
       for (const [id, { object }] of this.objects) if (object.visible && (!only || only.has(id))) box.expandByObject(object, true);
