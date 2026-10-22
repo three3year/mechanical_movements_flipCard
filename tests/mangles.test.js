@@ -314,21 +314,88 @@ test("第 198 種:四個樞軸座都立在各自的板上;承載板背板的孔�
   }
 });
 
-test("第 199 種:燈籠式小齒輪連續旋轉,框架往復;與一側齒條嚙合時,沒有銷的那一半朝向另一側", () => {
-  const { RL, PINS, WINDOW, TRAVEL } = m199.geometry;
+/**
+ * 第 199 種:小齒輪轉角 a(逆時針為正;小齒輪順時針轉,a 往負走)時,照定義的外形擺好:框架開口(世界座標)、
+ * 各銷的圓心、銷半徑、穿過框架那一層的軸轂半徑,與框架的位置
+ */
+function shapes199(a) {
+  const def = m199.default;
+  const p = def.pose(a).parts;
+  const frame = part(def, "frame");
+  const [layer] = plateLayers(frame);
+  const fx = p.frame.position[0];
+  const hole = layer.solid.holes[0].map(([x, y]) => [x + fx, y]);
+  const pinion = part(def, "pinion");
+  const rods = pinion.pieces.filter((q) => q.kind === "cylinder");
+  const pins = rods.filter((q) => q.at && Math.hypot(q.at[0], q.at[1]) > 0.3);
+  const hub = rods.find((q) => !q.at);
+  return { hole, x: fx, r: pins[0].radius, hub: hub.radius, pins: pins.map((q) => rot2([q.at[0], q.at[1]], p.pinion.angle)) };
+}
+/** 銷(圓)與框架開口邊緣的間隙:圓心在開口裡,離邊緣的距離減去半徑(負 = 穿入) */
+const pinGap199 = (c, r, hole) => (pointInPolygon(c, hole) ? edgeDistance(c, hole) - r : -r - edgeDistance(c, hole));
+
+test("第 199 種:燈籠式小齒輪連續旋轉,框架往復;小齒輪只在不到一半的圓周上有銷,與一側齒條嚙合時,沒有銷的那一半朝向另一側", () => {
+  const { TRAVEL } = m199.geometry;
   const xs = sweep(2 * Math.PI, 720).map((v) => m199.frame(v).x);
   close(Math.max(...xs) - Math.min(...xs), TRAVEL, "往返的行程", 1e-6);
   close(xs[0], xs[xs.length - 1], "轉一圈回到原處", 1e-9);
-  for (const v of sweep(2 * Math.PI, 360)) {
-    const { rack } = m199.frame(v);
-    const other = rack === "top" ? -Math.PI / 2 : Math.PI / 2;
-    for (let i = 0; i < PINS; i++) {
-      const a = m199.pinAngle(i, v);
-      const off = Math.abs(Math.atan2(Math.sin(a - other), Math.cos(a - other)));
-      assert.ok(off >= WINDOW - 1e-9, `v = ${v.toFixed(2)}:另一側沒有銷`);
+  // 銷只在不到一半的圓周上(原文)
+  const angles = shapes199(0).pins.map(([x, y]) => Math.atan2(y, x)).sort((a, b) => a - b);
+  const gaps = angles.map((a, i) => (i ? a - angles[i - 1] : a + 2 * Math.PI - angles[angles.length - 1]));
+  assert.ok(2 * Math.PI - Math.max(...gaps) < Math.PI, `銷分布的範圍 ${((2 * Math.PI - Math.max(...gaps)) * 180 / Math.PI).toFixed(1)}° 不到半圈`);
+  // 碰著框架(間隙 < 0.002)的銷都在同一側:碰上齒條時框架往右、碰下齒條時往左
+  const as = sweep(-2 * Math.PI, 2880);
+  as.slice(1).forEach((a, k) => {
+    const s = shapes199(a);
+    const touch = s.pins.filter((c) => pinGap199(c, s.r, s.hole) < 0.002);
+    const dx = s.x - shapes199(as[k]).x;
+    assert.ok(!(touch.some(([, y]) => y > 0) && touch.some(([, y]) => y < 0)), `a=${a.toFixed(3)}:兩側的齒條同時被銷碰著`);
+    if (dx > 1e-9) assert.ok(touch.length && touch.every(([, y]) => y > 0), `a=${a.toFixed(3)}:框架往右時由上齒條的銷推`);
+    if (dx < -1e-9) assert.ok(touch.length && touch.every(([, y]) => y < 0), `a=${a.toFixed(3)}:框架往左時由下齒條的銷推`);
+  });
+});
+
+test("第 199 種:換向由最後一根銷推到高過齒頂決定:換向那一刻要退出的銷已高過齒頂,另一側的第一根銷那時才碰到齒", () => {
+  const as = sweep(-2 * Math.PI + 0.3, 7200, 0.3); // 從起點(換向)前一點開始轉一圈,兩次換向都在中間
+  const xs = as.map((a) => shapes199(a).x);
+  let last = 0; // 上一次移動的方向
+  const flips = [];
+  xs.slice(1).forEach((x, k) => {
+    const d = Math.sign(Math.abs(x - xs[k]) > 1e-12 ? x - xs[k] : 0);
+    if (d && last && d !== last) flips.push({ at: k, from: last });
+    if (d) last = d;
+  });
+  assert.equal(flips.length, 2, "轉一圈換向兩次");
+  for (const { at, from } of flips) {
+    const s = shapes199(as[at]); // 換向那一刻:框架還停著、下一步就往回走
+    const side = from > 0 ? 1 : -1; // 往右是上齒條推的,要退出的銷在上面
+    const leaving = s.pins.filter(([, y]) => y * side > 0);
+    for (const [px, py] of leaving) {
+      // 鄰近的齒頂:開口在這一側、銷左右 0.4 之內的頂點裡離中心線最近的
+      const tips = s.hole.filter(([x, y]) => y * side > 0 && Math.abs(x - px) < 0.4).map(([, y]) => Math.abs(y));
+      const tip = Math.min(...tips);
+      assert.ok(Math.abs(py) + s.r <= tip + 1e-9, `a=${as[at].toFixed(4)}:要退出的銷的下緣 ${(Math.abs(py) + s.r).toFixed(4)} 已高過齒頂 ${tip.toFixed(4)}`);
     }
+    const entering = s.pins.filter(([, y]) => y * side < 0).map((c) => pinGap199(c, s.r, s.hole));
+    assert.ok(Math.min(...entering) < 0.002, `另一側的第一根銷那時碰到齒(間隙 ${Math.min(...entering).toFixed(4)})`);
+    const before = shapes199(as[at - 40]); // 換向前(框架還停著或還在走),另一側的銷還沒碰到
+    assert.ok(Math.min(...before.pins.filter(([, y]) => y * side < 0).map((c) => pinGap199(c, before.r, before.hole))) > 0.002, "換向之前另一側的銷沒碰到齒");
   }
-  assert.ok(RL > 0);
+});
+
+test("第 199 種:全程(含換向前後)銷與軸轂不穿入框架開口的實際外形", () => {
+  const as = [...sweep(-2 * Math.PI, 4000), ...[0, -Math.PI].flatMap((c) => sweep(c - 0.15, 600, c + 0.15))];
+  let worst = Infinity;
+  for (const a of as) {
+    const s = shapes199(a);
+    for (const c of s.pins) {
+      const g = pinGap199(c, s.r, s.hole);
+      worst = Math.min(worst, g);
+      assert.ok(g > -1e-6, `a=${a.toFixed(4)}:銷 (${c[0].toFixed(3)}, ${c[1].toFixed(3)}) 穿入框架 ${(-g).toFixed(4)}`);
+    }
+    assert.ok(pinGap199([0, 0], s.hub, s.hole) > 0, `a=${a.toFixed(4)}:軸轂不碰框架`);
+  }
+  assert.ok(worst < 1e-6, `推的銷貼著齒(最小間隙 ${worst.toFixed(5)})`);
 });
 
 test("第 199 種:燈籠式小齒輪的銷夾在兩片板之間(原文):兩片板一前一後夾住框架上的齒條,銷橫跨齒條整個厚度", () => {
