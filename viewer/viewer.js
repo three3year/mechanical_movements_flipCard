@@ -587,7 +587,7 @@ class Session {
     // view.fit:只以這些零件取景(原圖只畫出局部的大零件,例如第 76 種的大輪)
     const only = this.def.view?.fit ? new Set(this.def.view.fit) : null;
     // 外框要容納主動量各處的姿勢:在範圍(或一個週期、一個進程)內均勻取樣(viewer/framing.js)
-    for (const v of framingValues(this.def.driver, this.value)) {
+    for (const v of framingValues(this.def.driver, this.value, undefined, this.option()?.play)) {
       this.apply(this.pose(v), 0);
       // 精確外框(逐頂點):旋轉中的零件不會因軸對齊外框而顯得過小
       for (const [id, { object }] of this.objects) if (object.visible && (!only || only.has(id))) box.expandByObject(object, true);

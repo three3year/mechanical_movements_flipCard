@@ -31,6 +31,13 @@ test("自動播放往回轉的(speed 為負):從目前值往回涵蓋一圈", ()
   assert.ok(evenly(values));
 });
 
+test("狀態讓自動播放反向(play −1)時往回涵蓋一圈;狀態讓主動件停住(play 0)時照原本的方向", () => {
+  const crank = { part: "crank", type: "rotation" };
+  assert.ok(close(framingValues(crank, 0, 8, -1).at(-1), -Math.PI * 2));
+  assert.ok(close(framingValues({ ...crank, speed: -0.8 }, 0, 8, -1).at(-1), Math.PI * 2));
+  assert.ok(close(framingValues(crank, 0, 8, 0).at(-1), Math.PI * 2));
+});
+
 test("往復(cycle)的主動件:涵蓋一個來回(去程與回程,棘爪之類的姿勢兩程不同)", () => {
   const values = framingValues({ part: "rod", type: "translation", cycle: [0, 0.5] }, 0, 10);
   assert.ok(close(values[0], 0) && close(values.at(-1), 1), `取樣 ${values[0]}–${values.at(-1)}`);

@@ -69,9 +69,10 @@ function growth(ref, wider) {
  */
 export function scanFraming(def, segments = FRAMING_SEGMENTS) {
   const value = initialValue(def.driver);
+  const play = def.states?.options.find((o) => o.id === def.states.initial)?.play; // 初始狀態的播放方向,同檢視器
   const scene = new Scene(def);
   const legacy = framingBox(def, legacyValues(def.driver, value), scene);
-  const uniform = framingBox(def, framingValues(def.driver, value, segments), scene);
-  const doubled = framingBox(def, framingValues(def.driver, value, segments * 2), scene);
-  return { span: framingSpan(def.driver, value), uniform: growth(legacy, uniform), doubled: growth(uniform, doubled) };
+  const uniform = framingBox(def, framingValues(def.driver, value, segments, play), scene);
+  const doubled = framingBox(def, framingValues(def.driver, value, segments * 2, play), scene);
+  return { span: framingSpan(def.driver, value, play), uniform: growth(legacy, uniform), doubled: growth(uniform, doubled) };
 }

@@ -15,6 +15,8 @@ import { figuresFrom } from "./figure-args.mjs";
 const args = process.argv.slice(2);
 const flag = (name) => args.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
 const segments = Number(flag("segments") ?? FRAMING_SEGMENTS);
+const OVER = 0.02; // 均勻取樣比舊取樣大過這個比例的圖要截圖確認
+const DENSE = 0.01; // 段數加倍時外框不該再大過這個比例(預設段數的條件)
 
 async function scan(figure) {
   try {
@@ -62,11 +64,11 @@ if (process.send) {
       console.log(`圖 ${figure}:掃描中斷:${r.error}`);
       continue;
     }
-    if (r.uniform.growth > 0.02) over++;
+    if (r.uniform.growth > OVER) over++;
     if (r.doubled.growth > worst.growth) worst = { ...r.doubled, figure };
-    if (!given && r.uniform.growth <= 0.02 && r.doubled.growth <= 0.01) continue;
+    if (!given && r.uniform.growth <= OVER && r.doubled.growth <= DENSE) continue;
     console.log(`圖 ${figure}:均勻 ${segments} 段比舊取樣大 ${pct(r.uniform)}${where(r.uniform)};加倍到 ${segments * 2} 段再大 ${pct(r.doubled)}${where(r.doubled)};取樣涵蓋主動量 ${r.span.map((v) => Number(v.toFixed(3))).join("–")}`);
   }
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
-  console.log(`\n取景掃描:${figures.length} 張,均勻 ${segments} 段比舊取樣大超過 2% 的 ${over} 張;段數加倍時最多再大 ${pct(worst)}${worst.figure ? `(圖 ${worst.figure}${where(worst)})` : ""}(${seconds} 秒)`);
+  console.log(`\n取景掃描:${figures.length} 張,均勻 ${segments} 段比舊取樣大超過 ${OVER * 100}% 的 ${over} 張;段數加倍時最多再大 ${pct(worst)}${worst.figure ? `(圖 ${worst.figure}${where(worst)})` : ""}(${seconds} 秒)`);
 }
