@@ -43,6 +43,7 @@
   </div>
 
   <script src="data.js"></script>
+  <script src="uses.js"></script>
   <script src="browse.js"></script>
   <script>
     const cardEl = document.getElementById("card");
@@ -54,7 +55,11 @@
     let renderSeq = 0;
     const backEl = document.getElementById("back");
     // 導覽(目前所在、翻頁、交互參照、返回堆疊)都由瀏覽模組回答,頁面只負責畫
-    const browser = Browse.createBrowser(entries);
+    // 用途檔載入失敗時卡片照常顯示,只是沒有用途;用途檔有問題時在主控台列出(npm test 也會檢查)
+    const uses = typeof useGroups === "undefined" ? undefined : { groups: useGroups, entryUses };
+    const useProblems = uses ? Browse.checkUses(entries, uses) : [];
+    if (useProblems.length) console.warn("用途檔(uses.js)有問題:\n" + useProblems.join("\n"));
+    const browser = Browse.createBrowser(entries, uses);
 
     // ── 模型 ──
     // 圖片區模式(插圖 / 模型)是頁面層級的狀態,翻頁、交互參照都保留;
@@ -308,6 +313,12 @@
       body.className = "body";
       for (const paragraph of entry.text) {
         body.appendChild(buildParagraph(paragraph));
+      }
+      if (at.uses.length) {
+        const uses = document.createElement("p");
+        uses.className = "uses";
+        uses.textContent = "用途：" + at.uses.join(" · ");
+        body.appendChild(uses);
       }
       body.appendChild(buildSource(entry));
       fragment.appendChild(body);

@@ -553,6 +553,18 @@ nav.tabs button.active {
   text-decoration: underline solid;
 }
 
+/* 條目的用途:只顯示,不能點 */
+.card .body p.uses {
+  margin-top: 1.1em;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+
+.card .body p.uses + p.source {
+  margin-top: 0.3em;
+}
+
 .card .body p.source {
   margin-top: 1.1em;
   font-size: 0.8rem;

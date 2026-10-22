@@ -2,8 +2,47 @@
 // 頁面每次動作都呼叫這裡,再依 where() 的回答畫出卡片、位置與返回鍵。
 const Browse = (() => {
   const figureOf = (src) => parseInt(src.match(/(\d+)\.png$/)[1], 10);
+  // 條目在用途檔裡的鍵:第一張插圖的圖號
+  const keyOf = (entry) => figureOf(entry.images[0]);
 
-  function createBrowser(entries) {
+  // 用途檔的完整性:回傳問題清單(沒有問題時是空陣列)。
+  // uses 是 { groups: 用途大類清單, entryUses: 圖號 → 用途名稱 }
+  function checkUses(entries, uses) {
+    const problems = [];
+    const names = new Set();
+    for (const group of uses.groups) {
+      for (const name of group.uses) {
+        if (names.has(name)) problems.push(`用途「${name}」重複`);
+        names.add(name);
+      }
+    }
+    for (const entry of entries) {
+      if (!uses.entryUses[keyOf(entry)]?.length) problems.push(`圖 ${entry.no} 沒有用途`);
+    }
+    const keys = new Set(entries.map(keyOf));
+    const used = new Set();
+    for (const [key, list] of Object.entries(uses.entryUses)) {
+      if (!keys.has(Number(key))) {
+        problems.push(`圖 ${key} 不是任何條目的第一張插圖`);
+        continue;
+      }
+      for (const name of list) {
+        if (names.has(name)) used.add(name);
+        else problems.push(`圖 ${key} 的用途「${name}」不存在`);
+      }
+    }
+    for (const name of names) {
+      if (!used.has(name)) problems.push(`用途「${name}」沒有任何條目`);
+    }
+    return problems;
+  }
+
+  // uses 可省略(用途檔載入失敗時):卡片照常顯示,只是沒有用途
+  function createBrowser(entries, uses) {
+    const names = new Set(uses ? uses.groups.flatMap((group) => group.uses) : []);
+    // 卡片上列出的用途:依用途檔的順序,略過不存在的用途
+    const usesOf = (entry) => (uses?.entryUses[keyOf(entry)] ?? []).filter((name) => names.has(name));
+
     // 目前序列:原書順序就是全部條目依編號排列
     const sequence = entries.map((entry, e) => ({ e }));
     let pos = 0;
@@ -19,6 +58,7 @@ const Browse = (() => {
       return {
         mode: "book",
         entry,
+        uses: usesOf(entry),
         index: pos,
         count: sequence.length,
         atStart: pos === 0,
@@ -80,5 +120,5 @@ const Browse = (() => {
     return { where, step, follow, goto, back, selectFigure, around };
   }
 
-  return { createBrowser };
+  return { createBrowser, checkUses };
 })();
