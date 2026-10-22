@@ -1,7 +1,9 @@
 // 第 125 種:第 122 種的變形,結構更複雜。三個依序咬合的齒輪(齒數各不相同)各裝一個曲柄銷,
 // 各以一根直立的連桿往上接到兩層槓桿:右邊兩根接在下層槓桿的兩端,下層槓桿的中點與左邊那根連桿
 // 再接在上層槓桿的兩端,上層槓桿的中點帶動頂端只能上下移動的桿。三個曲柄銷的相位不斷錯開,頂桿做變化的上下運動。
-// 槓桿以「端點高度取平均」計算(連桿近乎直立、槓桿擺角小時的近似;為推斷的簡化),連桿長度不變。主動件是左邊的小齒輪。
+// 槓桿與連桿都是定長的桿,位置照連桿閉合解出(做法同第 198 種的承載板):上層槓桿的中點樞接在只能上下移動的頂桿上,
+// 由左邊連桿與短桿的長度定住;下層槓桿只靠右邊兩根連桿吊著還會左右晃(多一個自由度),推斷它的中點也像頂桿一樣
+// 有一根銷穿在後面立柱的直立導槽裡(原圖沒畫,和第 122 種立桿中點接在導桿上同理),再由兩根連桿的長度定住。主動件是左邊的小齒輪。
 // 三個齒輪的軸裝在後面一根橫樑的軸承上,橫樑兩端有腳;頂桿穿在橫樑上立起的柱子伸出的導套裡(都是推斷)。
 import { polar, add } from "./kit.js";
 import { meshAngle } from "./gears.js";
@@ -18,24 +20,64 @@ const LOWER_Y = 2.6; // 下層槓桿的高度(靜止時)
 const UPPER_Y = 4.0;
 const LOWER_X = [PINS[1], PINS[2]].map((p) => p.gear.center[0] + p.r * Math.cos(p.at));
 const UPPER_X = [PINS[0].gear.center[0] + PINS[0].r * Math.cos(PINS[0].at), (LOWER_X[0] + LOWER_X[1]) / 2];
+// 兩層槓桿的長度與中點的水平位置(下層中點的導槽、頂桿的導套):靜止時槓桿水平、連桿直立
+const LOWER_LEN = LOWER_X[1] - LOWER_X[0];
+const UPPER_LEN = UPPER_X[1] - UPPER_X[0];
+export const SLOT_X = (LOWER_X[0] + LOWER_X[1]) / 2;
+const HEAD_X = (UPPER_X[0] + UPPER_X[1]) / 2;
 
-// 連桿長(靜止時直立)
+// 連桿長(靜止時直立):左、中、右三根與下層中點到上層右端的短桿
 const ROD = [UPPER_Y - 0, LOWER_Y - 0, LOWER_Y - 0];
+const SHORT = UPPER_Y - LOWER_Y;
 
-/** 小齒輪轉 theta:三個齒輪的轉角、三個曲柄銷、兩層槓桿的端點與頂桿的高度 */
+/** 中點在 [x, y]、轉角 a、長 len 的槓桿兩端 */
+const ends = ([x, y], a, len) => {
+  const [c, s] = [(Math.cos(a) * len) / 2, (Math.sin(a) * len) / 2];
+  return [[x - c, y - s, 0], [x + c, y + s, 0]];
+};
+const dist2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+
+/** 兩個未知數的牛頓法(數值偏微分):f([u, v]) = [0, 0] */
+function newton2(f, x) {
+  for (let k = 0; k < 40; k++) {
+    const r = f(x);
+    if (Math.max(Math.abs(r[0]), Math.abs(r[1])) < 1e-14) break;
+    const h = 1e-7;
+    const du = f([x[0] + h, x[1]]);
+    const dv = f([x[0], x[1] + h]);
+    const [a, b, c, d] = [(du[0] - r[0]) / h, (dv[0] - r[0]) / h, (du[1] - r[1]) / h, (dv[1] - r[1]) / h];
+    const det = a * d - b * c;
+    x = [x[0] - (d * r[0] - b * r[1]) / det, x[1] - (a * r[1] - c * r[0]) / det];
+  }
+  return x;
+}
+
+/**
+ * 中點只能沿 x = midX 上下、長 len 的槓桿,兩端各以長 la、lb 的連桿接到 pa、pb:
+ * 解出中點高度與轉角(從連桿直立、槓桿水平的姿勢起算,取連桿在下方的那一組解)
+ */
+function lever(midX, len, pa, la, pb, lb) {
+  const [y, a] = newton2(([y, a]) => {
+    const [ea, eb] = ends([midX, y], a, len);
+    return [dist2(ea, pa) - la * la, dist2(eb, pb) - lb * lb];
+  }, [(pa[1] + la + pb[1] + lb) / 2, Math.asin(Math.max(-0.9, Math.min(0.9, (pb[1] + lb - pa[1] - la) / len)))]);
+  return { mid: [midX, y, 0], ends: ends([midX, y], a, len) };
+}
+
+/** 小齒輪轉 theta:三個齒輪的轉角、三個曲柄銷、兩層槓桿的端點與中點(頂桿的樞軸 top) */
 export function compound(theta) {
   const a2 = meshAngle(G1, G2, theta);
   const a3 = meshAngle(G2, G3, a2);
   const angles = [theta, a2, a3];
   const pins = PINS.map((p, i) => add(p.gear.center, polar(p.r, p.at + angles[i])));
-  // 連桿上端的 x 固定在槓桿的端點位置,y 由連桿長度決定
-  const up = (pin, x, l) => [x, pin[1] + Math.sqrt(Math.max(0, l * l - (x - pin[0]) ** 2)), 0];
-  const l1 = up(pins[1], LOWER_X[0], ROD[1]);
-  const l2 = up(pins[2], LOWER_X[1], ROD[2]);
-  const lowerMid = [(l1[0] + l2[0]) / 2, (l1[1] + l2[1]) / 2, 0];
-  const u1 = up(pins[0], UPPER_X[0], ROD[0]);
-  const u2 = [lowerMid[0], lowerMid[1] + (UPPER_Y - LOWER_Y), 0]; // 下層中點經一根短桿接到上層
-  const top = [(u1[0] + u2[0]) / 2, (u1[1] + u2[1]) / 2, 0];
+  // 下層:中點在導槽裡,兩端由右邊兩根連桿定住
+  const low = lever(SLOT_X, LOWER_LEN, pins[1], ROD[1], pins[2], ROD[2]);
+  const [l1, l2] = low.ends;
+  const lowerMid = low.mid;
+  // 上層:中點在頂桿上,左端由左邊連桿、右端由接到下層中點的短桿定住
+  const up = lever(HEAD_X, UPPER_LEN, pins[0], ROD[0], lowerMid, SHORT);
+  const [u1, u2] = up.ends;
+  const top = up.mid;
   return { angles, pins, l1, l2, lowerMid, u1, u2, top };
 }
 
@@ -55,8 +97,10 @@ const gear = (id, g, pin) => ({
 });
 const FLOOR = -2.0;
 const GUIDE_Y = 5.3; // 頂桿導套的高度:頂桿在整個行程裡都穿過它
-const HEAD_X = compound(0).top[0]; // 頂桿的水平位置(上層槓桿中點,固定不動)
 const z = (p, d = 0.3) => [p[0], p[1], d];
+// 下層中點的導槽:兩根直條夾出比銷略寬的槽,下端以立柱接到橫樑、上端封口;中點全程在 y 1.81–3.17 之間
+const SLOT = { pin: 0.05, clear: 0.005, bar: 0.12, bottom: 1.5, top: 3.5 };
+const SLOT_BAR_X = SLOT.pin + SLOT.clear + SLOT.bar / 2;
 
 export default {
   figure: 125,
@@ -68,9 +112,10 @@ export default {
     { id: "rod2", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "rod3", kind: "link", width: 0.12, thickness: 0.06 },
     { id: "rodMid", kind: "link", width: 0.12, thickness: 0.06 },
-    // 槓桿兩端的水平位置固定、只取端點高度(近似,見檔頭),所以長度隨擺角略變
-    { id: "lower", kind: "link", width: 0.3, thickness: 0.1, stretch: true },
-    { id: "upper", kind: "link", width: 0.3, thickness: 0.1, stretch: true },
+    { id: "lower", kind: "link", width: 0.3, thickness: 0.1 },
+    { id: "upper", kind: "link", width: 0.3, thickness: 0.1 },
+    // 下層槓桿中點的銷:穿過槓桿與短桿的下端,往後伸進立柱的直立導槽
+    { id: "slidePin", kind: "group", pieces: [{ kind: "cylinder", radius: SLOT.pin, length: 1.14, at: [0, 0, -0.05] }] },
     { id: "head", kind: "group", pieces: [{ kind: "box", size: [0.12, 0.5, 0.2], at: [0, 0.42, 0] }, { kind: "cylinder", axis: [0, 1, 0], radius: 0.1, length: 1.8, at: [0, 1.35, 0] }] }, // 頂桿的座坐在上層槓桿的上緣
     {
       id: "frame",
@@ -82,6 +127,10 @@ export default {
           { kind: "box", size: [0.25, -FLOOR - 0.2, 0.1], at: [x, (FLOOR - 0.2) / 2, -0.55] },
           { kind: "box", size: [0.8, 0.18, 0.6], at: [x, FLOOR - 0.09, -0.45] },
         ]),
+        // 下層槓桿中點的導槽(在槓桿後面)
+        { kind: "box", size: [2 * SLOT_BAR_X + SLOT.bar, SLOT.bottom - 0.1, 0.1], at: [SLOT_X, (SLOT.bottom + 0.1) / 2, -0.55] },
+        ...[-1, 1].map((k) => ({ kind: "box", size: [SLOT.bar, SLOT.top - SLOT.bottom, 0.1], at: [SLOT_X + k * SLOT_BAR_X, (SLOT.top + SLOT.bottom) / 2, -0.55] })),
+        { kind: "box", size: [2 * SLOT_BAR_X + SLOT.bar, 0.12, 0.1], at: [SLOT_X, SLOT.top + 0.06, -0.55] },
         // 頂桿的立柱(在槓桿後面)與導套
         { kind: "box", size: [0.25, GUIDE_Y - 0.2, 0.1], at: [HEAD_X, GUIDE_Y / 2 + 0.1, -0.55] },
         { kind: "box", size: [0.25, 0.2, 0.82], at: [HEAD_X, GUIDE_Y, -0.14] },
@@ -105,6 +154,7 @@ export default {
         rodMid: { from: z(lowerMid), to: z(u2) },
         lower: { from: z(l1, 0.46), to: z(l2, 0.46) },
         upper: { from: z(u1, 0.46), to: z(u2, 0.46) },
+        slidePin: { position: z(lowerMid, 0) },
         head: { position: z(top, 0.46) },
       },
       readouts: [],

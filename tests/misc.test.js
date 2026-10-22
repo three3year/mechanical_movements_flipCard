@@ -1714,7 +1714,7 @@ test("第 369 種:兩片擺線頰板裝在支架上,支架(橫樑、立柱、斜
   assertOnePiece(part(m369.default, "frame"), "支架與頰板各塊相連");
 });
 
-test("第 369 種:擺線靠著擺向那一側的頰板捲上去:捲著的那段貼著頰板(間隙接近 0),直線段全程不穿進頰板", () => {
+test("第 369 種:擺線靠著擺向那一側的頰板捲上去:上端夾在夾口裡,捲著的那段貼著頰板(間隙接近 0),離開頰板後是一條和頰板相切的直線垂到擺錘", () => {
   const def = m369.default;
   const r = part(def, "thread").radius;
   const cheeks = part(def, "frame").pieces.filter((q) => q.role === "cheek");
@@ -1723,15 +1723,45 @@ test("第 369 種:擺線靠著擺向那一側的頰板捲上去:捲著的那段�
   // 線心到頰板的距離減掉線的半徑:負的是穿入
   const gap = (q) => Math.min(...solids.map((s) => (pointInPolygon(q, s) ? -edgeDistance(q, s) : edgeDistance(q, s)))) - r;
   for (const p of sweep(1, 48)) {
-    const pts = def.pose(p).paths.thread.points;
-    const { phi } = m369.pendulum(p);
-    const wrapped = pts.slice(0, -1);
-    if (phi > 0.05) for (const q of wrapped.slice(1)) assert.ok(Math.abs(gap(q)) < 0.01, `進程 ${p.toFixed(3)}:捲著的線貼著頰板(間隙 ${gap(q).toFixed(4)})`);
+    const pose = def.pose(p);
+    const pts = pose.paths.thread.points;
+    // 垂下的直線:最後一段所在的直線;下端繫在擺錘頂上(擺錘表面),擺錘中心在直線的延長上
     const [a, b] = [pts.at(-2), pts.at(-1)];
+    const u = norm(sub(b, a));
+    const off = (q) => (q[0] - a[0]) * -u[1] + (q[1] - a[1]) * u[0]; // 到直線的有號距離
+    const bob = pose.parts.bob.position;
+    close(dist(b, bob), part(def, "bob").radius, `進程 ${p.toFixed(3)}:擺線的下端在擺錘表面`, 1e-9);
+    close(off(bob), 0, `進程 ${p.toFixed(3)}:擺錘掛在垂下的線的延長上`, 1e-9);
+    assert.ok(dot(sub(bob, b), u) > 0, "擺錘在線的下方");
+    // 每個點不是貼著頰板(或夾在夾口裡),就是在垂下的直線上;先貼著、後垂下,不來回
+    const onLine = pts.map((q) => Math.abs(off(q)) < 1e-9);
+    const first = onLine.indexOf(true);
+    assert.ok(onLine.slice(first).every(Boolean), `進程 ${p.toFixed(3)}:離開頰板之後一路是直線`);
+    for (const q of pts.slice(0, first)) assert.ok(Math.abs(gap(q)) < 0.005, `進程 ${p.toFixed(3)}:捲著的線貼著頰板(間隙 ${gap(q).toFixed(4)})`);
     for (let i = 0; i <= 40; i++) {
       const q = [a[0] + ((b[0] - a[0]) * i) / 40, a[1] + ((b[1] - a[1]) * i) / 40];
       assert.ok(gap(q) > -0.005, `進程 ${p.toFixed(3)}:垂下的線不穿進頰板(${gap(q).toFixed(4)})`);
     }
+    // 相切:垂下的直線延長出去剛好碰到擺向那一側的頰板(距離等於線的半徑),頰板整片在直線的同一側
+    const side = solids.find((s) => Math.sign(s.reduce((t, q) => t + q[0], 0)) === Math.sign(b[0] - m369.top[0] || 1));
+    const ds = side.map(off);
+    const sign = Math.sign(ds.reduce((t, d) => t + d, 0));
+    assert.ok(ds.every((d) => d * sign > 0), `進程 ${p.toFixed(3)}:頰板在垂下的直線的同一側`);
+    const touch = Math.min(...ds.map((d) => d * sign)) - r;
+    assert.ok(Math.abs(touch) < 0.003, `進程 ${p.toFixed(3)}:垂下的直線和頰板相切(間隙 ${touch.toFixed(4)})`);
+  }
+});
+
+test("第 369 種:擺線不伸縮:夾口那段加捲在頰板上的弧長加垂下的直段全程等長,折線的每一段也不伸縮", () => {
+  const def = m369.default;
+  const all = sweep(1, 600).map((p) => def.pose(p).paths.thread.points);
+  const lengths = all.map((pts) => pathLength(pts));
+  const spread = Math.max(...lengths) - Math.min(...lengths);
+  assert.ok(spread < 1e-3, `擺線總長全程不變(${Math.min(...lengths).toFixed(4)}–${Math.max(...lengths).toFixed(4)})`);
+  assert.ok(all.every((pts) => pts.length === all[0].length), "折線的點數不變");
+  for (let i = 1; i < all[0].length; i++) {
+    const seg = all.map((pts) => dist(pts[i - 1], pts[i]));
+    assert.ok(Math.max(...seg) - Math.min(...seg) < 1e-3, `第 ${i} 段不伸縮(${Math.min(...seg).toFixed(4)}–${Math.max(...seg).toFixed(4)})`);
   }
 });
 

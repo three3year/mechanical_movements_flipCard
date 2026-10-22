@@ -121,7 +121,7 @@ import { feed, swingAngle, stroke as stroke121, toothPitch as tooth121, contactS
 import { penetrationDepth } from "../models/contact.js";
 import { linkage, rods as rods122 } from "../models/fig122.js";
 import { substitute, stroke as stroke123 } from "../models/fig123.js";
-import { compound } from "../models/fig125.js";
+import fig125, { compound } from "../models/fig125.js";
 
 test("第 117 種:凸輪在軛內兩個滾子之間轉動,軛做往復運動;兩個滾子始終同時貼著凸輪", () => {
   const ys = sweep(TAU, 360).map(yokeY);
@@ -193,6 +193,37 @@ test("第 125 種:三個齒輪的曲柄銷經兩層槓桿合成,頂桿做變化�
   assert.ok(Math.max(...tops) - Math.min(...tops) > 0.2, "頂桿上下運動");
   const { pins, u1 } = compound(1.3);
   close(Math.hypot(u1[0] - pins[0][0], u1[1] - pins[0][1]), 4.0, "連桿長度不變", 1e-9);
+});
+
+test("第 125 種:兩層槓桿全程定長,兩端都在各自的樞軸上(不以「端點高度取平均」近似)", () => {
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  // 曲柄銷在齒輪上:齒輪的中心 + 銷在齒輪上的位置轉過齒輪的轉角
+  const crankPin = (q, id) => {
+    const g = fig125.parts.find((p) => p.id === id);
+    const [x, y] = g.pieces[0].at;
+    const a = q[id].angle;
+    return [g.center[0] + x * Math.cos(a) - y * Math.sin(a), g.center[1] + x * Math.sin(a) + y * Math.cos(a)];
+  };
+  const rest = fig125.pose(0).parts;
+  const len = (q, id) => dist(q[id].from, q[id].to);
+  for (const t of sweep(TAU * 4, 240)) {
+    const q = fig125.pose(t).parts;
+    for (const id of ["lower", "upper", "rod1", "rod2", "rod3", "rodMid"]) close(len(q, id), len(rest, id), `${id} 全程定長(主動量 ${t.toFixed(2)})`, 1e-6);
+    // 三根長連桿的下端在三個齒輪的曲柄銷上
+    close(dist(q.rod1.from, crankPin(q, "g1")), 0, "rod1 下端在小齒輪的曲柄銷上", 1e-9);
+    close(dist(q.rod2.from, crankPin(q, "g2")), 0, "rod2 下端在中齒輪的曲柄銷上", 1e-9);
+    close(dist(q.rod3.from, crankPin(q, "g3")), 0, "rod3 下端在大齒輪的曲柄銷上", 1e-9);
+    // 下層槓桿兩端接右邊兩根連桿的上端,中點接短桿的下端
+    close(dist(q.lower.from, q.rod2.to), 0, "下層槓桿左端在 rod2 的上端", 1e-6);
+    close(dist(q.lower.to, q.rod3.to), 0, "下層槓桿右端在 rod3 的上端", 1e-6);
+    close(dist(mid(q.lower.from, q.lower.to), q.rodMid.from), 0, "下層槓桿中點在短桿下端", 1e-6);
+    // 上層槓桿兩端接左邊連桿與短桿的上端,中點是頂桿的樞軸
+    close(dist(q.upper.from, q.rod1.to), 0, "上層槓桿左端在 rod1 的上端", 1e-6);
+    close(dist(q.upper.to, q.rodMid.to), 0, "上層槓桿右端在短桿的上端", 1e-6);
+    close(dist(mid(q.upper.from, q.upper.to), q.head.position), 0, "上層槓桿中點在頂桿的樞軸", 1e-6);
+    close(q.head.position[0], rest.head.position[0], "頂桿只能上下移動", 1e-9);
+  }
 });
 
 import { spindleAngle, pulleyRadius } from "../models/fig124.js";

@@ -23,13 +23,32 @@ const POST_X = 1.0; // 立柱的中心(離懸掛點)
 /** 頰板上(右側)參數 φ 的點:擺線從懸掛點往右下 */
 const cheek = (phi, s) => [TOP[0] + s * A * (phi - Math.sin(phi)), TOP[1] - A * (1 - Math.cos(phi)), 0];
 
+// 擺線從尖點到擺錘中心的長度是 4A(擺線的漸屈線還是擺線:捲在頰板上的弧長加垂下的直段恆為 4A,擺錘才走在擺線上)。
+// 畫出的線是夾口那段(橫樑底面下一個線的半徑到尖點)加上尖點到擺錘表面(繫在擺錘頂上)
+const CLIP = JAW - THREAD;
+const BOB_R = 0.16;
+export const LENGTH = CLIP + 4 * A - BOB_R;
+const SEGMENTS = 64; // 擺線畫成等長的折線:每一段沿線的長度固定,線不伸縮
+
+/** 頰板(擺線)上從尖點量起弧長 u 的點:弧長 4A(1 − cos(φ/2)) */
+const wrapPhi = (u) => 2 * Math.acos(clamp(1 - u / (4 * A), -1, 1));
+
 /** 進程 p → 擺錘位置、擺線捲在頰板上的參數、擺到哪一側 */
 export function pendulum(p) {
-  const arc = AMP * Math.sin(TAU * p); // 沿擺線的弧長(從最低點量起)
+  const arc = AMP * Math.sin(TAU * p); // 擺錘沿擺線走的弧長(從最低點量起)
   const s = arc >= 0 ? 1 : -1;
-  const phi = 2 * Math.asin(clamp(Math.abs(arc) / (4 * A), 0, 1));
-  const bob = [TOP[0] + s * A * (phi + Math.sin(phi)), TOP[1] - 3 * A - A * Math.cos(phi), 0];
-  return { arc, phi, side: s, bob };
+  const phi = 2 * Math.asin(clamp(Math.abs(arc) / (4 * A), 0, 1)); // 擺線離開頰板的切點
+  const wrap = 4 * A * (1 - Math.cos(phi / 2)); // 捲在頰板上的弧長
+  const tangent = [s * Math.sin(phi / 2), -Math.cos(phi / 2), 0]; // 頰板在切點的切線(往下)
+  const leave = cheek(phi, s);
+  /** 沿擺線從上端量起 d 處的點:夾口裡的直段 → 捲在頰板上 → 沿切線垂下 */
+  const at = (d) => {
+    if (d <= CLIP) return [TOP[0], BEAM_Y - THREAD - d, 0];
+    if (d <= CLIP + wrap) return cheek(wrapPhi(d - CLIP), s);
+    const free = d - CLIP - wrap;
+    return [leave[0] + free * tangent[0], leave[1] + free * tangent[1], 0];
+  };
+  return { arc, phi, side: s, wrap, at, bob: at(CLIP + 4 * A) }; // 擺錘中心在線延長到 4A 處
 }
 export const top = TOP;
 
@@ -84,7 +103,7 @@ export default {
       ],
     },
     { id: "thread", kind: "rod", radius: THREAD },
-    { id: "bob", kind: "sphere", radius: 0.16 },
+    { id: "bob", kind: "sphere", radius: BOB_R },
   ],
   powered: ["bob"], // 外力來源:直接受力(流體、重力、離心力、熱脹或拉力)推動的零件
   driver: { type: "virtual", label: "進程", mode: "progress", range: [0, 1], unit: "次", speed: 0.25 },
@@ -92,12 +111,11 @@ export default {
   view: { direction: [0.03, 0.05, 1] },
   pose(p) {
     const m = pendulum(p);
-    // 擺線:上端夾在夾口裡(頂到橫樑底面),沿頰板捲到切點,再直線垂到擺錘
-    const n = 16;
-    const wrapped = Array.from({ length: n + 1 }, (_, i) => cheek((m.phi * i) / n, m.side));
+    // 擺線:上端夾在夾口裡(頂到橫樑底面),沿頰板捲到切點,再沿切線垂到擺錘的表面;折線的點沿線等距
+    const points = Array.from({ length: SEGMENTS + 1 }, (_, i) => m.at((LENGTH * i) / SEGMENTS));
     return {
       parts: { bob: { position: m.bob } },
-      paths: { thread: { points: [[TOP[0], BEAM_Y - THREAD, 0], ...wrapped, m.bob], closed: false } },
+      paths: { thread: { points, closed: false } },
       readouts: [],
     };
   },
