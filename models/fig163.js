@@ -35,7 +35,9 @@ const GATE_X = FAR.x + 0.6;
 const PLANE = 0.45; // 曲柄槓桿、短連桿所在的那一層
 const COLLAR = { x: 0.38, drop: 0.2 }; // 套筒下方的環上接短連桿的耳(在套筒下 0.2)
 const CRANK = { pivot: [1.13, -0.45, PLANE], left: 0.75, right: 1.5 };
-const SHIFTER = { x: CRANK.pivot[0] + CRANK.right, z: 0.8, guides: [-0.95, -1.35] };
+// 撥叉桿的兩個導套:上導套放在撥叉降到最低時頂端橫槽板的下緣(−0.95)之下、留 0.03,下導套在撥叉升到最高時叉口的上緣
+// (−1.495)之上,兩者都讓撥叉的板與叉口全程碰不到導套與托臂(原來上導套在 −0.95,撥叉降低時橫槽板壓進導套 0.05)
+const SHIFTER = { x: CRANK.pivot[0] + CRANK.right, z: 0.8, guides: [-1.03, -1.35] };
 const FORK_Z = 0.48; // 皮帶前段在撥叉處的深度
 const ON = 0.04; // 皮帶中心離輪中心這麼近才算整個在輪上
 const SAMPLES = 2400;
@@ -365,7 +367,4 @@ export default {
       readouts: [{ label: "速度", value: r.on === "lower" ? "過快:皮帶在下輪,抬起閘門" : r.on === "upper" ? "過慢:皮帶在上輪,放下閘門" : r.on === "middle" ? "正常:皮帶在鬆動輪" : "撥動皮帶中" }],
     };
   },
-  waivers: [
-    { check: "interference", parts: ["shifter", "frame"], reason: "未修:撥叉的板升到高處的那一段(30/96 個取樣)和機架的板互相穿入 0.05(model-audit-fixes-3 票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
-  ],
 };

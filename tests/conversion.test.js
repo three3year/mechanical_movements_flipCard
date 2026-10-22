@@ -30,12 +30,12 @@ test("第 152 種:往回轉時軌跡跟著縮回(軌跡是主動量的函式)", 
 import { frameX as frame128, bounds as bounds128 } from "../models/fig128.js";
 import { pulleyY, radii as radii129 } from "../models/fig129.js";
 import fig130, { shears, jawGap, camCenter as camCenter130, camRadius as camRadius130 } from "../models/fig130.js";
-import { placeOutline, circlePolygon, penetrationDepth, polygonsOverlap } from "../models/contact.js";
+import { placeOutline, circlePolygon, penetrationDepth, polygonsOverlap, pointInPolygon } from "../models/contact.js";
 import { perimeter } from "./helpers.js";
 import { swingRack } from "../models/fig131.js";
-import { press as press132 } from "../models/fig132.js";
+import fig132, { press as press132 } from "../models/fig132.js";
 import { press as press133 } from "../models/fig133.js";
-import { sweep, close as near } from "./helpers.js";
+import { sweep, close as near, part as partOf } from "./helpers.js";
 
 const TAU = 2 * Math.PI;
 
@@ -87,6 +87,37 @@ test("第 131 種:圓盤上的曲柄銷使開槽臂與齒扇形段擺動,底部�
 test("第 132 種:轉動上圓盤,兩根斜桿轉向直立,把下圓盤往下推", () => {
   const ys = sweep(1.9, 20).map((p) => press132(p).y);
   for (let i = 1; i < ys.length; i++) assert.ok(ys[i] < ys[i - 1], "越轉越往下");
+});
+
+// 第 132 種:群組零件裡沿 y 的塊(方塊、沿 y 的圓柱、沿 y 擠出的板件)在世界座標的高度範圍與 xz 截面({ outline, holes })
+function ySlabs132(p, origin) {
+  return p.pieces.map((q) => {
+    const at = (q.at ?? [0, 0, 0]).map((v, k) => v + origin[k]);
+    const xz = (loop) => loop.map(([u, v]) => quatRotate(quatFromZ(q.axis), [u, v, 0])).map(([x, , z]) => [at[0] + x, at[2] + z]);
+    if (q.kind === "box") {
+      const [w, h, d] = q.size;
+      const outline = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([x, z]) => [at[0] + x, at[2] + z]);
+      return { y: [at[1] - h / 2, at[1] + h / 2], solid: { outline, holes: [] } };
+    }
+    assert.ok(q.axis?.[1] === 1 && ["cylinder", "plate"].includes(q.kind), "方塊、沿 y 的圓柱或板件");
+    const half = (q.kind === "plate" ? q.thickness : q.length) / 2;
+    const solid = q.kind === "plate" ? { outline: xz(q.shape.outline), holes: (q.shape.holes ?? []).map(xz) } : { outline: circlePolygon([at[0], at[2]], q.radius, 96), holes: [] };
+    return { y: [at[1] - half, at[1] + half], solid, rod: q.kind === "cylinder" ? { c: [at[0], at[2]], r: q.radius } : null };
+  });
+}
+
+test("第 132 種:下壓板只能上下移動,兩根導桿穿在它的導孔裡,全程不穿入(量定義裡的實際外形)", () => {
+  const rods = ySlabs132(partOf(fig132, "frame"), [0, 0, 0]).filter((s) => s.rod && s.y[1] - s.y[0] > 4);
+  assert.equal(rods.length, 2, "左右兩根導桿");
+  for (const phi of sweep(fig132.driver.range[1], 400, fig132.driver.range[0])) {
+    const lower = ySlabs132(partOf(fig132, "lower"), fig132.pose(phi).parts.lower.position);
+    for (const { y, rod } of rods) {
+      const level = lower.filter((s) => s.y[0] < y[1] - 1e-9 && y[0] < s.y[1] - 1e-9);
+      const depth = Math.max(0, ...level.map((s) => penetrationDepth(circlePolygon(rod.c, rod.r, 96), s.solid)));
+      assert.ok(depth < 1e-6, `轉角 ${phi.toFixed(3)}:導桿(x ${rod.c[0]})穿入下壓板 ${depth.toFixed(3)}`);
+      assert.ok(level.some((s) => pointInPolygon(rod.c, s.solid.outline) && s.solid.holes.some((h) => pointInPolygon(rod.c, h))), `轉角 ${phi.toFixed(3)}:導桿(x ${rod.c[0]})被下壓板的導孔圍住`);
+    }
+  }
 });
 
 test("第 133 種:手搖曲柄經小齒輪帶動齒扇形段,扇形段經連桿把壓板頂起", () => {
@@ -148,10 +179,10 @@ import { toggle, links as links140 } from "../models/fig140.js";
 import fig140 from "../models/fig140.js";
 import { bandTravel } from "../models/fig141.js";
 import { traverse as traverse142, relativeTurns } from "../models/fig142.js";
-import { traverse as traverse143 } from "../models/fig143.js";
+import fig143, { traverse as traverse143 } from "../models/fig143.js";
 import { tongs } from "../models/fig144.js";
 import fig145, { beamEngine, beamDrive, beamSwing } from "../models/fig145.js";
-import { dist } from "../models/kit.js";
+import { dist, quatRotate, quatFromZ } from "../models/kit.js";
 
 test("第 140 種:扳下槓桿,水平連桿把肘節拉向伸直,衝頭往下;越接近伸直下移越慢(力越大)", () => {
   const [lo, hi] = fig140.driver.range;
@@ -187,6 +218,44 @@ test("第 143 種:蝸桿使齒輪轉動,連桿強迫橫移框架來回移動", (
   const xs = sweep(24 * TAU, 600).map((t) => traverse143(t).x);
   assert.ok(Math.max(...xs) - Math.min(...xs) > 0.8, "框架來回移動");
   near(traverse143(24 * TAU).x, traverse143(0).x, "齒輪轉一圈(蝸桿轉 24 圈)回到原處", 1e-9);
+});
+
+test("第 143 種:橫移框架在固定框架的水平桿上滑動——桿穿在框架套筒的孔裡(同軸、孔不小於桿),框架其餘部分全程不碰桿", () => {
+  const pieces = (id) => fig143.parts.find((p) => p.id === id).pieces;
+  const rods = pieces("frame").filter((q) => q.kind === "cylinder" && q.axis?.[0] === 1);
+  assert.equal(rods.length, 2, "兩根水平桿");
+  // 一塊在 yz 截面上的外形(沿 x 的圓柱是圓,其餘是矩形)與沿 x 的範圍;框架只沿 x 平移
+  const shape = (q, dx = 0) => {
+    const [x, y, z] = q.at;
+    if (q.kind === "cylinder" && q.axis?.[0] === 1) return { x: [x + dx - q.length / 2, x + dx + q.length / 2], circle: { y, z, r: q.radius, inner: q.inner } };
+    assert.ok(q.kind === "box" || (q.kind === "cylinder" && !q.axis), `只認方塊與沿 x、z 的圓柱(${q.kind})`);
+    const h = q.kind === "box" ? q.size.map((v) => v / 2) : [q.radius, q.radius, q.length / 2];
+    return { x: [x + dx - h[0], x + dx + h[0]], rect: { y: [y - h[1], y + h[1]], z: [z - h[2], z + h[2]] } };
+  };
+  for (const t of sweep(24 * TAU, 600)) {
+    const dx = fig143.pose(t).parts.carriage.position[0];
+    for (const rod of rods) {
+      const r = shape(rod);
+      const { y, z } = r.circle;
+      let guides = 0;
+      for (const q of pieces("carriage")) {
+        const s = shape(q, dx);
+        if (s.x[1] <= r.x[0] || s.x[0] >= r.x[1]) continue;
+        if (s.circle && Math.hypot(s.circle.y - y, s.circle.z - z) < 1e-9 && s.circle.inner) {
+          // 套筒:同軸、孔不小於桿也不鬆過 0.01,整個套筒都在桿上
+          assert.ok(s.circle.inner >= rod.radius - 1e-9 && s.circle.inner <= rod.radius + 0.01 + 1e-9, `套筒的孔 ${s.circle.inner} 套著桿 r${rod.radius}`);
+          assert.ok(s.x[0] >= r.x[0] && s.x[1] <= r.x[1], "套筒全程在桿上");
+          guides++;
+          continue;
+        }
+        const gap = s.circle
+          ? Math.hypot(s.circle.y - y, s.circle.z - z) - s.circle.r - rod.radius
+          : Math.hypot(Math.max(s.rect.y[0] - y, 0, y - s.rect.y[1]), Math.max(s.rect.z[0] - z, 0, z - s.rect.z[1])) - rod.radius;
+        assert.ok(gap >= -1e-9, `主動量 ${t.toFixed(2)}:框架的一塊(${q.kind} 在 ${q.at})沒有穿入 y=${y.toFixed(3)} 的桿(間隙 ${gap.toFixed(3)})`);
+      }
+      assert.ok(guides >= 1, `主動量 ${t.toFixed(2)}:y=${y.toFixed(3)} 的桿穿在框架的套筒裡`);
+    }
+  }
 });
 
 test("第 144 種:懶剪——右側的桿移動一小段,左側的桿移動三倍的距離", () => {

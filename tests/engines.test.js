@@ -1,7 +1,7 @@
 // 第八章「引擎與調速機構」:斷言對應原文
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { close, sweep, part } from "./helpers.js";
+import { close, sweep, part, pieceBox } from "./helpers.js";
 import { dist } from "../models/kit.js";
 import { feed as feed155, step as step155, stroke as stroke155, advance as advance155, contactAt as contact155 } from "../models/fig155.js";
 import { bellCrank as crank156, guides as guides156, slideLength as slide156 } from "../models/fig156.js";
@@ -264,6 +264,23 @@ test("第 163 種:皮帶在鬆動輪上時不傳動;過快時撥到下輪、過�
     const r = reg163(p);
     if (r.on === "lower") close(r.y, pulleys163.lower, "皮帶整個在下輪上", 0.05);
   }
+});
+
+test("第 163 種:撥叉頂端的橫槽板與叉口全程不穿入機架(導套與托臂)", () => {
+  // 量定義裡的外形:撥叉與機架的各塊都沿座標軸、不轉,外框就是實體(導套是環,撥叉桿在孔裡滑,不算)
+  const shifter = part(fig163, "shifter");
+  const plain = (q) => ["box", "cylinder", "plate"].includes(q.kind) && !q.angle && !q.rotation;
+  const frame = part(fig163, "frame").pieces.filter(plain).map((q) => pieceBox(q));
+  const moving = shifter.pieces.filter((q, i) => i !== 1); // 第 1 塊是穿過導套的桿
+  let worst = -Infinity;
+  for (const p of sweep(fig163.driver.range[1], 2400)) {
+    const at = fig163.pose(p).parts.shifter.position;
+    for (const q of moving) {
+      const a = pieceBox(q, at);
+      for (const b of frame) worst = Math.max(worst, Math.min(...[0, 1, 2].map((k) => Math.min(a.hi[k], b.hi[k]) - Math.max(a.lo[k], b.lo[k]))));
+    }
+  }
+  assert.ok(worst <= 1e-9, `撥叉的板穿入機架 ${worst.toFixed(3)}`);
 });
 
 test("第 170 種:交叉的兩臂隨轉速張開,上端外張下降,經短連桿把閥桿往下拉", () => {

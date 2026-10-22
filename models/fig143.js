@@ -11,6 +11,11 @@ const WHEEL_Y = SHAFT_Y - WORM.radius - WHEEL.radius + 0.04;
 const WRIST = 0.55; // 腕銷離齒輪中心的距離
 const FIX = [3.4, WHEEL_Y + 0.15, 0]; // 連桿在固定框架上的一端
 const ROD = 3.0;
+// 固定框架的兩根水平桿夾在齒輪軸上下,橫移框架用四個套筒套在桿上滑動。插圖看不出框架怎麼套在桿上;
+// 這裡把導法畫成同軸的套筒,框架的背板與立柱退到桿的後面、齒輪軸從背板前面伸出,都不碰桿
+// (偏離插圖:套筒是推斷畫出的;下面那根桿比插圖略低,讓開齒輪軸)
+const BAR = { r: 0.06, z: -0.3, y: [WHEEL_Y + 0.25, WHEEL_Y - 0.25] };
+const BACK_Z = -0.5;
 
 /** 蝸桿軸轉 theta:齒輪轉角(每轉一圈轉一齒)、橫移框架的位置 */
 export function traverse(theta) {
@@ -42,13 +47,15 @@ export default {
       id: "carriage",
       kind: "group",
       pieces: [
-        // 夾著蝸桿兩端的兩片耳板(軸穿過它們),下面的板上有蝸輪的軸
+        // 夾著蝸桿兩端的兩片耳板(軸穿過它們),立柱把耳板接到桿後面的背板,背板前面伸出蝸輪的軸
         { kind: "box", size: [0.2, 0.5, 0.6], at: [-0.55, SHAFT_Y + 0.06, -0.1] },
         { kind: "box", size: [0.2, 0.5, 0.6], at: [0.55, SHAFT_Y + 0.06, -0.1] },
-        { kind: "box", size: [1.6, 0.4, 0.2], at: [0, WHEEL_Y + 0.1, -0.3] },
-        { kind: "box", size: [0.2, 1.3, 0.2], at: [-0.55, WHEEL_Y + 0.75, -0.3] },
-        { kind: "box", size: [0.2, 1.3, 0.2], at: [0.55, WHEEL_Y + 0.75, -0.3] },
-        { kind: "cylinder", radius: 0.11, length: 0.5, at: [0, WHEEL_Y, -0.05] },
+        { kind: "box", size: [2, 0.72, 0.2], at: [0, WHEEL_Y, BACK_Z] },
+        { kind: "box", size: [0.2, 1.3, 0.2], at: [-0.55, WHEEL_Y + 0.75, BACK_Z] },
+        { kind: "box", size: [0.2, 1.3, 0.2], at: [0.55, WHEEL_Y + 0.75, BACK_Z] },
+        { kind: "cylinder", radius: 0.11, length: 0.6, at: [0, WHEEL_Y, BACK_Z + 0.4] },
+        // 套在水平桿上的套筒(孔等於桿徑),貼著背板的兩端,從齒輪兩旁露出來
+        ...[-0.85, 0.85].flatMap((x) => BAR.y.map((y) => ({ kind: "cylinder", axis: X, radius: 0.11, inner: BAR.r, length: 0.3, at: [x, y, BAR.z] }))),
       ],
     },
     { id: "rod", kind: "link", width: 0.1, thickness: 0.06 },
@@ -58,8 +65,7 @@ export default {
       pieces: [
         { kind: "box", size: [0.4, 2.6, 0.6], at: [-2.7, 0.55, 0] },
         { kind: "box", size: [0.4, 2.6, 0.6], at: [3.4, 0.55, 0] },
-        { kind: "cylinder", axis: X, radius: 0.06, length: 6.1, at: [0.35, WHEEL_Y + 0.25, -0.3] },
-        { kind: "cylinder", axis: X, radius: 0.06, length: 6.1, at: [0.35, WHEEL_Y - 0.1, -0.3] },
+        ...BAR.y.map((y) => ({ kind: "cylinder", axis: X, radius: BAR.r, length: 6.1, at: [0.35, y, BAR.z] })),
         { kind: "box", size: [7.6, 0.08, 1.2], at: [0.2, -0.75, 0] }, // 底板在蝸輪的下方
       ],
     },
@@ -82,6 +88,5 @@ export default {
   },
   waivers: [
     { check: "interference", parts: ["worm", "wheel"], reason: "簡化齒形:蝸桿螺紋是圓管、蝸輪是直齒,齒頂伸進螺紋 0.09;實物的蝸輪齒是凹弧形包著蝸桿" },
-    { check: "interference", parts: ["carriage", "frame"], reason: "未修:橫移框架的圓柱(r0.11)沿水平桿滑動時和桿互相穿入 0.06:兩者不同軸,桿從圓柱側面擦過,不是穿在孔裡(model-audit-fixes-3 票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
   ],
 };

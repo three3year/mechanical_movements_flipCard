@@ -3,13 +3,19 @@
 // 桿越接近直立,下推的力越大。主動件是槓桿(上圓盤)。
 // 兩盤的距離 = √(桿長² − 兩端水平距離²),兩端水平距離 = 2ρ·sin(兩孔方向的夾角 / 2)。
 // 上圓盤頂端的軸頸穿進上橫樑的孔(原圖橫樑上方露出的那一截),所以它被固定在原處、只能轉。
+// 下壓板只能上下移動:它的方塊兩端開導孔,套在機架的兩根立柱(導桿)上滑(推斷;偏離插圖:原圖方塊的兩端只畫到立柱,
+// 這裡伸過立柱一小段、把立柱圍在孔裡)。
 import { Y, deg } from "./kit.js";
+import { rect, circle, shape } from "./shapes.js";
 
 const RHO = 0.62; // 孔離軸心的距離
 const ROD = 1.55; // 斜桿長
 const SKEW0 = deg(120); // 原圖(未施壓)時上下兩孔方向的夾角
 const UPPER_Y = 1.15; // 上圓盤孔所在的高度
 const RANGE = [0, deg(110)];
+const POST_X = 1.95; // 立柱(導桿)的位置
+const POST_R = 0.18; // 立柱半徑
+const GUIDE_R = POST_R + 0.01; // 下壓板方塊上導孔的半徑(和立柱留 0.01 的間隙)
 
 /** 槓桿(上圓盤)轉 phi:上下兩孔的夾角與下圓盤孔所在的高度 */
 export function press(phi) {
@@ -40,7 +46,8 @@ export default {
       kind: "group",
       pieces: [
         { kind: "cylinder", axis: Y, radius: 0.95, length: 0.35, at: [0, -0.2, 0] },
-        { kind: "box", size: [3.6, 0.6, 1.3], at: [0, -0.7, 0] },
+        // 方塊兩端開導孔套在立柱上(沿 y 擠出的板件,局部 y 是世界的 -z)
+        { kind: "plate", axis: Y, shape: shape(rect(2 * (POST_X + 0.35), 1.3), [circle(GUIDE_R, -POST_X).reverse(), circle(GUIDE_R, POST_X).reverse()]), thickness: 0.6, at: [0, -0.7, 0] },
       ],
     },
     { id: "rodA", kind: "link", width: 0.16, thickness: 0.16 },
@@ -50,8 +57,8 @@ export default {
       kind: "group",
       pieces: [
         { kind: "box", size: [4.8, 0.4, 1.4], at: [0, UPPER_Y + 2.0, 0] },
-        { kind: "cylinder", axis: Y, radius: 0.18, length: 5.4, at: [-1.95, UPPER_Y - 0.7, 0] },
-        { kind: "cylinder", axis: Y, radius: 0.18, length: 5.4, at: [1.95, UPPER_Y - 0.7, 0] },
+        { kind: "cylinder", axis: Y, radius: POST_R, length: 5.4, at: [-POST_X, UPPER_Y - 0.7, 0] },
+        { kind: "cylinder", axis: Y, radius: POST_R, length: 5.4, at: [POST_X, UPPER_Y - 0.7, 0] },
         { kind: "box", size: [4.8, 0.15, 1.4], at: [0, UPPER_Y - 3.45, 0] },
         { kind: "box", size: [1.6, 0.35, 0.9], at: [0, UPPER_Y - 3.2, 0] },
       ],
@@ -62,7 +69,6 @@ export default {
   view: { direction: [0.06, 0.12, 1] },
   waivers: [
     { check: "interference", parts: ["upper", "frame"], reason: "上圓盤頂端的軸頸轉在上橫樑的軸承孔裡(原圖橫樑上方露出的那一截;孔沒有畫出來)" },
-    { check: "interference", parts: ["lower", "frame"], reason: "未修:下壓板的方塊壓到最低的那一段,左導桿(frame 的圓柱)從方塊左緣穿入約 0.03:導桿沿方塊的邊走,沒有被方塊圍住(model-audit-fixes-3 票 01 補了實體驗證的盲點後才報出:沿自己的軸滑的圓柱要被對方圍著才算裝在孔裡)" },
   ],
   pose(phi) {
     const { y } = press(phi);
