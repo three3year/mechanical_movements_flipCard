@@ -43,8 +43,8 @@ const Browse = (() => {
     // 卡片上列出的用途:依用途檔的順序,略過不存在的用途
     const usesOf = (entry) => (uses?.entryUses[keyOf(entry)] ?? []).filter((name) => names.has(name));
 
-    // 兩種瀏覽方式各一條序列,每一項是一張卡片:e 是條目索引;用途瀏覽另記大類 g 與用途 u。
-    // 原書順序是全部條目依編號排列;用途瀏覽是大類依序、大類內用途依序、用途內條目依編號,
+    // 兩種瀏覽方式各一條序列,每一項是一張卡片:e 是條目索引;用途瀏覽另記用途大類索引 g 與用途名稱 u。
+    // 原書順序是全部條目依編號排列;用途瀏覽是用途大類依序、用途大類內用途依序、用途內條目依編號,
     // 掛多個用途的條目在每個用途下各出現一次
     const sequences = {
       book: entries.map((entry, e) => ({ e })),
@@ -62,7 +62,7 @@ const Browse = (() => {
     const sequence = () => sequences[mode];
     const entryIndexOf = (no) => entries.findIndex((entry) => entry.images.some((src) => figureOf(src) === no));
 
-    // 條目在目前序列裡的落點。用途瀏覽:條目在大類 g 裡有用途時,落在其中排最前的那個;
+    // 條目在目前序列裡的落點。用途瀏覽:條目在用途大類 g 裡有用途時,落在其中排最前的那個;
     // 否則落在它的第一個用途(依卡片上的用途順序)。找不到(條目沒有用途)時回傳 -1
     function landing(e, g) {
       if (mode === "book") return e;
@@ -84,6 +84,7 @@ const Browse = (() => {
         mode,
         group: mode === "use" ? uses.groups[item.g].name : null,
         use: mode === "use" ? item.u : null,
+        groupUses: mode === "use" ? uses.groups[item.g].uses : [], // 目前用途大類的用途,供第二排頁籤
         entry,
         uses: usesOf(entry),
         index: span.indexOf(item),
@@ -111,21 +112,14 @@ const Browse = (() => {
     }
 
     // 選用途大類落在它第一個用途的首張;選用途落在它的首張
-    function selectGroup(name) {
-      if (mode !== "use") return false;
-      const next = sequences.use.findIndex((item) => uses.groups[item.g].name === name);
+    function selectFirst(matches) {
+      const next = mode === "use" ? sequences.use.findIndex(matches) : -1;
       if (next === -1) return false;
       moveTo(next);
       return true;
     }
-
-    function selectUse(name) {
-      if (mode !== "use") return false;
-      const next = sequences.use.findIndex((item) => item.u === name);
-      if (next === -1) return false;
-      moveTo(next);
-      return true;
-    }
+    const selectGroup = (name) => selectFirst((item) => uses.groups[item.g].name === name);
+    const selectUse = (name) => selectFirst((item) => item.u === name);
 
     // 「第 N 種」交互參照:跳到該圖所在條目並選中它,來源推入返回堆疊
     function follow(no) {

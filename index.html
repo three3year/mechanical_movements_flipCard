@@ -23,8 +23,8 @@
     </header>
 
     <div class="browse-mode" id="browse-mode" role="group" aria-label="瀏覽方式" hidden>
-      <button type="button" data-mode="use">依用途</button>
-      <button type="button" data-mode="book">原書順序</button>
+      <button type="button" data-value="use">依用途</button>
+      <button type="button" data-value="book">原書順序</button>
     </div>
     <nav class="tabs" id="group-tabs" aria-label="用途大類"></nav>
     <nav class="tabs use-tabs" id="use-tabs" aria-label="用途"></nav>
@@ -323,10 +323,10 @@
         body.appendChild(buildParagraph(paragraph));
       }
       if (at.uses.length) {
-        const uses = document.createElement("p");
-        uses.className = "uses";
-        uses.textContent = "用途：" + at.uses.join(" · ");
-        body.appendChild(uses);
+        const usesEl = document.createElement("p");
+        usesEl.className = "uses";
+        usesEl.textContent = "用途：" + at.uses.join(" · ");
+        body.appendChild(usesEl);
       }
       body.appendChild(buildSource(entry));
       fragment.appendChild(body);
@@ -421,13 +421,15 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = label;
+      btn.dataset.value = label;
       btn.addEventListener("click", onClick);
       return btn;
     }
 
-    function markActive(container, name) {
+    // 頁籤與切換鈕都以 data-value 標示代表的值
+    function markActive(container, value) {
       for (const btn of container.children) {
-        const on = btn.textContent === name;
+        const on = btn.dataset.value === value;
         btn.classList.toggle("active", on);
         btn.setAttribute("aria-pressed", String(on));
       }
@@ -435,16 +437,15 @@
 
     let tabsGroup = null; // 第二排目前列的是哪個用途大類
     function renderTabs(at) {
-      markActive(modeEl, at.mode === "use" ? "依用途" : "原書順序");
+      markActive(modeEl, at.mode);
       const byUse = at.mode === "use";
       groupTabsEl.hidden = !byUse;
       useTabsEl.hidden = !byUse;
       if (!byUse) return;
       if (tabsGroup !== at.group) {
         tabsGroup = at.group;
-        const group = uses.groups.find((g) => g.name === at.group);
         useTabsEl.replaceChildren(
-          ...group.uses.map((name) => tabButton(name, () => browser.selectUse(name) && render())),
+          ...at.groupUses.map((name) => tabButton(name, () => browser.selectUse(name) && render())),
         );
       }
       markActive(groupTabsEl, at.group);
@@ -454,7 +455,7 @@
     if (uses) {
       modeEl.hidden = false;
       for (const btn of modeEl.children) {
-        btn.addEventListener("click", () => browser.setMode(btn.dataset.mode) && render());
+        btn.addEventListener("click", () => browser.setMode(btn.dataset.value) && render());
       }
       groupTabsEl.replaceChildren(
         ...uses.groups.map((group) => tabButton(group.name, () => browser.selectGroup(group.name) && render())),
