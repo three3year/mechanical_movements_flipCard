@@ -219,7 +219,7 @@ export default {
       ],
     },
     { id: "pawl", kind: "plate", shape: shape(thickLine([[0, 0], [PAWL.length, 0]], 0.08), [circle(0.03).reverse()]), thickness: 0.1, arrow: false },
-    { id: "spring", kind: "rod", radius: SPRING.wire },
+    { id: "spring", kind: "rod", radius: SPRING.wire, stretch: "渦卷彈簧:內端在鼓輪輪轂上、外端插在柱頂,鼓輪轉動時捲緊放鬆(畫成內外半徑固定的螺線,圈數跟著鼓輪轉角變)" },
     { id: "ropeR", kind: "rope", radius: ROPE_R },
     { id: "ropeL", kind: "rope", radius: ROPE_R },
     // 球串在左繩上當握把:球心開了鉛直的孔,繩從孔裡穿過

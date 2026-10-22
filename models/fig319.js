@@ -16,6 +16,7 @@ const ARM = R; // 主臂半長
 const SPAN = deg(150); // 弧桿從主臂端點往下繞過的角度
 const BEND_K = 0.006; // 每度自由端往內偏移的量(放大)
 const LAYER = 0.035; // 每一層的半徑(外層黃銅、內層鋼)
+const RIM_HEATS = "複合弧桿受熱彎曲是原理(黃銅膨脹得比鋼多),彎曲量放大了許多倍:弧桿張的角度不變、自由端往內彎,每一層的長度跟著變"; // 伸縮的宣告
 const N = 48; // 弧桿沿長度的取樣段數
 const ARM_HALF = 0.14; // 主臂的半寬
 // 弧桿從主臂端點的裡面開始(接在臂上),第一段就穿出臂的側面;之後每 1/N 取一點
@@ -106,10 +107,10 @@ export default {
     { id: "labelT", kind: "group", center: [0, ARM + 0.2, 0], label: "t", labelOffset: [-0.3, 0.1, 0.3] },
     { id: "labelT2", kind: "group", center: [0, -ARM - 0.2, 0], label: "t'", labelOffset: [0.3, -0.1, 0.3] },
     // 兩段複合弧桿:外層黃銅、內層鋼
-    { id: "brassR", kind: "rod", radius: LAYER, metal: "brass" },
-    { id: "steelR", kind: "rod", radius: LAYER },
-    { id: "brassL", kind: "rod", radius: LAYER, metal: "brass" },
-    { id: "steelL", kind: "rod", radius: LAYER },
+    { id: "brassR", kind: "rod", radius: LAYER, stretch: RIM_HEATS, metal: "brass" },
+    { id: "steelR", kind: "rod", radius: LAYER, stretch: RIM_HEATS },
+    { id: "brassL", kind: "rod", radius: LAYER, stretch: RIM_HEATS, metal: "brass" },
+    { id: "steelL", kind: "rod", radius: LAYER, stretch: RIM_HEATS },
     weight("weightB", "b", [0.45, 0, 0.3]),
     weight("weightB2", "b'", [-0.45, 0, 0.3]),
   ],

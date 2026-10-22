@@ -16,6 +16,7 @@ export const RANGE = [-10, 40];
 const ROD_K = 0.012;
 const ROD_R = 0.1; // 擺桿
 const BAR_R = 0.045; // 複合桿每一層的半徑(上層鐵、下層黃銅)
+const BAR_HEATS = "複合桿受熱彎曲是原理(黃銅膨脹得比鐵多),彎曲量放大了許多倍:兩端的水平位置不變、往上彎,每一層的長度跟著變"; // 伸縮的宣告
 const XW = 1.7; // W 在複合桿上的位置
 const W_HALF = 0.225; // W 沿複合桿的半長
 const XE = XW + W_HALF + 0.15; // 複合桿的端點,露在 W 外
@@ -84,10 +85,10 @@ export default {
     // C 中央的凸台:固定在擺桿上,壓著 C 的上緣
     { id: "hubC", kind: "group", pieces: [{ kind: "lathe", axis: Y, profile: [[0, 2 * BAR_R], [0.26, 2 * BAR_R], [0.2, 0.13], [0.15, 0.2], [0.13, 0.3], [0.13, 0.42], [0, 0.42]] }] },
     // 複合桿 C:上層鐵、下層黃銅,各分左右兩段(中央是擺桿穿過的孔)
-    { id: "steelL", kind: "rod", radius: BAR_R, label: "C", center: [0, TOP - 3.6, 0], labelOffset: [-0.5, 0.35, 0.3] },
-    { id: "steelR", kind: "rod", radius: BAR_R },
-    { id: "brassL", kind: "rod", radius: BAR_R, metal: "brass" },
-    { id: "brassR", kind: "rod", radius: BAR_R, metal: "brass" },
+    { id: "steelL", kind: "rod", radius: BAR_R, stretch: BAR_HEATS, label: "C", center: [0, TOP - 3.6, 0], labelOffset: [-0.5, 0.35, 0.3] },
+    { id: "steelR", kind: "rod", radius: BAR_R, stretch: BAR_HEATS },
+    { id: "brassL", kind: "rod", radius: BAR_R, stretch: BAR_HEATS, metal: "brass" },
+    { id: "brassR", kind: "rod", radius: BAR_R, stretch: BAR_HEATS, metal: "brass" },
     weight("L"),
     weight("R"),
     { id: "centerMark", kind: "trace" }, // 擺動中心的高度(固定的紅線)
