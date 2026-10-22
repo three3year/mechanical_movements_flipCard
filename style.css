@@ -61,14 +61,57 @@ header .subtitle a:hover {
   text-decoration: underline solid;
 }
 
-/* ── 頁籤 ─────────────────────────── */
+/* ── 瀏覽方式 ─────────────────────── */
+
+.browse-mode {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.2rem;
+}
+
+.browse-mode[hidden] {
+  display: none;
+}
+
+.browse-mode button {
+  font: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 0.2rem 1rem;
+  cursor: pointer;
+}
+
+.browse-mode button + button {
+  border-left: none;
+}
+
+.browse-mode button:hover {
+  color: var(--ink);
+  background: var(--card);
+}
+
+.browse-mode button.active {
+  color: var(--ink);
+  border-color: var(--line-dark);
+  background: var(--card);
+  font-weight: bold;
+}
+
+/* ── 頁籤:用途大類、用途 ─────────── */
 
 nav.tabs {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.6rem;
-  margin-bottom: 2.2rem;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+nav.tabs[hidden] {
+  display: none;
 }
 
 nav.tabs button {
@@ -79,8 +122,26 @@ nav.tabs button {
   color: var(--ink);
   background: transparent;
   border: 1px solid var(--line-dark);
-  padding: 0.35rem 1.3rem;
+  padding: 0.3rem 0.9rem;
   cursor: pointer;
+}
+
+/* 第二排(用途)比第一排(用途大類)小一號,虛線框 */
+nav.tabs.use-tabs {
+  gap: 0.4rem;
+  margin-bottom: 1.6rem;
+}
+
+nav.tabs.use-tabs button {
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-indent: 0.1em;
+  padding: 0.15rem 0.7rem;
+  border-style: dashed;
+}
+
+nav.tabs.use-tabs button.active {
+  border-style: solid;
 }
 
 nav.tabs button:hover {
@@ -100,7 +161,7 @@ nav.tabs button.active {
   justify-content: center;
   align-items: center;
   gap: 0.5rem;
-  margin: -1.4rem 0 1.6rem;
+  margin: 0 0 1.6rem;
   font-size: 0.85rem;
   letter-spacing: 0.15em;
   color: var(--ink-soft);
@@ -658,6 +719,21 @@ footer {
   }
   header h1 {
     font-size: 1.5rem;
+  }
+  /* 頁籤收窄,手機上少佔幾排 */
+  nav.tabs {
+    gap: 0.35rem;
+  }
+  nav.tabs button {
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    text-indent: 0.05em;
+    padding: 0.2rem 0.5rem;
+  }
+  nav.tabs.use-tabs button {
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    padding: 0.1rem 0.45rem;
   }
 }
 

@@ -22,7 +22,12 @@
       <p class="subtitle"><a href="https://ia803103.us.archive.org/12/items/Mechanical_Movements_507/Mechanical_Movements_507.pdf" target="_blank" rel="noopener">Mechanical Movements</a> · <a href="https://507movements.com/" target="_blank" rel="noopener">507movements.com</a> · 圖文對照</p>
     </header>
 
-    <nav class="tabs" id="tabs"></nav>
+    <div class="browse-mode" id="browse-mode" role="group" aria-label="瀏覽方式" hidden>
+      <button type="button" data-mode="use">依用途</button>
+      <button type="button" data-mode="book">原書順序</button>
+    </div>
+    <nav class="tabs" id="group-tabs" aria-label="用途大類"></nav>
+    <nav class="tabs use-tabs" id="use-tabs" aria-label="用途"></nav>
     <form class="goto" id="goto" autocomplete="off">
       <label for="goto-no">跳到圖號</label>
       <input id="goto-no" type="number" inputmode="numeric" min="1" max="507" placeholder="1–507" aria-label="圖號">
@@ -51,6 +56,9 @@
     const prevBtn = document.getElementById("prev");
     const nextBtn = document.getElementById("next");
     const footerEl = document.getElementById("footer");
+    const modeEl = document.getElementById("browse-mode");
+    const groupTabsEl = document.getElementById("group-tabs");
+    const useTabsEl = document.getElementById("use-tabs");
 
     let renderSeq = 0;
     const backEl = document.getElementById("back");
@@ -341,7 +349,9 @@
       posEl.textContent = (at.index + 1) + " / " + at.count;
       prevBtn.disabled = atStart;
       nextBtn.disabled = atEnd;
-      footerEl.textContent = "原書順序 · 共 " + at.figureCount + " 圖";
+      footerEl.textContent =
+        (at.mode === "use" ? at.group + " · " + at.use : "原書順序") + " · 共 " + at.figureCount + " 圖";
+      renderTabs(at);
 
       backEl.hidden = !at.backNo;
       if (at.backNo) backEl.textContent = "‹ 返回 圖 " + at.backNo;
@@ -404,6 +414,52 @@
       if (Math.abs(dx) < 50) return;
       step(dx < 0 ? 1 : -1);
     }, { passive: true });
+
+    // ── 瀏覽方式與頁籤 ──
+    // 用途瀏覽:頁首兩排頁籤(用途大類、該大類的用途);原書順序沒有頁籤
+    function tabButton(label, onClick) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      btn.addEventListener("click", onClick);
+      return btn;
+    }
+
+    function markActive(container, name) {
+      for (const btn of container.children) {
+        const on = btn.textContent === name;
+        btn.classList.toggle("active", on);
+        btn.setAttribute("aria-pressed", String(on));
+      }
+    }
+
+    let tabsGroup = null; // 第二排目前列的是哪個用途大類
+    function renderTabs(at) {
+      markActive(modeEl, at.mode === "use" ? "依用途" : "原書順序");
+      const byUse = at.mode === "use";
+      groupTabsEl.hidden = !byUse;
+      useTabsEl.hidden = !byUse;
+      if (!byUse) return;
+      if (tabsGroup !== at.group) {
+        tabsGroup = at.group;
+        const group = uses.groups.find((g) => g.name === at.group);
+        useTabsEl.replaceChildren(
+          ...group.uses.map((name) => tabButton(name, () => browser.selectUse(name) && render())),
+        );
+      }
+      markActive(groupTabsEl, at.group);
+      markActive(useTabsEl, at.use);
+    }
+
+    if (uses) {
+      modeEl.hidden = false;
+      for (const btn of modeEl.children) {
+        btn.addEventListener("click", () => browser.setMode(btn.dataset.mode) && render());
+      }
+      groupTabsEl.replaceChildren(
+        ...uses.groups.map((group) => tabButton(group.name, () => browser.selectGroup(group.name) && render())),
+      );
+    }
 
     render();
   </script>

@@ -37,54 +37,104 @@ const Browse = (() => {
     return problems;
   }
 
-  // uses 可省略(用途檔載入失敗時):卡片照常顯示,只是沒有用途
+  // uses 可省略(用途檔載入失敗時):只有原書順序,卡片照常顯示,只是沒有用途
   function createBrowser(entries, uses) {
     const names = new Set(uses ? uses.groups.flatMap((group) => group.uses) : []);
     // 卡片上列出的用途:依用途檔的順序,略過不存在的用途
     const usesOf = (entry) => (uses?.entryUses[keyOf(entry)] ?? []).filter((name) => names.has(name));
 
-    // 目前序列:原書順序就是全部條目依編號排列
-    const sequence = entries.map((entry, e) => ({ e }));
-    let pos = 0;
-    let figure = null; // 指定選中的插圖(交互參照、跳到圖號的目標);null 表示由頁面決定
-    const backStack = []; // 交互參照的跳轉來源,可多層依序退回
+    // 兩種瀏覽方式各一條序列,每一項是一張卡片:e 是條目索引;用途瀏覽另記大類 g 與用途 u。
+    // 原書順序是全部條目依編號排列;用途瀏覽是大類依序、大類內用途依序、用途內條目依編號,
+    // 掛多個用途的條目在每個用途下各出現一次
+    const sequences = {
+      book: entries.map((entry, e) => ({ e })),
+      use: (uses?.groups ?? []).flatMap((group, g) =>
+        group.uses.flatMap((u) => entries.flatMap((entry, e) => (usesOf(entry).includes(u) ? [{ e, g, u }] : []))),
+      ),
+    };
 
+    let mode = sequences.use.length ? "use" : "book";
+    let pos = 0; // 在目前序列裡的位置
+    let lastGroup = null; // 切到原書順序前最後所在的用途大類,切回時用來決定落點
+    let figure = null; // 指定選中的插圖(交互參照、跳到圖號的目標);null 表示由頁面決定
+    const backStack = []; // 交互參照的跳轉來源 { pos, figure },可多層依序退回
+
+    const sequence = () => sequences[mode];
     const entryIndexOf = (no) => entries.findIndex((entry) => entry.images.some((src) => figureOf(src) === no));
-    const landing = (e) => sequence.findIndex((item) => item.e === e);
+
+    // 條目在目前序列裡的落點。用途瀏覽:條目在大類 g 裡有用途時,落在其中排最前的那個;
+    // 否則落在它的第一個用途(依卡片上的用途順序)。找不到(條目沒有用途)時回傳 -1
+    function landing(e, g) {
+      if (mode === "book") return e;
+      const inGroup = sequences.use.findIndex((item) => item.e === e && item.g === g);
+      if (inGroup !== -1) return inGroup;
+      const first = usesOf(entries[e])[0];
+      return sequences.use.findIndex((item) => item.e === e && item.u === first);
+    }
+    const currentGroup = () => (mode === "use" ? sequences.use[pos].g : lastGroup);
 
     function where() {
-      const entry = entries[sequence[pos].e];
+      const seq = sequence();
+      const item = seq[pos];
+      const entry = entries[item.e];
       const from = backStack[backStack.length - 1];
+      // 位置與圖數:用途瀏覽算目前用途裡的,原書順序算全部
+      const span = mode === "use" ? seq.filter((other) => other.u === item.u) : seq;
       return {
-        mode: "book",
+        mode,
+        group: mode === "use" ? uses.groups[item.g].name : null,
+        use: mode === "use" ? item.u : null,
         entry,
         uses: usesOf(entry),
-        index: pos,
-        count: sequence.length,
+        index: span.indexOf(item),
+        count: span.length,
         atStart: pos === 0,
-        atEnd: pos === sequence.length - 1,
+        atEnd: pos === seq.length - 1,
         figure,
-        backNo: from ? entries[sequence[from.pos].e].no : null,
-        figureCount: sequence.reduce((sum, item) => sum + entries[item.e].images.length, 0),
+        backNo: from ? entries[seq[from.pos].e].no : null,
+        figureCount: span.reduce((sum, other) => sum + entries[other.e].images.length, 0),
       };
     }
 
     // 手動翻頁即離開參照脈絡:返回堆疊清空、插圖改由頁面決定
-    function step(delta) {
-      const next = pos + delta;
-      if (next < 0 || next >= sequence.length) return false;
+    function moveTo(next) {
       pos = next;
       figure = null;
       backStack.length = 0;
+    }
+
+    function step(delta) {
+      const next = pos + delta;
+      if (next < 0 || next >= sequence().length) return false;
+      moveTo(next);
+      return true;
+    }
+
+    // 選用途大類落在它第一個用途的首張;選用途落在它的首張
+    function selectGroup(name) {
+      if (mode !== "use") return false;
+      const next = sequences.use.findIndex((item) => uses.groups[item.g].name === name);
+      if (next === -1) return false;
+      moveTo(next);
+      return true;
+    }
+
+    function selectUse(name) {
+      if (mode !== "use") return false;
+      const next = sequences.use.findIndex((item) => item.u === name);
+      if (next === -1) return false;
+      moveTo(next);
       return true;
     }
 
     // 「第 N 種」交互參照:跳到該圖所在條目並選中它,來源推入返回堆疊
     function follow(no) {
       const e = entryIndexOf(no);
-      if (e === -1 || e === sequence[pos].e) return false;
+      if (e === -1 || e === sequence()[pos].e) return false;
+      const next = landing(e, currentGroup());
+      if (next === -1) return false;
       backStack.push({ pos, figure });
-      pos = landing(e);
+      pos = next;
       figure = no;
       return true;
     }
@@ -92,9 +142,10 @@ const Browse = (() => {
     // 跳到圖號:同樣選中該圖,但視為新的閱讀起點,返回堆疊清空
     function goto(no) {
       const e = entryIndexOf(no);
-      if (e === -1) return false;
+      const next = e === -1 ? -1 : landing(e, currentGroup());
+      if (next === -1) return false;
       backStack.length = 0;
-      pos = landing(e);
+      pos = next;
       figure = no;
       return true;
     }
@@ -107,6 +158,17 @@ const Browse = (() => {
       return true;
     }
 
+    // 切換瀏覽方式:停在同一條目、選中的插圖保留;和手動切頁籤一樣視為新的閱讀起點,返回堆疊清空
+    function setMode(next) {
+      if (next === mode || !sequences[next]?.length) return false;
+      const e = sequence()[pos].e;
+      if (mode === "use") lastGroup = sequences.use[pos].g;
+      mode = next;
+      pos = landing(e, lastGroup);
+      backStack.length = 0;
+      return true;
+    }
+
     // 頁面選了別的插圖(多插圖條目的小頁籤,或依有無模型改選)
     function selectFigure(no) {
       figure = no;
@@ -114,10 +176,10 @@ const Browse = (() => {
 
     // 目前卡片前後各 d 張的條目(含自己),供預載圖片
     function around(d) {
-      return sequence.slice(Math.max(0, pos - d), pos + d + 1).map((item) => entries[item.e]);
+      return sequence().slice(Math.max(0, pos - d), pos + d + 1).map((item) => entries[item.e]);
     }
 
-    return { where, step, follow, goto, back, selectFigure, around };
+    return { where, step, selectGroup, selectUse, follow, goto, back, setMode, selectFigure, around };
   }
 
   return { createBrowser, checkUses };

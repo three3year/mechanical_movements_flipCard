@@ -17,7 +17,7 @@ const Browse = page("Browse");
 const entries = page("entries");
 
 // vm 裡的陣列和測試的陣列原型不同,比對前用 [...x] 複製成測試這邊的陣列
-const entry = (no, images = [no]) => ({ no: String(no), images: images.map((n) => `images/${n}.png`), text: [] });
+const entry = (no, images = [no]) => ({ no: images.length > 1 ? `${images[0]}–${images.at(-1)}` : String(no), images: images.map((n) => `images/${n}.png`), text: [] });
 
 test("原書順序:預設在第 1 種、序列頭", () => {
   const b = Browse.createBrowser(entries);
@@ -182,7 +182,132 @@ test("用途檔:值是不存在的用途被報出", () => {
 
 test("卡片上的用途:依用途檔的順序;沒有用途檔時是空的", () => {
   const b = Browse.createBrowser(small, smallUses());
+  b.setMode("book");
   b.step(1);
   assert.deepEqual([...b.where().uses], ["甲二", "乙一"]);
   assert.deepEqual([...Browse.createBrowser(small).where().uses], []);
+});
+
+// ── 用途瀏覽 ──
+// 假用途檔的序列:甲一(1、3)→ 甲二(2、7)→ 乙一(2、5–6);第 2 種在兩個用途各出現一次
+
+// 目前所在的精簡描述:「大類/用途/條目 第幾張/共幾張」
+const at = (b) => {
+  const w = b.where();
+  return w.mode === "use" ? `${w.group}/${w.use}/${w.entry.no} ${w.index + 1}/${w.count}` : `book/${w.entry.no} ${w.index + 1}/${w.count}`;
+};
+// 從頭一路往後翻,記下每一張
+const walk = (b) => {
+  const seen = [at(b)];
+  while (b.step(1)) seen.push(at(b));
+  return seen;
+};
+
+test("用途瀏覽:預設在第一個用途大類的第一個用途的首張", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  assert.equal(at(b), "甲/甲一/1 1/2");
+  const w = b.where();
+  assert.equal(w.atStart, true);
+  assert.equal(w.figure, null);
+  assert.equal(w.backNo, null);
+});
+
+test("用途瀏覽:用途內依圖號翻頁,跨用途、跨大類連續,同一條目在兩個用途各出現一次", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  assert.deepEqual(walk(b), ["甲/甲一/1 1/2", "甲/甲一/3 2/2", "甲/甲二/2 1/2", "甲/甲二/7 2/2", "乙/乙一/2 1/2", "乙/乙一/5–6 2/2"]);
+  assert.equal(b.where().atEnd, true);
+  assert.equal(b.step(1), false);
+});
+
+test("用途瀏覽:往回翻也跨用途、跨大類,到序列頭停住", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  assert.equal(b.step(-1), true);
+  assert.equal(at(b), "甲/甲二/7 2/2");
+  b.step(-1);
+  b.step(-1);
+  assert.equal(at(b), "甲/甲一/3 2/2");
+  b.step(-1);
+  assert.equal(b.where().atStart, true);
+  assert.equal(b.step(-1), false);
+});
+
+test("用途瀏覽:選大類落在它第一個用途的首張,選用途落在它的首張", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  assert.equal(b.selectGroup("乙"), true);
+  assert.equal(at(b), "乙/乙一/2 1/2");
+  assert.equal(b.selectUse("甲二"), true);
+  assert.equal(at(b), "甲/甲二/2 1/2");
+  assert.equal(b.selectUse("沒有這個"), false);
+  assert.equal(at(b), "甲/甲二/2 1/2");
+});
+
+test("用途瀏覽:選大類、選用途是新的閱讀起點,返回堆疊清空、插圖不再指定", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.follow(6);
+  b.selectGroup("甲");
+  assert.equal(b.where().backNo, null);
+  assert.equal(b.where().figure, null);
+});
+
+test("用途瀏覽:頁尾的圖數是目前用途的插圖數", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  assert.equal(b.where().figureCount, 3);
+});
+
+test("切換瀏覽方式:切到原書順序停在同一條目", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  b.step(1);
+  assert.equal(b.setMode("book"), true);
+  assert.equal(at(b), "book/5–6 4/5");
+  assert.equal(b.where().group, null);
+  assert.equal(b.setMode("book"), false);
+});
+
+test("切換瀏覽方式:切回用途瀏覽落在切走前所在大類裡的用途", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  b.step(1);
+  b.setMode("book");
+  b.step(-1);
+  b.step(-1);
+  assert.equal(b.where().entry.no, "2");
+  b.setMode("use");
+  assert.equal(at(b), "乙/乙一/2 1/2");
+});
+
+test("切換瀏覽方式:條目在切走前所在的大類裡沒有用途,落在它的第一個用途", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  b.setMode("book");
+  b.goto(7);
+  b.setMode("use");
+  assert.equal(at(b), "甲/甲二/7 2/2");
+});
+
+test("切換瀏覽方式:選中的插圖保留,返回堆疊清空", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.follow(6);
+  b.setMode("book");
+  assert.equal(b.where().figure, 6);
+  assert.equal(b.where().backNo, null);
+  b.setMode("use");
+  assert.equal(b.where().figure, 6);
+  assert.equal(at(b), "乙/乙一/5–6 2/2");
+});
+
+test("用途瀏覽:沒有用途檔時只有原書順序", () => {
+  const b = Browse.createBrowser(small);
+  assert.equal(b.where().mode, "book");
+  assert.equal(b.setMode("use"), false);
+});
+
+test("用途瀏覽:真正的用途檔下,487 個條目都在序列裡至少出現一次", () => {
+  const b = Browse.createBrowser(entries, realUses);
+  assert.equal(b.where().mode, "use");
+  const seen = new Set([b.where().entry.no]);
+  while (b.step(1)) seen.add(b.where().entry.no);
+  assert.equal(seen.size, 487);
 });
