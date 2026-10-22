@@ -18,6 +18,7 @@ const SPRING = 3.7; // 彈簧長
 const BOW = [0.45, 1.25]; // 彈簧中點外凸量(轉速 0 → 上限)
 export const RANGE = [0, 10]; // 轉速
 const SAMPLES = 24;
+const SPRING_BENDS = "板彈簧被球的離心力撐彎:總長不變,折線照參數取樣,各段長度跟著彎度變"; // 伸縮的宣告(彈簧畫成路徑零件)
 const BALL = { r: 0.26, stretch: 1.6 }; // 球(沿水平拉長的橢球)
 export const PERIOD = 12; // 轉速起伏一輪,心軸平均轉的圈數
 const SLOWEST = 3; // 一輪之內最慢的轉速(最快是上限)
@@ -164,8 +165,8 @@ export default {
     { id: "sleeve", kind: "group", pieces: [...collar(0), ...VALVE.sleevePieces()] },
     // 每根彈簧分成球上、球下兩段(中段穿在球裡)
     ...["L", "R"].flatMap((k) => [
-      { id: `spring${k}`, kind: "rod", radius: 0.035 },
-      { id: `spring${k}2`, kind: "rod", radius: 0.035 },
+      { id: `spring${k}`, kind: "rod", radius: 0.035, stretch: SPRING_BENDS },
+      { id: `spring${k}2`, kind: "rod", radius: 0.035, stretch: SPRING_BENDS },
     ]),
     { id: "ballL", kind: "sphere", radius: BALL.r },
     { id: "ballR", kind: "sphere", radius: BALL.r },

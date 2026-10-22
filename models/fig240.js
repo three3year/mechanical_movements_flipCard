@@ -177,7 +177,7 @@ export default {
     plateOf("bar", BAR),
     plateOf("hook", HOOK),
     plateOf("pawlC", C, { label: "C", labelOffset: [-0.75, 0.2, 0] }),
-    { id: "spring", kind: "rod", radius: 0.045 },
+    { id: "spring", kind: "rod", radius: 0.045, stretch: "U 形板彈簧:上片固定在爪 C 上隨爪轉,U 形彎與下片固定在框架的座上,爪被齒背頂起時上片彎曲(畫成一條線,長度跟著彎度變)" },
     {
       id: "springSeat",
       kind: "cylinder",

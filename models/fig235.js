@@ -160,7 +160,7 @@ export default {
       arrow: false,
       pieces: [{ kind: "plate", shape: shape(PAWL, [circle(0.06).reverse()]), thickness: 0.12 }],
     },
-    { id: "spring", kind: "rod", radius: 0.025 },
+    { id: "spring", kind: "rod", radius: 0.025, stretch: "撥爪底部的小彈簧:一端在臂的耳板上、一端在撥爪上,撥爪被角頂開繞銷轉時拉長、彈回時縮短" },
   ],
   // 動力重演:只推臂;撥爪掛在臂的銷上,彈簧把它往擋銷壓;止回爪的彈簧把它往輪壓;星形輪靠摩擦定位,由撥爪推動
   replay: {

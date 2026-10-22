@@ -159,8 +159,8 @@ export default {
     { id: "gear", kind: "plate", shape: shape(resample(gearProfile({ teeth: N, radius: R }), 0.03), [circle(0.25).reverse()]), thickness: 0.2, hub: 0.55, circles: [0.55], mark: [-0.9, -0.4], markSize: 0.08, spin: TIP },
     pawlPart("left", "pawlLeft"),
     pawlPart("right", "pawlRight"),
-    { id: "springLeft", kind: "rod", radius: 0.03 },
-    { id: "springRight", kind: "rod", radius: 0.03 },
+    { id: "springLeft", kind: "rod", radius: 0.03, stretch: "壓爪的彈簧:一端在托架的彈簧座、一端在擋爪上,爪被齒頂起或用撐銷抬起時壓縮" },
+    { id: "springRight", kind: "rod", radius: 0.03, stretch: "壓爪的彈簧:一端在托架的彈簧座、一端在擋爪上,爪被齒頂起或用撐銷抬起時壓縮" },
     // 撐銷:抬起的爪下面插一根銷撐住(爪放下時拔掉)
     { id: "propLeft", kind: "cylinder", radius: 0.06, length: 0.5, center: [PROP.left[0], PROP.left[1], -0.11] },
     { id: "propRight", kind: "cylinder", radius: 0.06, length: 0.5, center: [PROP.right[0], PROP.right[1], -0.11] },
