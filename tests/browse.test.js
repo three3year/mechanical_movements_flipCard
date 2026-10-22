@@ -311,3 +311,78 @@ test("用途瀏覽:真正的用途檔下,487 個條目都在序列裡至少出�
   while (b.step(1)) seen.add(b.where().entry.no);
   assert.equal(seen.size, 487);
 });
+
+// ── 用途瀏覽下的交互參照、跳到圖號與返回 ──
+
+test("交互參照:目標在目前大類裡有用途,落在其中排最前的那個", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  b.step(1);
+  assert.equal(b.follow(2), true);
+  assert.equal(at(b), "乙/乙一/2 1/2"); // 第 2 種的第一個用途是甲二,但目前在乙
+});
+
+test("交互參照:目標在目前大類裡沒有用途,落在它的第一個用途", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  b.follow(7);
+  assert.equal(at(b), "甲/甲二/7 2/2");
+});
+
+test("交互參照:選中被指定的插圖", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.follow(6);
+  assert.equal(at(b), "乙/乙一/5–6 2/2");
+  assert.equal(b.where().figure, 6);
+});
+
+test("返回:回到原用途而非目標條目的其他用途,恢復原插圖,可多層", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectUse("甲二");
+  b.selectFigure(2);
+  b.follow(5);
+  assert.equal(at(b), "乙/乙一/5–6 2/2");
+  b.follow(2); // 第 2 種在乙裡有乙一
+  assert.equal(at(b), "乙/乙一/2 1/2");
+  assert.equal(b.where().backNo, "5–6");
+  b.back();
+  assert.equal(at(b), "乙/乙一/5–6 2/2");
+  assert.equal(b.where().backNo, "2");
+  b.back();
+  assert.equal(at(b), "甲/甲二/2 1/2"); // 原本那一個,不是第 2 種在乙裡的那張
+  assert.equal(b.where().figure, 2);
+  assert.equal(b.where().backNo, null);
+});
+
+test("跳到圖號:同一落點規則,清空返回堆疊", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  b.follow(7);
+  assert.equal(b.where().backNo, "2");
+  b.selectGroup("乙");
+  assert.equal(b.goto(2), true);
+  assert.equal(at(b), "乙/乙一/2 1/2");
+  b.follow(1);
+  assert.equal(b.goto(6), true);
+  assert.equal(at(b), "乙/乙一/5–6 2/2");
+  assert.equal(b.where().figure, 6);
+  assert.equal(b.where().backNo, null);
+});
+
+test("跳到圖號:找不到的圖號不移動", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.step(1);
+  assert.equal(b.goto(4), false);
+  assert.equal(b.goto(999), false);
+  assert.equal(at(b), "甲/甲一/3 2/2");
+});
+
+test("原書順序下的跳轉不受用途影響", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  b.setMode("book");
+  b.follow(2);
+  assert.equal(at(b), "book/2 2/5");
+  b.goto(7);
+  assert.equal(at(b), "book/7 5/5");
+});
