@@ -1,7 +1,7 @@
 // 剛性桿掃描(維護工具):合成的模型定義 → 長度會變的桿清單。零依賴,跑在 npm test 裡。
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { stretchedLinks } from "./rigid-links.mjs";
+import { stretchedLinks, stretchDeclarations } from "./rigid-links.mjs";
 
 // 主動量 0–1 的轉動主動件;曲柄銷繞原點轉,滑塊在 x 軸上來回
 const crank = (v) => [Math.cos(v * Math.PI * 2), Math.sin(v * Math.PI * 2), 0];
@@ -52,4 +52,33 @@ test("多點的 rod 任一段伸縮會報(風箱皺褶);繩、皮帶、彈簧本
     paths: { rope: { points: [crank(v), slider(v)], closed: false }, belt: { points: [crank(v), slider(v), [0, -2, 0]], closed: true } },
   }));
   assert.deepEqual(stretchedLinks(loose), []);
+});
+
+test("零件宣告會伸縮並寫原因(stretch 是原因字串)的略過不報,另外列出宣告與原因", () => {
+  const declared = def([wheel, { id: "link", kind: "link", width: 0.1, stretch: "彈簧畫成桿,兩端接在曲柄銷與滑塊上" }], (v) => ({
+    parts: { wheel: { angle: v }, link: { from: crank(v), to: slider(v) } },
+  }));
+  assert.deepEqual(stretchedLinks(declared), []);
+  assert.deepEqual(stretchDeclarations(declared), [{ id: "link", kind: "link", reason: "彈簧畫成桿,兩端接在曲柄銷與滑塊上" }]);
+
+  // rod 路徑零件也能宣告
+  const rod = def([wheel, { id: "rodB", kind: "rod", radius: 0.05, stretch: "受熱伸長的管子" }], (v) => ({
+    parts: { wheel: { angle: v } },
+    paths: { rodB: { points: [crank(v), slider(v)], closed: false } },
+  }));
+  assert.deepEqual(stretchedLinks(rod), []);
+  assert.deepEqual(stretchDeclarations(rod).map((d) => d.id), ["rodB"]);
+});
+
+test("宣告會伸縮卻沒寫原因(stretch: true 或空字串)的報錯,長度不變也報;沒宣告的照報", () => {
+  const noReason = (stretch) =>
+    def([wheel, { id: "link", kind: "link", width: 0.1, stretch }, { id: "plain", kind: "link", width: 0.1 }], (v) => {
+      const c = crank(v);
+      return { parts: { wheel: { angle: v }, link: { from: c, to: [c[0] + 1, c[1], 0] }, plain: { from: crank(v), to: slider(v) } } };
+    });
+  for (const stretch of [true, "", "  "]) {
+    const found = stretchedLinks(noReason(stretch));
+    assert.deepEqual(found.map((f) => [f.id, !!f.missingReason]).sort(), [["link", true], ["plain", false]], `stretch: ${JSON.stringify(stretch)}`);
+    assert.deepEqual(stretchDeclarations(noReason(stretch)), []);
+  }
 });

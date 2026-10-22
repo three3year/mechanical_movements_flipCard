@@ -137,7 +137,7 @@ for (const def of models) {
   });
 }
 
-// 連桿(link)是剛體:姿勢以 from/to 指定時,兩端距離在整個運動中不變(標 stretch: true 的除外)。
+// 連桿(link)是剛體:姿勢以 from/to 指定時,兩端距離在整個運動中不變(宣告 stretch: "原因" 的除外)。
 // 連桿機構走到不可達的位置時(兩圓不相交),這條檢查會抓出來。
 function denseValues(driver) {
   if (driver.type === "virtual" && driver.mode === "progress") return sweepValues(0, (driver.range[1] - driver.range[0]) * 2, 48);

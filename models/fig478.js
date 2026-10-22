@@ -89,7 +89,7 @@ export default {
     { id: "labelC", kind: "group", pieces: [], label: "C", labelOffset: [SHELL.center[0], SHELL.r + 0.2, 0.4] },
     { id: "labelb", kind: "group", pieces: [], label: "b", labelOffset: [STOP_X + 0.45, STOP_Y - 0.12, 0.4] },
     { id: "labelc", kind: "group", pieces: [], label: "c", labelOffset: [STOP_X - 0.2, STOP_Y + 0.12, 0.4] },
-    { id: "pipe", kind: "rod", radius: PIPE_R, label: "A", labelOffset: [-1.2, 0.3, 0.3] }, // 路徑零件的標籤從原點量起
+    { id: "pipe", kind: "rod", radius: PIPE_R, stretch: "廢水管 A 受熱伸長、遇水縮短是原理(原文「管子膨脹使閥門關閉」),伸縮量放大顯示", label: "A", labelOffset: [-1.2, 0.3, 0.3] }, // 路徑零件的標籤從原點量起
     { id: "plunger", kind: "cylinder", axis: [1, 0, 0], radius: 0.1, length: 1.2, arrow: false, label: "a", labelOffset: [-0.35, 0.25, 0.3] },
     // 槓桿 D:支點在局部原點(有圓形輪轂,樞軸孔整個在外形裡),下臂往下 ARM,重球的臂往右上;擋止螺絲 b 穿過下臂的下端
     {

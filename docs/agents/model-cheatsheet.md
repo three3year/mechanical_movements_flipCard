@@ -51,13 +51,13 @@
 | `pulley` / `drum` / `stepped` / `cone` | 皮帶輪系;`stepped` 多段半徑 | `fig008`、`fig015` |
 | `shaft` / `bar` / `sectorLever` / `weight` / `ropeEnd` | 機架與吊重的零件 | `fig006`、`fig012` |
 | `lathe` | `profile`、`sweep`、`cut`、`mark` | 剖面圖 `fig247`、`fig248`;泵筒見 `pump.js` |
-| `link` | 姿勢用 `from`/`to`;`stretch: true` 允許伸縮(複查第 2 類會抓) | `fig039`、`fig078` |
+| `link` | 姿勢用 `from`/`to`;`stretch: "原因"` 宣告會伸縮(彈簧畫成桿、熱脹;`rigid-links.mjs` 略過並列出,沒寫原因的照報) | `fig039`、`fig078` |
 | `spring` | 姿勢用 `from`/`to`,長度隨之伸縮 | `fig035`、`fig081` |
 | `worm` | 螺桿、蝸桿 | `fig031`、`fig102` |
 | `tube` | `points`、`radius`、`closed`:固定在零件上的凸條(螺紋) | `fig029`、`fig050` |
 | `fill` | 存量:`size: [w, h, d]`(或 `shape: "cylinder"`、或 `outline` 固定外形),姿勢的 `level` 0–1 由底往上填 | `fig162`、`fig316` |
 | `group` | 只由 `pieces` 組成 | 機架、軸承 |
-| 路徑零件 `belt` / `rope` / `rod` / `chain` / `trace` | 姿勢回傳折線;`rod` 任一段變長會被 `rigid-links.mjs` 報出 | |
+| 路徑零件 `belt` / `rope` / `rod` / `chain` / `trace` | 姿勢回傳折線;`rod` 任一段變長會被 `rigid-links.mjs` 報出(零件上 `stretch: "原因"` 的除外) | |
 
 ## 共用模組:什麼情境用哪個
 

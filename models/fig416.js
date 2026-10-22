@@ -98,7 +98,7 @@ export default {
         { kind: "cylinder", radius: 0.06, length: 0.32, at: [CRANK, 0, 0.1] }, // 曲柄銷:穿過彈簧外端與連桿
       ],
     },
-    { id: "spring", kind: "rod", radius: 0.025, label: "A", labelOffset: [SPRING_AT[0] + 0.1, SPRING_AT[1] + 0.42, 0.2] }, // 路徑零件的標籤從原點量起
+    { id: "spring", kind: "rod", radius: 0.025, stretch: "螺旋彈簧 A 畫成一條螺線:內端固定在樁上、外端接在曲柄銷上,外端跟著曲柄銷繞圈,彈簧被拉長壓短", label: "A", labelOffset: [SPRING_AT[0] + 0.1, SPRING_AT[1] + 0.42, 0.2] }, // 路徑零件的標籤從原點量起
     { id: "rod", kind: "link", width: 0.08, thickness: 0.05, pins: false }, // 兩端套在曲柄銷與踏板的銷上
     {
       id: "treadle",

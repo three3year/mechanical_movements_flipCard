@@ -6,7 +6,7 @@
 // 推斷:小齒輪軸固定;兩根桿定長,承載板照四連桿的解相對主框架升降(同時微微左右移、轉動),小齒輪一直咬在齒環上;
 // 中間的直條照原圖接在兩根桿與主框架中線(x = 0)的交點:上桿約在 0.55、下桿在中點,兩點都升降承載板升降量的
 // 一半左右。兩根桿已由四連桿定住,直條是多出來的一道約束,兩個銷之間的距離會變 0.005(銷孔的餘隙吸收,
-// 看不出來;標 stretch)。不能讓一端沿桿滑:直條幾乎和桿垂直,0.005 的差要滑 0.2 以上。
+// 看不出來;以 stretch 宣告,維護者 2026-10-21 決定接受)。不能讓一端沿桿滑:直條幾乎和桿垂直,0.005 的差要滑 0.2 以上。
 import { TAU, deg, rot2 } from "./kit.js";
 import { manglePath, arcLength } from "./mangle-path.js";
 import { shape, rect, offsetLoop, arcPoints } from "./shapes.js";
@@ -129,7 +129,7 @@ export default {
     },
     { id: "rodTop", kind: "link", width: 0.1, thickness: 0.06 },
     { id: "rodBottom", kind: "link", width: 0.1, thickness: 0.06 },
-    { id: "bar", kind: "link", width: 0.22, thickness: 0.06, stretch: true }, // 長度變 0.005,見檔頭
+    { id: "bar", kind: "link", width: 0.22, thickness: 0.06, stretch: "兩根桿已由四連桿定住,直條是多出來的一道約束,兩銷距離變 0.005 由銷孔餘隙吸收(維護者 2026-10-21 決定接受,見檔頭)" },
     { id: "pinion", kind: "gear", center: [...PINION, 0], teeth: NP, radius: RP, width: 0.22, web: false, hub: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 1.15, at: [0, 0, -0.325] }] }, // 軸只往後伸:從齒環中間的槽穿過托架與機架板,進到底板上的軸承(前面有掃過的桿)
     ...ROLLERS.map(([x, y], i) => ({ id: `roller${i}`, kind: "group", center: [x, y, -0.35], spin: ROLLER, pieces: [{ kind: "cylinder", radius: ROLLER, inner: 0.06, length: 0.2, mark: true }], arrow: i === 0 || i === 2 })),
     {
