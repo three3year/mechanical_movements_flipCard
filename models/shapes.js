@@ -2,6 +2,7 @@
 // 繪圖層把輪廓沿局部 Z 擠出成板件;模型也可用同一份輪廓算接觸(凸輪、棘輪)。
 // 齒輪、齒條的齒形是簡化的梯形齒,齒 0 的中心在局部 +X(齒條在局部 x = 0)。
 import { TAU } from "./kit.js";
+import { pointInPolygon } from "./contact.js";
 
 const ARC_STEP = TAU / 96;
 
@@ -235,6 +236,29 @@ export function offsetLoop(points, d) {
     const l = Math.hypot(nx, ny) || 1;
     return [p[0] + (nx / l) * d, p[1] + (ny / l) * d];
   });
+}
+
+/**
+ * 端頭的銷孔畫出圓頭:把輪廓上離 center 最近的那條邊(銷孔圓心落在上面的平頭)換成以 center 為圓心、
+ * 半徑 r 的圓弧,弧從一端點的方向繞到另一端點的方向,走外形外面那一側;其他頂點照舊。r 不小於端頭半寬時圓頭平順
+ */
+export function roundEnd(outline, center, r) {
+  const n = outline.length;
+  const [cx, cy] = center;
+  const gap = (a, b) => {
+    const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+    const t = Math.max(0, Math.min(1, ((cx - a[0]) * dx + (cy - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+    return Math.hypot(a[0] + t * dx - cx, a[1] + t * dy - cy);
+  };
+  let edge = 0;
+  for (let i = 1; i < n; i++) if (gap(outline[i], outline[(i + 1) % n]) < gap(outline[edge], outline[(edge + 1) % n])) edge = i;
+  const [a, b] = [outline[edge], outline[(edge + 1) % n]];
+  const a0 = Math.atan2(a[1] - cy, a[0] - cx);
+  const ccw = (((Math.atan2(b[1] - cy, b[0] - cx) - a0) % TAU) + TAU) % TAU;
+  const mid = (sweep) => [cx + r * Math.cos(a0 + sweep / 2), cy + r * Math.sin(a0 + sweep / 2)];
+  const sweep = pointInPolygon(mid(ccw), outline) ? ccw - TAU : ccw;
+  const arc = arcPoints(r, a0, a0 + sweep, cx, cy).filter((p) => Math.hypot(p[0] - a[0], p[1] - a[1]) > 1e-9 && Math.hypot(p[0] - b[0], p[1] - b[1]) > 1e-9);
+  return [...outline.slice(0, edge + 1), ...arc, ...outline.slice(edge + 1)];
 }
 
 /** 粗線:沿中心線 points(不封閉)兩側各偏 w/2 的封閉輪廓 */

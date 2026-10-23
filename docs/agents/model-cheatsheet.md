@@ -66,7 +66,7 @@
 | 模組 | 情境 |
 |---|---|
 | `kit.js` | 向量、四元數(`quatFromBasis`)、往復(`swing`)、螺旋前進、皮帶與繩的路徑 |
-| `shapes.js` | 板件的 2D 輪廓:圓、環、齒輪(`gearShape`)、扇形齒、棘輪、齒條、加厚折線;做 pieces 的 `zCylinder`、`spanBox` |
+| `shapes.js` | 板件的 2D 輪廓:圓、環、齒輪(`gearShape`)、扇形齒、棘輪、齒條、加厚折線、端頭銷孔的圓頭(`roundEnd`);做 pieces 的 `zCylinder`、`spanBox` |
 | `gears.js` | 咬合:兩輪的相位(`meshAngle`)、齒輪齒條、傘齒輪(`bevelGear`) |
 | `linkage.js` | 連桿閉合:兩圓交點、滑塊、四連桿(`fourBar`)、數值求根 |
 | `contact.js` | 由接觸算:零件擺到碰到障礙物為止(`swingUntilContact`)、多邊形的間隙與穿入深度、脫開後落下。範例 `fig063` |
