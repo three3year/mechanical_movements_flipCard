@@ -7,7 +7,7 @@
 // 原圖的支架是立在地上的座;支架若在導軌上滑動,機構會多一個自由度,原文沒說由什麼決定支架的位置。
 import { polar, dist, swingPhase, TAU } from "./kit.js";
 import { circleCircle, angleOf } from "./linkage.js";
-import { shape, circle } from "./shapes.js";
+import { shape, circle, roundEnd } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
 const WHEEL = { center: [0, 0, 0], radius: 1.55, crank: 0.6 };
@@ -86,7 +86,8 @@ export default {
       center: [PB[0], PB[1], 0.35], // 樑與連桿同一層(直立桿掛在樑端的孔上)
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape([[0.3, -0.3], [-LBEAM, -0.12], [-LBEAM, 0.18], [0.3, 0.3]], [circle(0.16).reverse(), circle(0.07, -LBEAM, 0).reverse()]), thickness: 0.2 },
+        // 左端接直立桿的孔圓心在端面上,端面畫成圓頭(半徑取端頭半寬 0.15)讓孔落在板裡
+        { kind: "plate", shape: shape(roundEnd([[0.3, -0.3], [-LBEAM, -0.12], [-LBEAM, 0.18], [0.3, 0.3]], [-LBEAM, 0], 0.15), [circle(0.16).reverse(), circle(0.07, -LBEAM, 0).reverse()]), thickness: 0.2 },
       ],
     },
     { id: "lever", kind: "link", width: 0.12, thickness: 0.08 },

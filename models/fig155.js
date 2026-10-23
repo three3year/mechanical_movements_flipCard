@@ -8,7 +8,7 @@
 // 齒輪每程被推多遠、棘爪何時滑過齒頂落進下一格,都由兩者的外形算出。齒輪沒被推時靠軸上的摩擦停住。
 // 原圖的棘爪是一個可以翻面的雙頭爪;模型把兩個方向畫成兩個棘爪,依狀態只顯示一個。
 import { swing, rot2 } from "./kit.js";
-import { gearProfile, shape, circle } from "./shapes.js";
+import { gearProfile, shape, circle, roundEnd } from "./shapes.js";
 import { placeOutline, polygonsOverlap, swingUntilContact } from "./contact.js";
 
 const GEAR = { teeth: 28, radius: 1.9 };
@@ -125,6 +125,9 @@ export function contactAt(v, side) {
   return { pawl: poly, gear: gearAt(gear + TABLES[side].start, Math.atan2(poly[0][1], poly[0][0])) };
 }
 
+// 肘形槓桿的板:右臂端(接桿)與上臂端(棘爪樞軸)畫成圓頭,銷孔四周留一圈肉;左下角往下拉,讓軸孔下緣也包在板裡
+const LEVER = roundEnd(roundEnd([[-0.55, -0.65], [ARM, -0.25], [ARM, 0.25], [0.65, 0.35], [0.4, TOP], [-0.4, TOP], [-0.6, 0.3]], [ARM, 0], 0.25), [0, TOP], 0.4);
+
 const pawlPart = (id, side) => ({
   id,
   posed: true, // 姿勢由狀態決定(爪尖朝右或朝左):切換狀態時轉到新的姿勢,不接續轉角
@@ -144,7 +147,7 @@ export default {
       center: [0, 0, 0.3],
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape([[-0.55, -0.45], [ARM, -0.25], [ARM, 0.25], [0.65, 0.35], [0.4, TOP], [-0.4, TOP], [-0.6, 0.3]], [circle(0.45).reverse(), circle(0.12, ARM, 0).reverse(), circle(0.12, 0, TOP).reverse()]), thickness: 0.12 },
+        { kind: "plate", shape: shape(LEVER, [circle(0.45).reverse(), circle(0.12, ARM, 0).reverse(), circle(0.12, 0, TOP).reverse()]), thickness: 0.12 },
         { kind: "cylinder", radius: 0.6, inner: 0.45, length: 0.2 },
         { kind: "cylinder", radius: 0.09, length: 0.5, at: [0, TOP, -0.17] }, // 棘爪的樞軸銷:往後穿過棘爪
       ],

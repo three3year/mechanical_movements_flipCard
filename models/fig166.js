@@ -7,7 +7,7 @@
 // 推斷(原圖沒畫):台面、圓盤的軸與軸承、模具上接連桿的銷、模具兩側的導軌與墊塊。
 import { TAU, deg, polar, clamp } from "./kit.js";
 import { angleOf } from "./linkage.js";
-import { shape, circle, stadium } from "./shapes.js";
+import { shape, circle, stadium, arcPoints } from "./shapes.js";
 
 const DISC = 2.35;
 const PIN = 1.05;
@@ -47,11 +47,21 @@ export const pinDistance = (theta) => {
 };
 export const slot = { near: L, far: L + SLOT };
 
-// 連桿(局部 +X 由模具指向銷):從模具到長孔,長孔從 L 到 L + SLOT
-const rodShape = shape(
-  [...stadium(L + SLOT + 0.2, 0.62).outline.map(([x, y]) => [x * 1, y * (x > L - 0.3 ? 1 : 0.32)])],
-  [stadium(SLOT, 0.42).outline.map(([x, y]) => [x + L, y]).reverse(), circle(0.1).reverse()],
-);
+// 連桿(局部 +X 由模具指向銷):從模具到長孔,長孔從 L 到 L + SLOT。桿身由模具端往長孔端漸寬
+// (半寬 ROD_TIP → ROD_HALF);模具端畫成圓軸眼(半徑 EYE),套在模具的銷上的孔(半徑 0.1)四周留一圈肉——
+// 桿身在模具端只有 0.2 寬,比孔還窄。軸眼的圓弧接到漸寬的兩側邊上
+const ROD_END = L + SLOT + 0.2;
+const ROD_HALF = 0.31;
+const ROD_TIP = ROD_HALF * 0.32;
+const EYE = 0.16;
+const rodOutline = (() => {
+  const k = (ROD_HALF - ROD_TIP) / ROD_END; // 側邊 y = ROD_TIP + k x
+  const a = 1 + k * k;
+  const x = (-ROD_TIP * k + Math.sqrt((ROD_TIP * k) ** 2 - a * (ROD_TIP ** 2 - EYE ** 2))) / a;
+  const open = Math.atan2(ROD_TIP + k * x, x); // 側邊離開軸眼處的角
+  return [...arcPoints(ROD_HALF, -Math.PI / 2, Math.PI / 2, ROD_END, 0), ...arcPoints(EYE, open, TAU - open)];
+})();
+const rodShape = shape(rodOutline, [stadium(SLOT, 0.42).outline.map(([x, y]) => [x + L, y]).reverse(), circle(0.1).reverse()]);
 
 export default {
   figure: 166,

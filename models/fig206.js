@@ -14,7 +14,7 @@
 // 右爪的拱高(拱得低一點,從移下來的槓桿軸下面過)。
 import { TAU, deg, rot2, swing as swingAt } from "./kit.js";
 import { circleCircle, bodyPoint } from "./linkage.js";
-import { shape, circle, ratchetShape, thickLine } from "./shapes.js";
+import { shape, circle, ratchetShape, thickLine, roundEnd } from "./shapes.js";
 import { placeOutline, polygonsOverlap, swingUntilContact } from "./contact.js";
 
 const WHEEL = { teeth: 40, outer: 2.25, inner: 2.02, pitchR: 2.12 };
@@ -41,7 +41,23 @@ const centerline = (which) => {
   const L = PAWL[which];
   return Array.from({ length: 21 }, (_, i) => [(L * i) / 20, bulge[which] * 4 * (i / 20) * (1 - i / 20)]);
 };
-const OUTLINE = { left: thickLine(centerline("left"), 0.22), right: thickLine(centerline("right"), 0.22) };
+// 掛銷那端畫成圓轂:銷孔(半徑 0.15,套在半徑 0.14 的掛銷上)比爪身的半寬 0.11 大,圓頭包不住兩側。
+// 爪身落在圓轂裡的頂點拿掉、穿過圓轂的邊換成交點,再把兩交點間的平頭換成圓轂的圓弧(銷孔四周留一圈肉)
+const HUB = 0.22;
+const hubEnd = (outline) => {
+  const clipped = outline.flatMap((p, i) => {
+    const q = outline[(i + 1) % outline.length];
+    const [inP, inQ] = [Math.hypot(...p) < HUB, Math.hypot(...q) < HUB];
+    const keep = inP ? [] : [p];
+    if (inP === inQ) return keep;
+    const [dx, dy] = [q[0] - p[0], q[1] - p[1]];
+    const [a, b, c] = [dx * dx + dy * dy, 2 * (p[0] * dx + p[1] * dy), p[0] * p[0] + p[1] * p[1] - HUB * HUB];
+    const t = (-b + (inP ? 1 : -1) * Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+    return [...keep, [p[0] + t * dx, p[1] + t * dy]];
+  });
+  return roundEnd(clipped, [0, 0], HUB);
+};
+const OUTLINE = { left: hubEnd(thickLine(centerline("left"), 0.22)), right: hubEnd(thickLine(centerline("right"), 0.22)) };
 // 原圖位置時爪的方向:從銷指向節圓上的爪尖
 const restAngle = (which) => {
   const pin = pinAt(0);
