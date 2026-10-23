@@ -15,6 +15,7 @@ const A = 6 * PITCH; // 直線段的半長(2a = 12 個齒距)
 const RE = (8 * PITCH) / Math.PI; // 端頭半圓的節圓半徑(半圓 = 8 個齒距)
 const RHO = RE + RP;
 const PATH = 4 * A + 2 * Math.PI * RHO; // 小齒輪中心走一圈的長度
+const PERIOD = PATH / RP; // 齒條一個往復小齒輪要轉的角度(= 10π,五圈)
 
 /** 小齒輪中心相對齒條中心的位置:從上方正中央出發,順時針繞長圓走 s */
 function relative(s) {
@@ -87,7 +88,7 @@ export default {
       ],
     },
   ],
-  driver: { part: "pinion", type: "rotation", speed: -1.4 },
+  driver: { part: "pinion", type: "rotation", speed: -1.4, period: PERIOD }, // 取景涵蓋齒條一個往復(一圈只框到行程的一半)
   target: "rack", // 往復直線運動的無端齒條
   view: { direction: [0.06, 0.05, 1] },
   pose(v) {

@@ -38,6 +38,13 @@ test("狀態讓自動播放反向(play −1)時往回涵蓋一圈;狀態讓主�
   assert.ok(close(framingValues(crank, 0, 8, 0).at(-1), Math.PI * 2));
 });
 
+test("一直轉的主動件宣告了週期(period)時,涵蓋一個週期:機構轉好幾圈才回到原狀的(第 119 種齒條一個往復要小齒輪轉五圈)", () => {
+  const driver = { part: "pinion", type: "rotation", speed: -1.4, period: 10 * Math.PI };
+  const values = framingValues(driver, 0, 8);
+  assert.ok(close(values[0], 0) && close(values.at(-1), -10 * Math.PI), `取樣 ${values[0]}–${values.at(-1)}`);
+  assert.ok(evenly(values));
+});
+
 test("往復(cycle)的主動件:涵蓋一個來回(去程與回程,棘爪之類的姿勢兩程不同)", () => {
   const values = framingValues({ part: "rod", type: "translation", cycle: [0, 0.5] }, 0, 10);
   assert.ok(close(values[0], 0) && close(values.at(-1), 1), `取樣 ${values[0]}–${values.at(-1)}`);

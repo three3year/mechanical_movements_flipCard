@@ -1,5 +1,6 @@
 // 取景的取樣:外框要容納主動量各處的姿勢,所以在主動量會走到的區間內均勻取樣——有範圍的是整個範圍,
-// 一直轉的是從目前值起、往自動播放的方向(主動件的 speed 與狀態的 play)一個週期(轉動一圈、往復一個來回),進程型的虛擬主動件是一個進程。
+// 一直轉的是從目前值起、往自動播放的方向(主動件的 speed 與狀態的 play)一個週期(轉動一圈、往復一個來回;
+// 機構要轉好幾圈才回到原狀的,主動件以 period 宣告週期),進程型的虛擬主動件是一個進程。
 // 不碰 Three.js:檢視器(viewer.js)與取景掃描(verify/framing.js、tools/framing.mjs)共用,測試在 npm test。
 
 // 預設段數由 tools/framing.mjs 量出(2026-10-22):段數再加倍時,全書每張圖的外框都不再變大超過 1%。
@@ -11,7 +12,7 @@ export const FRAMING_SEGMENTS = 64;
 export function framingSpan(driver, value, play = 1) {
   const progress = driver.type === "virtual" && driver.mode === "progress";
   if (driver.range && !progress) return [...driver.range];
-  const period = progress ? driver.range[1] - driver.range[0] : driver.cycle ? 2 * Math.abs(driver.cycle[1] - driver.cycle[0]) : Math.PI * 2;
+  const period = progress ? driver.range[1] - driver.range[0] : (driver.period ?? (driver.cycle ? 2 * Math.abs(driver.cycle[1] - driver.cycle[0]) : Math.PI * 2));
   return [value, value + Math.sign(driver.speed ?? 1) * (play < 0 ? -1 : 1) * period];
 }
 

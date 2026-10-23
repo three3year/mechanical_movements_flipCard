@@ -6,7 +6,7 @@ import fig113, { rackX, pitch as pitch113, roller as roller113 } from "../models
 import { frameX as frame114, stroke as stroke114, contactShapes as contactShapes114 } from "../models/fig114.js";
 import fig115, { drive as drive115 } from "../models/fig115.js";
 import { motion as motion116, stroke as stroke116, pawlGap as pawlGap116 } from "../models/fig116.js";
-import { endless, halfLength } from "../models/fig119.js";
+import fig119, { endless, halfLength } from "../models/fig119.js";
 import { jaws } from "../models/fig120.js";
 
 const TAU = 2 * Math.PI;
@@ -85,6 +85,20 @@ test("第 119 種:小齒輪均勻旋轉,交替作用於長圓無端齒條的上�
   // 在上方時桿往左、在下方時往右
   const top = endless(0.2).x - endless(0.1).x;
   assert.ok(top < 0);
+});
+
+test("第 119 種:齒條一個往復要小齒輪轉五圈,主動件宣告的週期就是這五圈(取景才框得到整個行程)", () => {
+  const { period } = fig119.driver;
+  close(period, 10 * Math.PI, "週期 = 小齒輪中心繞長圓一圈 / 節圓半徑");
+  for (const a of sweep(period, 200)) {
+    close(endless(a + period).x, endless(a).x, `轉一個週期回到原處(${a.toFixed(2)})`, 1e-9);
+    close(endless(a + period).y, endless(a).y, `轉一個週期回到原處(${a.toFixed(2)})`, 1e-9);
+  }
+  const span = (to) => {
+    const xs = sweep(to, 2000).map((a) => endless(a).x);
+    return Math.max(...xs) - Math.min(...xs);
+  };
+  assert.ok(span(TAU) < 0.7 * span(period), `一圈只走到行程的 ${(span(TAU) / span(period)).toFixed(2)}`);
 });
 
 test("第 120 種:轉動小齒輪軸,兩支夾爪朝相反方向等角擺動、併攏", () => {
