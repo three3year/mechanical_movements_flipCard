@@ -8,7 +8,7 @@
 // 推斷:擋銷的位置(C 抬起的上限);B 每擺一程,A 往後轉過一齒多一點,C 落進下一個齒間,輪每個來回前進一齒;
 // 輪軸裝在後面的軸承座上(原圖只畫輪轂)。
 import { TAU, deg, rot2, swingPhase } from "./kit.js";
-import { shape, circle, thickLine, arcPoints, gearProfile, toothOutline, gearSize } from "./shapes.js";
+import { shape, circle, thickLine, arcPoints, gearProfile, toothOutline, gearSize, roundEnd } from "./shapes.js";
 import { resample } from "./noncircular.js";
 import { circleCircle } from "./linkage.js";
 import { placeOutline, polygonsOverlap } from "./contact.js";
@@ -171,7 +171,8 @@ const plateA = shape(
   [[-0.45, -0.45], [1.75, -0.4], [1.8, 0.45], [0.85, 0.75], [0.35, 1.2], [0.35, 2.75], ...arcPoints(0.28, 0, Math.PI, 0.05, 2.85), [-0.25, 0.4]],
   [circle(0.17).reverse()],
 );
-const cShape = shape(thickLine(cArc, 0.3), [circle(0.06).reverse()]);
+// 樞軸那端畫成圓頭(桿身從樞軸外側一點起算,不畫圓頭的話樞軸孔有一大半在平頭外),孔四周留一圈肉
+const cShape = shape(roundEnd(thickLine(cArc, 0.3), [0, 0], 0.16), [circle(0.06).reverse()]);
 // A 上的擋銷:C 抬到頂時,桿身上緣靠在它上面(C 局部座標的 STOP_ON_C 點,沿桿身的法線往外)
 const STOP_ON_C = cArc[3];
 const STOP = (() => {
@@ -227,7 +228,7 @@ export default {
         { kind: "cylinder", radius: 0.06, length: 0.14, at: [C_ARM[0], C_ARM[1], 0.11] }, // 掛連桿的銷往前伸到連桿
       ],
     },
-    { id: "leverB", kind: "plate", shape: shape(thickLine([[0, 0], [4.0, 0]], 0.36), [circle(0.16).reverse()]), thickness: 0.1, center: [0, 0, 0.58], arrow: false, label: "B", labelOffset: [3.0, 0.1, 0] },
+    { id: "leverB", kind: "plate", shape: shape(roundEnd(thickLine([[0, 0], [4.0, 0]], 0.36), [0, 0], 0.18), [circle(0.16).reverse()]), thickness: 0.1, center: [0, 0, 0.58], arrow: false, label: "B", labelOffset: [3.0, 0.1, 0] },
     { id: "link", kind: "link", width: 0.16, thickness: 0.06 },
   ],
   // 動力重演:只推 B;A、C 照模型走(C 由連桿帶著抬起、落下),輪靠摩擦定位,由 C 的爪尖推動

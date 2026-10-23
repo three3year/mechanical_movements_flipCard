@@ -7,7 +7,7 @@
 // 回程爪尖滑過一齒落進下一格,多出來的是空行程,所以每個來回前進一齒)。
 // 推斷:棘爪靠自重落在齒上(原文沒提彈簧);棘輪的軸與後面的軸承座(原圖只畫輪轂)。
 import { TAU, polar, add, swingPhase } from "./kit.js";
-import { ratchetShape, shape, thickLine, rect, circle } from "./shapes.js";
+import { ratchetShape, shape, thickLine, rect, circle, roundEnd } from "./shapes.js";
 import { ratchetObstacles } from "./ratchets.js";
 import { circlePolygon } from "./contact.js";
 import { pawlDrive } from "./pawl-drive.js";
@@ -70,7 +70,7 @@ export default {
       center: [...top(0).slice(0, 2), Z.pawl],
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0], [PAWL, 0]], 0.2), [circle(0.065).reverse()]), thickness: 0.1 },
+        { kind: "plate", shape: shape(roundEnd(thickLine([[0, 0], [PAWL, 0]], 0.2), [0, 0], 0.1), [circle(0.065).reverse()]), thickness: 0.1 }, // 掛銷那端畫成圓頭,銷孔四周留一圈肉
         { kind: "cylinder", radius: NUB, length: 0.3, at: [PAWL, 0, -0.17] }, // 爪尖的圓頭,伸到齒那一層
       ],
     },

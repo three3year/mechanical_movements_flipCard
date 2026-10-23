@@ -11,7 +11,7 @@
 // 推斷:止回爪畫成鉸接的彎臂加彈簧(原圖是一片彎彈簧);擋銷的位置(裝在臂左端伸出的耳板上);擺幅與鉤的位置;
 // 輪軸、臂的樞軸裝在後面的機架上,止回爪的立柱底下有腳座,和輪的軸承座底板相接。
 import { deg, polar, rot2, swingPhase } from "./kit.js";
-import { shape, circle, thickLine } from "./shapes.js";
+import { shape, circle, thickLine, roundEnd } from "./shapes.js";
 import { bodyPoint } from "./linkage.js";
 import { pawlDrive } from "./pawl-drive.js";
 import { pedestal } from "./supports.js";
@@ -69,7 +69,8 @@ const CLICK_OUTLINE = (() => {
     left.push([CLICK_ARM[i][0] - (dy / l) * w, CLICK_ARM[i][1] + (dx / l) * w]);
     right.push([CLICK_ARM[i][0] + (dy / l) * w, CLICK_ARM[i][1] - (dx / l) * w]);
   }
-  return [...left, ...right.reverse()];
+  // 掛銷那端畫成圓頭(和銷上的軸套同半徑),銷孔四周留一圈肉;離星形輪的角最近也有 1.34,接觸算不到這裡
+  return roundEnd([...left, ...right.reverse()], [0, 0], 0.12);
 })();
 
 // 臂上的擋銷:撥爪的桿身下緣靠在它上面(彈簧把鉤往下壓),位置由撥爪的靜止轉角定
@@ -146,7 +147,7 @@ export default {
       center: [...PIVOT, Z.arm],
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0], [-3.75, 0]], 0.3), [circle(0.08).reverse()]), thickness: 0.1 },
+        { kind: "plate", shape: shape(roundEnd(thickLine([[0, 0], [-3.75, 0]], 0.3), [0, 0], 0.15), [circle(0.08).reverse()]), thickness: 0.1 }, // 樞軸那端畫成圓頭
         { kind: "plate", shape: shape(EAR), thickness: 0.1 }, // 裝擋銷的耳板
         { kind: "cylinder", radius: 0.055, length: 0.32, at: [...PIN, -0.12] }, // 掛撥爪的銷往後伸
       ],

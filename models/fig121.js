@@ -8,7 +8,7 @@
 // (逐步模擬幾個來回,取已經穩定的那一個來回當作週期)。每一程碟形輪擺 30° = 兩個齒距,齒輪每程前進兩齒。
 // 碟形輪鬆套在齒輪的軸上,軸後面一個軸承座;桿上端的滑塊與導槽是推斷(原圖的桿伸出畫面外)。
 import { deg, swing, polar, TAU } from "./kit.js";
-import { gearProfile, shape, circle } from "./shapes.js";
+import { gearProfile, shape, circle, roundEnd } from "./shapes.js";
 import { placeOutline, polygonsOverlap, swingUntilContact, pushUntilClear } from "./contact.js";
 import { pedestal } from "./supports.js";
 
@@ -31,6 +31,9 @@ const clickOutline = (side) => [
   [side * 0.38, -0.04],
   [0.0, -0.12],
 ];
+// 畫出來的制動爪:樞軸那端的平邊換成半徑 0.12 的圓頭,銷孔四周留一圈肉。
+// 接觸仍用上面的 clickOutline:圓頭離樞軸最多 0.12、樞軸離齒輪中心 1.62,圓頭離齒輪中心至少 1.50,齒頂圓只有 1.21,碰不到齒
+const clickShape = (side) => shape(roundEnd(clickOutline(side), [0, 0], 0.12), [circle(0.07).reverse()]);
 
 const pinAt = (disc) => polar(PIN.r, PIN.at + disc);
 /** 碟形輪轉 disc 時桿上端(滑塊)的高度 */
@@ -147,7 +150,7 @@ export default {
         { kind: "plate", shape: shape(circle(DISC), [circle(1.4).reverse()]), thickness: 0.1, at: [0, 0, -0.15] },
         { kind: "plate", shape: shape(circle(1.4), [circle(0.19).reverse()]), thickness: 0.06, at: [0, 0, -0.18] }, // 鬆套在軸上
         { kind: "cylinder", radius: 0.2, length: 0.4, at: [...polar(PIN.r, PIN.at).slice(0, 2), 0.05], accent: true },
-        { kind: "cylinder", radius: 0.1, length: 0.35, at: [...polar(CLICK.r, CLICK.at).slice(0, 2), 0.05] },
+        { kind: "cylinder", radius: 0.06, length: 0.35, at: [...polar(CLICK.r, CLICK.at).slice(0, 2), 0.05] }, // 制動爪的樞軸銷,穿在爪的銷孔(半徑 0.07)裡
       ],
     },
     {
@@ -162,8 +165,8 @@ export default {
         { kind: "cylinder", radius: 0.18, length: 1.1, at: [0, 0, -0.35] }, // 軸:穿過碟形輪,後端在軸承座裡
       ],
     },
-    { id: "click", kind: "plate", shape: shape(clickOutline(1), [circle(0.07).reverse()]), thickness: 0.1, arrow: false, posed: true },
-    { id: "clickR", kind: "plate", shape: shape(clickOutline(-1), [circle(0.07).reverse()]), thickness: 0.1, arrow: false, posed: true },
+    { id: "click", kind: "plate", shape: clickShape(1), thickness: 0.1, arrow: false, posed: true },
+    { id: "clickR", kind: "plate", shape: clickShape(-1), thickness: 0.1, arrow: false, posed: true },
     { id: "rod", kind: "link", width: 0.24, thickness: 0.1 },
     { id: "head", kind: "box", size: [0.42, 0.3, 0.2] },
     {
