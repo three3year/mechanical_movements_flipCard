@@ -10,7 +10,7 @@
 import { TAU } from "./kit.js";
 import { circleCircle, solve } from "./linkage.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
-import { shape, circle, thickLine } from "./shapes.js";
+import { shape, circle, thickLine, roundEnd } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
 const G = [2.3, -2.4, 0]; // 立柱 A 的底樞軸
@@ -75,7 +75,8 @@ export default {
     {
       id: "beam",
       kind: "plate",
-      shape: shape(thickLine([[0, 0], [2 * HALF, 0]], 0.36), [circle(PIN_C).reverse()]),
+      // C 端的銷孔與 R 端的銷都落在端頭上:兩端畫成圓頭(半徑 = 樑的半寬),孔與銷周圍留一圈肉
+      shape: shape(roundEnd(roundEnd(thickLine([[0, 0], [2 * HALF, 0]], 0.36), [0, 0], 0.18), [2 * HALF, 0], 0.18), [circle(PIN_C).reverse()]),
       thickness: 0.14,
       arrow: false,
       pieces: [

@@ -9,7 +9,7 @@
 // 都是這樣),臂與腕銷整根在 D 的齒前面:腕銷走到行程兩端時就在 D 的節圓上。
 import { TAU, Z, rot2 } from "./kit.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
-import { shape, circle, arcPoints } from "./shapes.js";
+import { shape, circle, arcPoints, roundEnd } from "./shapes.js";
 import { meshAngle } from "./gears.js";
 
 const C0 = [0, 0.9, 0]; // 主軸(平面位置)
@@ -98,8 +98,8 @@ export default {
         // 四根輪輻(上下左右,原圖)
         ...[0, 1, 2, 3].map((i) => ({ kind: "box", size: [2.6, 0.14, 0.1], at: [1.3 * Math.cos((i * TAU) / 4), 1.3 * Math.sin((i * TAU) / 4), -0.68], angle: (i * TAU) / 4 })),
         { kind: "cylinder", radius: 0.2, length: 0.625, at: [0, 0, -0.4675] }, // 軸穿過軸承座,止於板 C 的背面(B 的輪緣繞著軸心轉)
-        // 板 C:從軸心到曲柄銷
-        { kind: "plate", shape: shape([[0, -0.14], [RB, -0.1], [RB, 0.1], [0, 0.14]], [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, -0.115] }, // 板 C 在行星齒輪 B 的後面,曲柄銷往前插進 B 的輪轂
+        // 板 C:從軸心到曲柄銷;軸心那端的孔畫出圓頭(半徑同端頭半寬 0.14)
+        { kind: "plate", shape: shape(roundEnd([[0, -0.14], [RB, -0.1], [RB, 0.1], [0, 0.14]], [0, 0], 0.14), [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, -0.115] }, // 板 C 在行星齒輪 B 的後面,曲柄銷往前插進 B 的輪轂
         { kind: "cylinder", radius: 0.06, length: 0.225, at: [RB, 0, -0.0425], accent: true },
       ],
       label: "C",

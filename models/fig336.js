@@ -15,7 +15,7 @@
 import { deg, dist } from "./kit.js";
 import { circleCircle, angleOf } from "./linkage.js";
 import { cylinderParts, cylinderPose, steamPipe } from "./vertical-engine.js";
-import { shape, circle, thickLine, zCylinder } from "./shapes.js";
+import { shape, thickLine, zCylinder } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
 const K = 0.0125;
@@ -103,7 +103,8 @@ export default {
       id: "lever",
       kind: "plate",
       center: [A[0], A[1], Z.lever], // 側槓桿與側桿在汽缸的前面
-      shape: { ...shape(thickLine([[0, 0], [LEVER, 0]], 0.36)), holes: [circle(0.11).reverse()] },
+      // 樞軸那端整個藏在實心的轂(r 0.26)裡,板上不開銷孔(孔一半在外形外、本來就沒畫出來)
+      shape: shape(thickLine([[0, 0], [LEVER, 0]], 0.36)),
       thickness: 0.12,
       arrow: false,
       pieces: [{ kind: "cylinder", radius: 0.26, length: 0.22 }, { kind: "cylinder", radius: 0.1, length: 0.5, at: [0, 0, -0.25] }],

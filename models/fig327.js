@@ -6,7 +6,7 @@
 // 十字頭兩端的滾子各自繞銷轉,貼著導桿滾(不打滑,轉角 = 十字頭位移 / 滾子半徑)。
 import { TAU, deg } from "./kit.js";
 import { crankSlider, cylinderParts, cylinderPose, steamPipe, rodHub } from "./vertical-engine.js";
-import { shape, circle, arcPoints } from "./shapes.js";
+import { shape, circle, arcPoints, roundEnd } from "./shapes.js";
 
 const CRANK = [0, 2.5, 0];
 const R = 0.5;
@@ -59,7 +59,8 @@ export default {
         { kind: "plate", shape: shape([...arcPoints(2.95, 0, TAU).slice(0, -1)], [arcPoints(2.75, 0, TAU).slice(0, -1).reverse()]), thickness: 0.2, at: [0, 0, -0.8] },
         ...[0, 1, 2, 3].map((i) => ({ kind: "box", size: [5.5, 0.14, 0.1], at: [0, 0, -0.8], angle: deg(20) + (i * Math.PI) / 4 })),
         { kind: "cylinder", radius: 0.2, length: 1.1, at: [0, 0, -0.35] },
-        { kind: "plate", shape: shape([[0, -0.15], [R, -0.1], [R, 0.1], [0, 0.15]], [circle(0.06).reverse()]), thickness: 0.1, at: [0, 0, 0.2] },
+        // 曲柄:軸心那端的孔畫出圓頭(半徑同端頭半寬 0.15)
+        { kind: "plate", shape: shape(roundEnd([[0, -0.15], [R, -0.1], [R, 0.1], [0, 0.15]], [0, 0], 0.15), [circle(0.06).reverse()]), thickness: 0.1, at: [0, 0, 0.2] },
         { kind: "cylinder", radius: 0.07, length: 0.3, at: [R, 0, 0.28], accent: true },
       ],
     },
