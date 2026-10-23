@@ -15,7 +15,7 @@ import { bodyPoint } from "./linkage.js";
 import { ratchetObstacles } from "./ratchets.js";
 import { circlePolygon } from "./contact.js";
 import { pawlDrive } from "./pawl-drive.js";
-import { shape, circle, ratchetShape, thickLine } from "./shapes.js";
+import { shape, circle, ratchetShape, thickLine, roundEnd } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
 const WHEEL = { teeth: 20, outer: 1.45, inner: 1.2, dir: 1 };
@@ -24,6 +24,7 @@ const P = [0.6, 2.6, 0];
 const PINS = { b: [-0.98, -0.1], c: [0.63, -0.68] }; // 相對 P(槓桿在原位)
 const LEN = { b: 2.0, c: 1.7 }; // 銷到爪尖圓頭的中心
 const NUB = 0.07;
+const PAWL_W = 0.17; // 棘爪身寬
 const SWING = deg(15);
 const Z = { pawl: 0.2, lever: 0.34 };
 
@@ -63,7 +64,8 @@ const pawlPart = (which, label, labelOffset) => ({
   label,
   labelOffset,
   pieces: [
-    { kind: "plate", shape: shape(thickLine([[0, 0], [LEN[which], 0]], 0.17), [circle(0.06).reverse()]), thickness: 0.1 },
+    // 掛銷那端畫成圓頭(半徑比半寬略大),銷孔四周留一圈肉
+    { kind: "plate", shape: shape(roundEnd(thickLine([[0, 0], [LEN[which], 0]], PAWL_W), [0, 0], 0.1), [circle(0.06).reverse()]), thickness: 0.1 },
     { kind: "cylinder", radius: NUB, length: 0.28, at: [LEN[which], 0, -0.16] }, // 爪尖的圓頭,伸到齒那一層
   ],
 });

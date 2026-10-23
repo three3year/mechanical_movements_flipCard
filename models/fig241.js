@@ -8,7 +8,7 @@
 // 推斷:A 有 24 齒;兩輪的中心距與單齒的長度依原圖量得(單齒只伸到 A 的齒間,不碰 A 的齒根);
 // 止回爪的樞軸銷、兩輪的軸與後面的軸承座(原圖只畫輪轂)。
 import { TAU, deg, polar } from "./kit.js";
-import { ratchetShape, shape, circle, thickLine, arcPoints } from "./shapes.js";
+import { ratchetShape, shape, circle, thickLine, arcPoints, roundEnd } from "./shapes.js";
 import { ratchetObstacles } from "./ratchets.js";
 import { pawlDrive } from "./pawl-drive.js";
 import { pedestal } from "./supports.js";
@@ -62,7 +62,7 @@ export const contactAt = (theta) => {
 };
 
 const hookShape = shape(HOOK, [circle(0.1).reverse()]); // 圓頭的孔套在小輪的軸上
-const clickShape = shape(thickLine(CLICK_LINE, 0.2), [circle(0.07).reverse()]);
+const clickShape = shape(roundEnd(thickLine(CLICK_LINE, 0.2), [0, 0], 0.1), [circle(0.07).reverse()]); // 樞軸那端畫成圓頭,銷孔四周留一圈肉
 
 export default {
   figure: 241,

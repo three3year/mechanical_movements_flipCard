@@ -7,7 +7,7 @@
 // 彈簧片(原圖):一片 U 形板彈簧,上片從爪 C 的下緣伸出、往右彎成 U、下片回到框架上的固定座;
 // 畫成一條隨爪彎曲的線:上片一端固定在爪上、隨爪轉,U 形彎與下片固定不動,彎曲吸收在上片裡。
 import { TAU, deg, rot2 } from "./kit.js";
-import { ratchetShape, circle, arcPoints, shape } from "./shapes.js";
+import { ratchetShape, circle, arcPoints, shape, roundEnd } from "./shapes.js";
 import { ratchetObstacles } from "./ratchets.js";
 import { lastStop } from "./contact.js";
 import { pawlDrive } from "./pawl-drive.js";
@@ -33,15 +33,20 @@ const BAR = {
     [0.2, -0.18],
   ],
 };
-// 左:沿輪緣彎曲的長爪,末端的鉤伸進齒間
+// 左:沿輪緣彎曲的長爪,末端的鉤伸進齒間;樞軸那一端畫成圓頭(半徑 0.13,略大於爪半寬 0.12),銷孔四周留一圈肉。
+// 圓頭離輪緣(1.7)還有 0.17 以上,接觸只發生在鉤端,算接觸的輪廓與畫出來的同一份
 const HOOK_PIVOT = [-2.0, -0.1];
 const HOOK = {
   pivot: HOOK_PIVOT,
-  outline: rel(HOOK_PIVOT, [
-    ...arcPoints(2.12, deg(184), deg(119)),
-    [1.5 * Math.cos(deg(117)), 1.5 * Math.sin(deg(117))],
-    ...arcPoints(1.88, deg(125), deg(184)),
-  ]),
+  outline: roundEnd(
+    rel(HOOK_PIVOT, [
+      ...arcPoints(2.12, deg(184), deg(119)),
+      [1.5 * Math.cos(deg(117)), 1.5 * Math.sin(deg(117))],
+      ...arcPoints(1.88, deg(125), deg(184)),
+    ]),
+    [0, 0],
+    0.13,
+  ),
 };
 // 下:爪 C,樞軸在中間,左邊是握把,右上是爪尖
 const C = {

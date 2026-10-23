@@ -17,7 +17,7 @@
 // 桿的起點得比原圖更靠左(原文 > 實物可行 > 插圖外形)。
 import { deg, rot2, swing, swingPhase, routeRope, Z } from "./kit.js";
 import { pawlDrive } from "./pawl-drive.js";
-import { shape, thickLine, circle } from "./shapes.js";
+import { shape, thickLine, circle, roundEnd } from "./shapes.js";
 
 const P = [2.55, 0.45, 0]; // 槓桿樞軸
 const UP = 0.75; // 上方棘爪接點到樞軸
@@ -129,7 +129,8 @@ const rack = shape([
   [0, ROOT],
 ]);
 
-const pawlShape = (len) => shape([...thickLine([[0, 0], [-len + 0.02, 0]], 0.09)], [circle(0.035).reverse()]);
+// 爪身:掛銷那端畫成圓頭(半徑取半寬),銷孔四周留一圈肉
+const pawlShape = (len) => shape(roundEnd(thickLine([[0, 0], [-len + 0.02, 0]], 0.09), [0, 0], 0.045), [circle(0.035).reverse()]);
 // 鉤從齒那一層(z −0.15)往前伸到爪身(爪身在 z0 ± t/2),和爪身是一件
 const hookPiece = (len, tilt, z0, t) => {
   const back = -RACK_DEPTH / 2;
