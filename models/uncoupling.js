@@ -9,7 +9,7 @@
 // 推斷:後面的曲柄與圖中曲柄同軸、同長;脫開時圖中曲柄停在原圖位置(朝上);環的三段式構造與把手。
 // 兩支曲柄各有自己的軸:圖中曲柄的軸往前伸進前面的軸承座,後面曲柄的軸往後伸進後面的軸承座(原圖沒畫,推斷)。
 import { polar } from "./kit.js";
-import { shape, circle, arcPoints } from "./shapes.js";
+import { shape, circle, arcPoints, roundEnd } from "./shapes.js";
 import { pedestal } from "./supports.js";
 
 export const ARM = 4.05;
@@ -60,7 +60,8 @@ export function uncouplingModel({ figure, initial }) {
         spin: 1.2,
         posed: true,
         pieces: [
-          { kind: "plate", shape: shape([[-0.88, 0], [0.88, 0], [0.65, ARM - 0.9], [-0.65, ARM - 0.9]], [circle(0.68).reverse()]), thickness: 0.25 },
+          // 臂:軸心端畫成半寬的圓頭,軸孔落在臂裡(圓頭包在半徑 1.0 的輪轂裡,外觀不變)
+          { kind: "plate", shape: shape(roundEnd([[-0.88, 0], [0.88, 0], [0.65, ARM - 0.9], [-0.65, ARM - 0.9]], [0, 0], 0.88), [circle(0.68).reverse()]), thickness: 0.25 },
           { kind: "plate", shape: shape(circle(EYE, 0, ARM), [circle(BORE, 0, ARM).reverse()]), thickness: 0.25 }, // 眼:整圈,與臂連成一片
           { kind: "cylinder", radius: 1.0, inner: 0.68, length: 0.35 },
           { kind: "cylinder", radius: 0.68, length: 0.6, mark: true },

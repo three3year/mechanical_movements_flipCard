@@ -59,7 +59,7 @@ const LEAF = [
   [T[0] - 0.22, NOTCH_TOP + 0.1],
   [EAR[0] - LEAF_W, NOTCH_TOP + 0.3],
   [EAR[0] - LEAF_W, EAR[1]],
-  ...arcPoints(LEAF_W, Math.PI, 0, EAR[0], EAR[1]).slice(1, -1).reverse(),
+  ...arcPoints(LEAF_W, Math.PI, 0, EAR[0], EAR[1]).slice(1, -1), // 耳座處的圓頭:從左緣頂端越過上方接回右緣(套著耳座的銷)
 ].map(([x, y]) => [x - EAR[0], y - EAR[1]]); // 相對耳座
 const SPRING_Z = 0.25; // 彈簧片在手柄那一層(0.19–0.31)
 // 托架(推斷):從桿端往右上彎到耳座,在偏心桿那一層
