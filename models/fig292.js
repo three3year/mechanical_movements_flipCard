@@ -19,7 +19,7 @@
 import { TAU, deg, swing, Y, Z } from "./kit.js";
 import { weightDrive, rewound } from "./weight-drive.js";
 import { anchorPallet, escapeByContact, placePoly } from "./escapement.js";
-import { shape, circle, thickLine } from "./shapes.js";
+import { shape, circle, thickLine, roundEnd } from "./shapes.js";
 import { circlePolygon } from "./contact.js";
 import { plateBar } from "./supports.js";
 
@@ -70,7 +70,8 @@ const end = (p) => {
   const a = p.psi - p.s * 0.12;
   return [p.L * Math.cos(a), p.L * Math.sin(a)];
 };
-const arm = (to, bend) => shape(thickLine([[0, 0], ...(bend ? [bend] : []), to], 0.14), [circle(0.06).reverse()]);
+// 樞軸 F 那端畫成圓頭(半徑比臂的半寬大一點,銷孔四周留一圈肉;圓頭落在錨形件轂的半徑 0.32 裡)
+const arm = (to, bend) => shape(roundEnd(thickLine([[0, 0], ...(bend ? [bend] : []), to], 0.14), [0, 0], 0.09), [circle(0.06).reverse()]);
 
 // 推斷的擺:擺桿與擺錘在夾板條後面,固定在錨形件軸的後端
 const PENDULUM = { length: 6, z: -1.35, bob: 0.55 };

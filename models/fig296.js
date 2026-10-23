@@ -142,7 +142,7 @@ export default {
       label: "B",
       labelOffset: [0.35, 0.25, 0.3],
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[-FORK + 0.22, 0], [-0.6, 0.08], [0, 0.1], [0.9, 0], C], 0.16), [circle(0.06).reverse()]), thickness: 0.1, at: [0, 0, 0.14] }, // 槓桿:左端接凹槽的底
+        { kind: "plate", shape: shape(thickLine([[-FORK + 0.22, 0], [-0.6, 0.08], [0, 0], [0.9, 0], C], 0.16), [circle(0.06).reverse()]), thickness: 0.1, at: [0, 0, 0.14] }, // 槓桿:左端接凹槽的底,中段經過樞軸 B(槓桿軸穿在孔裡)
         { kind: "plate", shape: shape(thickLine([[0, 0], tail(ENTRY)], 0.14)), thickness: 0.1, at: [0, 0, 0.14] },
         { kind: "plate", shape: shape(thickLine([[0, 0], tail(EXIT)], 0.14)), thickness: 0.1, at: [0, 0, 0.14] },
         { kind: "plate", shape: shape(ENTRY.poly), thickness: 0.26, at: [0, 0, 0.06] },

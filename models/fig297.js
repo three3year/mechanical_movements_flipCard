@@ -17,7 +17,7 @@
 // 實物也可能用發條;重錘只是示意「輪受固定的力矩」。
 import { TAU, deg, swing, Y, Z } from "./kit.js";
 import { escapeByContact, placePoly } from "./escapement.js";
-import { shape, circle, thickLine } from "./shapes.js";
+import { shape, circle, thickLine, roundEnd } from "./shapes.js";
 import { circlePolygon } from "./contact.js";
 import { plateBar } from "./supports.js";
 import { weightDrive, rewound } from "./weight-drive.js";
@@ -90,7 +90,8 @@ export const geometry = { DRUM, REWIND, R };
 // 搖臂(相對樞軸):從樞軸往下到 C 的內端;B 用一段支臂接在搖臂上
 const C_IN = C_ARC.end;
 const B_OUT = B_ARC.end;
-const ARM = thickLine([[0, 0], [B_OUT[0] - 0.25, B_OUT[1] + 0.15], [C_IN[0] + 0.05, C_IN[1] + 0.05]], 0.24);
+// 樞軸那一端畫成圓頭(半徑取臂的半寬),樞軸孔落在外形裡
+const ARM = roundEnd(thickLine([[0, 0], [B_OUT[0] - 0.25, B_OUT[1] + 0.15], [C_IN[0] + 0.05, C_IN[1] + 0.05]], 0.24), [0, 0], 0.12);
 
 export default {
   figure: 297,

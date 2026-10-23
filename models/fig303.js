@@ -15,7 +15,7 @@
 import { TAU, deg, swing, Y, Z } from "./kit.js";
 import { weightDrive, rewound } from "./weight-drive.js";
 import { anchorPallet, escapeByContact, placePoly, toothedWheel } from "./escapement.js";
-import { shape, thickLine, circle } from "./shapes.js";
+import { shape, circle, arcPoints } from "./shapes.js";
 import { plateBar } from "./supports.js";
 
 export const N = 24;
@@ -67,8 +67,30 @@ const hang = weightDrive({
 const weightAt = rewound(hang, (v) => -escapement.angle(v), REWIND);
 export const geometry = { DRUM, REWIND, RW, ROOT, C, WHEEL };
 
-// 錨形件(相對 C):兩臂斜下到叉瓦 D、E
-const anchor = shape(thickLine([tail(D), [tail(D)[0] * 0.6, tail(D)[1] * 0.45], [0, 0], [tail(E)[0] * 0.6, tail(E)[1] * 0.45], tail(E)], 0.2), [circle(0.09).reverse()]);
+// 錨形件(相對 C):C 上的圓轂(半徑同轂筒 0.2)伸出兩條折臂,斜下到叉瓦 D、E。
+// 折點兩側斜接,臂寬處處 0.2(thickLine 在折點取前後平均的切線、把臂收窄,C 上的軸孔就破到外形外)
+const ARM_W = 0.2;
+const BOSS = 0.2;
+const bentArm = (end) => {
+  const bend = [end[0] * 0.6, end[1] * 0.45];
+  const unit = (a, b) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1]); return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; };
+  const [t1, t2] = [unit([0, 0], bend), unit(bend, end)];
+  const [n1, n2] = [[-t1[1], t1[0]], [-t2[1], t2[0]]]; // 左側法線
+  const k = ARM_W / 2 / (1 + n1[0] * n2[0] + n1[1] * n2[1]); // 斜接:折點偏移 h·(n1 + n2)/(1 + n1·n2)
+  const miter = [(n1[0] + n2[0]) * k, (n1[1] + n2[1]) * k];
+  const h = ARM_W / 2;
+  return { angle: Math.atan2(t1[1], t1[0]), right: [[bend[0] - miter[0], bend[1] - miter[1]], [end[0] - h * n2[0], end[1] - h * n2[1]]], left: [[end[0] + h * n2[0], end[1] + h * n2[1]], [bend[0] + miter[0], bend[1] + miter[1]]] };
+};
+const anchorOutline = (() => {
+  const open = Math.asin(ARM_W / 2 / BOSS); // 臂的一側在轂上張開的角
+  const arms = [bentArm(tail(D)), bentArm(tail(E))].sort((a, b) => a.angle - b.angle);
+  // 照 hubArms 的走法:沿臂的右側出去、繞過臂端、沿左側回到轂,再沿轂繞到下一條臂的右側根部
+  return arms.flatMap((arm, i) => {
+    const next = arms[(i + 1) % arms.length].angle + (i + 1 === arms.length ? TAU : 0);
+    return [...arm.right, ...arm.left, ...arcPoints(BOSS, arm.angle + open, next - open)];
+  });
+})();
+const anchor = shape(anchorOutline, [circle(0.09).reverse()]);
 const ROD = 4.6; // 擺桿長(C 到 F)
 
 export default {
