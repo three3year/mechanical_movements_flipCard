@@ -45,10 +45,11 @@ const LEVER = shape(
 );
 // 壓腳:主體是槓桿底下的塊(頂面低於槓桿底邊,放鬆時槓桿左端往上翹、底邊往支點那側下沉也不碰到),
 // 吊在銷上的是左右兩片叉耳(在槓桿兩側,不同的 z 層),銷穿過叉耳與槓桿——槓桿和壓腳在同一平面裡不重疊。
+// 銷孔只開在叉耳上:主體頂面在銷下方,銷不經過主體
 const FOOT_TOP = -0.3;
 const FOOT_BOTTOM = -0.45;
 const PIN_R = 0.09;
-const FOOT = shape([[-0.6, FOOT_BOTTOM], [0.6, FOOT_BOTTOM], [0.28, FOOT_TOP], [-0.28, FOOT_TOP]], [circle(0.1).reverse()]);
+const FOOT = shape([[-0.6, FOOT_BOTTOM], [0.6, FOOT_BOTTOM], [0.28, FOOT_TOP], [-0.28, FOOT_TOP]]);
 const LUG = shape([[-0.28, FOOT_TOP - 0.01], [0.28, FOOT_TOP - 0.01], [0.22, -0.05], ...arcPoints(0.22, 0, Math.PI), [-0.22, -0.05]], [circle(PIN_R).reverse()]);
 const LEVER_THICK = 0.25;
 const LUG_THICK = 0.07;

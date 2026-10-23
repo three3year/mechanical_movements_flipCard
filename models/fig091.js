@@ -45,7 +45,9 @@ export default {
       kind: "group",
       spin: S,
       pieces: [
-        { kind: "plate", shape: shape(reuleaux, [circle(0.15).reverse()]), thickness: 0.3, mark: [0, 1.0], markSize: 0.09 },
+        // 輪本體不開軸孔:軸在頂角,孔會破出輪廓(三角化丟掉一半);軸只往前伸進輪轂(z 0.175 起),
+        // 不穿過本體(-0.15–0.15),頂角在停頓時正是頂著方框下內邊的那一點,也不能挖成缺口
+        { kind: "plate", shape: shape(reuleaux), thickness: 0.3, mark: [0, 1.0], markSize: 0.09 },
         { kind: "plate", shape: shape(circle(0.28), [circle(0.15).reverse()]), thickness: 0.2, at: [0, 0, 0.25] }, // 輪轂在方框前面(軸在輪的頂角,輪轂會超出輪廓)
         { kind: "cylinder", radius: 0.15, length: 0.75, at: [0, 0, 0.55] }, // 軸往前伸進前方的軸承(往後會擋到方框的內邊)
       ],

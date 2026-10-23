@@ -13,8 +13,8 @@
 // 張開的角度才夠讓鉤爪讓開 T 形頭);鉤比原圖小一些,好讓吊架的行程放得進框架。
 import { swingPhase } from "./kit.js";
 import { falling } from "./jumps.js";
-import { shape, thickLine, circle, rect } from "./shapes.js";
-import { placeOutline, polygonsOverlap, pushUntilClear } from "./contact.js";
+import { shape, thickLine, circle, rect, roundEnd } from "./shapes.js";
+import { placeOutline, polygonsOverlap, pushUntilClear, pointInPolygon } from "./contact.js";
 
 export const HEIGHT = 3.0; // 吊繩的行程
 export const DROP = 0.6; // 重物落到底所佔的吊繩行程(約 0.24 秒);落得比吊架回頭往下快,鉤合攏時重物已在下方
@@ -30,7 +30,12 @@ const HOOK_LINE = [
   [-0.43, 0.26], [-0.34, 0.14], [-0.22, 0.05], [-0.1, 0.01], [0, 0], [0.01, -0.15], [0, -0.3], [0, -0.45],
   [0.03, -0.53], [0.08, -0.555], [0.13, -0.53], [0.15, -0.47],
 ];
-const hookShape = (m) => shape(thickLine(HOOK_LINE.map(([x, y]) => [m * x, y]), 0.13), [circle(0.05).reverse()]);
+// 銷在中心線的折角上:thickLine 在折點取前後平均的切線,折角外側那條邊離銷只剩 0.049,銷孔(半徑 0.05)破到外形外。
+// 外側補一段以銷為圓心、半徑同半寬 0.065 的圓弧(銷上的圓轂,孔周圍留一圈 0.015 的肉):roundEnd 換掉離銷最近的那條邊,
+// 只留落在原外形外的弧點(其餘弧點在外形裡,留著會把外形往內挖)
+const HOOK_W = 0.13;
+const withBoss = (outline) => roundEnd(outline, [0, 0], HOOK_W / 2).filter((p) => outline.includes(p) || !pointInPolygon(p, outline));
+const hookShape = (m) => shape(withBoss(thickLine(HOOK_LINE.map(([x, y]) => [m * x, y]), HOOK_W)), [circle(0.05).reverse()]);
 const HOOK = { L: hookShape(1), R: hookShape(-1) };
 // T 形頭(W 的局部座標,原點在頂面):兩端擱在鉤爪的爪尖上,細柱接到 W 的頂面
 const HEAD = [[-0.2, 0], [0.2, 0], [0.2, -0.1], [0.05, -0.1], [0.05, -0.27], [-0.05, -0.27], [-0.05, -0.1], [-0.2, -0.1]];
