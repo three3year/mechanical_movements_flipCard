@@ -6,7 +6,7 @@
 // 推斷:槽的形狀照心形凸輪的作法:槓桿以等角速度擺過去、再擺回來(圓盤每轉一圈一個來回);
 // 槽是銷在圓盤上走過的軌跡(由槓桿的運動反推),所以銷始終在槽裡。樞軸銷從支柱頂端往前穿過槓桿的孔。
 import { TAU, deg, rot2, sub } from "./kit.js";
-import { shape, circle, offsetLoop, thickLine } from "./shapes.js";
+import { shape, circle, offsetLoop, roundEnd, thickLine } from "./shapes.js";
 
 export const DISC = { center: [-0.45, 0.05, 0], radius: 1.75 };
 export const PIVOT = [0.95, 2.4, 0]; // 槓桿上端的樞軸
@@ -90,7 +90,8 @@ export default {
       center: PIVOT,
       arrow: false,
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0], [LEVER * Math.cos(BAR), LEVER * Math.sin(BAR)]], 0.2), [circle(0.06).reverse()]), thickness: 0.12, at: [0, 0, 0.25] },
+        // 樞軸那端畫成圓頭(半徑取半寬 0.1),樞軸孔四周留一圈肉
+        { kind: "plate", shape: shape(roundEnd(thickLine([[0, 0], [LEVER * Math.cos(BAR), LEVER * Math.sin(BAR)]], 0.2), [0, 0], 0.1), [circle(0.06).reverse()]), thickness: 0.12, at: [0, 0, 0.25] },
         // 槓桿跨過盤緣處的半圓凸起(和槓桿同一層、疊在槓桿邊上),銷裝在凸起上往後伸進槽裡
         { kind: "plate", shape: shape(circle(0.15, PIN_AT[0], PIN_AT[1])), thickness: 0.12, at: [0, 0, 0.25] },
         { kind: "cylinder", radius: 0.08, length: 0.22, at: [PIN_AT[0], PIN_AT[1], 0.11], accent: true }, // 銷只伸到槽壁的高度,不陷進盤面

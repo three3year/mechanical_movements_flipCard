@@ -13,7 +13,7 @@
 // 進程走滿一輪(p = 1)就從頭再演一次:鼓輪與鉤子瞬間回到起始位置,那是劇情重演,不是零件瞬移
 // (鉤尖勾在凸柱後面,倒轉或收回鉤子都會撞進凸柱,做不出連續的「解開」過程)。
 import { Z, TAU, deg, smooth, routeRope, rot2 } from "./kit.js";
-import { shape, circle, thickLine } from "./shapes.js";
+import { shape, circle, thickLine, roundEnd } from "./shapes.js";
 import { placeOutline, polygonsOverlap, circlePolygon } from "./contact.js";
 
 const FRAME = 2.25;
@@ -33,8 +33,9 @@ const TURNS = 3.2; // 進程一輪內(未被擋住時)鼓輪轉的圈數
 const DANGER = 0.4; // 轉速過了危險值的進程
 const FLING = 0.08; // 甩出所花的進程
 
-// 鉤子:沿局部 +X(鉤臂方向)長 ARM,末端往逆時針側(局部 +Y)彎成鉤尖
-const HOOK = thickLine([[0, 0], [ARM, 0], [ARM + BARB * Math.cos(BARB_ANGLE), BARB * Math.sin(BARB_ANGLE)]], WIDTH);
+// 鉤子:沿局部 +X(鉤臂方向)長 ARM,末端往逆時針側(局部 +Y)彎成鉤尖;樞軸那一端畫成圓頭(半寬),樞軸孔才落在外形裡。
+// 圓頭在樞軸轂(半徑 0.07)裡面,離凸柱遠,不影響鉤住的時刻
+const HOOK = roundEnd(thickLine([[0, 0], [ARM, 0], [ARM + BARB * Math.cos(BARB_ANGLE), BARB * Math.sin(BARB_ANGLE)]], WIDTH), [0, 0], WIDTH / 2);
 const studCenter = (a) => [STUD.r * Math.cos(a), STUD.r * Math.sin(a)];
 const STUD_POLYS = STUDS.map((a) => circlePolygon(studCenter(a), STUD.size, 48));
 

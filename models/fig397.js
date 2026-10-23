@@ -17,7 +17,7 @@
 // - 擺幅照這個配置是 2·asin(r / L) ≈ 64°,擺桿上端往下掉約 2;連桿從原圖的 2.0 加長到 2.4 才搆得到(偏離插圖),
 //   滑桿行程約 4.4,滑桿跟著加長。
 // - 機架(推斷):底座往後加深,曲柄軸的軸承座站在上面;滑桿穿過兩個方形導套,導套由立柱撐在底座上。
-import { shape, thickLine, circle } from "./shapes.js";
+import { shape, thickLine, circle, roundEnd } from "./shapes.js";
 import { pedestal, squareGuide } from "./supports.js";
 
 const PX = 3.6 / 305; // 原圖 1 px
@@ -148,8 +148,9 @@ export default {
       center: CRANK.center,
       spin: CRANK.r + 0.2,
       pieces: [
-        // 曲柄整個在擺桿的後面:只有曲柄銷往前伸進擺桿的槽;軸往後穿過軸承座
-        { kind: "plate", shape: shape(thickLine([[0, 0], [CRANK.r, 0]], 0.22), [circle(0.08).reverse()]), thickness: 0.1, at: [0, 0, -0.16] },
+        // 曲柄整個在擺桿的後面:只有曲柄銷往前伸進擺桿的槽;軸往後穿過軸承座。曲柄臂的軸孔開在端頭,
+        // 端頭畫成半寬 0.11 的圓頭把軸孔包住(落在同一層半徑 0.3 的圓盤裡,外觀不變)
+        { kind: "plate", shape: shape(roundEnd(thickLine([[0, 0], [CRANK.r, 0]], 0.22), [0, 0], 0.11), [circle(0.08).reverse()]), thickness: 0.1, at: [0, 0, -0.16] },
         { kind: "cylinder", radius: 0.3, length: 0.1, at: [0, 0, -0.16] },
         { kind: "cylinder", radius: 0.08, length: 0.69, at: [0, 0, -0.455] },
         { kind: "cylinder", radius: PIN_R, length: 0.3, at: [CRANK.r, 0, -0.06], accent: true },
