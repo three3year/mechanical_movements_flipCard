@@ -17,7 +17,7 @@
 // 擺八個來回(輪轉八齒)重錘捲回最高處一次(上鍊,畫面上一下子回到上面)。實物也可能用發條;重錘只是示意。
 import { TAU, deg, swing, Y, Z } from "./kit.js";
 import { anchorPallet, toothedWheel, placePoly, periodic, fall, anyOverlap, gravityArm } from "./escapement.js";
-import { shape, thickLine, circle, rect } from "./shapes.js";
+import { shape, thickLine, circle, rect, roundEnd } from "./shapes.js";
 import { plateBar } from "./supports.js";
 import { edgeDistance } from "./contact.js";
 import { weightDrive, rewound } from "./weight-drive.js";
@@ -114,7 +114,8 @@ export const escapement = {
 // 叉瓦臂(相對各自的軸):往下到叉爪銷的長臂、叉瓦、上方伸出的配重桿與球
 const tail = (p) => [p.L * Math.cos(p.psi - p.s * 0.12), p.L * Math.sin(p.psi - p.s * 0.12)];
 const ARM_Z = 0.22; // 長臂的深度
-const barOf = (pin) => thickLine([[0, 0], [pin[0], pin[1]]], 0.12);
+// 長臂:軸那一端畫成圓頭(半徑 = 臂的半寬),軸孔落在臂裡;擋銷的半徑也由這份外形量(圓頭在軸上方,碰不到擋銷)
+const barOf = (pin) => roundEnd(thickLine([[0, 0], [pin[0], pin[1]]], 0.12), [0, 0], 0.06);
 const arm = (side, pallet, pin) => [
   { kind: "plate", shape: shape(barOf(pin), [circle(0.05).reverse()]), thickness: 0.08, at: [0, 0, ARM_Z] },
   { kind: "plate", shape: shape(thickLine([[pin[0] * 0.2, pin[1] * 0.2], tail(pallet)], 0.1)), thickness: 0.08, at: [0, 0, 0.22] },

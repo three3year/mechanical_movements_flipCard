@@ -29,7 +29,7 @@
 // 繩不經滑輪、直接從鼓上垂下(和同樣是錶的第 291、313、314 種一樣):鼓在輪與夾板條之間,鼓的右側往下沒有東西擋
 // (擒縱輪在前面一層,夾板條與擺輪在後面)。全書加滑輪的(第 288、309 種等)是繩要繞到輪緣外,或鼓軸直立、要把繩轉成往下。
 import { TAU, deg, swing, Y, Z as ZAXIS } from "./kit.js";
-import { shape, circle, rect, thickLine, zCylinder } from "./shapes.js";
+import { shape, circle, rect, thickLine, hubArms, zCylinder } from "./shapes.js";
 import { circlePolygon } from "./contact.js";
 import { escapeWheel, deadBeatPallet, palletRoot } from "./dead-beat-anchor.js";
 import { placePoly, fall, anyOverlap, periodic } from "./escapement.js";
@@ -152,6 +152,9 @@ const weightAt = rewound(hang, (v) => -reed(v).wheel, REWIND); // 輪往前(順�
 export const WEIGHT_DRIVE = { drum: DRUM, every: REWIND };
 
 const root = PALLETS.map(palletRoot);
+// 槓桿身與錨形件在樞軸處畫成圓轂(半徑和套筒一樣,不多佔空間):臂寬 0.08 容不下 0.06 的樞軸孔
+const HUB = 0.09;
+const armTo = (p) => ({ angle: Math.atan2(p[1], p[0]), length: Math.hypot(p[0], p[1]) });
 
 export default {
   figure: 396,
@@ -206,14 +209,14 @@ export default {
       arrow: false,
       pieces: [
         // 槓桿身(在擒縱輪前面一層,樞軸另一邊有短尾靠擋銷)、左端的叉口(上下兩片夾著圓盤銷)
-        { kind: "plate", shape: shape(thickLine([[FORK.to, 0], [0, 0], [TAIL, 0]], 0.08), [circle(0.06).reverse()]), thickness: 0.06, at: [0, 0, ZF] },
+        { kind: "plate", shape: shape(hubArms(HUB, 0.08, [armTo([FORK.to, 0]), armTo([TAIL, 0])]), [circle(0.06).reverse()]), thickness: 0.06, at: [0, 0, ZF] },
         { kind: "box", size: [0.05, 2 * FORK.half + 0.1, 0.06], at: [FORK.to - 0.025, 0, ZF] },
         { kind: "box", size: [FORK.to - FORK.from, 0.05, 0.06], at: [(FORK.from + FORK.to) / 2, FORK.half + 0.025, ZF] },
         { kind: "box", size: [FORK.to - FORK.from, 0.05, 0.06], at: [(FORK.from + FORK.to) / 2, -FORK.half - 0.025, ZF] },
         // 樞軸處的套筒:從錨形件那一層貫穿到槓桿身,套在夾板的樞軸上
         { ...zCylinder(Z - 0.05, ZF + 0.03, 0.09), inner: 0.055 },
         // 錨形件與兩個叉瓦(和擒縱輪同一層)
-        { kind: "plate", shape: shape(thickLine([root[0], [0, 0], root[1]], 0.08), [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, Z] },
+        { kind: "plate", shape: shape(hubArms(HUB, 0.08, root.map(armTo)), [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, Z] },
         ...PALLETS.map((poly) => ({ kind: "plate", shape: shape(poly), thickness: 0.1, at: [0, 0, Z] })),
       ],
     },

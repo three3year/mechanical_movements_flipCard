@@ -20,7 +20,7 @@
 import { TAU, deg, swing, Y, Z as ZAXIS } from "./kit.js";
 import { placePoly, periodic, anyOverlap, clearance, approach, gravityArm } from "./escapement.js";
 import { weightDrive, rewound } from "./weight-drive.js";
-import { shape, thickLine, circle, rect } from "./shapes.js";
+import { shape, thickLine, circle, rect, roundEnd } from "./shapes.js";
 import { circlePolygon } from "./contact.js";
 
 export const N = 10;
@@ -155,7 +155,8 @@ const armPieces = (sgn, stop, face, beat, zArm) => {
       ? [[outer[0] + sgn * 0.05, faceC[1]], inner] // 右臂:從臂往內的直條
       : [bottom, [bottom[0] + 0.15, W[1] - 0.35 - C[1]], [-1.3, W[1] - 0.35 - C[1]], [beat[0], beat[1]], inner]; // 左臂:繞到輪轂下方的彎帶
   return [
-    { kind: "plate", shape: shape(thickLine([[0, 0], [outer[0] + sgn * 0.05, outer[1] + 0.3], bottom], 0.12), [circle(0.06).reverse()]), thickness: 0.08, at: [0, 0, zArm] },
+    // 臂的上段:C 那端畫成圓頭(半徑等於臂的半寬),C 的軸(半徑 0.05)穿過的孔縮到 0.055,落在臂裡
+    { kind: "plate", shape: shape(roundEnd(thickLine([[0, 0], [outer[0] + sgn * 0.05, outer[1] + 0.3], bottom], 0.12), [0, 0], 0.06), [circle(0.055).reverse()]), thickness: 0.08, at: [0, 0, zArm] },
     { kind: "plate", shape: shape(stop), thickness: 0.1, at: [0, 0, Z.wheel] }, // 擋止(在大輪那一層)
     { kind: "box", size: [0.14, 0.14, zArm - Z.wheel], at: [stopEnd[0], stopEnd[1], (zArm + Z.wheel) / 2] }, // 擋止的外端往前接到臂
     { kind: "plate", shape: shape(thickLine(branch, sgn > 0 ? 0.06 : 0.1)), thickness: 0.06, at: [0, 0, zArm - 0.06] }, // 分支 / 彎帶(在大輪與小輪前面)
@@ -170,7 +171,8 @@ const armPieces = (sgn, stop, face, beat, zArm) => {
 const BOB = { y: W[1] - 2.2 - C[1], r: 0.35 };
 const LOOP_W = 2 * (SIDE + ROD / 2);
 const pendulumPieces = [
-  { kind: "cylinder", radius: 0.07, length: 0.3, at: [0, 0, Z.rod] },
+  // 懸點的轂:從右臂的上段(Z.arm ± 0.04)前面開始,不和套在同一根軸上的臂重疊
+  { kind: "cylinder", radius: 0.07, length: Z.rod + 0.15 - (Z.arm + 0.05), at: [0, 0, (Z.rod + 0.15 + Z.arm + 0.05) / 2] },
   { kind: "box", size: [ROD, -LOOP_Y[1] - ROD, 0.06], at: [0, (LOOP_Y[1] + ROD) / 2, Z.rod] }, // 框上的擺桿
   { kind: "box", size: [LOOP_W, ROD, 0.06], at: [0, LOOP_Y[1] + ROD / 2, Z.rod] }, // 框的上邊
   { kind: "box", size: [ROD, LOOP_Y[1] - LOOP_Y[0] + 2 * ROD, 0.06], at: [SIDE, (LOOP_Y[0] + LOOP_Y[1]) / 2, Z.rod] }, // 框的右邊(F 靠在外側)

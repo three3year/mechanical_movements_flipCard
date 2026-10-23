@@ -26,7 +26,7 @@
 // 擺四個來回(輪轉三分之四圈)重錘捲回最高處一次(上鍊)。實物也可能用發條;重錘只是示意。
 import { TAU, deg, swing, Y, Z as ZAXIS } from "./kit.js";
 import { placePoly, periodic, anyOverlap, clearance, approach, gravityArm } from "./escapement.js";
-import { shape, thickLine, circle, rect } from "./shapes.js";
+import { shape, thickLine, circle, rect, roundEnd } from "./shapes.js";
 import { circlePolygon, edgeDistance } from "./contact.js";
 import { weightDrive, rewound } from "./weight-drive.js";
 
@@ -164,7 +164,7 @@ const armPieces = (pivot, sgn, band, branch, stop, face, screwY) => {
   const zFace = [0.12, Z.arm + 0.04]; // 叉瓦從抬升銷那一層到彎帶那一層
   const zStop = [Z.leg - 0.04, Z.arm + 0.04]; // 擋止從彎帶往後伸到腳那一層
   return [
-    { kind: "plate", shape: shape(thickLine(L(band), 0.14), [circle(0.05).reverse()]), thickness: 0.08, at: [0, 0, Z.arm] }, // 彎帶
+    { kind: "plate", shape: shape(roundEnd(thickLine(L(band), 0.14), [0, 0], 0.08), [circle(0.05).reverse()]), thickness: 0.08, at: [0, 0, Z.arm] }, // 彎帶(軸那端畫成圓頭,軸孔四周留一圈肉)
     { kind: "plate", shape: shape(thickLine([[0, 0], [sgn * 0.72, -0.12]], 0.12)), thickness: 0.08, at: [0, 0, Z.arm] }, // 頂上的橫翼
     { kind: "plate", shape: shape(thickLine(L(branch), 0.1)), thickness: 0.08, at: [0, 0, Z.arm] }, // 往內伸到叉瓦的一段
     { kind: "plate", shape: shape(face), thickness: zFace[1] - zFace[0], at: [0, 0, (zFace[0] + zFace[1]) / 2] }, // 叉瓦
