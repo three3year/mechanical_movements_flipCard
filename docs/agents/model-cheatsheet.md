@@ -18,7 +18,7 @@
 |---|---|
 | `figure` | 圖號 |
 | `parts[]` | 零件;共通欄位 `id`、`kind`、`center`(頂層的位置;`at` 只用在 `pieces` 裡)、`axis`、`pieces`(同一零件的其他塊,座標在零件裡)、`label`/`labelOffset`、`spin`(轉動箭頭半徑)、`arrow: false`、`accent`(記號色)、`metal: "brass"`、`posed`、`mark` |
-| `driver` | `{ part, type: "rotation" \| "translation", range?, cycle?, period?, direction?, grips? }`(`period`:一直轉、要轉好幾圈才回到原狀的,宣告一個週期的主動量,取景涵蓋它;例第 119 種);虛擬主動件 `{ type: "virtual", label, range, mode: "balance" \| "progress" }`,不指向零件 |
+| `driver` | `{ part, type: "rotation" \| "translation", range?, cycle?, speed?, period?, direction?, grips? }`(`speed`:自動播放的速度,負的往回轉;`period`:一直轉、要轉好幾圈才回到原狀的,宣告一個週期的主動量,只有取景用它、涵蓋這一週期,實體驗證的取樣與動力重演不讀;例第 119 種);虛擬主動件 `{ type: "virtual", label, range, mode: "balance" \| "progress" }`,不指向零件 |
 | `target` / `targets` | 目標件 1–3 個;只有主動件自己在動的圖列在 `tests/registry.test.js` 的 `ONLY_DRIVER_MOVES` |
 | `states` | `{ initial, options: [{ id, label }] }`;姿勢由狀態決定的零件標 `posed`(否則切換狀態時轉角以偏移量接續) |
 | `view` | `{ direction }` 初始視角;`fit`(只以這些零件取景)、`fov`。取景在主動量的範圍(或一個週期、一個進程)內均勻取樣,規則在 `viewer/framing.js` |

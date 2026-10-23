@@ -87,9 +87,13 @@ test("第 119 種:小齒輪均勻旋轉,交替作用於長圓無端齒條的上�
   assert.ok(top < 0);
 });
 
-test("第 119 種:齒條一個往復要小齒輪轉五圈,主動件宣告的週期就是這五圈(取景才框得到整個行程)", () => {
+test("第 119 種:齒條一個往復要小齒輪轉五圈(轉不到五圈不會回到原處),主動件宣告的週期就是這五圈(取景才框得到整個行程)", () => {
   const { period } = fig119.driver;
-  close(period, 10 * Math.PI, "週期 = 小齒輪中心繞長圓一圈 / 節圓半徑");
+  for (let turns = 1; TAU * turns < period - 1e-9; turns++) {
+    const off = Math.max(...sweep(TAU, 200).map((a) => Math.abs(endless(a + TAU * turns).x - endless(a).x)));
+    assert.ok(off > 0.1, `轉 ${turns} 圈就回到原處(差 ${off.toFixed(3)}),週期不該是這麼多圈`);
+  }
+  assert.ok(Math.abs(period / TAU - 5) < 1e-9, `週期 ${(period / TAU).toFixed(3)} 圈`);
   for (const a of sweep(period, 200)) {
     close(endless(a + period).x, endless(a).x, `轉一個週期回到原處(${a.toFixed(2)})`, 1e-9);
     close(endless(a + period).y, endless(a).y, `轉一個週期回到原處(${a.toFixed(2)})`, 1e-9);
