@@ -5,7 +5,7 @@
 // 作圖軌跡(trace)是繪圖儀器畫出的線,以單一鉛筆色呈現。
 import * as THREE from "three";
 import { MOVING_KINDS } from "../models/kinds.js";
-import { chainLinks, polyline, RING_LINK, LINKS_PER_SEGMENT } from "../models/chain-links.js";
+import { chainLinks, polyline, RING_LINK, LINKS_PER_SEGMENT, SEGMENT_COUNT } from "../models/chain-links.js";
 import { FLUID_LAYER } from "./lineart.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
@@ -43,7 +43,9 @@ const unit = (v) => {
   return v.map((x) => x / l);
 };
 const TRACE_COLOR = "#b3261e";
-const SEGMENT_COLORS = ["#f0b429", "#d6559b", "#7b4bb7"]; // 不用綠色:會和目標件的青綠撞色。改了顏色數要同步 models/chain-links.js 的 SEGMENT_COUNT(封閉鍊條一圈的節數)
+const SEGMENT_COLORS = ["#f0b429", "#d6559b", "#7b4bb7"]; // 不用綠色:會和目標件的青綠撞色
+// 封閉鍊條一圈的節數照 models/chain-links.js 的 SEGMENT_COUNT 湊整:顏色數和它不同時,色段會在接縫處斷掉
+if (SEGMENT_COLORS.length !== SEGMENT_COUNT) throw new Error(`SEGMENT_COLORS 有 ${SEGMENT_COLORS.length} 色,models/chain-links.js 的 SEGMENT_COUNT 是 ${SEGMENT_COUNT}`);
 const MARK_COLOR = "#2a2a2a";
 
 // 一張紋理含 SEGMENT_COLORS.length 個色段,每段開頭一道黑色記號
@@ -66,23 +68,16 @@ function segmentTexture() {
   return texture;
 }
 
+// 折線照弧長取點(models/chain-links.js 的 polyline,包成 Three.js 的曲線給 TubeGeometry 用)
 class PolylineCurve extends THREE.Curve {
   constructor(points, closed) {
     super();
-    this.pts = points.map((p) => new THREE.Vector3(...p));
-    if (closed) this.pts.push(this.pts[0].clone());
-    this.cum = [0];
-    for (let i = 1; i < this.pts.length; i++) {
-      this.cum.push(this.cum[i - 1] + this.pts[i].distanceTo(this.pts[i - 1]));
-    }
-    this.total = this.cum[this.cum.length - 1] || 1;
+    this.line = polyline(points, closed);
+    this.total = this.line.total;
+    this.pts = (closed ? [...points, points[0]] : points).map((p) => new THREE.Vector3(...p)); // 扁帶照頂點擺斷面(封閉時頭尾重複一點)
   }
   getPoint(t, target = new THREE.Vector3()) {
-    const s = Math.min(Math.max(t, 0), 1) * this.total;
-    let i = 1;
-    while (i < this.cum.length - 1 && this.cum[i] < s) i++;
-    const span = this.cum[i] - this.cum[i - 1] || 1;
-    return target.lerpVectors(this.pts[i - 1], this.pts[i], (s - this.cum[i - 1]) / span);
+    return target.set(...this.line.at(Math.min(Math.max(t, 0), 1) * this.total));
   }
 }
 

@@ -67,5 +67,19 @@ export function solve(f, target, lo, hi, iterations = 60) {
   return (lo + hi) / 2;
 }
 
+/** 兩個未知數的牛頓法(數值偏微分):解 f([u, v]) = [0, 0],從 x 起算(用在連桿閉合解不出兩圓交點的機構,第 122、125 種) */
+export function newton2(f, x, { tolerance = 1e-14, iterations = 40, h = 1e-7 } = {}) {
+  for (let k = 0; k < iterations; k++) {
+    const r = f(x);
+    if (Math.max(Math.abs(r[0]), Math.abs(r[1])) < tolerance) break;
+    const du = f([x[0] + h, x[1]]);
+    const dv = f([x[0], x[1] + h]);
+    const [a, b, c, d] = [(du[0] - r[0]) / h, (dv[0] - r[0]) / h, (du[1] - r[1]) / h, (dv[1] - r[1]) / h];
+    const det = a * d - b * c || 1e-12;
+    x = [x[0] - (d * r[0] - b * r[1]) / det, x[1] - (a * r[1] - c * r[0]) / det];
+  }
+  return x;
+}
+
 /** 兩點連線的中點 */
 export const midpoint = (a, b) => scale(add(a, b), 0.5);

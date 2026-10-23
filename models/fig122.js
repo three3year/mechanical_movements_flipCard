@@ -6,6 +6,7 @@
 // 立板與軸套是推斷)。
 import { deg, polar, add } from "./kit.js";
 import { meshAngle } from "./gears.js";
+import { newton2 } from "./linkage.js";
 import { shape } from "./shapes.js";
 
 export const TOP = { center: [0, 0.95, 0], teeth: 26, radius: 1.3 };
@@ -34,26 +35,11 @@ const REST = (() => {
 export function linkage(theta) {
   const bottom = meshAngle(TOP, BOTTOM, theta);
   const { w1, w2 } = wrists(theta, bottom);
-  let x = LINK.x;
-  let phi = Math.PI / 2;
   const f = (x0, p0) => {
     const { a, b } = ends(x0, p0);
     return [dist(a, w1) - REST.l1, dist(b, w2) - REST.l2];
   };
-  for (let i = 0; i < 30; i++) {
-    const [f1, f2] = f(x, phi);
-    if (Math.abs(f1) + Math.abs(f2) < 1e-12) break;
-    const h = 1e-6;
-    const [ax, bx] = f(x + h, phi);
-    const [ap, bp] = f(x, phi + h);
-    const j11 = (ax - f1) / h;
-    const j21 = (bx - f2) / h;
-    const j12 = (ap - f1) / h;
-    const j22 = (bp - f2) / h;
-    const det = j11 * j22 - j12 * j21 || 1e-12;
-    x -= (f1 * j22 - f2 * j12) / det;
-    phi -= (j11 * f2 - j21 * f1) / det;
-  }
+  const [x, phi] = newton2(([x0, p0]) => f(x0, p0), [LINK.x, Math.PI / 2], { tolerance: 1e-13, iterations: 30, h: 1e-6 });
   const { a, b } = ends(x, phi);
   return { bottom, w1, w2, a, b, x, phi, error: Math.abs(f(x, phi)[0]) + Math.abs(f(x, phi)[1]) };
 }

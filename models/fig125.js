@@ -7,6 +7,7 @@
 // 三個齒輪的軸裝在後面一根橫樑的軸承上,橫樑兩端有腳;頂桿穿在橫樑上立起的柱子伸出的導套裡(都是推斷)。
 import { polar, add } from "./kit.js";
 import { meshAngle } from "./gears.js";
+import { newton2 } from "./linkage.js";
 
 export const G1 = { center: [-2.3, 0, 0], teeth: 16, radius: 0.8 };
 export const G2 = { center: [-2.3 + 0.8 + 1.0, 0, 0], teeth: 20, radius: 1.0 };
@@ -36,21 +37,6 @@ const ends = ([x, y], a, len) => {
   return [[x - c, y - s, 0], [x + c, y + s, 0]];
 };
 const dist2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
-
-/** 兩個未知數的牛頓法(數值偏微分):f([u, v]) = [0, 0] */
-function newton2(f, x) {
-  for (let k = 0; k < 40; k++) {
-    const r = f(x);
-    if (Math.max(Math.abs(r[0]), Math.abs(r[1])) < 1e-14) break;
-    const h = 1e-7;
-    const du = f([x[0] + h, x[1]]);
-    const dv = f([x[0], x[1] + h]);
-    const [a, b, c, d] = [(du[0] - r[0]) / h, (dv[0] - r[0]) / h, (du[1] - r[1]) / h, (dv[1] - r[1]) / h];
-    const det = a * d - b * c;
-    x = [x[0] - (d * r[0] - b * r[1]) / det, x[1] - (a * r[1] - c * r[0]) / det];
-  }
-  return x;
-}
 
 /**
  * 中點只能沿 x = midX 上下、長 len 的槓桿,兩端各以長 la、lb 的連桿接到 pa、pb:

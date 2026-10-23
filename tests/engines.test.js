@@ -271,7 +271,7 @@ test("第 163 種:撥叉頂端的橫槽板與叉口全程不穿入機架(導套�
   const shifter = part(fig163, "shifter");
   const plain = (q) => ["box", "cylinder", "plate"].includes(q.kind) && !q.angle && !q.rotation;
   const frame = part(fig163, "frame").pieces.filter(plain).map((q) => pieceBox(q));
-  const moving = shifter.pieces.filter((q, i) => i !== 1); // 第 1 塊是穿過導套的桿
+  const moving = shifter.pieces.filter((q) => q.role !== "rod"); // 穿過導套的撥叉桿不算
   let worst = -Infinity;
   for (const p of sweep(fig163.driver.range[1], 2400)) {
     const at = fig163.pose(p).parts.shifter.position;

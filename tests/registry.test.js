@@ -148,7 +148,7 @@ function denseValues(driver) {
 const sweepValues = (a, b, n) => Array.from({ length: n + 1 }, (_, i) => a + ((b - a) * i) / n);
 
 for (const def of models) {
-  const links = def.parts.filter((p) => p.kind === "link" && !p.stretch);
+  const links = def.parts.filter((p) => p.kind === "link" && !(typeof p.stretch === "string" && p.stretch.trim())); // 宣告了卻沒寫原因的照驗
   if (!links.length) continue;
   test(`圖 ${def.figure}:連桿在整個運動中長度不變(機構不會分離)`, () => {
     const states = def.states ? def.states.options.map((o) => o.id) : [undefined];

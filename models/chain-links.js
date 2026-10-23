@@ -1,6 +1,7 @@
 // 共用(所有鍊條,第 46、227、228、229、254、334、342、462 種):鍊條的鏈節擺法。第 k 節的兩銷落在路徑弧長 k·節距 + 相位 與下一個節距處,
 // 鏈節是兩銷之間的弦,繞過鏈輪時自然成多邊形。繪圖層(viewer/paths.js 的 ChainPart)、實體驗證的鍊條碰撞體(verify/scene.js)
 // 與模型測試共用這一份擺法,不依賴 Three.js。
+import { sub, dot, cross } from "./kit.js";
 
 /** 環式鏈節的外形(viewer/paths.js 畫的圓環):圓環半徑 0.5、管半徑 tube × 鍊寬,沿弦拉長 stretch 倍、垂直弦壓扁成 squash 倍,弦長再乘上兩銷距離 */
 export const RING_LINK = { stretch: 1.15, squash: 0.62, tube: 0.18 };
@@ -33,13 +34,13 @@ export function polyline(points, closed) {
 export const LINKS_PER_SEGMENT = 3; // 每幾節一個色段(第一節是黑色記號)
 export const SEGMENT_COUNT = 3; // 色段輪流的顏色數
 
+// 單位向量(零向量照原樣回傳,不除以 0)
 const unit = (v) => {
   const l = Math.hypot(...v) || 1;
   return v.map((c) => c / l);
 };
-const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-const dotOf = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+export const FULL_BEND = (20 * Math.PI) / 180; // 平躺鏈節全降的轉彎角(見 chainLinks 的 uprightLift)
 
 /**
  * 鍊條 part 在路徑 curve(polyline 的回傳)上、行進相位 phase 時的每一節:
@@ -52,8 +53,6 @@ const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a
  *   轉彎多少照這一節前後兩節的弦夾角,達到 FULL_BEND 就全降,中間按比例(剛離開輪的平躺鏈節只降一部分,浮在輪緣上方)。
  * 封閉鍊條一圈要是整數個色段,節距因此微調,回傳實際用的 pitch。
  */
-export const FULL_BEND = (20 * Math.PI) / 180;
-
 export function chainLinks(part, curve, phase = 0) {
   const style = part.style ?? "plate";
   const normal = unit(part.normal ?? [0, 0, 1]);
@@ -76,8 +75,8 @@ export function chainLinks(part, curve, phase = 0) {
     const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
     const l = Math.hypot(...d) || 1e-6;
     const x = d.map((c) => c / l);
-    const dot = dotOf(normal, x);
-    const z = unit(normal.map((c, i) => c - dot * x[i]));
+    const along = dot(normal, x);
+    const z = unit(normal.map((c, i) => c - along * x[i]));
     const y = cross(z, x);
     const odd = ((k % 2) + 2) % 2 === 1;
     const upright = style === "ring" && !odd;
@@ -86,8 +85,8 @@ export function chainLinks(part, curve, phase = 0) {
     if (style === "ring" && odd && uprightLift) {
       const before = unit(sub(a, curve.at(s - pitch)));
       const after = unit(sub(curve.at(s + 2 * pitch), b));
-      const bend = Math.atan2(Math.hypot(...cross(before, after)), dotOf(before, after));
-      const inward = dotOf(sub(after, before), y) > 0 ? 1 : -1; // 鍊條往 +y 彎時,內側是 +y
+      const bend = Math.atan2(Math.hypot(...cross(before, after)), dot(before, after));
+      const inward = dot(sub(after, before), y) > 0 ? 1 : -1; // 鍊條往 +y 彎時,內側是 +y
       lift = y.map((c) => c * uprightLift * inward * Math.min(1, bend / FULL_BEND));
     } else if (style !== "ring" && style !== "ladder") lift = normal.map((c) => c * (odd ? offset : -offset * 0.2));
     links.push({ k, a, b, length: l, axes, origin: a.map((c, i) => c + lift[i]), upright });

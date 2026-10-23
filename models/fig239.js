@@ -25,6 +25,7 @@ const PITCH = TAU / N;
 // 右爪整組(樞軸與齒間)繞齒輪中心轉 RIGHT_SHIFT:讓兩支爪在同一個齒輪轉角落到齒間最深處,兩支都放下時兩個擋止處重合
 // (不轉的話兩支爪落到底的齒輪轉角差約 2.2°,兩支都放下時總有一支停在半空)。值由兩支爪各自落到底的位置量出
 const RIGHT_SHIFT = -0.0376;
+const SPRING_PRESSES = "壓爪的彈簧:一端在托架的彈簧座、一端在擋爪上,爪被齒頂起或用撐銷抬起時壓縮"; // 伸縮的宣告(兩支彈簧畫成路徑零件)
 const PAWLS = {
   left: { pivot: [-2.45, 0.6], gap: 4.5 * PITCH, face: -1, into: -1, blocks: 1 },
   right: { pivot: rot2([3.4, 0.55], RIGHT_SHIFT), gap: 2.5 * PITCH + RIGHT_SHIFT, face: 1, into: 1, blocks: -1 },
@@ -159,8 +160,8 @@ export default {
     { id: "gear", kind: "plate", shape: shape(resample(gearProfile({ teeth: N, radius: R }), 0.03), [circle(0.25).reverse()]), thickness: 0.2, hub: 0.55, circles: [0.55], mark: [-0.9, -0.4], markSize: 0.08, spin: TIP },
     pawlPart("left", "pawlLeft"),
     pawlPart("right", "pawlRight"),
-    { id: "springLeft", kind: "rod", radius: 0.03, stretch: "壓爪的彈簧:一端在托架的彈簧座、一端在擋爪上,爪被齒頂起或用撐銷抬起時壓縮" },
-    { id: "springRight", kind: "rod", radius: 0.03, stretch: "壓爪的彈簧:一端在托架的彈簧座、一端在擋爪上,爪被齒頂起或用撐銷抬起時壓縮" },
+    { id: "springLeft", kind: "rod", radius: 0.03, stretch: SPRING_PRESSES },
+    { id: "springRight", kind: "rod", radius: 0.03, stretch: SPRING_PRESSES },
     // 撐銷:抬起的爪下面插一根銷撐住(爪放下時拔掉)
     { id: "propLeft", kind: "cylinder", radius: 0.06, length: 0.5, center: [PROP.left[0], PROP.left[1], -0.11] },
     { id: "propRight", kind: "cylinder", radius: 0.06, length: 0.5, center: [PROP.right[0], PROP.right[1], -0.11] },

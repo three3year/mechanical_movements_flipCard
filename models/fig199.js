@@ -48,7 +48,6 @@ const A = Array.from({ length: PINS }, (_, i) => A0 - i * CHORD);
 const KX = Math.sqrt((RL + PIN) ** 2 - TIP ** 2);
 const X_MAX = KX - A[PINS - 1];
 const V_LIFT = BASE + (PINS - 1) * STEP - Math.atan2(TIP, KX);
-const TRAVEL = X_MAX;
 // 下齒條是上齒條繞框架上的點 (CX, 0) 轉半圈:v + π 的姿勢是 v 的姿勢整個轉半圈
 const CX = -X_MAX / 2;
 const B = A.map((a) => 2 * CX - a); // 下齒條第 i 個齒間左邊的齒面
@@ -73,7 +72,7 @@ export function frame(v) {
   if (u < Math.PI + V_LIFT) return { x: push(u, false), rack: "bottom" };
   return { x: 0, rack: null };
 }
-export const geometry = { RL, PIN, PINS, STEP, TIP, EDGE, TRAVEL };
+export const geometry = { RL, PIN, PINS, STEP, TIP, EDGE, TRAVEL: X_MAX };
 
 const TOOTH = CHORD - GAP; // 一般的齒寬
 // 上齒條的齒(框架座標的 [左, 右, 齒尖]):左端一個一般的齒、齒間之間三個、右端大齒

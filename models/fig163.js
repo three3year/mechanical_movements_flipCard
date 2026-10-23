@@ -36,7 +36,8 @@ const PLANE = 0.45; // 曲柄槓桿、短連桿所在的那一層
 const COLLAR = { x: 0.38, drop: 0.2 }; // 套筒下方的環上接短連桿的耳(在套筒下 0.2)
 const CRANK = { pivot: [1.13, -0.45, PLANE], left: 0.75, right: 1.5 };
 // 撥叉桿的兩個導套:上導套放在撥叉降到最低時頂端橫槽板的下緣(−0.95)之下、留 0.03,下導套在撥叉升到最高時叉口的上緣
-// (−1.495)之上,兩者都讓撥叉的板與叉口全程碰不到導套與托臂(原來上導套在 −0.95,撥叉降低時橫槽板壓進導套 0.05)
+// (−1.495)之上,兩者都讓撥叉的板與叉口全程碰不到導套與托臂(原來上導套在 −0.95,撥叉降低時橫槽板壓進導套 0.05)。
+// 偏離插圖:上導套比原圖的位置低約 0.08(導套是推斷補的,原圖只畫撥叉桿,外觀上幾乎看不出)
 const SHIFTER = { x: CRANK.pivot[0] + CRANK.right, z: 0.8, guides: [-1.03, -1.35] };
 const FORK_Z = 0.48; // 皮帶前段在撥叉處的深度
 const ON = 0.04; // 皮帶中心離輪中心這麼近才算整個在輪上
@@ -225,7 +226,7 @@ export default {
       kind: "group",
       pieces: [
         { kind: "plate", shape: shape(rect(0.9, 0.3), [rect(0.75, 0.13).reverse()]), thickness: 0.1 }, // 頂端的橫槽
-        { kind: "box", size: [0.1, -FORK_OFFSET - 0.15, 0.1], at: [0, (FORK_OFFSET - 0.15) / 2, 0] },
+        { kind: "box", role: "rod", size: [0.1, -FORK_OFFSET - 0.15, 0.1], at: [0, (FORK_OFFSET - 0.15) / 2, 0] }, // 撥叉桿(在導套裡滑)
         // 叉口:上下兩片夾著皮帶的前段
         { kind: "box", size: [0.12, 0.05, SHIFTER.z - FORK_Z + 0.25], at: [0, FORK_OFFSET + 0.13, (FORK_Z - 0.25 - SHIFTER.z) / 2] },
         { kind: "box", size: [0.12, 0.05, SHIFTER.z - FORK_Z + 0.25], at: [0, FORK_OFFSET - 0.13, (FORK_Z - 0.25 - SHIFTER.z) / 2] },
