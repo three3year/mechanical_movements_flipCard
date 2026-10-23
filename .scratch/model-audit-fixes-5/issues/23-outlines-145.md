@@ -22,3 +22,5 @@
 - 第 206 種 `pawlLeft/pawlRight.pieces[0]`:爪身是彎弧板(半寬 0.11),掛銷孔 r 0.15(套 r 0.14 掛銷)比爪身寬、不能縮,`hubArms` 也用不上;檔內加 `hubEnd`:先把爪身剪到 r 0.22 圓轂外,再用 `roundEnd` 把剪口換成繞外側的圓弧。接觸只用爪尖。動力重演改前改後相同(原有豁免照樣適用、沒有過時)。插圖掛銷處本來就是圓凸台。
 - 驗收:`node tools/outlines.mjs 145 155 166 206` 0 項;`npm run verify -- 145 155 166 206` 0 個未豁免(1 項豁免是第 206 種原有的動力重演);`npm test` 3554 項全過。沒有改到接觸面,沒有新測試。
 - 截圖(`.playwright-mcp/maf5/`):`ol-145-front`(v=0、−0.28、−0.56)/`-back`;`ol-155-front`(v=0、0.6、1.19)/`-back`;`ol-166-front`(v=0、1.6、3.14)/`-back`/`-oblique`;`ol-206-front`(v=0、0.3、0.593)/`-back`/`-zoom`(fit=lever)。和插圖一致,沒有零件被蓋住或穿出。
+
+**code review(2026-10-23)**:第 206 種的 `hubEnd` 收成 `shapes.js` 的 `pinBoss`(第 251、76 種共用),輪廓逐點相同。其餘見票 26 的 code review。

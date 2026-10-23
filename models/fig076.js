@@ -8,7 +8,7 @@
 // 只掃過撥爪右臂的尖端。B 掛在撥爪左端的銷上,下端的鉤伸到 A 的一齒下面:撥爪左端抬起時鉤把齒往上提,
 // 落回時鉤沿下一齒的齒背被推開、滑過後靠自重擺回。撥爪被壓下多少、A 被提多遠、B 擺開多少都由接觸算。
 import { TAU, deg, polar, rot2 } from "./kit.js";
-import { ratchetShape, circle, shape, stadium, thickLine, rect, roundEnd } from "./shapes.js";
+import { ratchetShape, circle, shape, stadium, thickLine, rect, pinBoss } from "./shapes.js";
 import { placeOutline, polygonsOverlap, swingUntilContact, circlePolygon } from "./contact.js";
 import { ratchetObstacles } from "./ratchets.js";
 
@@ -214,9 +214,9 @@ export default {
       kind: "group",
       center: [...H, Z.a],
       arrow: false,
-      // 桿的上端畫成繞鉸銷孔的圓頭(半徑取桿的半寬 0.06),孔縮成 0.055(原本 0.065 比桿的半寬還大、穿出兩側;鉸銷 0.05)。
-      // B.stem 本身照舊是平頭,垂掛角 HANG 仍由它算;圓頭全在鉸銷 0.06 之內,鉸銷離 A 的中心最近 1.14(> 齒頂 1.0 + 0.06),碰不到齒
-      pieces: [{ kind: "plate", shape: shape(roundEnd(B.stem, [0, 0], 0.06), [circle(0.055).reverse()]), thickness: 0.12 }, { kind: "plate", shape: shape(B.hook), thickness: 0.12 }],
+      // 桿的上端畫成繞鉸銷的圓轂(半徑 0.09):鉸銷孔 0.065 比桿的半寬 0.06 大,平頭與兩側都會穿出(鉸銷 0.05)。
+      // B.stem 本身照舊是平頭,垂掛角 HANG 仍由它算;圓轂全在鉸銷 0.09 之內,鉸銷離 A 的中心最近 1.14(> 齒頂 1.0 + 0.09),碰不到齒
+      pieces: [{ kind: "plate", shape: shape(pinBoss(B.stem, [0, 0], 0.09), [circle(0.065).reverse()]), thickness: 0.12 }, { kind: "plate", shape: shape(B.hook), thickness: 0.12 }],
       label: "B",
       labelOffset: [0.32, -0.45, 0.3],
     },

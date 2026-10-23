@@ -70,7 +70,7 @@ export const geometry = { DRUM, REWIND, RW, ROOT, C, WHEEL };
 // 錨形件(相對 C):C 上的圓轂(半徑同轂筒 0.2)伸出兩條折臂,斜下到叉瓦 D、E。
 // 折點兩側斜接,臂寬處處 0.2(thickLine 在折點取前後平均的切線、把臂收窄,C 上的軸孔就破到外形外)
 const ARM_W = 0.2;
-const BOSS = 0.2;
+const BOSS = 0.2; // 圓轂半徑,同 C 上的轂筒
 const bentArm = (end) => {
   const bend = [end[0] * 0.6, end[1] * 0.45];
   const unit = (a, b) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1]); return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; };
@@ -120,7 +120,7 @@ export default {
         { kind: "plate", shape: anchor, thickness: 0.1, at: [0, 0, 0.18] },
         { kind: "plate", shape: shape(D.poly), thickness: 0.32, at: [0, 0, 0.07] },
         { kind: "plate", shape: shape(E.poly), thickness: 0.32, at: [0, 0, 0.07] },
-        { kind: "cylinder", radius: 0.2, inner: 0.09, length: 0.14, at: [0, 0, 0.18] },
+        { kind: "cylinder", radius: BOSS, inner: 0.09, length: 0.14, at: [0, 0, 0.18] }, // 轂筒,和錨形件的圓轂同半徑
         { kind: "cylinder", radius: 0.09, length: 0.7, at: [0, 0, -0.17] }, // 軸 C,往後伸進夾板條
         // 擺桿 PEN.,下端 F(在輪的前面一層,上端接在 C 的轂上)
         { kind: "box", size: [0.08, ROD, 0.06], at: [0, -ROD / 2, 0.27] },

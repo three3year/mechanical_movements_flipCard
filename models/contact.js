@@ -2,6 +2,7 @@
 // 零件繞樞軸往某方向擺(重力或彈簧),停在第一次碰到障礙物的位置。純函式,平面在 xy。
 // 外形與障礙物都是 2D 折線多邊形。
 import { rot2 } from "./kit.js";
+import { signedArea } from "./shapes.js";
 
 /** 局部輪廓繞樞軸 pivot 轉 angle 後的世界座標(2D) */
 export const placeOutline = (outline, pivot, angle) =>
@@ -20,8 +21,8 @@ export function segmentsCross(a, b, c, d) {
   return d1 * d2 < 0 && d3 * d4 < 0;
 }
 
-/** 多邊形的有號面積(鞋帶公式;逆時針為正) */
-export const signedArea = (poly) => poly.reduce((sum, [x, y], i) => sum + x * poly[(i + 1) % poly.length][1] - poly[(i + 1) % poly.length][0] * y, 0) / 2;
+/** 多邊形的有號面積(定義在 shapes.js,這裡照舊匯出給算接觸的模型) */
+export { signedArea };
 
 export function pointInPolygon([x, y], poly) {
   let hit = false;

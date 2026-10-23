@@ -66,7 +66,7 @@
 | 模組 | 情境 |
 |---|---|
 | `kit.js` | 向量、四元數(`quatFromBasis`)、往復(`swing`)、螺旋前進、皮帶與繩的路徑 |
-| `shapes.js` | 板件的 2D 輪廓:圓、環、齒輪(`gearShape`)、扇形齒、棘輪、齒條、加厚折線、端頭銷孔的圓頭(`roundEnd`);做 pieces 的 `zCylinder`、`spanBox` |
+| `shapes.js` | 板件的 2D 輪廓:圓、環、齒輪(`gearShape`)、扇形齒、棘輪、齒條、加厚折線、端頭銷孔的圓頭(`roundEnd`)、銷上的圓轂(`pinBoss`,銷孔比臂寬或銷在折角上);做 pieces 的 `zCylinder`、`spanBox` |
 | `gears.js` | 咬合:兩輪的相位(`meshAngle`)、齒輪齒條、傘齒輪(`bevelGear`) |
 | `linkage.js` | 連桿閉合:兩圓交點、滑塊、四連桿(`fourBar`)、數值求根 |
 | `contact.js` | 由接觸算:零件擺到碰到障礙物為止(`swingUntilContact`)、多邊形的間隙與穿入深度、脫開後落下。範例 `fig063` |
@@ -85,7 +85,7 @@
 
 ## 測試
 
-- 一族一檔 `tests/<族>.test.js`;某張圖的測試用 `grep -n "NNN" tests/*.test.js` 找。新測試放在該圖現有測試旁邊;同一模組的 import 只留一行,要新函式就擴充檔頭那一行。
+- 一族一檔 `tests/<族>.test.js`(共用模組自己的單元測試另成一檔,如 `shapes.test.js`、`framing.test.js`);某張圖的測試用 `grep -n "NNN" tests/*.test.js` 找。新測試放在該圖現有測試旁邊;同一模組的 import 只留一行,要新函式就擴充檔頭那一行。
 - 斷言對到原文的一句、或對到接觸與守恆(間隙接近 0、全程不穿入、桿長不變、扭矩同向),見 `model-audit.md` 第 1 類。
 - `tests/helpers.js` 依用途分四組,錨點如下,其餘 `grep -n "^export" tests/helpers.js`:
 

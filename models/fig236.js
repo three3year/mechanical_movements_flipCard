@@ -64,7 +64,8 @@ const pawlPart = (which, label, labelOffset) => ({
   label,
   labelOffset,
   pieces: [
-    // 掛銷那端畫成圓頭(半徑比半寬略大),銷孔四周留一圈肉
+    // 掛銷那端畫成圓頭(半徑 0.1,比半寬 0.085 略大),銷孔四周留一圈肉。動力重演對棘爪的質量分布很敏感(越過齒尖的餘裕小):
+    // 圓頭取半寬 0.085 或 0.09 時「兩個來回後的位置」不成立(b 沒落進下一格、輪被 c 帶回),0.1 才通過;改這兩根棘爪的外形要重跑重演
     { kind: "plate", shape: shape(roundEnd(thickLine([[0, 0], [LEN[which], 0]], PAWL_W), [0, 0], 0.1), [circle(0.06).reverse()]), thickness: 0.1 },
     { kind: "cylinder", radius: NUB, length: 0.28, at: [LEN[which], 0, -0.16] }, // 爪尖的圓頭,伸到齒那一層
   ],

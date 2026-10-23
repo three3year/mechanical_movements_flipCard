@@ -2,7 +2,6 @@
 // 繪圖層把輪廓沿局部 Z 擠出成板件;模型也可用同一份輪廓算接觸(凸輪、棘輪)。
 // 齒輪、齒條的齒形是簡化的梯形齒,齒 0 的中心在局部 +X(齒條在局部 x = 0)。
 import { TAU } from "./kit.js";
-import { pointInPolygon } from "./contact.js";
 
 const ARC_STEP = TAU / 96;
 
@@ -238,9 +237,22 @@ export function offsetLoop(points, d) {
   });
 }
 
+/** 多邊形的有號面積(鞋帶公式;逆時針為正) */
+export const signedArea = (poly) => poly.reduce((sum, [x, y], i) => sum + x * poly[(i + 1) % poly.length][1] - poly[(i + 1) % poly.length][0] * y, 0) / 2;
+
+/** 以 (cx, cy) 為圓心、半徑 r,從 from 點的方向順著輪廓的繞向(dir:逆時針 1、順時針 −1)繞到 to 點方向的圓弧,不含兩端 */
+function arcBetween(from, to, [cx, cy], r, dir) {
+  const a0 = Math.atan2(from[1] - cy, from[0] - cx);
+  const ccw = (((Math.atan2(to[1] - cy, to[0] - cx) - a0) % TAU) + TAU) % TAU;
+  const far = (p) => Math.hypot(p[0] - from[0], p[1] - from[1]) > 1e-9 && Math.hypot(p[0] - to[0], p[1] - to[1]) > 1e-9;
+  return arcPoints(r, a0, a0 + (dir > 0 ? ccw : ccw - TAU), cx, cy).filter(far);
+}
+
 /**
  * 端頭的銷孔畫出圓頭:把輪廓上離 center 最近的那條邊(銷孔圓心落在上面的平頭)換成以 center 為圓心、
- * 半徑 r 的圓弧,弧從一端點的方向繞到另一端點的方向,走外形外面那一側;其他頂點照舊。r 不小於端頭半寬時圓頭平順
+ * 半徑 r 的圓弧,弧從一端點的方向順著輪廓的繞向繞到另一端點的方向(凸出在外形外);其他頂點照舊。
+ * center 要落在那條平邊上(兩條邊一樣近時取輪廓順序在前的那條,所以不要落在頂點上)。
+ * r 等於端頭半寬時圓頭和兩側平順相接;r 較大時兩端點與弧之間各留一段徑向的肩。銷孔比端頭寬、圓頭包不住兩側時用 pinBoss
  */
 export function roundEnd(outline, center, r) {
   const n = outline.length;
@@ -252,13 +264,50 @@ export function roundEnd(outline, center, r) {
   };
   let edge = 0;
   for (let i = 1; i < n; i++) if (gap(outline[i], outline[(i + 1) % n]) < gap(outline[edge], outline[(edge + 1) % n])) edge = i;
-  const [a, b] = [outline[edge], outline[(edge + 1) % n]];
-  const a0 = Math.atan2(a[1] - cy, a[0] - cx);
-  const ccw = (((Math.atan2(b[1] - cy, b[0] - cx) - a0) % TAU) + TAU) % TAU;
-  const mid = (sweep) => [cx + r * Math.cos(a0 + sweep / 2), cy + r * Math.sin(a0 + sweep / 2)];
-  const sweep = pointInPolygon(mid(ccw), outline) ? ccw - TAU : ccw;
-  const arc = arcPoints(r, a0, a0 + sweep, cx, cy).filter((p) => Math.hypot(p[0] - a[0], p[1] - a[1]) > 1e-9 && Math.hypot(p[0] - b[0], p[1] - b[1]) > 1e-9);
+  const arc = arcBetween(outline[edge], outline[(edge + 1) % n], center, r, Math.sign(signedArea(outline)));
   return [...outline.slice(0, edge + 1), ...arc, ...outline.slice(edge + 1)];
+}
+
+/**
+ * 銷上的圓轂:輪廓與以 center 為圓心、半徑 r 的圓取聯集(銷孔比臂寬、銷在臂的彎折處,或銷在彎曲的爪身端頭時)。
+ * 落在圓裡的頂點拿掉,輪廓每一段進出圓的地方換成交點,兩交點之間補上順著輪廓繞向、凸出在外形外的圓弧;
+ * 圓從幾處伸出外形就補幾段。center 要在外形裡或邊上,頂點不要剛好落在圓周上
+ */
+export function pinBoss(outline, center, r) {
+  const [cx, cy] = center;
+  const dir = Math.sign(signedArea(outline));
+  const out = [];
+  let entry = null; // 最近一次進圓的交點;第一段就在圓裡時,繞完一圈再接回開頭
+  let pending = null; // 開頭就在圓裡時,離圓的第一個交點要等繞完一圈再補弧
+  outline.forEach((p, i) => {
+    const q = outline[(i + 1) % outline.length];
+    const [dx, dy] = [q[0] - p[0], q[1] - p[1]];
+    const [fx, fy] = [p[0] - cx, p[1] - cy];
+    const a = dx * dx + dy * dy;
+    const b = 2 * (fx * dx + fy * dy);
+    const c = fx * fx + fy * fy - r * r;
+    if (c >= 0) out.push(p);
+    const disc = b * b - 4 * a * c;
+    if (disc <= 0) return;
+    const [t1, t2] = [(-b - Math.sqrt(disc)) / (2 * a), (-b + Math.sqrt(disc)) / (2 * a)];
+    const at = (t) => [p[0] + t * dx, p[1] + t * dy];
+    if (t1 >= 0 && t1 < 1) {
+      entry = at(t1);
+      out.push(entry);
+    }
+    if (t2 > 0 && t2 <= 1) {
+      const exit = at(t2);
+      if (entry) out.push(...arcBetween(entry, exit, center, r, dir));
+      else pending = exit;
+      out.push(exit);
+      entry = null;
+    }
+  });
+  if (pending) {
+    const k = out.indexOf(pending);
+    return [...out.slice(0, k), ...arcBetween(entry, pending, center, r, dir), ...out.slice(k)];
+  }
+  return out;
 }
 
 /** 粗線:沿中心線 points(不封閉)兩側各偏 w/2 的封閉輪廓 */
