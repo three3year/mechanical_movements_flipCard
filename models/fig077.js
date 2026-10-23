@@ -8,7 +8,7 @@
 // 立體化:棘爪在凸柱那一層(輪緣的前面),槓桿在最前面一層,掛棘爪的銷往後伸;槓桿的樞軸裝在後面的立柱上。
 import { TAU, deg, polar } from "./kit.js";
 import { bodyPoint } from "./linkage.js";
-import { circle, shape, stadium, thickLine } from "./shapes.js";
+import { circle, hubArms, shape, stadium } from "./shapes.js";
 import { circlePolygon, placeOutline, polygonsOverlap, swingUntilContact } from "./contact.js";
 
 const WHEEL = { radius: 2.0, studR: 1.72, studs: 26, stud: 0.09 };
@@ -53,7 +53,9 @@ function pawlShapes(which) {
   const t = [-Math.sin(AT[which]), Math.cos(AT[which])];
   const n = [Math.cos(AT[which]), Math.sin(AT[which])];
   const local = ([a, b]) => [S[0] + a * t[0] + b * n[0] - pin[0], S[1] + a * t[1] + b * n[1] - pin[1]];
-  return { hook: ccw(HOOK.map(local)), shank: thickLine([[0, 0], local([-0.26, R + 0.03])], 0.12) };
+  // 柄(寬 0.12)從銷伸到鉤;銷端是半徑 0.11 的圓轂,把掛在槓桿銷上的孔(半徑 0.07,比柄寬)整個包在肉裡
+  const end = local([-0.26, R + 0.03]);
+  return { hook: ccw(HOOK.map(local)), shank: hubArms(0.11, 0.12, [{ angle: Math.atan2(end[1], end[0]), length: Math.hypot(...end) }]) };
 }
 const PAWLS = { upper: pawlShapes("upper"), lower: pawlShapes("lower") };
 

@@ -10,7 +10,7 @@
 // 槓桿的樞軸從後面的機架穿過齒條桿的長槽(長槽兼作導引,深度是推斷)。
 import { deg } from "./kit.js";
 import { bodyPoint } from "./linkage.js";
-import { shape, circle, stadium, thickLine, rect } from "./shapes.js";
+import { shape, circle, stadium, hubArms, rect } from "./shapes.js";
 import { placeOutline, polygonsOverlap, swingUntilContact } from "./contact.js";
 
 const PIVOT = [0, 1.55, 0.42];
@@ -50,7 +50,8 @@ function pawlShapes(side) {
     ].map(local),
   );
   const end = local([OUTER + 0.05, H + 0.35]);
-  return { hook, shank: thickLine([[0, 0], end], 0.1), end };
+  // 桿身寬 0.1 比銷孔(半徑 0.055)窄,銷那一端畫成圓眼(半徑 0.09)把孔包住
+  return { hook, shank: hubArms(0.09, 0.1, [{ angle: Math.atan2(end[1], end[0]), length: Math.hypot(...end) }]), end };
 }
 const PAWLS = { left: { side: 1, ...pawlShapes(1) }, right: { side: -1, ...pawlShapes(-1) } };
 
