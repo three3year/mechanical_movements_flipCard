@@ -8,7 +8,7 @@
 // (原本的模型以瓦特直線連桿解釋,和原圖的桿件配置不同,已照原圖重排。)
 import { deg, clamp, rot2 } from "./kit.js";
 import { circleCircle, angleOf, bodyPoint } from "./linkage.js";
-import { shape, thickLine, circle } from "./shapes.js";
+import { shape, thickLine, circle, hubArms } from "./shapes.js";
 
 const px = (x, y) => [x / 100 - 2.3, 2.1 - y / 100, 0];
 const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -69,7 +69,8 @@ export default {
   figure: 333,
   parts: [
     { id: "ground", kind: "group", pieces: [ground(G1, { length: 0.4, at: [0, 0, -0.1] }), ground(G2, { length: 0.75 })] },
-    { id: "linkL", kind: "plate", center: G1, shape: { ...shape(thickLine([[0, 0], [LEFT, 0]], 0.12)), holes: [circle(0.07).reverse()] }, thickness: 0.06, arrow: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.45, at: [LEFT, 0, 0.15] }] },
+    // 左桿:G1 的軸孔(半徑 0.07,和地面的軸一樣粗)比桿寬,根部畫成圓轂讓孔周圍留一圈肉
+    { id: "linkL", kind: "plate", center: G1, shape: shape(hubArms(0.11, 0.12, [{ angle: 0, length: LEFT }]), [circle(0.07).reverse()]), thickness: 0.06, arrow: false, pieces: [{ kind: "cylinder", radius: 0.07, length: 0.45, at: [LEFT, 0, 0.15] }] },
     {
       // 三角形的樑:H 的大接頭、往右到 R、往左上到 T,下緣 T–R 一根直條
       id: "beam",

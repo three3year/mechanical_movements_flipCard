@@ -8,7 +8,7 @@
 // (推斷;網站動畫裡這根桿也跟著 D 斜擺)。D 橫移約 0.8,只平移的桿下端沒有東西導引。
 import { deg, clamp } from "./kit.js";
 import { circleCircle } from "./linkage.js";
-import { shape, circle, thickLine, arcPoints, rect, zCylinder } from "./shapes.js";
+import { shape, circle, hubArms, arcPoints, rect, zCylinder } from "./shapes.js";
 
 const F = [-0.6, -2.4, 0]; // 立柱的擺動中心
 const PILLAR = 3.25; // F 到 B
@@ -76,7 +76,8 @@ export default {
     { id: "labelE", kind: "group", center: E, label: "E", labelOffset: [0, 0.3, 0.3] },
     // 立柱:頂上的粗軸穿過樑的孔
     { id: "pillar", kind: "link", width: 0.36, thickness: 0.12, pins: false, label: "B", labelOffset: [0, 0.35, 0.3], pieces: [{ kind: "cylinder", radius: 0.2, length: 0.3, at: [PILLAR, 0, 0.09] }] },
-    { id: "beam", kind: "plate", shape: shape(thickLine([[-BD, 0], [2 * L, 0]], 0.34), [circle(0.2).reverse()]), thickness: 0.14, arrow: false, pieces: [beamPin(-BD), beamPin(L), beamPin(2 * L)] },
+    // 樑:B 的軸孔(半徑 0.2)比樑寬(0.34)大,B 畫成輪轂(半徑 0.3),樑往 D、C 兩邊伸出
+    { id: "beam", kind: "plate", shape: shape(hubArms(0.3, 0.34, [{ angle: 0, length: 2 * L }, { angle: Math.PI, length: BD }]), [circle(0.2).reverse()]), thickness: 0.14, arrow: false, pieces: [beamPin(-BD), beamPin(L), beamPin(2 * L)] },
     { id: "radiusBar", kind: "link", width: 0.1, thickness: 0.06, pins: false, label: "A", labelOffset: [-0.25, -0.2, 0.3] },
     { id: "pistonRod", kind: "box", size: [0.08, PISTON_ROD, 0.08], label: "C", labelOffset: [0.3, 0.9, 0.3] },
     {

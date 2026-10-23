@@ -8,7 +8,7 @@
 import { Z, TAU, routeBelt, swingPhase, signedAngle } from "./kit.js";
 import { pedestal } from "./supports.js";
 import { circleCircle, angleOf } from "./linkage.js";
-import { shape, circle, thickLine } from "./shapes.js";
+import { shape, circle, hubArms } from "./shapes.js";
 
 const SHAFT = [0.55, 1.6, 0];
 const DISK = 0.75; // 偏心輪半徑
@@ -106,8 +106,9 @@ export default {
       center: PIVOT,
       arrow: false,
       pieces: [
-        // 踏板在滾子後面一層(z −0.22..−0.1),滾子的銷從踏板背面穿過滾子,前端一個銷頭擋住
-        { kind: "plate", shape: shape(thickLine([[0.15, 0], [-ARM - 1.8, 0]], 0.14), [circle(PIVOT_PIN).reverse()]), thickness: 0.12, at: [0, 0, -0.16] },
+        // 踏板在滾子後面一層(z −0.22..−0.1),滾子的銷從踏板背面穿過滾子,前端一個銷頭擋住。
+        // 支點的銷孔比踏板寬,支點端畫成圓轂(半徑 0.17,孔外留一圈和踏板半寬一樣的肉)
+        { kind: "plate", shape: shape(hubArms(PIVOT_PIN + 0.07, 0.14, [{ angle: Math.PI, length: ARM + 1.8 }]), [circle(PIVOT_PIN).reverse()]), thickness: 0.12, at: [0, 0, -0.16] },
         { kind: "cylinder", radius: PIN, length: 0.36, at: [-ARM, 0, -0.04], role: "rollerPin" },
         { kind: "cylinder", radius: 0.1, length: 0.04, at: [-ARM, 0, 0.12] },
       ],
