@@ -11,7 +11,7 @@
 // 推斷:兩輪同大;
 // 槓桿在輪轂後面、樞銷從槓桿往前穿進右立柱;立柱下的底座(原圖兩柱伸出畫面下緣)。
 import { X, routeBelt, beltTravel, wheelAngle } from "./kit.js";
-import { shape, circle, thickLine } from "./shapes.js";
+import { shape, circle, thickLine, roundEnd } from "./shapes.js";
 
 const UP = { center: [0.15, 1.6, 0], r: 0.6 };
 const LOW = { center: [0.15, -0.8, 0], r: 0.6 };
@@ -129,7 +129,8 @@ export default {
       arrow: false,
       posed: true, // 轉角由狀態決定
       pieces: [
-        { kind: "plate", shape: shape(thickLine(LEVER_LINE, 0.12), [circle(0.05).reverse()]), thickness: LEVER.t, at: [0, 0, 0] },
+        // 樞軸那端畫成圓頭(半徑 = 半寬),樞銷孔落在外形裡;外面還套著輪轂那塊圓板
+        { kind: "plate", shape: shape(roundEnd(thickLine(LEVER_LINE, 0.12), [0, 0], 0.06), [circle(0.05).reverse()]), thickness: LEVER.t, at: [0, 0, 0] },
         { kind: "plate", shape: shape(circle(0.13), [circle(0.05).reverse()]), thickness: LEVER.t, at: [0, 0, 0] },
         { kind: "cylinder", radius: LEVER.pinR, length: LEVER.pinZ[1] - LEVER.pinZ[0], at: [QX, QY, (LEVER.pinZ[0] + LEVER.pinZ[1]) / 2 - LEVER.pivot[2]] },
       ],

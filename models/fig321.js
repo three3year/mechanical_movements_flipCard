@@ -13,7 +13,7 @@
 // 心軸、T 的樁與小齒輪的軸裝在後面的夾板條上;小齒輪的齒數;片簧的彎法(原圖只畫到它沿下方彎過去)。
 // 轉向照原圖:T 的樁在右上方、爪往左伸,擋住較大棘輪順時針回落,所以整組逆時針轉、繩從捲繩筒左側垂下(原文沒寫轉向)。
 import { TAU, deg, smooth, clamp } from "./kit.js";
-import { ratchetShape, shape, circle, thickLine } from "./shapes.js";
+import { ratchetShape, shape, circle, hubArms } from "./shapes.js";
 import { pawlRest, pawlTrack } from "./ratchets.js";
 import { plateBar } from "./supports.js";
 import { meshAngle } from "./gears.js";
@@ -224,7 +224,8 @@ export default {
       label: "R",
       labelOffset: [-0.25, -0.2, 0.3],
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0], [R_LEN - 0.1, 0]], R_WIDTH), [circle(0.03).reverse()]), thickness: 0.06, at: [0, 0, 0.12] },
+        // 樞軸那端畫成圓輪轂(半徑 0.05),銷孔四周留一圈肉
+        { kind: "plate", shape: shape(hubArms(0.05, R_WIDTH, [{ angle: 0, length: R_LEN - 0.1 }]), [circle(0.03).reverse()]), thickness: 0.06, at: [0, 0, 0.12] },
         { kind: "plate", shape: { outline: [[R_LEN - 0.12, 0.035], [R_LEN - 0.12, -0.035], [R_LEN, 0]], holes: [] }, thickness: 0.06, at: [0, 0, 0.12] }, // 爪尖
       ],
     },
@@ -251,7 +252,8 @@ export default {
       labelOffset: [0.3, 0.15, 0.2],
       pieces: [
         // 長臂從齒的上方伸過去,末端彎下來成爪尖(局部 −y 朝上)
-        { kind: "plate", shape: shape(thickLine([[0, 0], [T_LEN - 0.4, -T_HOOK]], 0.08), [circle(0.085).reverse()]), thickness: 0.06 },
+        // 樁那端畫成圓輪轂(半徑 0.12):套在半徑 0.08 的樁上的孔比臂寬大,孔四周留一圈肉
+        { kind: "plate", shape: shape(hubArms(0.12, 0.08, [{ angle: Math.atan2(-T_HOOK, T_LEN - 0.4), length: Math.hypot(T_LEN - 0.4, T_HOOK) }]), [circle(0.085).reverse()]), thickness: 0.06 },
         { kind: "plate", shape: { outline: [[T_LEN - 0.42, -T_HOOK + 0.04], [T_LEN - 0.38, -T_HOOK - 0.04], [T_LEN, 0]], holes: [] }, thickness: 0.06 }, // 爪尖
       ],
     },

@@ -15,7 +15,7 @@
 // 碰上之後推到這一程的終點。鼓輪每程轉過的角度剛好是 3 齒(鼓輪半徑依此選定),每圈飛輪前進 3 齒,
 // 棘爪每一程都在同一個相位碰上齒面;碰上的時刻由「飛輪滑到的位置 = 鼓輪轉到的位置」算出。
 import { deg, swingPhase, rot2, around, TAU } from "./kit.js";
-import { ratchetShape, shape, circle, arcPoints, thickLine, spanBox } from "./shapes.js";
+import { ratchetShape, shape, circle, arcPoints, thickLine, roundEnd, spanBox } from "./shapes.js";
 import { ratchetObstacles } from "./ratchets.js";
 import { swingUntilContact, fallingRest } from "./contact.js";
 import { solve } from "./linkage.js";
@@ -63,6 +63,9 @@ const coasted = (t) => (SPAN * (1 - Math.exp(-COAST * t))) / COAST; // 推完後
 const CATCH = solve((f) => coasted(1 + f) - SPAN * f, 0, 0, 1);
 // 棘爪的轉角:從抬起的角度逆時針往下擺,停在爪的外形第一次碰到棘輪齒形的地方(由接觸算)
 const PAWL_OUTLINE = thickLine([[0, 0], [PAWL.length, 0]], 0.08);
+// 畫出來的棘爪:銷那一端畫成圓頭(半徑 = 爪身半寬),銷孔周圍留一圈肉。圓頭離棘輪中心至少 PIVOT_R − 0.04 = 0.53,
+// 在齒頂圓(0.5)外,碰不到棘輪,所以接觸照舊用平頭的 PAWL_OUTLINE(頂點少、算得快)
+const PAWL_BODY = roundEnd(PAWL_OUTLINE, [0, 0], 0.04);
 function pawlAngle(pivot, from, center, wheel) {
   return swingUntilContact({ pivot, outline: PAWL_OUTLINE, from, into: 1, sweep: 1.6, steps: 80 }, ratchetObstacles(RATCHET, wheel, center));
 }
@@ -218,7 +221,7 @@ export default {
         { kind: "cylinder", radius: 0.03, length: 0.125, at: [PAWL.pivot[0], PAWL.pivot[1], DRUM.len / 2 + 0.0625] }, // 棘爪的銷
       ],
     },
-    { id: "pawl", kind: "plate", shape: shape(thickLine([[0, 0], [PAWL.length, 0]], 0.08), [circle(0.03).reverse()]), thickness: 0.1, arrow: false },
+    { id: "pawl", kind: "plate", shape: shape(PAWL_BODY, [circle(0.03).reverse()]), thickness: 0.1, arrow: false },
     { id: "spring", kind: "rod", radius: SPRING.wire, stretch: "渦卷彈簧:內端在鼓輪輪轂上、外端插在柱頂,鼓輪轉動時捲緊放鬆(畫成內外半徑固定的螺線,圈數跟著鼓輪轉角變)" },
     { id: "ropeR", kind: "rope", radius: ROPE_R },
     { id: "ropeL", kind: "rope", radius: ROPE_R },

@@ -24,7 +24,7 @@
 import { TAU, deg } from "./kit.js";
 import { crankPin, circleCircle, angleOf } from "./linkage.js";
 import { rackOffset, circularPitch } from "./gears.js";
-import { ratchetShape, shape, circle, thickLine, rect } from "./shapes.js";
+import { ratchetShape, shape, circle, thickLine, rect, roundEnd, arcPoints } from "./shapes.js";
 import { ratchetObstacles } from "./ratchets.js";
 import { pawlDrive } from "./pawl-drive.js";
 import { pedestal } from "./supports.js";
@@ -66,7 +66,11 @@ const ARM_BOW = 0.25;
 export const CATCH_ARM = Array.from({ length: 17 }, (_, i) => [((CATCH - 0.08) * i) / 16, ARM_BOW * 4 * (i / 16) * (1 - i / 16)]);
 // 止回爪(局部座標:原點在樞軸,沿 +x 往下伸到棘輪的左上緣)
 const CLICK = { pivot: [-2.15, 0.84], length: 0.8 }; // 樞軸在棘輪左上方(平台的上方),爪略往左斜垂到齒上
-const CLICK_OUTLINE = [[-0.05, -0.05], [CLICK.length, -0.05], [CLICK.length, 0.03], [CLICK.length - 0.03, 0.14], [CLICK.length - 0.1, 0.05], [-0.05, 0.05]]; // 末端朝輪的一側凸出一個尖
+// 末端朝輪的一側凸出一個尖;樞軸那端是半徑 CLICK_EYE 的圓頭,樞軸孔(半徑 0.05,同樞軸銷)四周留一圈肉
+// (爪桿寬 0.1,平頭的話孔正好頂到兩側;圓頭離棘輪齒尖還有 1.6,碰不到齒)
+const CLICK_EYE = 0.08;
+const CLICK_EYE_OPEN = Math.asin(0.05 / CLICK_EYE); // 爪桿的兩側接到圓頭的角
+const CLICK_OUTLINE = [[CLICK.length, -0.05], [CLICK.length, 0.03], [CLICK.length - 0.03, 0.14], [CLICK.length - 0.1, 0.05], ...arcPoints(CLICK_EYE, CLICK_EYE_OPEN, TAU - CLICK_EYE_OPEN)];
 
 function arm(theta, d) {
   const pin = crankPin(CRANK.center, CRANK.r, theta);
@@ -143,7 +147,7 @@ export default {
       center: CRANK.center,
       spin: CRANK.r + 0.15,
       pieces: [
-        { kind: "plate", shape: shape(thickLine([[0, 0], [CRANK.r, 0]], 0.18), [circle(0.05).reverse()]), thickness: 0.1 },
+        { kind: "plate", shape: shape(roundEnd(thickLine([[0, 0], [CRANK.r, 0]], 0.18), [0, 0], 0.09), [circle(0.05).reverse()]), thickness: 0.1 }, // 軸那端畫成圓頭,軸孔四周留一圈肉
         { kind: "cylinder", radius: 0.06, length: Z.rod + 0.08 - CRANK.center[2] + 0.05, at: [CRANK.r, 0, (Z.rod + 0.08 - CRANK.center[2] - 0.05) / 2] }, // 曲柄銷伸到前面的連桿
         { kind: "cylinder", radius: 0.1, length: 0.6, at: [0, 0, -0.35] }, // 曲柄軸只往後伸(連桿從曲柄前面掃過軸心),前端接著曲柄臂
       ],
@@ -180,7 +184,7 @@ export default {
       arrow: false,
       posed: true,
       pieces: [
-        { kind: "plate", shape: shape(thickLine(CATCH_ARM, 0.1), [circle(0.04).reverse()]), thickness: 0.08, at: [0, 0, Z.catchBar] }, // 卡榫的彎臂在棘輪與框的前面
+        { kind: "plate", shape: shape(roundEnd(thickLine(CATCH_ARM, 0.1), [0, 0], 0.06), [circle(0.04).reverse()]), thickness: 0.08, at: [0, 0, Z.catchBar] }, // 卡榫的彎臂在棘輪與框的前面;樞軸那端畫成圓頭
         { kind: "plate", shape: shape(CATCH_OUTLINE), thickness: Z.catchBar + 0.04 + 0.06, at: [0, 0, (Z.catchBar + 0.04 - 0.06) / 2] }, // 鉤往後伸到棘輪那一層
         { kind: "cylinder", radius: 0.04, length: Z.catchBar + 0.04 - (Z.frame + Z.frameT / 2 - 0.04), at: [0, 0, (Z.catchBar + 0.04 + Z.frame + Z.frameT / 2 - 0.04) / 2] }, // 鉸在滑塊前面的銷
       ],
