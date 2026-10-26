@@ -387,3 +387,175 @@ test("原書順序下的跳轉不受用途影響", () => {
   b.goto(7);
   assert.equal(at(b), "book/7 5/5");
 });
+
+// ── 插圖總覽 ──
+
+test("插圖總覽:回答全書插圖的圖號,依圖號排,多插圖條目每張一格", () => {
+  const b = Browse.createBrowser(entries, realUses);
+  assert.equal(b.setMode("overview"), true);
+  const w = b.where();
+  assert.equal(w.mode, "overview");
+  assert.deepEqual([...w.figures], Array.from({ length: 507 }, (_, i) => i + 1));
+  assert.equal(b.setMode("overview"), false);
+});
+
+test("插圖總覽:假條目的多插圖條目也是每張一格", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.setMode("overview");
+  assert.deepEqual([...b.where().figures], [1, 2, 3, 5, 6, 7]);
+});
+
+test("插圖總覽:點一格以原書順序打開該圖所在的卡片並選中它,返回堆疊清空", () => {
+  const b = Browse.createBrowser(entries, realUses);
+  b.follow(5);
+  b.setMode("overview");
+  assert.equal(b.open(21), true);
+  const w = b.where();
+  assert.equal(w.mode, "book");
+  assert.equal(w.entry.no, "19–22");
+  assert.equal(w.figure, 21);
+  assert.equal(w.backNo, null);
+  b.step(1);
+  assert.equal(b.where().entry.no, "23");
+});
+
+test("插圖總覽:點多插圖條目的非第一張也選中它", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.setMode("overview");
+  b.open(6);
+  assert.equal(at(b), "book/5–6 4/5");
+  assert.equal(b.where().figure, 6);
+});
+
+test("插圖總覽:不存在的圖號不動;不在總覽時點格無效", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  assert.equal(b.open(3), false);
+  assert.equal(at(b), "甲/甲一/1 1/2");
+  b.setMode("overview");
+  for (const no of [0, 4, 999, NaN]) assert.equal(b.open(no), false);
+  assert.equal(b.where().mode, "overview");
+});
+
+test("插圖總覽:總覽中翻頁、跳轉、返回、選頁籤都無效", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.step(1);
+  b.setMode("overview");
+  assert.equal(b.step(1), false);
+  assert.equal(b.step(-1), false);
+  assert.equal(b.follow(7), false);
+  assert.equal(b.goto(7), false);
+  assert.equal(b.back(), false);
+  assert.equal(b.selectGroup("乙"), false);
+  assert.equal(b.selectUse("乙一"), false);
+  assert.equal(b.where().mode, "overview");
+  b.setMode("use");
+  assert.equal(at(b), "甲/甲一/3 2/2");
+});
+
+test("插圖總覽:切回原本的瀏覽方式回到進總覽前的卡片,選中的插圖保留,返回堆疊清空", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectUse("甲二");
+  b.follow(6);
+  assert.equal(b.where().backNo, "2");
+  b.setMode("overview");
+  assert.equal(b.setMode("use"), true);
+  assert.equal(at(b), "乙/乙一/5–6 2/2");
+  assert.equal(b.where().figure, 6);
+  assert.equal(b.where().backNo, null);
+  b.setMode("book");
+  b.goto(3);
+  b.setMode("overview");
+  b.setMode("book");
+  assert.equal(at(b), "book/3 3/5");
+});
+
+test("插圖總覽:切到另一種瀏覽方式的落點和從卡片直接切換相同", () => {
+  const viaOverview = Browse.createBrowser(small, smallUses());
+  const direct = Browse.createBrowser(small, smallUses());
+  for (const b of [viaOverview, direct]) {
+    b.selectGroup("乙");
+    b.step(1);
+  }
+  assert.equal(viaOverview.setMode("overview"), true);
+  viaOverview.setMode("book");
+  direct.setMode("book");
+  assert.equal(at(viaOverview), at(direct));
+  assert.equal(at(viaOverview), "book/5–6 4/5");
+});
+
+test("插圖總覽:從用途瀏覽進總覽,點格後切回用途瀏覽,優先落在原用途大類", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  b.setMode("overview");
+  b.open(2);
+  b.setMode("use");
+  assert.equal(at(b), "乙/乙一/2 1/2"); // 第 2 種的第一個用途是甲二
+});
+
+test("插圖總覽:從用途瀏覽進總覽再切到原書順序,之後切回用途瀏覽仍優先原用途大類", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  assert.equal(b.setMode("overview"), true);
+  b.setMode("book");
+  assert.equal(at(b), "book/2 2/5");
+  b.setMode("use");
+  assert.equal(at(b), "乙/乙一/2 1/2");
+});
+
+test("插圖總覽:沒有用途檔時仍可進總覽、點格", () => {
+  const b = Browse.createBrowser(small);
+  assert.equal(b.setMode("overview"), true);
+  assert.equal(b.open(6), true);
+  assert.equal(at(b), "book/5–6 4/5");
+  assert.equal(b.where().figure, 6);
+  b.setMode("overview");
+  assert.equal(b.setMode("use"), false);
+  assert.equal(b.setMode("book"), true);
+});
+
+// ── 插圖總覽:標出目前的插圖 ──
+
+const highlightAfter = (b) => {
+  b.setMode("overview");
+  const { highlight } = b.where();
+  b.setMode("book");
+  return highlight;
+};
+
+test("插圖總覽:標出目前卡片選中的插圖;沒有指定時是條目的第一張", () => {
+  const b = Browse.createBrowser(entries);
+  b.goto(21);
+  assert.equal(highlightAfter(b), 21);
+  b.step(-1);
+  assert.equal(b.where().entry.no, "18");
+  b.step(1);
+  assert.equal(b.where().figure, null);
+  assert.equal(highlightAfter(b), 19);
+});
+
+test("插圖總覽:點格後翻頁、跳到圖號、選了別張,標出的跟著變", () => {
+  const b = Browse.createBrowser(entries, realUses);
+  b.setMode("overview");
+  b.open(120);
+  b.step(1);
+  assert.equal(b.where().entry.no, "121");
+  assert.equal(highlightAfter(b), 121);
+  b.setMode("overview");
+  b.open(16);
+  b.selectFigure(17);
+  assert.equal(highlightAfter(b), 17);
+  b.goto(40);
+  assert.equal(highlightAfter(b), 40);
+});
+
+test("插圖總覽:從用途瀏覽的卡片進總覽,標出那張卡片的插圖", () => {
+  const b = Browse.createBrowser(small, smallUses());
+  b.selectGroup("乙");
+  b.step(1);
+  b.setMode("overview");
+  assert.equal(b.where().highlight, 5);
+  b.setMode("use");
+  b.selectFigure(6);
+  b.setMode("overview");
+  assert.equal(b.where().highlight, 6);
+});

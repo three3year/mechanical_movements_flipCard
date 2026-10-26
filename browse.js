@@ -37,7 +37,7 @@ const Browse = (() => {
     return problems;
   }
 
-  // uses 可省略(用途檔載入失敗時):只有原書順序,卡片照常顯示,只是沒有用途
+  // uses 可省略(用途檔載入失敗時):只有原書順序與插圖總覽,卡片照常顯示,只是沒有用途
   function createBrowser(entries, uses) {
     const names = new Set(uses ? uses.groups.flatMap((group) => group.uses) : []);
     // 卡片上列出的用途:依用途檔的順序,略過不存在的用途
@@ -53,7 +53,11 @@ const Browse = (() => {
       ),
     };
 
-    let mode = sequences.use.length ? "use" : "book";
+    // 插圖總覽:全書插圖依圖號排成一面,不是序列;在總覽時 mode 與 pos 仍記著目前所在的卡片,只是不顯示它
+    const figures = entries.flatMap((entry) => entry.images.map(figureOf)).sort((a, b) => a - b);
+
+    let mode = sequences.use.length ? "use" : "book"; // 目前卡片所在的序列
+    let overview = false;
     let pos = 0; // 在目前序列裡的位置
     let lastGroup = null; // 切到原書順序前最後所在的用途大類,切回時用來決定落點
     let figure = null; // 指定選中的插圖(交互參照、跳到圖號的目標);null 表示由頁面決定
@@ -74,6 +78,8 @@ const Browse = (() => {
     const currentGroup = () => (mode === "use" ? sequences.use[pos].g : lastGroup);
 
     function where() {
+      // 總覽:全部插圖,標出目前卡片選中的插圖(由頁面決定時是條目的第一張)
+      if (overview) return { mode: "overview", figures, highlight: figure ?? keyOf(entries[sequence()[pos].e]) };
       const seq = sequence();
       const item = seq[pos];
       const entry = entries[item.e];
@@ -105,6 +111,7 @@ const Browse = (() => {
     }
 
     function step(delta) {
+      if (overview) return false;
       const next = pos + delta;
       if (next < 0 || next >= sequence().length) return false;
       moveTo(next);
@@ -113,7 +120,7 @@ const Browse = (() => {
 
     // 選用途大類落在它第一個用途的首張;選用途落在它的首張
     function selectFirst(matches) {
-      const next = mode === "use" ? sequences.use.findIndex(matches) : -1;
+      const next = mode === "use" && !overview ? sequences.use.findIndex(matches) : -1;
       if (next === -1) return false;
       moveTo(next);
       return true;
@@ -123,7 +130,7 @@ const Browse = (() => {
 
     // 「第 N 種」交互參照:跳到該圖所在條目並選中它,來源推入返回堆疊
     function follow(no) {
-      const e = entryIndexOf(no);
+      const e = overview ? -1 : entryIndexOf(no);
       if (e === -1 || e === sequence()[pos].e) return false;
       const next = landing(e, currentGroup());
       if (next === -1) return false;
@@ -135,7 +142,7 @@ const Browse = (() => {
 
     // 跳到圖號:同樣選中該圖,但視為新的閱讀起點,返回堆疊清空
     function goto(no) {
-      const e = entryIndexOf(no);
+      const e = overview ? -1 : entryIndexOf(no);
       const next = e === -1 ? -1 : landing(e, currentGroup());
       if (next === -1) return false;
       backStack.length = 0;
@@ -145,25 +152,42 @@ const Browse = (() => {
     }
 
     function back() {
-      const from = backStack.pop();
+      const from = overview ? null : backStack.pop();
       if (!from) return false;
       pos = from.pos;
       figure = from.figure;
       return true;
     }
 
-    // 切換瀏覽方式:停在同一條目、選中的插圖保留;和手動切頁籤一樣視為新的閱讀起點,返回堆疊清空
+    // 切換瀏覽方式:停在同一條目、選中的插圖保留;和手動切頁籤一樣視為新的閱讀起點,返回堆疊清空。
+    // 進總覽不動目前的卡片;從總覽切回卡片所在的瀏覽方式就回到那張卡片,切到另一種則照從卡片切換的落點
     function setMode(next) {
-      if (next === mode || !sequences[next]?.length) return false;
-      const e = sequence()[pos].e;
-      if (mode === "use") lastGroup = sequences.use[pos].g;
-      mode = next;
-      pos = landing(e, lastGroup);
+      const toOverview = next === "overview";
+      if (toOverview ? overview : !sequences[next]?.length || (next === mode && !overview)) return false;
+      if (mode === "use" && next !== mode) lastGroup = sequences.use[pos].g;
+      overview = toOverview;
+      if (!toOverview && next !== mode) {
+        const e = sequence()[pos].e;
+        mode = next;
+        pos = landing(e, lastGroup);
+      }
       backStack.length = 0;
       return true;
     }
 
-    // 頁面選了別的插圖(多插圖條目的小頁籤,或依有無模型改選)
+    // 總覽裡點一格:以原書順序打開該圖所在的條目並選中它,視為新的閱讀起點
+    function open(no) {
+      const e = overview ? entryIndexOf(no) : -1;
+      if (e === -1) return false;
+      overview = false;
+      mode = "book";
+      pos = e;
+      figure = no;
+      backStack.length = 0;
+      return true;
+    }
+
+    // 頁面選了別的插圖(模型模式下多插圖條目的小頁籤)
     function selectFigure(no) {
       figure = no;
     }
@@ -173,7 +197,7 @@ const Browse = (() => {
       return sequence().slice(Math.max(0, pos - d), pos + d + 1).map((item) => entries[item.e]);
     }
 
-    return { where, step, selectGroup, selectUse, follow, goto, back, setMode, selectFigure, around };
+    return { where, step, selectGroup, selectUse, follow, goto, back, setMode, open, selectFigure, around };
   }
 
   return { createBrowser, checkUses };

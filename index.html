@@ -22,8 +22,9 @@
       <p class="subtitle"><a href="https://ia803103.us.archive.org/12/items/Mechanical_Movements_507/Mechanical_Movements_507.pdf" target="_blank" rel="noopener">Mechanical Movements</a> · <a href="https://507movements.com/" target="_blank" rel="noopener">507movements.com</a> · 圖文對照</p>
     </header>
 
-    <div class="browse-mode" id="browse-mode" role="group" aria-label="瀏覽方式" hidden>
-      <button type="button" data-value="use">依用途</button>
+    <div class="browse-mode" id="browse-mode" role="group" aria-label="瀏覽方式">
+      <button type="button" data-value="use" hidden>依用途</button>
+      <button type="button" data-value="overview">插圖總覽</button>
       <button type="button" data-value="book">原書順序</button>
     </div>
     <nav class="tabs" id="group-tabs" aria-label="用途大類"></nav>
@@ -34,7 +35,9 @@
       <button type="submit">前往</button>
     </form>
 
-    <main class="viewer">
+    <section class="overview" id="overview" aria-label="插圖總覽" hidden></section>
+
+    <main class="viewer" id="viewer">
       <button class="back" id="back" hidden></button>
       <article class="card" id="card"></article>
       <div class="pager">
@@ -59,6 +62,8 @@
     const modeEl = document.getElementById("browse-mode");
     const groupTabsEl = document.getElementById("group-tabs");
     const useTabsEl = document.getElementById("use-tabs");
+    const viewerEl = document.getElementById("viewer");
+    const overviewEl = document.getElementById("overview");
 
     let renderSeq = 0;
     const backEl = document.getElementById("back");
@@ -242,14 +247,15 @@
     async function render() {
       const seq = ++renderSeq;
       const at = browser.where();
+      if (at.mode === "overview") {
+        renderOverview(at);
+        return;
+      }
       const entry = at.entry;
 
+      // 選中的插圖沒有模型時只是暫時顯示第一個模型,不改寫瀏覽模組記的那張(回到總覽時標出的是它)
       const modelFigs = modelFiguresOf(entry);
-      let selectedFig = at.figure;
-      if (!modelFigs.includes(selectedFig)) {
-        selectedFig = modelFigs[0] ?? null;
-        browser.selectFigure(selectedFig);
-      }
+      const selectedFig = modelFigs.includes(at.figure) ? at.figure : (modelFigs[0] ?? null);
 
       // 模型模式:先把場景組好(第一次會等 3D 函式庫下載),再和卡片一起換上,避免閃白
       let session = null;
@@ -345,6 +351,7 @@
       cardEl.replaceChildren(fragment);
       if (session) session.activate();
       else viewerModule?.deactivate();
+      showOverview(false);
 
       posEl.textContent = (at.index + 1) + " / " + at.count;
       prevBtn.disabled = atStart;
@@ -359,6 +366,50 @@
       preloadAround();
     }
 
+    // ── 插圖總覽 ──
+    // 總覽與卡片互斥:卡片組好才把總覽換下,點格時不會先閃出進總覽前的那張卡片
+    function showOverview(on) {
+      if (overviewEl.hidden === !on) return;
+      overviewEl.hidden = !on;
+      viewerEl.hidden = on;
+      gotoForm.hidden = on;
+      if (!on) window.scrollTo(0, 0);
+    }
+
+    // 格子第一次進總覽才建;格子大小固定,延遲載入的圖還沒到也捲得準
+    const srcOf = new Map(entries.flatMap((entry) => entry.images.map((src) => [figureNo(src), src])));
+    const tiles = new Map();
+    function renderOverview(at) {
+      viewerModule?.deactivate();
+      if (!tiles.size) {
+        for (const no of at.figures) {
+          const tile = document.createElement("button");
+          tile.type = "button";
+          tile.className = "tile";
+          tile.title = "第 " + no + " 種";
+          const img = document.createElement("img");
+          img.loading = "lazy"; // 先設才設 src,各家瀏覽器都不會先下載
+          img.decoding = "async";
+          img.src = srcOf.get(no);
+          img.alt = "第 " + no + " 種";
+          tile.appendChild(img);
+          tile.addEventListener("click", () => browser.open(no) && render());
+          tiles.set(no, tile);
+        }
+        overviewEl.replaceChildren(...tiles.values());
+      }
+      const previous = overviewEl.querySelector(".tile.current");
+      previous?.classList.remove("current");
+      previous?.removeAttribute("aria-current");
+      const current = tiles.get(at.highlight);
+      current.classList.add("current");
+      current.setAttribute("aria-current", "true");
+      showOverview(true);
+      footerEl.textContent = "插圖總覽 · 共 " + at.figures.length + " 圖";
+      renderTabs(at);
+      current.scrollIntoView({ block: "center" });
+    }
+
     // 預載當前卡片前後各 2 張的圖,圖庫再大開啟也不變慢
     const preloaded = new Set();
     function preloadAround() {
@@ -371,9 +422,10 @@
       }
     }
 
-    // 手動翻頁即離開參照脈絡,返回鍵消失
+    // 手動翻頁即離開參照脈絡,返回鍵消失。
+    // 總覽還在畫面上時不翻(點格後卡片還在組,例如第一次載入模型),免得翻動看不到的卡片
     function step(delta) {
-      if (browser.step(delta)) render();
+      if (overviewEl.hidden && browser.step(delta)) render();
     }
 
     prevBtn.addEventListener("click", () => step(-1));
@@ -416,7 +468,7 @@
     }, { passive: true });
 
     // ── 瀏覽方式與頁籤 ──
-    // 用途瀏覽:頁首兩排頁籤(用途大類、該大類的用途);原書順序沒有頁籤
+    // 用途瀏覽:頁首兩排頁籤(用途大類、該大類的用途);原書順序與插圖總覽沒有頁籤
     function tabButton(label, onClick) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -452,11 +504,12 @@
       markActive(useTabsEl, at.use);
     }
 
+    // 用途檔載入失敗時沒有【依用途】,只剩【插圖總覽】【原書順序】
+    for (const btn of modeEl.children) {
+      btn.addEventListener("click", () => browser.setMode(btn.dataset.value) && render());
+    }
     if (uses) {
-      modeEl.hidden = false;
-      for (const btn of modeEl.children) {
-        btn.addEventListener("click", () => browser.setMode(btn.dataset.value) && render());
-      }
+      modeEl.querySelector('[data-value="use"]').hidden = false;
       groupTabsEl.replaceChildren(
         ...uses.groups.map((group) => tabButton(group.name, () => browser.selectGroup(group.name) && render())),
       );

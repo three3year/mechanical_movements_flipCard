@@ -88,6 +88,11 @@ header .subtitle a:hover {
   border-left: none;
 }
 
+/* 用途檔載入失敗時【依用途】隱藏,下一個鈕補回左框 */
+.browse-mode button[hidden] + button {
+  border-left: 1px solid var(--line);
+}
+
 .browse-mode button:hover {
   color: var(--ink);
   background: var(--card);
@@ -167,6 +172,10 @@ nav.tabs button.active {
   color: var(--ink-soft);
 }
 
+.goto[hidden] {
+  display: none;
+}
+
 .goto input {
   font: inherit;
   width: 5.5em;
@@ -224,6 +233,46 @@ nav.tabs button.active {
 
 .goto button:hover {
   background: var(--card);
+}
+
+/* ── 插圖總覽 ─────────────────────── */
+
+/* 自動填滿的方格,每格大小固定:延遲載入的圖還沒到時版面也不會跳 */
+.overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.overview[hidden] {
+  display: none;
+}
+
+.overview .tile {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.overview .tile:hover {
+  border-color: var(--line-dark);
+}
+
+.overview .tile.current {
+  outline: 3px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.overview .tile img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
 }
 
 /* ── 單張檢視 ─────────────────────── */
@@ -734,6 +783,11 @@ footer {
     font-size: 0.8rem;
     letter-spacing: 0.05em;
     padding: 0.1rem 0.45rem;
+  }
+  /* 手機一排三格 */
+  .overview {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 0.4rem;
   }
 }
 
