@@ -111,8 +111,8 @@ test("第 42、43 種:兩軸斜向配置的齒輪,轉角比為齒數反比", () 
   ratioTest(fig43, "big", "small");
 });
 
-import fig30 from "../models/fig030.js";
-import fig33, { D as D33, axes as axes33 } from "../models/fig033.js";
+import fig30, { r1 as pitch30Driver, r2 as pitch30Driven } from "../models/fig030.js";
+import fig33, { D as D33, axes as axes33, r1 as pitch33Driver, r2 as pitch33Driven } from "../models/fig033.js";
 import fig35, { rollingRadius, pinionRadius, axes as axes35 } from "../models/fig035.js";
 import fig37, { heightAt, radii as radii37 } from "../models/fig037.js";
 import fig38, { sectors as sectors38, pitchRadius as pitchRadius38 } from "../models/fig038.js";
@@ -137,6 +137,59 @@ test("第 33 種:橢圓形正齒輪的速度變化取決於長短軸的比例", 
   close(Math.max(...rates), a / (D33 - a), "長軸對著從動輪時最快", 2e-3);
   close(Math.min(...rates), b / (D33 - b), "短軸對著從動輪時最慢", 2e-3);
 });
+
+// 節曲線 r(局部角) 轉了 angle 之後,半徑最大處的世界方向
+const longAxis = (r, angle) => {
+  let best = 0;
+  for (let i = 0; i < 720; i++) if (r((i / 720) * 2 * Math.PI) > r((best / 720) * 2 * Math.PI)) best = i;
+  return (best / 720) * 2 * Math.PI + angle;
+};
+
+test("第 33 種:初始時(主動量 0)左輪長軸直立、右輪長軸水平,和插圖一樣", () => {
+  const p = fig33.pose(0).parts;
+  assert.ok(Math.abs(Math.sin(longAxis(pitch33Driver, p.driver.angle))) > 0.999, "左輪(主動)長軸直立");
+  assert.ok(Math.abs(Math.cos(longAxis(pitch33Driven, p.driven.angle))) > 0.999, "右輪(從動)長軸水平");
+});
+
+test("第 30 種:裝鉛字的「矩形滾筒」是被驅動的從動輪:節曲線四邊是直線段,起始時一邊正對主動輪", () => {
+  const a0 = fig30.pose(0).parts.driven.angle;
+  for (let k = 0; k < 4; k++) {
+    const normal = Math.PI + (k * Math.PI) / 2; // k = 0:朝主動輪(連心線的 −x 方向)
+    // 沿邊的法線方向量節曲線上各點離中心的距離:直線段上處處相等
+    const depth = sweep(0.5, 40, -0.5).map((t) => pitch30Driven(normal + t - a0) * Math.cos(t));
+    assert.ok(Math.max(...depth) - Math.min(...depth) < 1e-6, `第 ${k + 1} 邊是直線段`);
+  }
+});
+
+for (const [def, r1, r2] of [
+  [fig30, pitch30Driver, pitch30Driven],
+  [fig33, pitch33Driver, pitch33Driven],
+]) {
+  test(`第 ${def.figure} 種:兩輪的節曲線在連心線上相切、全程不交叉,轉速比等於接觸點兩側半徑的反比`, () => {
+    const c1 = part(def, "driver").center;
+    const c2 = part(def, "driven").center;
+    const dist = c2[0] - c1[0];
+    assert.ok(Math.abs(c2[1] - c1[1]) < 1e-12, "兩輪中心在同一條水平線上");
+    for (const v of sweep(2 * Math.PI, 72)) {
+      const { driver, driven } = def.pose(v).parts;
+      // 接觸點(節點)在連心線上:主動輪朝 +x、從動輪朝 −x 的半徑加起來等於中心距
+      const a = r1(0 - driver.angle);
+      const b = r2(Math.PI - driven.angle);
+      close(a + b, dist, `主動量 ${v.toFixed(2)}:兩節曲線在連心線上碰到`, 1e-4);
+      // 主動輪的節曲線全程不伸進從動輪的節曲線
+      let worst = Infinity;
+      for (let i = 0; i < 1440; i++) {
+        const phi = (i / 1440) * 2 * Math.PI;
+        const x = c1[0] + r1(phi) * Math.cos(phi + driver.angle) - c2[0];
+        const y = c1[1] + r1(phi) * Math.sin(phi + driver.angle) - c2[1];
+        worst = Math.min(worst, Math.hypot(x, y) - r2(Math.atan2(y, x) - driven.angle));
+      }
+      assert.ok(worst > -1e-3, `主動量 ${v.toFixed(2)}:節曲線交叉 ${worst}`);
+      // 純滾動:接觸點兩側的線速度相等,從動輪的轉速 = 主動輪轉速 × a / b(反向)
+      close(-rate(def, "driven", v), a / b, `主動量 ${v.toFixed(2)}:轉速比`, 2e-3);
+    }
+  });
+}
 
 test("第 35 種:橢圓齒輪等速轉,小齒輪的轉速隨接觸處半徑而變:長軸端最快、短軸端最慢(變速)", () => {
   const [a, b] = axes35;

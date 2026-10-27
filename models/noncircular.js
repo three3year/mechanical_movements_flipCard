@@ -51,7 +51,7 @@ export function inverseOf(table) {
 }
 
 /**
- * 主動輪節曲線 r1 的共軛輪:回傳中心距 D、從動輪轉角 θ2(θ1)(與主動輪反向)與從動輪節曲線 r2(φ)。
+ * 主動輪節曲線 r1 的共軛輪:回傳中心距 D、從動輪轉角 θ2(θ1)(與主動輪反向)、它的反函數 θ1(θ2)與從動輪節曲線 r2(φ)。
  * 主動輪轉一圈時從動輪轉 turns 圈(預設 1):以二分法找出 D。
  * 接觸點:主動輪在局部角 contact − θ1,從動輪在局部角 contact + π − θ2(contact 是連心線方向)。
  */
@@ -80,7 +80,8 @@ export function conjugate(r1, { turns = 1, contact = 0 } = {}) {
     const local = (((phi - contact - Math.PI) % (TAU * turns)) + TAU * turns) % (TAU * turns);
     return interpolate(phis, radii, local);
   };
-  return { D, driven: (theta) => -angle(theta), r2 };
+  const back = periodic(inverseOf(table), TAU * turns); // angle 的反函數
+  return { D, driven: (theta) => -angle(theta), inverse: (theta2) => back(-theta2), r2 };
 }
 
 /** 節曲線上取樣:回傳每點的 [x, y]、弧長 s、外法線 n */
