@@ -12,6 +12,7 @@ import fig11 from "../models/fig011.js";
 import fig8 from "../models/fig008.js";
 import fig9 from "../models/fig009.js";
 import fig10 from "../models/fig010.js";
+import { sweep } from "./helpers.js";
 
 const close = (actual, expected, msg) =>
   assert.ok(Math.abs(actual - expected) < 1e-9, `${msg ?? ""} 期望 ${expected},實際 ${actual}`);
@@ -162,24 +163,109 @@ function radiusAt(p, along) {
     }
   }
   const f = (along - start) / p.length;
-  const i = p.profile.findIndex(([g]) => g >= f);
+  const i = Math.max(1, p.profile.findIndex(([g]) => g >= f)); // 左端面(f = 0)取第一段
   const [f0, r0] = p.profile[i - 1];
   const [f1, r1] = p.profile[i];
   return r0 + ((r1 - r0) * (f - f0)) / (f1 - f0);
 }
 
-for (const [def, name] of [[fig8, "第 8 種:速度皮帶輪"], [fig9, "第 9 種:錐形皮帶輪"], [fig10, "第 10 種:變形錐形皮帶輪"]]) {
-  test(`${name},每個皮帶位置的轉速比符合該處半徑比,而且各位置不同`, () => {
-    const ratios = def.states.options.map(({ id }) => {
-      const belt = def.pose(0, id).paths.belt.points;
-      const along = belt.reduce((sum, p) => sum + p[0], 0) / belt.length; // 皮帶沿軸的位置
+test("第 8 種:速度皮帶輪,每一段階梯的轉速比符合該處半徑比,而且各段不同", () => {
+  const ratios = fig8.states.options.map(({ id }) => {
+    const belt = fig8.pose(0, id).paths.belt.points;
+    const along = belt.reduce((sum, p) => sum + p[0], 0) / belt.length; // 皮帶沿軸的位置
+    const expected = radiusAt(part(fig8, "driver"), along) / radiusAt(part(fig8, "driven"), along);
+    const ratio = turn(fig8, "driven", id) / turn(fig8, "driver", id);
+    close(ratio, expected, `狀態 ${id}`);
+    return ratio;
+  });
+  assert.ok(fig8.states.options.length >= 3);
+  assert.equal(new Set(ratios.map((r) => r.toFixed(6))).size, ratios.length, "各段轉速比不同");
+});
+
+// 第 9、10 種:撥叉把皮帶沿錐面慢慢推過去再推回來;在主動輪一個來回(driver.period)上均勻取樣
+const H = 1e-3; // 量轉速比的微小主動量
+const rateAt = (def, v) => (def.pose(v + H).parts.driven.angle - def.pose(v - H).parts.driven.angle) / (2 * H);
+const beltAlong = (def, v) => def.pose(v).paths.belt.points[0][0]; // 皮帶繞在垂直軸的平面上,每一點的 x 相同
+const coneSamples = (def) => sweep(def.driver.period, 240);
+
+/** 皮帶前段(z > 0)在高度 y 處的深度 z:沿折線內插 */
+function frontRunZ(points, y) {
+  let best = -Infinity;
+  points.forEach((a, i) => {
+    const b = points[(i + 1) % points.length];
+    if ((a[1] - y) * (b[1] - y) > 0 || a[1] === b[1]) return;
+    const t = (y - a[1]) / (b[1] - a[1]);
+    best = Math.max(best, a[2] + (b[2] - a[2]) * t);
+  });
+  return best;
+}
+
+for (const [def, name] of [[fig9, "第 9 種:錐形皮帶輪"], [fig10, "第 10 種:變形錐形皮帶輪"]]) {
+  test(`${name},原文「逐漸加快或減慢」:主動輪一直轉,從動輪的轉速比連續變化,沒有跳段`, () => {
+    assert.ok(def.driver.period > 2 * Math.PI, "皮帶要主動輪轉好幾圈才走完一個來回");
+    const rates = coneSamples(def).map((v) => rateAt(def, v));
+    const span = Math.max(...rates) - Math.min(...rates);
+    assert.ok(span > 1.5, `一個來回裡轉速比變化很大(${span.toFixed(2)})`);
+    rates.slice(1).forEach((r, i) => assert.ok(Math.abs(r - rates[i]) < span / 20, `取樣 ${i}→${i + 1} 轉速比 ${rates[i].toFixed(3)}→${r.toFixed(3)} 跳段`));
+  });
+
+  test(`${name},每一刻的轉速比等於皮帶所在處兩輪的半徑比(皮帶不打滑)`, () => {
+    for (const v of coneSamples(def)) {
+      const along = beltAlong(def, v);
       const expected = radiusAt(part(def, "driver"), along) / radiusAt(part(def, "driven"), along);
-      const ratio = turn(def, "driven", id) / turn(def, "driver", id);
-      close(ratio, expected, `狀態 ${id}`);
-      return ratio;
-    });
-    assert.ok(def.states.options.length >= 3);
-    assert.equal(new Set(ratios.map((r) => r.toFixed(6))).size, ratios.length, "各位置轉速比不同");
+      const rate = rateAt(def, v);
+      assert.ok(Math.abs(rate / expected - 1) < 2e-3, `主動量 ${v.toFixed(2)}:轉速比 ${rate.toFixed(4)},皮帶處半徑比 ${expected.toFixed(4)}`);
+    }
+  });
+
+  test(`${name},皮帶走到錐面的兩端,轉速比在兩端達到錐面兩端的比值`, () => {
+    const cone = part(def, "driver");
+    const [left, right] = [cone.center[0] - cone.length / 2, cone.center[0] + cone.length / 2];
+    const r = part(def, "belt").radius;
+    const xs = coneSamples(def).map((v) => beltAlong(def, v));
+    const [lo, hi] = [Math.min(...xs), Math.max(...xs)];
+    assert.ok(lo - r >= left && hi + r <= right, "皮帶全程在錐面上");
+    assert.ok(lo - r - left < 0.05 && right - hi - r < 0.05, `皮帶的邊走到錐面兩端(${(lo - r).toFixed(3)}..${(hi + r).toFixed(3)},錐面 ${left}..${right})`);
+    // 皮帶在兩端時,兩輪皮帶處的半徑和錐面端面的半徑只差一點點,最快、最慢的轉速比就是那裡的半徑比
+    for (const [x, end] of [[lo, left], [hi, right]]) {
+      for (const id of ["driver", "driven"]) assert.ok(Math.abs(radiusAt(part(def, id), x) - radiusAt(part(def, id), end)) < 0.04, `${id} 在皮帶最遠處的半徑接近端面`);
+    }
+    const rates = coneSamples(def).map((v) => rateAt(def, v));
+    const atEnds = [lo, hi].map((x) => radiusAt(cone, x) / radiusAt(part(def, "driven"), x));
+    assert.ok(Math.abs(Math.max(...rates) / Math.max(...atEnds) - 1) < 2e-3 && Math.abs(Math.min(...rates) / Math.min(...atEnds) - 1) < 2e-3, "最快、最慢就是皮帶在兩端時的半徑比");
+  });
+
+  test(`${name},撥叉夾著皮帶前段:皮帶的位置由撥叉決定,推的一側和皮帶相碰`, () => {
+    const fork = part(def, "fork");
+    const prongs = fork.pieces.filter((q) => q.role === "prong");
+    assert.equal(prongs.length, 2, "撥叉有兩根叉齒");
+    assert.ok(def.powered?.includes("fork"), "推撥叉的機構沒有畫出來,撥叉直接受力");
+    const r = part(def, "belt").radius;
+    for (const v of coneSamples(def)) {
+      const pose = def.pose(v);
+      const at = pose.parts.fork.position;
+      const along = beltAlong(def, v);
+      const [a, b] = prongs.map((q) => [at[0] + q.at[0] - q.size[0] / 2, at[0] + q.at[0] + q.size[0] / 2]).sort((p, q) => p[0] - q[0]);
+      const gaps = [along - r - a[1], b[0] - (along + r)]; // 左叉齒內面到皮帶、皮帶到右叉齒內面
+      assert.ok(Math.min(...gaps) >= -1e-9, `主動量 ${v.toFixed(2)}:叉齒穿入皮帶`);
+      assert.ok(Math.max(...gaps) < 0.01, `主動量 ${v.toFixed(2)}:叉齒和皮帶相碰(間隙 ${gaps.map((g) => g.toFixed(3))})`);
+      const z = frontRunZ(pose.paths.belt.points, at[1]);
+      for (const q of prongs) {
+        assert.ok(at[2] + q.at[2] - q.size[2] / 2 < z - r && z + r < at[2] + q.at[2] + q.size[2] / 2, `叉齒在深度上跨過皮帶(皮帶 z ${z.toFixed(3)})`);
+        assert.ok(Math.abs(q.at[1]) < q.size[1] / 2, "叉齒在皮帶前段的高度");
+      }
+    }
+  });
+
+  test(`${name},讀數「轉速比」隨皮帶位置變化,標出漸快或漸慢`, () => {
+    for (const v of coneSamples(def).filter((_, i) => i % 10 === 5)) {
+      const [readout] = def.pose(v).readouts;
+      assert.ok(readout?.label.startsWith("轉速比"), "有轉速比讀數");
+      const rate = rateAt(def, v);
+      assert.ok(Math.abs(parseFloat(readout.value) - rate) < 0.006, `讀數 ${readout.value},量到 ${rate.toFixed(3)}`);
+      const trend = rateAt(def, v + 0.05) > rate ? "漸快" : "漸慢";
+      assert.ok(readout.value.includes(trend), `讀數 ${readout.value} 應標 ${trend}`);
+    }
   });
 }
 
