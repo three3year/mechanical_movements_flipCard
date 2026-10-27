@@ -1,0 +1,20 @@
+# 53 — 第 81 種的彈簧、導座、齒條與軸;第 96、136 種的彈簧
+
+**What to build:** 第 81 種彈簧全程長於並緊長度;插圖下方的固定導座畫成固定件、桿彈回後停在導座上;齒條的齒接上背板;缺齒輪 A 有軸。第 96、136 種的彈簧同樣改到全程長於並緊長度。
+
+**報告:** `00l-intermittent-4.md` #81-1、`00l-intermittent-4.md` #81-2、`00l-intermittent-4.md` #81-3、`00l-intermittent-4.md` #81-4(在 `.scratch/model-audit/`)。規格:`.scratch/model-audit-fixes-6/spec.md`。
+
+**Blocked by:** None — can start immediately
+
+**Status:** ready-for-agent
+
+- [ ] 測試:三張的彈簧在整個範圍內長度 ≥ 並緊長度
+- [ ] `node tools/one-piece.mjs 81` 不再報
+- [ ] 報告裡列的每一筆照建議修法與該族「需要你決定的」的決定修好,每一筆加「狀態:已修(日期):做了什麼」
+- [ ] 先寫會失敗的測試再改;斷言對到原文的一句、接觸或守恆,不重複模型自己的公式
+- [ ] 每一筆的「同類要一起查」都查過:同一個共用模組的一起修,範圍外查出的寫進 pending.md
+- [ ] 補上的零件與偏離插圖之處在模型註解標明
+- [ ] `npm run verify -- 圖號… --brief` 通過(沒有過時的豁免)、`npm test` 全過
+- [ ] 該範圍的一件、剛性、外形檢查不再報出已修的問題(報出的都有寫在註解的實物理由)
+- [ ] 每張改過的圖經截圖服務截四個相位(含斜後方、放大接觸處)對照原圖
+- [ ] 改了共用模組的介面就同步更新 `docs/agents/model-cheatsheet.md`
