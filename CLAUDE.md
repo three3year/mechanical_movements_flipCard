@@ -10,7 +10,7 @@ Issues live as local markdown files under `.scratch/<feature>/`. See `docs/agent
 
 ### Domain docs
 
-Single-context layout: `CONTEXT.md` at the repo root plus `docs/adr/`. See `docs/agents/domain.md`.
+Single-context layout: `GLOSSARY.md` at the repo root plus `docs/adr/`. See `docs/agents/domain.md`.`CONTEXT.md` 為舊名(v1.3.0 前的 skill),現僅轉址到 `GLOSSARY.md`。
 
 ## 開發
 
@@ -19,6 +19,6 @@ Single-context layout: `CONTEXT.md` at the repo root plus `docs/adr/`. See `docs
 - **改動或新增模型前先讀 `docs/agents/model-cheatsheet.md`**(程式的地圖:定義欄位、零件種類、哪個情境用哪個共用模組、測試工具與範例圖),需要細節再 `grep -n` 找那個函式、`sed -n` 讀那一段;改了它列的介面就同步更新它。
 - 本機預覽要用靜態伺服器(模型是 ES module);`tools/model-preview.html?fig=N` 把插圖與模型初始視角並排,供截圖對照;畫面行為的手動驗證清單見 `docs/models-manual-checklist.md`。
 - **截圖一律經截圖服務**(主 session 自己截或派子代理截都一樣;用法見 `tools/shot-service.mjs` 與 `tools/shot.mjs` 的檔頭):主 session 在一次 prompt 開始時判斷這次會不會截圖,會就 `node tools/shot-service.mjs start`,回覆前 `stop`(服務也提供靜態檔,不用另開伺服器)。子代理只執行 `node tools/shot.mjs 頁面 輸出.png …`,遇到「截圖服務沒在跑」就回報主 session、由主 session 啟動。執行 `tools/shot.mjs` 時把指令逾時設成 10 分鐘(它在排隊)。截圖只走這條路——自己執行 `chrome --headless` 或用 Playwright MCP 截圖,會讓多個子代理同時截時電腦滿載、分頁互相蓋掉。改動截圖服務(`tools/shot*`)後跑 `npm run test:shot`(不需要 Chrome)。
-- **改動或新增模型後要跑實體驗證**:`npm run verify`(先跑實體驗證自己的測試,再驗全書;`npm run verify -- 63 70-71` 只跑指定圖號,`--waivers` 列出豁免)。它檢查干涉、憑空連動、動力重演(用語見 `CONTEXT.md`,決定見 ADR-0003),有未豁免的問題或過時的豁免就失敗。需要開發用依賴(`npm install`:Rapier 與 Three.js),不在 `npm test` 裡;它自己的測試是 `npm run test:verify`。可以接受的問題寫成該模型定義裡的 `waivers`(必須寫原因;原因以「未修:」開頭的是還沒修的實體問題,彙整在 `.scratch/physical-verification/pending.md`);虛擬主動件的模型用 `powered` 標出直接受力的零件(靠流體傳動、和主動件之間沒有實體相連的零件也用它);靠接觸或重力運作的機構用 `replay` 宣告動力重演(格式見 `verify/replay.js` 檔頭)。
+- **改動或新增模型後要跑實體驗證**:`npm run verify`(先跑實體驗證自己的測試,再驗全書;`npm run verify -- 63 70-71` 只跑指定圖號,`--waivers` 列出豁免)。它檢查干涉、憑空連動、動力重演(用語見 `GLOSSARY.md`,決定見 ADR-0003),有未豁免的問題或過時的豁免就失敗。需要開發用依賴(`npm install`:Rapier 與 Three.js),不在 `npm test` 裡;它自己的測試是 `npm run test:verify`。可以接受的問題寫成該模型定義裡的 `waivers`(必須寫原因;原因以「未修:」開頭的是還沒修的實體問題,彙整在 `.scratch/physical-verification/pending.md`);虛擬主動件的模型用 `powered` 標出直接受力的零件(靠流體傳動、和主動件之間沒有實體相連的零件也用它);靠接觸或重力運作的機構用 `replay` 宣告動力重演(格式見 `verify/replay.js` 檔頭)。
 - 對照原文時可用 `node tools/audit.mjs 圖號…` 印出原文與各零件的動作摘要(轉向、轉速比、位移)。
 - **複查、改動或新增模型時**,照 `docs/agents/model-audit.md` 查八類實體驗證與測試抓不到的錯誤。
