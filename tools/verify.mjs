@@ -1,4 +1,4 @@
-// 維護用:實體驗證(干涉、憑空連動、動力重演;見 CONTEXT.md、ADR-0003)。改動或新增模型後要跑。
+// 維護用:實體驗證(干涉、憑空連動、動力重演;見 GLOSSARY.md、ADR-0003)。改動或新增模型後要跑。
 // 用法:node tools/verify.mjs [圖號或範圍(7 或 24-36)…] [--samples=N] [--only=interference,unsupported,replay]
 //                            [--waivers] [--summary] [--brief] [--jobs=N] [--json=檔案]
 //   不帶圖號跑全書;--waivers 列出豁免與原因;--summary 只印各項檢查涉及的圖號;--json 把問題清單寫成檔案。
